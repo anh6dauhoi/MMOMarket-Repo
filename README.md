@@ -1,0 +1,2 @@
+# MMOMarket
+ The MMO Market system is an integrated e-commerce platform that enables Guests, Customers, Sellers, and Administrators to interact within a unified marketplace. It provides key functionalities such as product browsing, purchasing, account and shop management, content sharing, complaint handling, and reporting. The platform connects with external services including Sepay for secure payment transactions and Google Gateway for authentication support.
