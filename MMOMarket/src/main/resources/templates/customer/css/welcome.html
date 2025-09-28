@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMO Market - Welcome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<!-- Include Header -->
+<th:insert th:replace="~{fragments/header :: header}" />
+
+<!-- Main Content -->
+<main class="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full text-center">
+        <h1 class="text-4xl font-bold text-gray-800" th:text="${message}"></h1>
+    </div>
+</main>
+
+<!-- Include Footer -->
+<th:insert th:replace="~{fragments/footer :: footer}" />
+</body>
+</html>
