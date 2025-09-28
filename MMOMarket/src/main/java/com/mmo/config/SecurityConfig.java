@@ -23,7 +23,11 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService(DataSource dataSource) {
-        return new JdbcUserDetailsManager(dataSource);
+        JdbcUserDetailsManager manager = new JdbcUserDetailsManager(dataSource);
+        // Tùy chỉnh query để khớp với bảng Users
+        manager.setUsersByUsernameQuery("SELECT email as username, password, isVerified as enabled FROM Users WHERE email = ? AND isDelete = 0");
+        manager.setAuthoritiesByUsernameQuery("SELECT email as username, role as authority FROM Users WHERE email = ? AND isDelete = 0");
+        return manager;
     }
 
     @Bean
@@ -35,9 +39,9 @@ public class SecurityConfig {
                 )
                 .formLogin((form) -> form
                         .loginPage("/authen/login")
-                        .loginProcessingUrl("/authen/login") // Khớp với form action
-                        .defaultSuccessUrl("/welcome", true) // Chuyển hướng đến welcome nếu thành công
-                        .failureUrl("/authen/login?error") // Sử dụng query param để trigger lỗi
+                        .loginProcessingUrl("/authen/login")
+                        .defaultSuccessUrl("/welcome", true)
+                        .failureUrl("/authen/login?error")
                         .permitAll()
                 )
                 .logout((logout) -> logout

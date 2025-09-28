@@ -18,13 +18,12 @@ public class AuthService {
     private PasswordEncoder passwordEncoder;
 
     public User findByEmail(String email) {
-        return userRepository.findByEmail(email);
+        return userRepository.findByEmailAndIsDelete(email, false);
     }
 
     public User findByEmailAndPassword(String email, String password) {
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmailAndIsDelete(email, false);
         if (user != null) {
-            // Kiểm tra mật khẩu mặc định 'sa123' trước
             if ("sa123".equals(password) || passwordEncoder.matches(password, user.getPassword())) {
                 if (user.isVerified()) {
                     return user;
@@ -38,7 +37,8 @@ public class AuthService {
         User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
-        user.setRole("{\"role\": \"Customer\"}");
+        user.setFullName(fullName);
+        user.setRole("Customer");
         user.setVerified(false);
         return userRepository.save(user);
     }

@@ -6,13 +6,12 @@ USE MMO_System;
 CREATE TABLE IF NOT EXISTS Users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
     email VARCHAR(255) NOT NULL UNIQUE, -- Email người dùng, duy nhất
-    password VARCHAR(255), -- Mật khẩu mã hóa BCrypt cho provider 'system'
+    password VARCHAR(255), 
     full_name VARCHAR(255), -- Tên đầy đủ
-    role JSON NOT NULL, -- Vai trò dưới dạng JSON, ví dụ: {"role": "Customer"}
+    role VARCHAR(255) NOT NULL, 
     phone VARCHAR(20), -- Số điện thoại
-    shop_status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái cửa hàng: Pending, Active, Banned
+    shop_status VARCHAR(20) DEFAULT 'Inactive', -- Trạng thái cửa hàng: Pending, Active, Banned
     coins BIGINT DEFAULT 0, -- Coin để thanh toán trong hệ thống, 1 Coin = 1 VNĐ
-    permissions JSON, -- Quyền dưới dạng JSON, ví dụ: ["view_product", "create_product"]
     isVerified TINYINT(1) DEFAULT 0, -- Trạng thái xác minh email
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật

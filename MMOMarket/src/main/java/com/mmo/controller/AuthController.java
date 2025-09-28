@@ -22,9 +22,9 @@ public class AuthController {
     }
 
     @PostMapping("/authen/register")
-    public String register(@RequestParam String email, @RequestParam String password, @RequestParam String fullName, Model model) {
+    public String register(@RequestParam String email, @RequestParam String password, @RequestParam String full_name, Model model) {
         try {
-            User user = authService.register(email, password, fullName);
+            User user = authService.register(email, password, full_name);
             String code = authService.generateVerificationCode();
             model.addAttribute("email", email);
             model.addAttribute("code", code);
