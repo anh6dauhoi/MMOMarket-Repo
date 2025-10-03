@@ -23,6 +23,17 @@ CREATE TABLE IF NOT EXISTS Users (
     INDEX idx_email (email) -- Index cho email
 );
 
+-- Bảng EmailVerifications - Quản lý mã xác minh email
+CREATE TABLE IF NOT EXISTS EmailVerifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    verification_code VARCHAR(6) NOT NULL,
+    expiry_date DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_used TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
 -- Bảng Authentications - Quản lý xác thực (hệ thống hoặc Google)
 CREATE TABLE IF NOT EXISTS Authentications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
@@ -284,17 +295,6 @@ CREATE TABLE IF NOT EXISTS BlogComments (
     FOREIGN KEY (parent_comment_id) REFERENCES BlogComments(id) ON DELETE SET NULL,
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
-);
-
--- Bảng EmailVerifications - Quản lý mã xác minh email
-CREATE TABLE IF NOT EXISTS EmailVerifications (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    verification_code VARCHAR(6) NOT NULL,
-    expiry_date DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_used TINYINT(1) DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
 -- Bảng SellerRegistrations - Quản lý yêu cầu đăng ký bán hàng

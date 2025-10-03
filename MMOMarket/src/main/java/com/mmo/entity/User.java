@@ -38,7 +38,10 @@ public class User {
     private Long coins;
 
     @Column(name = "isVerified", columnDefinition = "TINYINT(1) DEFAULT 0")
-    private boolean isVerified;
+    private boolean verified;
+
+    @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
+    private boolean isDelete;
 
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
@@ -53,9 +56,6 @@ public class User {
 
     @Column(name = "deleted_by")
     private Long deletedBy;
-
-    @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
-    private boolean isDelete;
 
     @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)

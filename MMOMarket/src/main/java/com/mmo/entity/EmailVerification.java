@@ -20,7 +20,7 @@ public class EmailVerification {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 6)
+    @Column(name = "verification_code", nullable = false)
     private String verificationCode;
 
     @Column(name = "expiry_date", nullable = false)
