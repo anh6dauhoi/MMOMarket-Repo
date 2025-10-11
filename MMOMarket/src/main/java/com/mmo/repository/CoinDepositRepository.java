@@ -1,0 +1,7 @@
+package com.mmo.repository;
+
+import com.mmo.entity.CoinDeposit;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CoinDepositRepository extends JpaRepository<CoinDeposit, Long> {
+}

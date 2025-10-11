@@ -26,6 +26,10 @@ public class AuthService {
         return userRepository.findByEmailAndIsDelete(email, false);
     }
 
+    public User findByDepositCode(String depositCode) {
+        return userRepository.findByDepositCodeAndIsDelete(depositCode, false);
+    }
+
     public User register(String email, String password, String fullName) throws MessagingException {
         User user = new User();
         user.setEmail(email);
@@ -33,6 +37,7 @@ public class AuthService {
         user.setFullName(fullName); // Có thể null
         user.setRole("ROLE_CUSTOMER");
         user.setVerified(false); // Đúng với cột isVerified (camelCase)
+        user.setCoins(0L);
         return userRepository.save(user);
     }
 

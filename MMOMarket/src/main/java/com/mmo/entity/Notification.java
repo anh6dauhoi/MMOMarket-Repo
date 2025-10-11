@@ -26,6 +26,9 @@ public class Notification {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'Unread'")
+    private String status;
+
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;

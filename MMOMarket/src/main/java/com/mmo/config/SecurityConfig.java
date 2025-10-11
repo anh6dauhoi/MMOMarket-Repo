@@ -2,6 +2,7 @@ package com.mmo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -65,6 +66,7 @@ public class SecurityConfig {
         http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers(HttpMethod.POST, "/customer/topup").permitAll()
                         .requestMatchers("/authen/**", "/welcome", "/css/**", "/error", "/oauth2/**", "/login/**", "/images/**").permitAll()
                         .anyRequest().authenticated()
                 )

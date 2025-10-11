@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS Users (
     phone VARCHAR(20), -- Số điện thoại
     shop_status VARCHAR(20) DEFAULT 'Inactive', -- Trạng thái cửa hàng: Pending, Active, Banned
     coins BIGINT DEFAULT 0, -- Coin để thanh toán trong hệ thống, 1 Coin = 1 VNĐ
+    depositCode VARCHAR(50),
     isVerified TINYINT(1) DEFAULT 0, -- Trạng thái xác minh email
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
@@ -32,22 +33,6 @@ CREATE TABLE IF NOT EXISTS EmailVerifications (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_used TINYINT(1) DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
-
--- Bảng Authentications - Quản lý xác thực (hệ thống hoặc Google)
-CREATE TABLE IF NOT EXISTS Authentications (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL, -- Mã người dùng liên kết
-    provider VARCHAR(50) NOT NULL, -- Nhà cung cấp: 'system' hoặc 'google'
-    third_party_token VARCHAR(255), -- Token từ bên thứ 3, null nếu 'system'
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
 -- Bảng SellerBankInfo - Quản lý thông tin ngân hàng của Seller
@@ -323,6 +308,7 @@ CREATE TABLE IF NOT EXISTS Notifications (
     user_id BIGINT NOT NULL, -- Mã người dùng liên kết
     title VARCHAR(255) NOT NULL, -- Tiêu đề thông báo
     content TEXT, -- Nội dung thông báo
+    status VARCHAR(20) DEFAULT 'Unread',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo

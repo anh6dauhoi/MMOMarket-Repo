@@ -37,6 +37,9 @@ public class User {
     @Column(columnDefinition = "BIGINT DEFAULT 0")
     private Long coins;
 
+    @Column(length = 50)
+    private String depositCode;
+
     @Column(name = "isVerified", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean verified;
 

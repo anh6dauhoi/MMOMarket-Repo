@@ -21,7 +21,7 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-<th:insert th:replace="~{fragments/header :: header}" />
+<th:block th:replace="~{fragments/header :: header}"></th:block>
 <main class="flex-1 flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 w-full">
     <div class="max-w-md w-full form-container rounded-lg shadow-lg p-6 sm:p-8">
         <div class="space-y-6">
@@ -78,6 +78,6 @@
         </div>
     </div>
 </main>
-<th:insert th:replace="~{fragments/footer :: footer}" />
+<th:block th:replace="~{fragments/footer :: footer}"></th:block>
 </body>
 </html>
