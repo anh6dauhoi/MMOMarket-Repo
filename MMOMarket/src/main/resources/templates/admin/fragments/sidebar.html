@@ -1,0 +1,40 @@
+<!-- filepath: templates/admin/fragments/sidebar.html -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="sidebar" class="w-64 h-screen bg-white shadow-md">
+    <div class="p-6">
+        <h1 class="text-3xl font-bold text-gray-800">MMOMarket</h1>
+    </div>
+    <nav class="mt-6">
+        <a th:href="@{/admin/dashboard}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-tachometer-alt w-6"></i><span class="ml-3">Dashboard</span>
+        </a>
+        <a th:href="@{/admin/users}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-users w-6"></i><span class="ml-3">Users</span>
+        </a>
+        <a th:href="@{/admin/shop-management}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-store w-6"></i><span class="ml-3">Shop management</span>
+        </a>
+        <a th:href="@{/admin/categories}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-folder w-6"></i><span class="ml-3">Categories</span>
+        </a>
+        <a th:href="@{/admin/transactions}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-exchange-alt w-6"></i><span class="ml-3">Transaction</span>
+        </a>
+        <a th:href="@{/admin/blogs}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-blog w-6"></i><span class="ml-3">Blogs management</span>
+        </a>
+        <a th:href="@{/admin/seller-registrations}" class="flex items-center px-6 py-3 bg-gray-200 text-gray-800 font-bold">
+            <i class="fas fa-user-plus w-6"></i><span class="ml-3">Seller registration</span>
+        </a>
+        <a th:href="@{/admin/complaints}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-exclamation-circle w-6"></i><span class="ml-3">Complain Management</span>
+        </a>
+        <a th:href="@{/admin/withdrawals}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-200">
+            <i class="fas fa-money-bill-wave w-6"></i><span class="ml-3">Withdraw management</span>
+        </a>
+    </nav>
+</div>
+</body>
+</html>

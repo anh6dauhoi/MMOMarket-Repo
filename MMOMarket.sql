@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS Users (
     full_name VARCHAR(255), -- Tên đầy đủ
     role VARCHAR(255) NOT NULL, 
     phone VARCHAR(20), -- Số điện thoại
-    shop_status VARCHAR(20) DEFAULT 'Inactive', -- Trạng thái cửa hàng: Pending, Active, Banned
+    shop_status ENUM('Pending', 'Active', 'Banned', 'Inactive') DEFAULT 'Inactive', -- Trạng thái cửa hàng, dùng ENUM để đảm bảo dữ liệu
+    shop_level TINYINT UNSIGNED DEFAULT 0,
     coins BIGINT DEFAULT 0, -- Coin để thanh toán trong hệ thống, 1 Coin = 1 VNĐ
     depositCode VARCHAR(50),
     isVerified TINYINT(1) DEFAULT 0, -- Trạng thái xác minh email

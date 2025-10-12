@@ -1,0 +1,97 @@
+<div th:fragment="content">
+    <div class="max-w-4xl mx-auto p-4">
+        <!-- Status Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <div class="flex items-center">
+                <div th:with="
+                    statusIconClass=${registration.status == 'Approved' || registration.status == 'Completed' ? 'bg-green-500' :
+                                     (registration.status == 'Pending' ? 'bg-yellow-500' :
+                                     (registration.status == 'Rejected' ? 'bg-red-500' : 'bg-gray-500'))},
+                    statusIcon=${registration.status == 'Approved' || registration.status == 'Completed' ? 'fa-check' :
+                                (registration.status == 'Pending' ? 'fa-clock' :
+                                (registration.status == 'Rejected' ? 'fa-times' : 'fa-question'))},
+                    statusTextColor=${registration.status == 'Approved' || registration.status == 'Completed' ? 'text-green-600' :
+                                     (registration.status == 'Pending' ? 'text-yellow-600' :
+                                     (registration.status == 'Rejected' ? 'text-red-600' : 'text-gray-600'))}
+                " class="w-16 h-16 rounded-full flex items-center justify-center mr-5" th:classappend="${statusIconClass}">
+                    <i class="fas text-white text-2xl" th:classappend="${statusIcon}"></i>
+                </div>
+                <div>
+                    <p class="text-gray-500 font-semibold">Registration Status</p>
+                    <h2 class="text-3xl font-bold" th:classappend="${statusTextColor}" th:text="${registration.status}">Pending</h2>
+                </div>
+            </div>
+            <div th:if="${registration.status == 'Rejected' and registration.reason != null}" class="mt-4 bg-red-50 text-red-800 p-4 rounded-lg border border-red-200">
+                <p class="font-bold">Reason for rejection:</p>
+                <p th:text="${registration.reason}"></p>
+            </div>
+        </div>
+
+        <!-- Submitted Information -->
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h3 class="text-2xl font-bold text-gray-800 mb-4">Your Submission</h3>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Shop Name</p>
+                    <p class="text-lg text-gray-800" th:text="${registration.shopName}"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Description</p>
+                    <p class="text-base text-gray-600 bg-gray-50 p-3 rounded-lg" th:text="${registration.description}"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress & Actions -->
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">Next Steps</h3>
+
+            <!-- Actions for Approved Status -->
+            <div class="space-y-4" th:if="${registration.status == 'Approved'}">
+                <div class="flex flex-col md:flex-row items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div>
+                        <p class="font-medium text-blue-800">Download your contract</p>
+                        <p class="text-sm text-blue-700">Please download the contract, fill and sign it, then upload the signed file to proceed.</p>
+                    </div>
+                    <a th:if="${registration.contract != null}" th:href="@{/seller/contract}" class="mt-3 md:mt-0 md:ml-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">
+                        <i class="fas fa-download mr-2"></i>Download
+                    </a>
+                    <span th:if="${registration.contract == null}" class="text-sm text-gray-500 mt-3 md:mt-0">Admin will provide the contract soon.</span>
+                </div>
+
+                <div class="border-t pt-4">
+                    <form th:action="@{/seller/contract}" method="post" enctype="multipart/form-data" class="space-y-3">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <label class="block text-sm font-medium text-gray-700">Upload Signed Contract</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="file" name="signed" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" required>
+                            <button type="submit" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap">
+                                <i class="fas fa-upload mr-2"></i>Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info for Pending Status -->
+            <div th:if="${registration.status == 'Pending'}" class="bg-yellow-50 text-yellow-800 p-4 rounded-lg border border-yellow-200">
+                <p class="font-medium">Your application is under review. We will notify you once there is an update.</p>
+            </div>
+
+            <!-- Info for Completed Status -->
+            <div th:if="${registration.status == 'Completed'}" class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                <p class="font-medium text-indigo-800 mb-2">Your signed contract has been received. Your shop will be activated soon after final review.</p>
+                <a th:href="@{/seller/contract(signed=true)}" class="font-semibold text-indigo-600 hover:underline">
+                    <i class="fas fa-download mr-1"></i>Download your signed contract
+                </a>
+            </div>
+
+             <!-- Info for Rejected Status -->
+            <div th:if="${registration.status == 'Rejected'}" class="mt-8">
+                <a th:href="@{/seller/register}" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                    Submit a New Application
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

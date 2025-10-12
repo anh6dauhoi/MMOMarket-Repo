@@ -35,7 +35,7 @@ public class AuthService {
         user.setEmail(email);
         user.setPassword(password); // Lưu plaintext
         user.setFullName(fullName); // Có thể null
-        user.setRole("ROLE_CUSTOMER");
+        user.setRole("CUSTOMER");
         user.setVerified(false); // Đúng với cột isVerified (camelCase)
         user.setCoins(0L);
         return userRepository.save(user);

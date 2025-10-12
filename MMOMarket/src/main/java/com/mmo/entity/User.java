@@ -1,5 +1,6 @@
 package com.mmo.entity;
 
+import com.mmo.constant.ShopStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -31,8 +32,12 @@ public class User {
     @Column(length = 20)
     private String phone;
 
-    @Column(name = "shop_status", columnDefinition = "VARCHAR(20) DEFAULT 'Inactive'")
-    private String shopStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shop_status", columnDefinition = "ENUM('Pending', 'Active', 'Banned', 'Inactive') DEFAULT 'Inactive'")
+    private ShopStatus shopStatus;
+
+    @Column(name = "shop_level", columnDefinition = "TINYINT UNSIGNED DEFAULT 0")
+    private int shopLevel;
 
     @Column(columnDefinition = "BIGINT DEFAULT 0")
     private Long coins;
@@ -41,7 +46,7 @@ public class User {
     private String depositCode;
 
     @Column(name = "isVerified", columnDefinition = "TINYINT(1) DEFAULT 0")
-    private boolean verified;
+    private boolean isVerified;
 
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;

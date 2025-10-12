@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -45,7 +44,7 @@ public class GlobalModelAttributes {
                         User newUser = new User();
                         newUser.setEmail(email);
                         newUser.setFullName(oauthUser.getAttribute("name"));
-                        newUser.setRole("ROLE_CUSTOMER");
+                        newUser.setRole("CUSTOMER");
                         newUser.setVerified(true); // Mặc định là đã xác thực
                         newUser.setCoins(0L); // Khởi tạo coins là 0
                         user = authService.saveUser(newUser);
@@ -100,20 +99,23 @@ public class GlobalModelAttributes {
     }
 
     private String resolvePreferredName(User user) {
-        if (user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
-            return user.getFullName().trim();
+        if (user == null) return "customer";
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
         }
-        String email = user.getEmail();
-        if (email == null) return "";
-        int at = email.indexOf('@');
-        return at > 0 ? email.substring(0, at) : email;
+        return "customer";
     }
 
     private String shortenName(String name) {
-        if (name == null) return "";
-        name = name.trim();
-        int max = 12; // rút gọn tên
-        if (name.length() <= max) return name;
-        return name.substring(0, max - 1) + "…";
+        if (name == null || name.isBlank()) {
+            return "customer";
+        }
+        if (name.equalsIgnoreCase("customer")) {
+            return "customer";
+        }
+        if (name.length() > 12) {
+            return name.substring(0, 10) + "...";
+        }
+        return name;
     }
 }

@@ -66,14 +66,23 @@ public class SecurityConfig {
         http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers("/admin/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/customer/topup").permitAll()
-                        .requestMatchers("/authen/**", "/welcome", "/css/**", "/error", "/oauth2/**", "/login/**", "/images/**").permitAll()
+                        .requestMatchers(
+                                "/authen/**", "/welcome", "/error", "/oauth2/**", "/login/**",
+                                "/images/**", "/css/**",
+                                "/customer/css/**", "/authen/css/**", "/admin/css/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin((form) -> form
                         .loginPage("/authen/login")
                         .loginProcessingUrl("/authen/login")
-                        .defaultSuccessUrl("/welcome", true)
+                        .successHandler((request, response, authentication) -> {
+                            boolean isAdmin = authentication.getAuthorities().stream()
+                                    .anyMatch(a -> "ADMIN".equals(a.getAuthority()));
+                            response.sendRedirect(isAdmin ? "/admin/seller-registrations" : "/welcome");
+                        })
                         .failureHandler((request, response, exception) -> {
                             String errorMessage = "Email hoặc mật khẩu không đúng.";
                             if (exception instanceof DisabledException) {
@@ -88,7 +97,11 @@ public class SecurityConfig {
                 )
                 .oauth2Login((oauth2) -> oauth2
                         .loginPage("/authen/login")
-                        .defaultSuccessUrl("/welcome", true)
+                        .successHandler((request, response, authentication) -> {
+                            boolean isAdmin = authentication.getAuthorities().stream()
+                                    .anyMatch(a -> "ADMIN".equals(a.getAuthority()));
+                            response.sendRedirect(isAdmin ? "/admin/seller-registrations" : "/welcome");
+                        })
                 )
                 .logout((logout) -> logout
                         .logoutUrl("/logout")

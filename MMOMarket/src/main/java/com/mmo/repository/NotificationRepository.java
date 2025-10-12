@@ -1,6 +1,8 @@
 package com.mmo.repository;
 
 import com.mmo.entity.Notification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -29,4 +31,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Modifying
     @Query("update Notification n set n.status = :to where n.user.email = :email and n.status = :from and n.isDelete = false")
     int updateStatusForUserEmail(@Param("email") String email, @Param("from") String from, @Param("to") String to);
+
+    @Modifying
+    @Query("update Notification n set n.status = :to where n.user.email = :email and n.id in :ids and n.status = :from and n.isDelete = false")
+    int updateStatusForIdsAndEmail(@Param("email") String email,
+                                   @Param("ids") List<Long> ids,
+                                   @Param("from") String from,
+                                   @Param("to") String to);
+
+    Page<Notification> findByUser_EmailAndStatusOrderByCreatedAtDesc(String email, String status, Pageable pageable);
+    Page<Notification> findByUser_EmailOrderByCreatedAtDesc(String email, Pageable pageable);
 }

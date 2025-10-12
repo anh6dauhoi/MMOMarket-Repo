@@ -11,7 +11,7 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <!-- Page CSS -->
-    <link th:href="@{/css/topup.css}" rel="stylesheet">
+    <link th:href="@{/customer/css/topup.css}" rel="stylesheet">
 </head>
 <body>
 
@@ -37,9 +37,8 @@
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-hashtag"></i> Account Number</label>
-                        <div class="field-value with-action">
+                        <div class="field-value">
                             <span class="copy-badge">0813302283</span>
-                            <button class="copy-btn" type="button" data-copy="0813302283">Copy</button>
                         </div>
                     </div>
 
@@ -50,9 +49,8 @@
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-file-invoice"></i> Transfer content</label>
-                        <div class="field-value with-action">
+                        <div class="field-value">
                             <span id="depositCodeVal" class="copy-badge" th:text="${depositCode}">MMOXXXX123456</span>
-                            <button class="copy-btn" type="button" data-copy-id="depositCodeVal">Copy</button>
                         </div>
                     </div>
 
@@ -100,25 +98,6 @@
 
 <th:block th:replace="~{fragments/footer :: footer}"></th:block>
 
-<script>
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.copy-btn');
-    if (!btn) return;
-    let text = btn.getAttribute('data-copy');
-    const id = btn.getAttribute('data-copy-id');
-    if (!text && id) {
-      const el = document.getElementById(id);
-      if (el) text = el.innerText.trim();
-    }
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => {
-        const prev = btn.innerText;
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = prev, 1200);
-      });
-    }
-  });
-</script>
 
 </body>
 </html>
