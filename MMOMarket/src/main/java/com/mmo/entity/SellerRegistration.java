@@ -20,7 +20,7 @@ public class SellerRegistration {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "shop_name", nullable = false, length = 255)
     private String shopName;
 
     @Column(columnDefinition = "TEXT")
