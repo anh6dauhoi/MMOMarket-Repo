@@ -12,6 +12,13 @@ import java.util.Date;
 @Table(name = "Categories")
 public class Category {
 
+    /**
+     * Category type enum representing the possible values for the type column
+     */
+    public enum CategoryType {
+        Common, Warning
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,6 +28,10 @@ public class Category {
 
     @Column(length = 500)
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CategoryType type = CategoryType.Common;
 
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
