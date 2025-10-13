@@ -2,13 +2,10 @@ package com.mmo.controller;
 
 import com.mmo.dto.SellerRegistrationDTO;
 import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.User;
 import com.mmo.service.SellerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +13,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.ZoneId;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
@@ -27,18 +29,18 @@ public class AdminController {
     private SellerService sellerService;
 
     @GetMapping("/seller-registrations")
-    public String getSellerRegistrations(@RequestParam(defaultValue = "All") String status,
-                                         @RequestParam(defaultValue = "0") int page,
-                                         @RequestParam(defaultValue = "10") int size,
-                                         Model model) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    public String sellerRegistrations(@RequestParam(name = "status", defaultValue = "All") String status,
+                                      @RequestParam(name = "page", defaultValue = "0") int page,
+                                      Model model) {
+        Pageable pageable = PageRequest.of(page, 10, Sort.by("createdAt").descending());
         Page<SellerRegistration> registrationPage = sellerService.findAllRegistrations(status, pageable);
 
         model.addAttribute("registrations", registrationPage.getContent());
-        model.addAttribute("currentPage", registrationPage.getNumber());
-        model.addAttribute("totalPages", registrationPage.getTotalPages());
         model.addAttribute("currentStatus", status);
-        model.addAttribute("body", "admin/seller-registrations :: content");
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", registrationPage.getTotalPages());
+        model.addAttribute("pageTitle", "Seller Registrations"); // for dynamic header title
+        model.addAttribute("body", "admin/seller-registrations"); // was "admin/seller-registrations :: content"
         return "admin/layout";
     }
 
@@ -65,11 +67,23 @@ public class AdminController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // Approve: use service (handles storage + validations)
     @PostMapping(value = "/seller-registrations/{id}/approve", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
     public ResponseEntity<?> approve(@PathVariable Long id,
                                      @RequestPart(value = "contract", required = false) MultipartFile contract) {
         try {
+            // Check if the registration already has a contract
+            Optional<SellerRegistration> registration = sellerService.findById(id);
+            boolean hasExistingContract = registration.isPresent() &&
+                                        registration.get().getContract() != null &&
+                                        !registration.get().getContract().isEmpty();
+
+            // Only require a contract file if there isn't one already
+            if (!hasExistingContract && (contract == null || contract.isEmpty())) {
+                return ResponseEntity.badRequest().body("A contract file is required to approve a seller registration.");
+            }
+
             sellerService.approve(id, contract);
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException ex) {
@@ -79,6 +93,7 @@ public class AdminController {
         }
     }
 
+    // Reject: use service
     @PostMapping("/seller-registrations/{id}/reject")
     @ResponseBody
     public ResponseEntity<?> reject(@PathVariable Long id, @RequestParam("reason") String reason) {
@@ -92,6 +107,7 @@ public class AdminController {
         }
     }
 
+    // Activate: use service (updates reg to Active and user.shopStatus = Active)
     @PostMapping("/seller-registrations/{id}/activate")
     @ResponseBody
     public ResponseEntity<?> activate(@PathVariable Long id) {

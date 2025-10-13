@@ -28,6 +28,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
 import java.util.Optional;
+import java.util.Locale;
 
 @Controller
 @RequestMapping("/seller")
@@ -74,21 +75,26 @@ public class SellerController {
 
         if (sellerRegistration.isPresent()) {
             SellerRegistration reg = sellerRegistration.get();
-            if ("Rejected".equalsIgnoreCase(reg.getStatus())) {
-                // Allow user to re-submit: show form pre-filled
+            String status = reg.getStatus();
+            String upper = status != null ? status.trim().toUpperCase(java.util.Locale.ROOT) : "";
+            boolean rejectedRegistration = upper.equals("REJECTED") || upper.equals("REJECTED_STAGE") || upper.equals("REJECTED_REGISTRATION");
+            if (rejectedRegistration) {
+                // Show the registration form pre-filled inside account setting layout
                 if (!model.containsAttribute("sellerRegistration")) {
                     model.addAttribute("sellerRegistration", reg);
                 }
-                return "customer/register-seller";
+                // DO NOT set 'registration' so account-setting shows the form fragment
+                return "customer/account-setting";
             }
+            // For other statuses (including REJECTED_CONTRACT), show status inside account setting layout
             model.addAttribute("registration", reg);
-            return "customer/seller-status";
+            return "customer/account-setting";
         }
 
         if (!model.containsAttribute("sellerRegistration")) {
             model.addAttribute("sellerRegistration", new SellerRegistration());
         }
-        return "customer/register-seller";
+        return "customer/account-setting";
     }
 
     @PostMapping("/register")
@@ -139,6 +145,54 @@ public class SellerController {
     public String uploadSignedContract(@RequestParam("signed") MultipartFile file,
                                        RedirectAttributes redirectAttributes) {
         try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String email = (authentication != null) ? authentication.getName() : null;
+            if (authentication != null && authentication.getPrincipal() instanceof OidcUser oidc) {
+                email = oidc.getEmail();
+            } else if (authentication != null && authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            if (email == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "You must be logged in to upload a contract.");
+                return "redirect:/seller/register";
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+                return "redirect:/seller/register";
+            }
+            Optional<SellerRegistration> regOpt = sellerRegistrationRepository.findByUserId(user.getId());
+            if (regOpt.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "No seller registration found.");
+                return "redirect:/seller/register";
+            }
+
+            SellerRegistration reg = regOpt.get();
+            String rawStatus = reg.getStatus();
+            String statusNormalized = rawStatus == null ? "" :
+                    rawStatus.trim()
+                             .toUpperCase(Locale.ROOT)
+                             .replace('-', '_')
+                             .replace(' ', '_')
+                             .replaceAll("[^A-Z_]", ""); // strip quotes/odd chars to match APPROVED_STAGE, etc.
+
+            boolean isApprovedLike = statusNormalized.contains("APPROVED"); // matches APPROVED, APPROVED_STAGE, APPROVED_REGISTRATION
+            boolean isRejectedLike = statusNormalized.contains("REJECTED"); // matches REJECTED_*
+            boolean hasContract = reg.getContract() != null && !reg.getContract().isBlank();
+
+            // Allow upload for Approved*, Rejected* (e.g., REJECTED_CONTRACT), or when contract is already provided
+            boolean allowed = isApprovedLike || isRejectedLike || hasContract;
+            if (!allowed) {
+                redirectAttributes.addFlashAttribute("errorMessage", "You can upload a signed contract only when your registration is Approved or Rejected.");
+                return "redirect:/seller/register";
+            }
+
+            if (file == null || file.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Please choose a file to upload.");
+                return "redirect:/seller/register";
+            }
+
             sellerService.submitSignedContract(file);
             redirectAttributes.addFlashAttribute("successMessage", "Signed contract uploaded successfully and sent for review.");
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -146,6 +200,7 @@ public class SellerController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Upload failed: " + e.getMessage());
         }
+        // Redirect back to /seller/register which renders account-setting with status fragment
         return "redirect:/seller/register";
     }
 }

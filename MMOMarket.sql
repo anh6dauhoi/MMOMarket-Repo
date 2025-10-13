@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS Users (
     full_name VARCHAR(255), -- Tên đầy đủ
     role VARCHAR(255) NOT NULL, 
     phone VARCHAR(20), -- Số điện thoại
-    shop_status ENUM('Pending', 'Active', 'Banned', 'Inactive') DEFAULT 'Inactive', -- Trạng thái cửa hàng, dùng ENUM để đảm bảo dữ liệu
+    shop_status VARCHAR(50) DEFAULT 'Inactive', -- Trạng thái cửa hàng, dùng ENUM để đảm bảo dữ liệu
     shop_level TINYINT UNSIGNED DEFAULT 0,
     coins BIGINT DEFAULT 0, -- Coin để thanh toán trong hệ thống, 1 Coin = 1 VNĐ
     depositCode VARCHAR(50),
@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS Categories (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
     name VARCHAR(100) NOT NULL, -- Tên danh mục
     description VARCHAR(500), -- Mô tả
+    type ENUM('Common', 'Warning') NOT NULL DEFAULT 'Common',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -291,7 +292,7 @@ CREATE TABLE IF NOT EXISTS SellerRegistrations (
     description TEXT, -- Mô tả
     contract VARCHAR(255), -- Hợp đồng
     signed_contract VARCHAR(255), -- Hợp đồng đã ký
-    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái
+    status VARCHAR(50) DEFAULT 'Pending', -- Trạng thái
     reason VARCHAR(255), -- Lý do từ chối
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
@@ -497,26 +498,6 @@ FOR EACH ROW
 BEGIN
     IF EXISTS (SELECT 1 FROM Transactions WHERE variant_id = OLD.id AND status IN ('Pending', 'Completed') AND isDelete = 0) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Không thể xóa biến thể sản phẩm khi đang có giao dịch.';
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger cập nhật trạng thái shop và ngân hàng khi yêu cầu đăng ký được duyệt
-DELIMITER //
-CREATE TRIGGER trg_UpdateShopStatus
-AFTER UPDATE ON SellerRegistrations
-FOR EACH ROW
-BEGIN
-    IF NEW.status IN ('Approved', 'Rejected') AND OLD.status != NEW.status THEN
-        UPDATE Users
-        SET shop_status = NEW.status,
-            role = CASE
-                WHEN NEW.status = 'Approved' AND JSON_EXTRACT(role, '$.role') = 'Customer' THEN JSON_OBJECT('role', 'Customer_Seller')
-                WHEN NEW.status = 'Approved' AND JSON_EXTRACT(role, '$.role') = 'Seller' THEN JSON_OBJECT('role', 'Seller')
-                WHEN NEW.status = 'Rejected' AND JSON_EXTRACT(role, '$.role') = 'Customer_Seller' THEN JSON_OBJECT('role', 'Customer')
-                ELSE role
-            END
-        WHERE id = NEW.user_id;
     END IF;
 END//
 DELIMITER ;

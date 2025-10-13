@@ -49,8 +49,15 @@
                 </div>
             </div>
             <div class="lg:col-span-3">
-                <div th:if="${registration != null}" th:insert="~{customer/seller-status :: content}"></div>
-                <div th:unless="${registration != null}" th:insert="~{customer/register-seller :: content}"></div>
+                <div th:if="${registration != null && registration.id != null}">
+                    <div th:replace="~{customer/seller-status :: content}"></div>
+                </div>
+                <div th:if="${sellerRegistration != null && (registration == null || registration.id == null)}">
+                    <div th:replace="~{customer/register-seller :: content}"></div>
+                </div>
+                <div th:if="${registration == null && sellerRegistration == null}">
+                    <div th:replace="~{customer/register-seller :: content(sellerRegistration=new com.mmo.entity.SellerRegistration())}"></div>
+                </div>
             </div>
         </div>
     </div>

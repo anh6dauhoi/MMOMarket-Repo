@@ -1,13 +1,32 @@
-<!-- filepath: templates/admin/fragments/header.html -->
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<body>
-    <div th:fragment="header" class="bg-white shadow-md p-4 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-800">Seller Registration</h1>
-        <div class="flex items-center space-x-4">
+<div th:fragment="header" class="bg-white shadow-md p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-800" th:text="${pageTitle} ?: 'Admin Dashboard'">Seller Registration</h1>
+    <div class="relative">
+        <button id="adminMenuBtn" type="button" class="flex items-center space-x-2 px-2 py-1 rounded hover:bg-gray-100 focus:outline-none">
             <i class="fas fa-user-circle text-gray-600 text-2xl"></i>
             <span class="text-gray-700">Admin</span>
+            <i class="fas fa-chevron-down text-gray-500 text-sm"></i>
+        </button>
+        <div id="adminMenu" class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 hidden z-50">
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+            <form th:action="@{/logout}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
+            </form>
         </div>
     </div>
-</body>
-</html>
+    <script>
+        (function(){
+          const btn = document.getElementById('adminMenuBtn');
+          const menu = document.getElementById('adminMenu');
+          if (!btn || !menu) return;
+
+          function toggle() { menu.classList.toggle('hidden'); }
+          function closeOnOutside(e) {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hidden');
+          }
+          btn.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
+          document.addEventListener('click', closeOnOutside);
+          document.addEventListener('keydown', (e) => { if (e.key === 'Escape') menu.classList.add('hidden'); });
+        })();
+    </script>
+</div>

@@ -1,4 +1,3 @@
-<!-- filepath: templates/fragments/header.html -->
 <div th:fragment="header">
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,12 +64,12 @@
                                     <a th:href="@{/account/notifications}" class="p-4 flex items-center hover:bg-gray-50" th:each="noti : ${notifications}">
                                         <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">NT</div>
                                         <div class="ml-3 flex-grow">
-                                            <p class="text-sm text-gray-900" th:classappend="${noti.status} == 'Unread' ? ' font-semibold' : ''" th:text="${noti.title}">Payment success</p>
+                                            <p class="text-sm text-gray-900" th:classappend="${noti.status == 'Unread' ? ' font-semibold' : ''}" th:text="${noti.title}">Payment success</p>
                                             <p class="text-xs text-gray-500 line-clamp-2" th:if="${noti.content}" th:text="${noti.content}">Content</p>
                                         </div>
                                         <div class="flex items-center space-x-2">
                                             <span class="text-xs text-gray-400 whitespace-nowrap" th:text="${noti.createdAt != null ? #dates.format(noti.createdAt, 'HH:mm dd/MM') : ''}">8h</span>
-                                            <span th:if="${noti.status} == 'Unread'" class="inline-block w-2 h-2 rounded-full bg-red-500" title="Unread"></span>
+                                            <span th:if="${noti.status == 'Unread'}" class="inline-block w-2 h-2 rounded-full bg-red-500" title="Unread"></span>
                                         </div>
                                     </a>
                                 </div>

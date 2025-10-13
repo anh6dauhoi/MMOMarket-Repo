@@ -18,4 +18,5 @@ public interface SellerService {
     void activate(Long id);
     Resource loadContract(Long id, boolean signed) throws IOException;
     void submitSignedContract(MultipartFile file) throws IOException;
+    SellerRegistration resubmit(String shopName, String description);
 }

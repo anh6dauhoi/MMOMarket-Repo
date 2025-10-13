@@ -1,6 +1,5 @@
 package com.mmo.entity;
 
-import com.mmo.constant.ShopStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,15 +25,14 @@ public class User {
     @Column(name = "full_name", length = 255)
     private String fullName;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "role", nullable = false, length = 255)
     private String role;
 
     @Column(length = 20)
     private String phone;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "shop_status", columnDefinition = "ENUM('Pending', 'Active', 'Banned', 'Inactive') DEFAULT 'Inactive'")
-    private ShopStatus shopStatus;
+    @Column(name = "shop_status", length = 50, columnDefinition = "VARCHAR(50) DEFAULT 'Inactive'")
+    private String shopStatus;
 
     @Column(name = "shop_level", columnDefinition = "TINYINT UNSIGNED DEFAULT 0")
     private int shopLevel;

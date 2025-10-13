@@ -13,7 +13,13 @@
     <div th:replace="~{admin/fragments/sidebar :: sidebar}"></div>
     <div class="flex-1 flex flex-col">
         <div th:replace="~{admin/fragments/header :: header}"></div>
-        <main class="flex-1 p-6" th:insert="~{${body}}"></main>
+        <main class="flex-1 p-6">
+            <!-- Safe include if 'body' exists, else show placeholder -->
+            <th:block th:if="${body != null}" th:replace="~{${body} :: content}"></th:block>
+            <div th:unless="${body != null}" class="p-6 bg-white rounded shadow text-gray-500">
+                Select a page to display.
+            </div>
+        </main>
     </div>
 </div>
 </body>
