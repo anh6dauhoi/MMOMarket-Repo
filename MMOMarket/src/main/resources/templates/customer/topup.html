@@ -12,12 +12,31 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <!-- Page CSS -->
     <link th:href="@{/customer/css/topup.css}" rel="stylesheet">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        .topup-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
 <th:block th:replace="~{fragments/header :: header}"></th:block>
 
-<main>
+<main class="flex-1 flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 w-full">
     <section class="topup-section">
         <div class="container">
             <div class="topup-header">

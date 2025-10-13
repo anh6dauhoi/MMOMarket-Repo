@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="content" class="container mx-auto px-2 sm:px-4 lg:px-6">
+    <div class="py-4 md:py-6">
+        <div>
+            <h2 class="text-xl md:text-2xl font-semibold leading-tight">Withdraw Management</h2>
+        </div>
+        <div class="my-4 flex flex-col sm:flex-row">
+            <div class="flex flex-row mb-2 sm:mb-0 w-full sm:w-auto">
+                <div class="relative w-full sm:w-64">
+                    <span class="h-full absolute inset-y-0 left-0 flex items-center pl-2">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-current text-gray-500">
+                            <path
+                                d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm-8 6a8 8 0 1 1 16 0 8 8 0 0 1-16 0z">
+                            </path>
+                            <path
+                                d="M21 21l-4.35-4.35">
+                            </path>
+                        </svg>
+                    </span>
+                    <input placeholder="Search transactions"
+                           class="appearance-none rounded-md border border-gray-400 border-b block pl-8 pr-6 py-2 w-full bg-white text-sm placeholder-gray-400 text-gray-700 focus:bg-white focus:placeholder-gray-600 focus:text-gray-700 focus:outline-none" />
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-lg shadow">
+            <div class="overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                    <tr>
+                        <th class="px-3 md:px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Transaction ID
+                        </th>
+                        <th class="px-3 md:px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Seller
+                        </th>
+                        <th class="px-3 md:px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Bank
+                        </th>
+                        <th class="hidden md:table-cell px-3 md:px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Account Number
+                        </th>
+                        <th class="hidden md:table-cell px-3 md:px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Bank Branch
+                        </th>
+                        <th class="px-3 md:px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Action
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Dummy Data -->
+                    <tr>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">#12345</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Ethan Davis</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">123456789</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Abc</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
+                                Bank
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">#12346</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Olivia Bennett</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">123456780</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
+                                Bank
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">#12347</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Ava Mitchell</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">123456781</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
+                                Bank
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">#12348</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Jackson Cole</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">123456782</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
+                                Bank
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">#12349</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Chloe Foster</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">123456783</p>
+                        </td>
+                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
+                        </td>
+                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
+                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
+                                Bank
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- Mobile data cards (visible only on small screens) -->
+                <div class="md:hidden">
+                    <div class="py-2 px-3 border-b border-gray-200" th:each="i : ${#numbers.sequence(1, 5)}">
+                        <div class="mb-1">
+                            <span class="font-semibold text-xs text-gray-600">TRANSACTION ID:</span>
+                            <span class="ml-1 text-sm">#1234<th:block th:text="${i + 4}">5</th:block></span>
+                        </div>
+                        <div class="mb-1">
+                            <span class="font-semibold text-xs text-gray-600">SELLER:</span>
+                            <span class="ml-1 text-sm" th:text="${
+                                i == 1 ? 'Ethan Davis' :
+                                i == 2 ? 'Olivia Bennett' :
+                                i == 3 ? 'Ava Mitchell' :
+                                i == 4 ? 'Jackson Cole' : 'Chloe Foster'
+                            }">Ethan Davis</span>
+                        </div>
+                        <div class="mb-1">
+                            <span class="font-semibold text-xs text-gray-600">BANK:</span>
+                            <span class="ml-1 text-sm">Vietcombank</span>
+                        </div>
+                        <div class="mb-1">
+                            <span class="font-semibold text-xs text-gray-600">ACCOUNT:</span>
+                            <span class="ml-1 text-sm">12345678<th:block th:text="${i - 1}">9</th:block></span>
+                        </div>
+                        <div class="mb-3">
+                            <span class="font-semibold text-xs text-gray-600">BRANCH:</span>
+                            <span class="ml-1 text-sm" th:text="${i == 1 ? 'Abc' : 'N/A'}">Abc</span>
+                        </div>
+                        <div>
+                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none w-full sm:w-auto ease-linear transition-all duration-150" type="button">
+                                Bank
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-3 md:px-5 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
+                    <span class="text-xs xs:text-sm text-gray-900 mb-2 sm:mb-0">
+                        Showing 1 to 5 of 50 Entries
+                    </span>
+                    <div class="inline-flex">
+                        <button class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-1 px-3 md:py-2 md:px-4 rounded-l">
+                            Prev
+                        </button>
+                        <button class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-1 px-3 md:py-2 md:px-4 rounded-r">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

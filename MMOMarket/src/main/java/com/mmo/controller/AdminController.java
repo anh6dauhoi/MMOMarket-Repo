@@ -121,6 +121,14 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/withdraw-management")
+    public String withdrawManagement(Model model) {
+        // Dummy data for now, will be replaced with actual data from service
+        model.addAttribute("pageTitle", "Withdraw Management");
+        model.addAttribute("body", "admin/withdraw-management");
+        return "admin/layout";
+    }
+
     @GetMapping("/seller-registrations/{id}/contract")
     public ResponseEntity<Resource> downloadContract(@PathVariable Long id,
                                                      @RequestParam(name = "signed", defaultValue = "false") boolean signed) throws Exception {

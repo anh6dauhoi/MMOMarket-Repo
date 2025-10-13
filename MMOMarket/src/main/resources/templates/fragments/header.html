@@ -2,9 +2,10 @@
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
+                <!-- Logo - Updated to red -->
                 <div class="flex items-center space-x-2">
                     <a th:href="@{/welcome}" class="flex items-center space-x-2">
-                        <div class="w-8 h-8 bg-black rounded flex items-center justify-center">
+                        <div class="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
@@ -13,19 +14,32 @@
                         <span class="text-xl font-bold text-gray-900">MMO Market</span>
                     </a>
                 </div>
-                <nav class="hidden md:flex space-x-8">
-                    <a th:href="@{/welcome}" class="text-gray-700 hover:text-gray-900 font-medium"
+
+                <!-- Mobile menu button -->
+                <div class="flex md:hidden">
+                    <button type="button" id="mobileMenuBtn" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <nav class="hidden md:flex space-x-4 lg:space-x-8">
+                    <a th:href="@{/welcome}" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
                        th:classappend="${requestURI == '/welcome' ? 'text-red-500 border-b-2 border-red-500' : ''}">Home</a>
-                    <a href="#" class="text-gray-700 hover:text-gray-900 font-medium">Category</a>
-                    <a href="#" class="text-gray-700 hover:text-gray-900 font-medium">Blog</a>
-                    <a href="#" class="text-gray-700 hover:text-gray-900 font-medium">Contact</a>
-                    <a href="/customer/topup" class="text-gray-700 hover:text-gray-900 font-medium"
+                    <a href="#" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1">Category</a>
+                    <a href="#" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1">Blog</a>
+                    <a href="#" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1">Contact</a>
+                    <a href="/customer/topup" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
                        th:classappend="${requestURI == '/customer/topup' ? 'text-red-500 border-b-2 border-red-500' : ''}">Topup</a>
                 </nav>
-                <div class="flex items-center space-x-4">
+
+                <!-- Desktop search and user menu -->
+                <div class="hidden md:flex items-center space-x-4">
                     <div class="relative">
                         <input type="text" placeholder="Search product/seller"
-                               class="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                               class="w-48 lg:w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
                         <button
                                 class="absolute right-0 top-0 h-full px-4 bg-red-500 text-white rounded-r-lg hover:bg-red-600">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,8 +50,7 @@
                     </div>
 
                     <!-- User is authenticated -->
-                    <div th:if="${currentUser}" class="flex items-center space-x-4">
-                        <span class="font-medium text-gray-700" th:text="${#numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT')} + ' coins'">100.000 coins</span>
+                    <div th:if="${currentUser}" class="flex items-center space-x-2">
                         <a href="#" class="text-gray-500 hover:text-gray-700">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                         </a>
@@ -85,14 +98,23 @@
                                 <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-semibold text-gray-600"
                                      th:text="${displayName != null and #strings.length(displayName) > 0 ? #strings.toUpperCase(#strings.substring(displayName,0,1)) : 'U'}">
                                 </div>
-                                <span class="font-medium text-gray-700" th:text="${displayName}"></span>
+                                <span class="font-medium text-gray-700 truncate max-w-[80px]" th:text="${displayName}"></span>
                             </button>
                             <div x-show="open" @click.away="open = false"
                                  class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-50"
                                  style="display: none;">
-                                <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white">
-                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                    My Profile
+                                <div class="px-4 py-2 text-sm text-gray-700">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-semibold">Balance:</span>
+                                        <span class="font-semibold text-red-500" th:text="${#numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT')} + ' coins'"></span>
+                                    </div>
+                                </div>
+                                <div class="border-t my-2"></div>
+                                <a href="#" class="flex justify-between items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                        My Profile
+                                    </div>
                                 </a>
                                 <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
@@ -130,24 +152,121 @@
                     <!-- User is not authenticated -->
                     <div th:unless="${currentUser}" class="flex items-center space-x-2">
                         <a href="/authen/login"
-                           class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">Sign
+                           class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium text-sm">Sign
                             in</a>
                         <a href="/authen/register"
-                           class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">Sign up</a>
+                           class="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium text-sm">Sign up</a>
                     </div>
+                </div>
+            </div>
 
-                    <div class="flex items-center space-x-1 text-gray-700">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'%3E%3Crect width='60' height='30' fill='%23002868'/%3E%3Crect width='60' height='15' y='15' fill='%23bf0a30'/%3E%3Crect width='24' height='15' fill='%23002868'/%3E%3C/svg%3E"
-                             alt="US Flag" class="w-5 h-3">
-                        <span class="font-medium">EN</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7"></path>
-                        </svg>
+            <!-- Mobile menu -->
+            <div id="mobileMenu" class="hidden md:hidden">
+                <!-- Mobile Navigation -->
+                <nav class="pt-2 pb-3 space-y-1 border-t border-gray-200 mt-2">
+                    <a th:href="@{/welcome}" class="block px-3 py-2 rounded-md font-medium"
+                       th:classappend="${requestURI == '/welcome' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Home</a>
+                    <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Category</a>
+                    <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Blog</a>
+                    <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Contact</a>
+                    <a href="/customer/topup" class="block px-3 py-2 rounded-md font-medium"
+                       th:classappend="${requestURI == '/customer/topup' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Topup</a>
+                </nav>
+
+                <!-- Mobile search -->
+                <div class="px-3 pb-3">
+                    <div class="relative flex">
+                        <input type="text" placeholder="Search product/seller"
+                               class="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <button class="absolute right-0 top-0 h-full px-3 bg-red-500 text-white rounded-r-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </button>
                     </div>
+                </div>
+
+                <!-- User Actions Mobile -->
+                <div th:if="${currentUser}" class="px-3 pb-3 pt-2 border-t border-gray-200">
+                    <div class="flex items-center mb-3">
+                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-semibold text-gray-600 mr-2"
+                             th:text="${displayName != null and #strings.length(displayName) > 0 ? #strings.toUpperCase(#strings.substring(displayName,0,1)) : 'U'}">
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-800" th:text="${displayName}">User Name</div>
+                            <div class="text-xs text-red-500 font-semibold" th:text="${#numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT')} + ' coins'">0 coins</div>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            My Profile
+                        </a>
+                        <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                            </svg>
+                            My Order
+                        </a>
+                        <a th:href="@{/account/notifications}" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                            </svg>
+                            My Notification
+                            <span th:if="${unreadCount != null and unreadCount > 0}"
+                                  class="ml-1 min-w-[1.25rem] px-1 rounded-full bg-red-500 text-white text-[10px] leading-5 text-center font-semibold inline-block"
+                                  th:text="${unreadCount > 99 ? '99+' : unreadCount}">1</span>
+                        </a>
+                        <a th:if="${currentUser != null and currentUser.shopStatus != null and #strings.equalsIgnoreCase(currentUser.shopStatus, 'Active')}"
+                           th:href="@{/seller/my-shop}"
+                           class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18M3 7h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2zm3-7h4v4H8v-4z"></path>
+                            </svg>
+                            My Shop
+                        </a>
+                        <a th:if="${currentUser == null or currentUser.shopStatus == null or !#strings.equalsIgnoreCase(currentUser.shopStatus, 'Active')}"
+                           th:href="@{/account/settings}"
+                           class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                            </svg>
+                            Register seller
+                        </a>
+                        <form th:action="@{/logout}" method="post">
+                            <button type="submit" class="w-full text-left px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+                                <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                Log out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <!-- Mobile auth buttons -->
+                <div th:unless="${currentUser}" class="px-3 py-3 flex space-x-2 border-t border-gray-200">
+                    <a href="/authen/login" class="w-1/2 py-2 text-center border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium text-sm">
+                        Sign in
+                    </a>
+                    <a href="/authen/register" class="w-1/2 py-2 text-center bg-red-500 text-white rounded-md hover:bg-red-600 font-medium text-sm">
+                        Sign up
+                    </a>
                 </div>
             </div>
         </div>
     </header>
     <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileMenu = document.getElementById('mobileMenu');
+
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+        });
+    </script>
 </div>

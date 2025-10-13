@@ -18,29 +18,38 @@
         .form-container {
             background: rgba(255, 255, 255, 0.95);
         }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+            .form-container {
+                margin: 0 16px;
+                max-width: calc(100% - 32px);
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 <th:block th:replace="~{fragments/header :: header}"></th:block>
 <main class="flex-1 flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 w-full">
-    <div class="max-w-md w-full form-container rounded-lg shadow-lg p-6 sm:p-8">
-        <div class="space-y-6">
-            <h2 class="text-3xl font-bold text-gray-800 text-center">Welcome back</h2>
-            <form th:action="@{/authen/login}" method="post" class="space-y-6">
+    <div class="w-full max-w-md form-container rounded-lg shadow-lg p-5 sm:p-6 md:p-8">
+        <div class="space-y-5 sm:space-y-6">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center">Welcome back</h2>
+            <form th:action="@{/authen/login}" method="post" class="space-y-5 sm:space-y-6">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address*</label>
                     <input type="email" id="email" name="username" required
                            placeholder="Enter Your Email"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
+                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
                 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password*</label>
                     <input type="password" id="password" name="password" required
                            placeholder="Enter Your password"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
+                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
                 </div>
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                     <label class="flex items-center">
                         <input type="checkbox" name="remember-me" class="rounded border-gray-300 text-red-500 focus:ring-red-500">
                         <span class="ml-2 text-sm text-gray-600">Remember Me</span>
@@ -48,7 +57,7 @@
                     <a href="/authen/forgot-password" class="text-sm text-red-500 hover:text-red-600 font-medium">Forgot Password?</a>
                 </div>
                 <button type="submit"
-                        class="w-full bg-red-500 text-white py-3 rounded-md hover:bg-red-600 transition duration-200 font-medium text-lg">
+                        class="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-md hover:bg-red-600 transition duration-200 font-medium text-base sm:text-lg">
                     Login
                 </button>
                 <div th:if="${message} and !${#strings.contains(message, 'thành công')}" class="text-red-500 text-sm text-center mt-2" th:text="${message}"></div>
@@ -57,7 +66,7 @@
             <div class="text-center">
                 <a href="/authen/register" class="text-red-500 hover:text-red-600 text-sm font-medium">Don't have an account? Sign up</a>
             </div>
-            <div class="relative my-6">
+            <div class="relative my-4 sm:my-6">
                 <div class="absolute inset-0 flex items-center">
                     <div class="w-full border-t border-gray-300"></div>
                 </div>
@@ -66,7 +75,7 @@
                 </div>
             </div>
             <a th:href="@{/oauth2/authorization/google}"
-               class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-200">
+               class="w-full flex items-center justify-center px-4 py-2.5 sm:py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-200">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>

@@ -205,34 +205,12 @@ public class SellerController {
     }
 
     @GetMapping("/my-shop")
-    public String myShop(Model model) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetails ud) {
-                email = ud.getUsername();
-            } else if (principal instanceof OidcUser oidc) {
-                email = oidc.getEmail();
-            } else if (principal instanceof OAuth2User ou) {
-                Object mailAttr = ou.getAttributes().get("email");
-                if (mailAttr != null) email = mailAttr.toString();
-            } else {
-                email = authentication.getName();
-            }
-        }
-        if (email == null) {
-            return "redirect:/login"; // keep consistent with existing redirects in this controller
-        }
-        User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null) {
-            return "redirect:/login";
-        }
-        String status = user.getShopStatus();
-        if (status != null && status.equalsIgnoreCase("Active")) {
-            model.addAttribute("sellerUser", user);
-            return "seller/my-shop";
-        }
-        return "redirect:/seller/register";
+    public String showMyShop(Model model) {
+        return "seller/my-shop";
+    }
+
+    @GetMapping("/withdraw-money")
+    public String showWithdrawMoneyPage(Model model) {
+        return "seller/withdraw-money";
     }
 }
