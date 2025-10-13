@@ -321,23 +321,6 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
--- Trigger gửi thông báo sau khi hoàn thành đơn hàng
-DELIMITER //
-CREATE TRIGGER trg_SendOrderNotifications
-AFTER UPDATE ON Transactions
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
-        INSERT INTO Notifications (user_id, title, content, created_at)
-        VALUES (NEW.customer_id, 'Transaction Processed', CONCAT('Giao dịch ', NEW.id, ' đã được xử lý.'), CURRENT_TIMESTAMP);
-        INSERT INTO Notifications (user_id, title, content, created_at)
-        VALUES (NEW.customer_id, 'Order Completed', CONCAT('Đơn hàng ', NEW.id, ' đã hoàn thành.'), CURRENT_TIMESTAMP);
-        INSERT INTO Notifications (user_id, title, content, created_at)
-        VALUES (NEW.customer_id, 'Coins Deducted', CONCAT('Đã trừ ', NEW.coins_used, ' Coin từ tài khoản.'), CURRENT_TIMESTAMP);
-    END IF;
-END//
-DELIMITER ;
-
 -- Trigger kiểm tra số tiền rút và cảnh báo
 DELIMITER //
 CREATE TRIGGER trg_CheckWithdrawalAmount
@@ -348,43 +331,6 @@ BEGIN
     SELECT coins INTO total_coins FROM Users WHERE id = NEW.seller_id;
     IF NEW.amount > total_coins * 0.9 AND (NEW.bank_name IS NULL OR NEW.account_number IS NULL OR NEW.branch IS NULL) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Thông tin ngân hàng không đầy đủ, vượt 90% tổng số tiền. Vui lòng xác nhận!';
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger cho phép nạp thêm tiền để rút khi tài khoản không đủ
-DELIMITER //
-CREATE TRIGGER trg_AllowTopUpForWithdrawal
-AFTER INSERT ON Withdrawals
-FOR EACH ROW
-BEGIN
-    DECLARE total_coins BIGINT;
-    SELECT coins INTO total_coins FROM Users WHERE id = NEW.seller_id;
-    IF NEW.amount > total_coins THEN
-        INSERT INTO Notifications (user_id, title, content, created_at)
-        VALUES (NEW.seller_id, 'Insufficient Funds', CONCAT('Số dư không đủ (', total_coins, ' Coin). Vui lòng nạp thêm ', NEW.amount - total_coins, ' Coin.'), CURRENT_TIMESTAMP);
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger giữ tiền tạm thời
-DELIMITER //
-CREATE TRIGGER trg_HoldFunds
-AFTER INSERT ON Transactions
-FOR EACH ROW
-BEGIN
-    UPDATE Transactions SET status = 'Held' WHERE id = NEW.id;
-END//
-DELIMITER ;
-
--- Trigger cập nhật bằng chứng rút tiền sau khi duyệt
-DELIMITER //
-CREATE TRIGGER trg_UpdateWithdrawalProof
-AFTER UPDATE ON Withdrawals
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
-        UPDATE Withdrawals SET proof_file = CONCAT('path_to_proof_', id) WHERE id = NEW.id;
     END IF;
 END//
 DELIMITER ;
@@ -414,37 +360,6 @@ BEGIN
 END//
 DELIMITER ;
 
--- Trigger cập nhật Coin khi nạp tiền hoàn thành
-DELIMITER //
-CREATE TRIGGER trg_UpdateCoinsOnDeposit
-AFTER UPDATE ON CoinDeposits
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
-        UPDATE Users SET coins = coins + NEW.coins_added WHERE id = NEW.user_id;
-        INSERT INTO AuditLogs (user_id, action, details, created_at)
-        VALUES (NEW.user_id, 'Deposit Coins', CONCAT('Nạp ', NEW.coins_added, ' Coin'), CURRENT_TIMESTAMP);
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger trừ Coin khi tạo giao dịch
-DELIMITER //
-CREATE TRIGGER trg_UseCoins
-AFTER INSERT ON Transactions
-FOR EACH ROW
-BEGIN
-    IF NEW.coins_used > 0 AND (SELECT coins FROM Users WHERE id = NEW.customer_id) >= NEW.coins_used THEN
-        UPDATE Users SET coins = coins - NEW.coins_used WHERE id = NEW.customer_id;
-        UPDATE Transactions SET escrow_release_date = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 3 DAY) WHERE id = NEW.id;
-        INSERT INTO AuditLogs (user_id, action, details, created_at)
-        VALUES (NEW.customer_id, 'Purchase', CONCAT('Thanh toán ', NEW.coins_used, ' Coin cho sản phẩm ', NEW.product_id, ', biến thể ', NEW.variant_id), CURRENT_TIMESTAMP);
-    ELSE
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Số dư Coin không đủ để thực hiện giao dịch.';
-    END IF;
-END//
-DELIMITER ;
-
 -- Trigger tự động chuyển Coin cho Seller sau 3 ngày nếu không có khiếu nại
 DELIMITER //
 CREATE TRIGGER trg_AutoReleaseEscrow
@@ -456,24 +371,6 @@ BEGIN
         UPDATE Users SET coins = coins + (NEW.amount - NEW.commission) WHERE id = NEW.seller_id;
         INSERT INTO AuditLogs (user_id, action, details, created_at)
         VALUES (NEW.seller_id, 'Receive Coins', CONCAT('Nhận ', (NEW.amount - NEW.commission), ' Coin từ giao dịch ', NEW.id), CURRENT_TIMESTAMP);
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger xử lý yêu cầu rút tiền của Seller
-DELIMITER //
-CREATE TRIGGER trg_ProcessWithdrawal
-AFTER UPDATE ON Withdrawals
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
-        IF (SELECT coins FROM Users WHERE id = NEW.seller_id) >= NEW.amount THEN
-            UPDATE Users SET coins = coins - NEW.amount WHERE id = NEW.seller_id;
-            INSERT INTO AuditLogs (user_id, action, details, created_at)
-            VALUES (NEW.seller_id, 'Withdraw Coins', CONCAT('Rút ', NEW.amount, ' Coin vào tài khoản ngân hàng ', NEW.account_number), CURRENT_TIMESTAMP);
-        ELSE
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Số dư Coin của Seller không đủ để rút.';
-        END IF;
     END IF;
 END//
 DELIMITER ;

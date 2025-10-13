@@ -4,8 +4,8 @@
               total=${totalPages != null and totalPages > 0 ? totalPages : 1},
               regCount=${registrations != null ? #lists.size(registrations) : 0}">
     <div class="bg-white p-8 rounded-lg shadow-lg w-full">
-        <!-- Toast Notification Placeholder -->
-        <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300">
+        <!-- Toast Notification Placeholder - Moved to bottom-right -->
+        <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
             <p id="toast-message"></p>
         </div>
 
@@ -221,7 +221,7 @@
               const toast = document.getElementById('toast');
               const toastMessage = document.getElementById('toast-message');
               toastMessage.textContent = message;
-              toast.className = `fixed top-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+              toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
               toast.classList.remove('hidden');
               setTimeout(() => {
                   toast.classList.add('hidden');

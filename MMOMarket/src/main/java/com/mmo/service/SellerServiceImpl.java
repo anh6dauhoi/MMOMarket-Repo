@@ -17,9 +17,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
-import jakarta.mail.internet.MimeMessage;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -41,8 +38,8 @@ public class SellerServiceImpl implements SellerService {
     @Autowired
     private NotificationService notificationService;
 
-    @Autowired(required = false)
-    private JavaMailSender mailSender;
+    @Autowired
+    private EmailService emailService;
 
     private final Path storageRoot = Paths.get("uploads", "contracts");
 
@@ -58,7 +55,7 @@ public class SellerServiceImpl implements SellerService {
         if (shopName == null || shopName.trim().length() < 2) {
             throw new IllegalArgumentException("Shop name must be at least 2 characters.");
         }
-        if (containsBannedWord(shopName) || containsBannedWord(sellerRegistration.getDescription())) {
+        if (containsBannedWord(shopName) || containsBANNED_WORDS_IN_DESC(sellerRegistration.getDescription())) {
             throw new IllegalArgumentException("Shop name/description contains prohibited words.");
         }
         // Prevent duplicate approved/active names
@@ -86,7 +83,7 @@ public class SellerServiceImpl implements SellerService {
                         "Seller registration submitted",
                         "We received your updated seller registration. Status: Pending."
                 );
-                sendEmailSafe(currentUser.getEmail(),
+                emailService.sendEmailAsync(currentUser.getEmail(),
                         "We received your seller registration",
                         buildEmail("Seller Registration Submitted",
                                 "Hello " + displayName(currentUser) + ",",
@@ -113,7 +110,7 @@ public class SellerServiceImpl implements SellerService {
                     "Seller registration submitted",
                     "We received your seller registration. Status: Pending."
             );
-            sendEmailSafe(currentUser.getEmail(),
+            emailService.sendEmailAsync(currentUser.getEmail(),
                     "We received your seller registration",
                     buildEmail("Seller Registration Submitted",
                             "Hello " + displayName(currentUser) + ",",
@@ -186,7 +183,7 @@ public class SellerServiceImpl implements SellerService {
                 "Your seller registration has been approved. Please proceed to the contract step."
         );
         // Email
-        sendEmailSafe(saved.getUser().getEmail(),
+        emailService.sendEmailAsync(saved.getUser().getEmail(),
                 "Your seller registration was approved",
                 buildEmail("Registration Approved",
                         "Hello " + displayName(saved.getUser()) + ",",
@@ -223,7 +220,7 @@ public class SellerServiceImpl implements SellerService {
                 ("Your seller request was rejected. Reason: " + reason)
         );
         // Email
-        sendEmailSafe(saved.getUser().getEmail(),
+        emailService.sendEmailAsync(saved.getUser().getEmail(),
                 "Your seller registration was rejected",
                 buildEmail("Registration Rejected",
                         "Hello " + displayName(saved.getUser()) + ",",
@@ -260,7 +257,7 @@ public class SellerServiceImpl implements SellerService {
                 "Congratulations! Your shop is now active."
         );
         // Email (optional but useful)
-        sendEmailSafe(user.getEmail(),
+        emailService.sendEmailAsync(user.getEmail(),
                 "Your shop is now active",
                 buildEmail("Shop Activated",
                         "Hello " + displayName(user) + ",",
@@ -337,7 +334,7 @@ public class SellerServiceImpl implements SellerService {
                 "We received your signed contract. Our admins will review it shortly."
         );
         // Email
-        sendEmailSafe(user.getEmail(),
+        emailService.sendEmailAsync(user.getEmail(),
                 "We received your signed contract",
                 buildEmail("Signed Contract Submitted",
                         "Hello " + displayName(user) + ",",
@@ -381,7 +378,7 @@ public class SellerServiceImpl implements SellerService {
                 "Seller registration resubmitted",
                 "We received your updated seller registration. Status: Pending."
         );
-        sendEmailSafe(currentUser.getEmail(),
+        emailService.sendEmailAsync(currentUser.getEmail(),
                 "We received your seller registration",
                 buildEmail("Seller Registration Resubmitted",
                         "Hello " + displayName(currentUser) + ",",
@@ -442,22 +439,6 @@ public class SellerServiceImpl implements SellerService {
     }
 
     // ---------- Email helpers (minimal, image-free, elegant) ----------
-
-    private void sendEmailSafe(String to, String subject, String html) {
-        if (mailSender == null || to == null || to.isBlank()) return;
-        try {
-            MimeMessage msg = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(msg, "UTF-8");
-            helper.setTo(to);
-            // Sender name as requested: MMOMArket
-            helper.setFrom("no-reply@mmomarket.com", "MMOMArket");
-            helper.setSubject(subject);
-            helper.setText(html, true);
-            mailSender.send(msg);
-        } catch (Exception ignored) {
-            // Swallow to avoid breaking main flow; consider logging in your project logger
-        }
-    }
 
     private String displayName(User user) {
         String name = (user != null ? user.getFullName() : null);

@@ -72,6 +72,11 @@ public class AccountController {
             model.addAttribute("currentPage", notificationPage.getNumber());
             model.addAttribute("totalPages", notificationPage.getTotalPages());
             model.addAttribute("status", status);
+
+            // Provide seller registration for sidebar conditional label (My Contract vs Register Seller)
+            userRepository.findByEmail(email)
+                .flatMap(u -> sellerRegistrationRepository.findByUserId(u.getId()))
+                .ifPresent(reg -> model.addAttribute("registration", reg));
         }
         return "customer/my-notification";
     }
