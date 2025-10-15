@@ -27,12 +27,12 @@
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex space-x-4 lg:space-x-8">
                     <a th:href="@{/welcome}" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
-                       th:classappend="${requestURI == '/welcome' ? 'text-red-500 border-b-2 border-red-500' : ''}">Home</a>
+                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/welcome' ? 'text-red-500 border-b-2 border-red-500' : ''}">Home</a>
                     <a href="#" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1">Category</a>
                     <a href="#" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1">Blog</a>
                     <a href="#" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1">Contact</a>
                     <a href="/customer/topup" class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
-                       th:classappend="${requestURI == '/customer/topup' ? 'text-red-500 border-b-2 border-red-500' : ''}">Topup</a>
+                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/customer/topup' ? 'text-red-500 border-b-2 border-red-500' : ''}">Topup</a>
                 </nav>
 
                 <!-- Desktop search and user menu -->
@@ -106,7 +106,7 @@
                                 <div class="px-4 py-2 text-sm text-gray-700">
                                     <div class="flex justify-between items-center">
                                         <span class="font-semibold">Balance:</span>
-                                        <span class="font-semibold text-red-500" th:text="${#numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT')} + ' coins'"></span>
+                                        <span class="font-semibold text-red-500" th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT') + ' coins' : '0 coins'}"></span>
                                     </div>
                                 </div>
                                 <div class="border-t my-2"></div>
@@ -165,12 +165,12 @@
                 <!-- Mobile Navigation -->
                 <nav class="pt-2 pb-3 space-y-1 border-t border-gray-200 mt-2">
                     <a th:href="@{/welcome}" class="block px-3 py-2 rounded-md font-medium"
-                       th:classappend="${requestURI == '/welcome' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Home</a>
+                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/welcome' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Home</a>
                     <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Category</a>
                     <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Blog</a>
                     <a href="#" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Contact</a>
                     <a href="/customer/topup" class="block px-3 py-2 rounded-md font-medium"
-                       th:classappend="${requestURI == '/customer/topup' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Topup</a>
+                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/customer/topup' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Topup</a>
                 </nav>
 
                 <!-- Mobile search -->
@@ -195,7 +195,7 @@
                         </div>
                         <div>
                             <div class="font-medium text-gray-800" th:text="${displayName}">User Name</div>
-                            <div class="text-xs text-red-500 font-semibold" th:text="${#numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT')} + ' coins'">0 coins</div>
+                            <div class="text-xs text-red-500 font-semibold" th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT') + ' coins' : '0 coins'}">0 coins</div>
                         </div>
                     </div>
                     <div class="space-y-1">
@@ -213,8 +213,7 @@
                         </a>
                         <a th:href="@{/account/notifications}" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
                             <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                            </svg>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                             My Notification
                             <span th:if="${unreadCount != null and unreadCount > 0}"
                                   class="ml-1 min-w-[1.25rem] px-1 rounded-full bg-red-500 text-white text-[10px] leading-5 text-center font-semibold inline-block"

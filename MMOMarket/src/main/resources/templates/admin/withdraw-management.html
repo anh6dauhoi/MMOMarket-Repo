@@ -51,22 +51,22 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <!-- Dummy Data -->
-                    <tr>
+                    <!-- Real Data Loop -->
+                    <tr th:each="withdrawal : ${withdrawals}">
                         <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">#12345</p>
+                            <p class="text-gray-900 whitespace-nowrap" th:text="'#' + ${withdrawal.id}">#12345</p>
                         </td>
                         <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Ethan Davis</p>
+                            <p class="text-gray-900 whitespace-nowrap" th:text="${withdrawal.seller.fullName}">Ethan Davis</p>
                         </td>
                         <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
+                            <p class="text-gray-900 whitespace-nowrap" th:text="${withdrawal.bankName}">Vietcombank</p>
                         </td>
                         <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">123456789</p>
+                            <p class="text-gray-900 whitespace-nowrap" th:text="${withdrawal.accountNumber}">123456789</p>
                         </td>
                         <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Abc</p>
+                            <p class="text-gray-900 whitespace-nowrap" th:text="${withdrawal.branch}">Abc</p>
                         </td>
                         <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
                             <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
@@ -74,124 +74,35 @@
                             </button>
                         </td>
                     </tr>
-                    <tr>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">#12346</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Olivia Bennett</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">123456780</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
-                                Bank
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">#12347</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Ava Mitchell</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">123456781</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
-                                Bank
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">#12348</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Jackson Cole</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">123456782</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
-                                Bank
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">#12349</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Chloe Foster</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">Vietcombank</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">123456783</p>
-                        </td>
-                        <td class="hidden md:table-cell px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 whitespace-nowrap">N/A</p>
-                        </td>
-                        <td class="px-3 md:px-5 py-3 md:py-5 border-b border-gray-200 bg-white text-sm">
-                            <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150" type="button">
-                                Bank
-                            </button>
-                        </td>
+                    <!-- Show a message if no withdrawals are found -->
+                    <tr th:if="${#lists.isEmpty(withdrawals)}">
+                        <td colspan="6" class="text-center py-10 text-gray-500">No withdrawal requests found.</td>
                     </tr>
                     </tbody>
                 </table>
 
                 <!-- Mobile data cards (visible only on small screens) -->
                 <div class="md:hidden">
-                    <div class="py-2 px-3 border-b border-gray-200" th:each="i : ${#numbers.sequence(1, 5)}">
+                    <div class="py-2 px-3 border-b border-gray-200" th:each="withdrawal : ${withdrawals}">
                         <div class="mb-1">
                             <span class="font-semibold text-xs text-gray-600">TRANSACTION ID:</span>
-                            <span class="ml-1 text-sm">#1234<th:block th:text="${i + 4}">5</th:block></span>
+                            <span class="ml-1 text-sm" th:text="'#' + ${withdrawal.id}">#12345</span>
                         </div>
                         <div class="mb-1">
                             <span class="font-semibold text-xs text-gray-600">SELLER:</span>
-                            <span class="ml-1 text-sm" th:text="${
-                                i == 1 ? 'Ethan Davis' :
-                                i == 2 ? 'Olivia Bennett' :
-                                i == 3 ? 'Ava Mitchell' :
-                                i == 4 ? 'Jackson Cole' : 'Chloe Foster'
-                            }">Ethan Davis</span>
+                            <span class="ml-1 text-sm" th:text="${withdrawal.seller.fullName}">Ethan Davis</span>
                         </div>
                         <div class="mb-1">
                             <span class="font-semibold text-xs text-gray-600">BANK:</span>
-                            <span class="ml-1 text-sm">Vietcombank</span>
+                            <span class="ml-1 text-sm" th:text="${withdrawal.bankName}">Vietcombank</span>
                         </div>
                         <div class="mb-1">
                             <span class="font-semibold text-xs text-gray-600">ACCOUNT:</span>
-                            <span class="ml-1 text-sm">12345678<th:block th:text="${i - 1}">9</th:block></span>
+                            <span class="ml-1 text-sm" th:text="${withdrawal.accountNumber}">123456789</span>
                         </div>
                         <div class="mb-3">
                             <span class="font-semibold text-xs text-gray-600">BRANCH:</span>
-                            <span class="ml-1 text-sm" th:text="${i == 1 ? 'Abc' : 'N/A'}">Abc</span>
+                            <span class="ml-1 text-sm" th:text="${withdrawal.branch}">Abc</span>
                         </div>
                         <div>
                             <button class="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none w-full sm:w-auto ease-linear transition-all duration-150" type="button">
@@ -199,10 +110,13 @@
                             </button>
                         </div>
                     </div>
+                    <div th:if="${#lists.isEmpty(withdrawals)}" class="text-center py-10 text-gray-500">
+                        No withdrawal requests found.
+                    </div>
                 </div>
 
                 <div class="px-3 md:px-5 py-4 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
-                    <span class="text-xs xs:text-sm text-gray-900 mb-2 sm:mb-0">
+                    <span class="text-xs xs:text-sm text-gray-900 mb-2 sm:mb-0" th:text="'Showing ' + ${#lists.size(withdrawals)} + ' Entries'">
                         Showing 1 to 5 of 50 Entries
                     </span>
                     <div class="inline-flex">

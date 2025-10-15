@@ -17,7 +17,7 @@ public class SellerRegistration {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -25,26 +25,28 @@ public class SellerRegistration {
     @Column(name = "shop_name", nullable = false, length = 255)
     private String shopName;
 
-    @Size(max = 500, message = "Description must be at most 500 characters")
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "status", length = 50, columnDefinition = "VARCHAR(50) DEFAULT 'Pending'")
-    private String status;
-
-    @Column(length = 255)
+    @Column(name = "contract", length = 255)
     private String contract;
 
     @Column(name = "signed_contract", length = 255)
     private String signedContract;
 
+    @Column(name = "status", length = 50, columnDefinition = "VARCHAR(50) DEFAULT 'Pending'")
+    private String status = "Pending";
 
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "reason", length = 255)
+    private String reason;
+
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -56,14 +58,12 @@ public class SellerRegistration {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    @ManyToOne
+    // Optional readonly audit associations
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
-
-    @Column(name = "reason", length = 255)
-    private String reason;
 }

@@ -5,38 +5,46 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Date;
+import java.util.Set;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "Blogs")
+@Table(name = "Blogs", indexes = {
+        @Index(name = "idx_author_id", columnList = "author_id")
+})
 public class Blog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Lob
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "author_id", nullable = false)
-    private Long authorId;
+    @Column(name = "image", length = 255)
+    private String image;
 
-    @Column(columnDefinition = "BIGINT DEFAULT 0")
-    private Long views;
+    @ManyToOne
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
 
-    @Column(columnDefinition = "BIGINT DEFAULT 0")
-    private Long likes;
+    @Column(name = "views", columnDefinition = "BIGINT DEFAULT 0")
+    private Long views = 0L;
 
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "likes", columnDefinition = "BIGINT DEFAULT 0")
+    private Long likes = 0L;
+
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -48,10 +56,7 @@ public class Blog {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    @ManyToOne
-    @JoinColumn(name = "author_id", insertable = false, updatable = false)
-    private User author;
-
+    // Optional navigations for audit (readonly)
     @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
@@ -59,4 +64,7 @@ public class Blog {
     @ManyToOne
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
+
+    @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
+    private Set<BlogComment> comments;
 }

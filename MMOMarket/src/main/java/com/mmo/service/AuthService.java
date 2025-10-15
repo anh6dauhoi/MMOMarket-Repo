@@ -17,7 +17,6 @@ public class AuthService {
     private EmailService emailService;
 
     public User findByEmail(String email) {
-        // Đảm bảo ánh xạ đúng với cột isDelete (camelCase) trong DB
         return userRepository.findByEmailAndIsDelete(email, false);
     }
 

@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS SellerBankInfo (
     user_id BIGINT NOT NULL, -- Mã Seller
     bank_name VARCHAR(100) NOT NULL, -- Tên ngân hàng
     account_number VARCHAR(50) NOT NULL, -- Số tài khoản
+    account_name VARCHAR(100) NOT NULL, -- Tên người thụ hưởng
     branch VARCHAR(100), -- Chi nhánh ngân hàng
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
@@ -160,6 +161,7 @@ CREATE TABLE IF NOT EXISTS Withdrawals (
     status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái: Pending, Approved, Rejected, Completed
     bank_name VARCHAR(100), -- Tên ngân hàng
     account_number VARCHAR(50), -- Số tài khoản
+    account_name VARCHAR(100), -- Tên người thụ hưởng
     branch VARCHAR(100), -- Chi nhánh
     proof_file VARCHAR(255), -- Bằng chứng chuyển tiền | Lý do từ chối
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
@@ -252,6 +254,7 @@ CREATE TABLE IF NOT EXISTS Blogs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
     title VARCHAR(255) NOT NULL, -- Tiêu đề
     content TEXT NOT NULL, -- Nội dung
+    image VARCHAR(255), -- Đường dẫn ảnh
     author_id BIGINT NOT NULL, -- Mã tác giả
     views BIGINT DEFAULT 0, -- Lượt xem
     likes BIGINT DEFAULT 0, -- Số lượt thích

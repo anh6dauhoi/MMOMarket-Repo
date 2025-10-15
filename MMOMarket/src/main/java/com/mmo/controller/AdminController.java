@@ -19,14 +19,27 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
+// NEW: imports for withdrawal processing
+import com.mmo.entity.Withdrawal;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
+
 @Controller
-@RequestMapping("/admin")
+@RequestMapping("/admin") // was {"/admin", "/api/v1/admin"}
 public class AdminController {
 
     @Autowired
     private SellerService sellerService;
+
+    // NEW: direct JPA access without creating new repositories
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @GetMapping("/seller-registrations")
     public String sellerRegistrations(@RequestParam(name = "status", defaultValue = "All") String status,
@@ -123,7 +136,11 @@ public class AdminController {
 
     @GetMapping("/withdraw-management")
     public String withdrawManagement(Model model) {
-        // Dummy data for now, will be replaced with actual data from service
+        // Fetch real withdrawal data from the database
+        List<Withdrawal> withdrawals = entityManager.createQuery("SELECT w FROM Withdrawal w ORDER BY w.createdAt DESC", Withdrawal.class)
+                .getResultList();
+
+        model.addAttribute("withdrawals", withdrawals);
         model.addAttribute("pageTitle", "Withdraw Management");
         model.addAttribute("body", "admin/withdraw-management");
         return "admin/layout";
@@ -137,5 +154,95 @@ public class AdminController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(resource);
+    }
+
+    // NEW: Admin processes a withdrawal (Approved/Rejected)
+    @PostMapping(path = "/withdrawals/{id}/process", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> processWithdrawal(@PathVariable Long id,
+                                               @RequestBody ProcessWithdrawalRequest req,
+                                               Authentication auth) {
+        try {
+            // AuthN/AuthZ: must be ADMIN
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Withdrawal wd = entityManager.find(Withdrawal.class, id);
+            if (wd == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
+            }
+            String current = wd.getStatus() == null ? "" : wd.getStatus().trim();
+            if (!"Pending".equalsIgnoreCase(current)) {
+                return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
+            }
+
+            String action = req.getStatus() == null ? "" : req.getStatus().trim();
+            boolean approve = "Approved".equalsIgnoreCase(action);
+            boolean reject = "Rejected".equalsIgnoreCase(action);
+            if (!approve && !reject) {
+                return ResponseEntity.badRequest().body("Status must be 'Approved' or 'Rejected'.");
+            }
+
+            if (approve) {
+                if (req.getProofFile() == null || req.getProofFile().isBlank()) {
+                    return ResponseEntity.badRequest().body("Proof file is required for Approved.");
+                }
+                wd.setStatus("Completed");
+                wd.setProofFile(req.getProofFile()); // image/file path evidence (BR-16)
+                wd.setUpdatedAt(new java.util.Date());
+                entityManager.merge(wd);
+                return ResponseEntity.ok(WithdrawalResponse.from(wd));
+            } else {
+                if (req.getReason() == null || req.getReason().isBlank()) {
+                    return ResponseEntity.badRequest().body("Reason is required for Rejected.");
+                }
+                // Refund coins (return held amount back to seller) (BR-15)
+                User seller = wd.getSeller();
+                Long coins = seller.getCoins() == null ? 0L : seller.getCoins();
+                Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
+                seller.setCoins(coins + amount);
+                entityManager.merge(seller);
+
+                wd.setStatus("Rejected");
+                wd.setProofFile(req.getReason()); // store rejection reason in proofFile as requested
+                wd.setUpdatedAt(new java.util.Date());
+                entityManager.merge(wd);
+                return ResponseEntity.ok(WithdrawalResponse.from(wd));
+            }
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // NEW: minimal DTOs for request/response (kept local to avoid new files)
+    public static class ProcessWithdrawalRequest {
+        private String status;     // "Approved" or "Rejected"
+        private String proofFile;  // required if Approved
+        private String reason;     // required if Rejected
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getProofFile() { return proofFile; }
+        public void setProofFile(String proofFile) { this.proofFile = proofFile; }
+        public String getReason() { return reason; }
+        public void setReason(String reason) { this.reason = reason; }
+    }
+    public record WithdrawalResponse(Long id, Long sellerId, Long amount, String status, String proofFile) {
+        public static WithdrawalResponse from(Withdrawal w) {
+            return new WithdrawalResponse(
+                    w.getId(),
+                    w.getSeller() != null ? w.getSeller().getId() : null,
+                    w.getAmount(),
+                    w.getStatus(),
+                    w.getProofFile()
+            );
+        }
     }
 }

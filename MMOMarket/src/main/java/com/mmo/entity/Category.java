@@ -26,19 +26,19 @@ public class Category {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 500)
+    @Column(name = "description", length = 500)
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private CategoryType type = CategoryType.Common;
+    // Allowed values: Common, Warning (kept as String to match DB ENUM values)
+    @Column(name = "type", length = 20, nullable = false, columnDefinition = "ENUM('Common','Warning') DEFAULT 'Common'")
+    private String type = "Common";
 
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -50,6 +50,7 @@ public class Category {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
+    // Optional readonly audit relations
     @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;

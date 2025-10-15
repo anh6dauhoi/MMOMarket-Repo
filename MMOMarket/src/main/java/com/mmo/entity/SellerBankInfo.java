@@ -9,32 +9,39 @@ import java.util.Date;
 @Entity
 @Getter
 @Setter
-@Table(name = "SellerBankInfo", indexes = {@Index(name = "idx_user_id", columnList = "user_id")})
+@Table(name = "SellerBankInfo", indexes = {
+        @Index(name = "idx_user_id", columnList = "user_id")
+})
 public class SellerBankInfo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    // FK -> Users(id)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "bank_name", nullable = false, length = 100)
     private String bankName;
 
-    @Column(nullable = false, length = 50)
+    @Column(name = "account_number", nullable = false, length = 50)
     private String accountNumber;
 
-    @Column(length = 100)
+    // DDL: account_name
+    @Column(name = "account_name", nullable = false, length = 100)
+    private String accountHolder;
+
+    @Column(name = "branch", length = 100)
     private String branch;
 
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -46,11 +53,11 @@ public class SellerBankInfo {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
 }

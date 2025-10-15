@@ -32,29 +32,27 @@ public class User {
     private String phone;
 
     @Column(name = "shop_status", length = 50, columnDefinition = "VARCHAR(50) DEFAULT 'Inactive'")
-    private String shopStatus;
+    private String shopStatus = "Inactive";
 
     @Column(name = "shop_level", columnDefinition = "TINYINT UNSIGNED DEFAULT 0")
-    private int shopLevel;
+    private Integer shopLevel = 0;
 
-    @Column(columnDefinition = "BIGINT DEFAULT 0")
-    private Long coins;
+    @Column(name = "coins", columnDefinition = "BIGINT DEFAULT 0")
+    private Long coins = 0L;
 
-    @Column(length = 50)
+    @Column(name = "depositCode", length = 50)
     private String depositCode;
 
+    // DDL: isVerified TINYINT(1) DEFAULT 0
     @Column(name = "isVerified", columnDefinition = "TINYINT(1) DEFAULT 0")
-    private boolean isVerified;
+    private boolean verified;
 
-    @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
-    private boolean isDelete;
-
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -63,11 +61,15 @@ public class User {
     @Column(name = "deleted_by")
     private Long deletedBy;
 
-    @ManyToOne
+    @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
+    private boolean isDelete;
+
+    // Optional readonly self-references for audit (keep insertable/updatable false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
 }
