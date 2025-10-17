@@ -11,12 +11,20 @@ import java.util.Optional;
 
 public interface SellerService {
     void registerSeller(SellerRegistration sellerRegistration);
+
     Page<SellerRegistration> findAllRegistrations(String status, Pageable pageable);
+
     Optional<SellerRegistration> findById(Long id);
+
     SellerRegistration approve(Long id, MultipartFile contractFile) throws IOException;
+
     SellerRegistration reject(Long id, String reason);
+
     void activate(Long id);
+
     Resource loadContract(Long id, boolean signed) throws IOException;
+
     void submitSignedContract(MultipartFile file) throws IOException;
+
     SellerRegistration resubmit(String shopName, String description);
 }

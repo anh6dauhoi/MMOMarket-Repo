@@ -1,6 +1,7 @@
 body {
     font-family: 'Inter', sans-serif;
 }
+
 .otp-input {
     width: 50px;
     height: 50px;
@@ -13,19 +14,23 @@ body {
     outline: none;
     transition: border-color 0.3s;
 }
+
 .otp-input:focus {
     border-bottom-color: #ef4444;
 }
+
 .phone-illustration {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
     border-radius: 50%;
     position: relative;
 }
+
 .phone-bg {
     background: #e5e7eb;
     border-radius: 20px;
     position: relative;
 }
+
 .checkmark {
     background: #10b981;
     border-radius: 50%;

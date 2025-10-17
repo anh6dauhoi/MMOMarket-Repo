@@ -33,7 +33,7 @@ body {
     background-color: #FFF;
     padding: 15px 0;
     border-bottom: 1px solid var(--medium-grey);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .main-header .container {
@@ -281,12 +281,12 @@ body {
 }
 
 .qr-image-wrapper {
-    background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
     padding: 20px;
     border-radius: 12px;
     display: inline-block;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .qr-image-wrapper img {

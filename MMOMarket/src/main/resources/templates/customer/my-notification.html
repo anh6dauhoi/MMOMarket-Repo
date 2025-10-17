@@ -5,6 +5,28 @@
     <title>My Notifications</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script>
+        function updateUnreadBadge(count) {
+            const badge = document.getElementById('unread-count-badge');
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        async function fetchUnreadCount() {
+            try {
+                const response = await fetch('/api/notifications/unread-count');
+                if (response.ok) {
+                    const count = await response.json();
+                    updateUnreadBadge(count);
+                }
+            } catch (error) {
+                console.error('Error fetching unread count:', error);
+            }
+        }
+
         function getSelectedNotificationIds() {
             const selectedIds = [];
             document.querySelectorAll('input[name="notificationIds"]:checked').forEach(checkbox => {
@@ -13,29 +35,36 @@
             return selectedIds;
         }
 
-        function markSelectedAsRead() {
+        async function markSelectedAsRead() {
             const ids = getSelectedNotificationIds();
             if (ids.length === 0) {
                 alert('Please select at least one notification.');
                 return;
             }
-            const form = document.getElementById('markSelectedForm');
-            // Clear previous hidden inputs
-            form.innerHTML = '';
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = document.querySelector('meta[name="_csrf_parameter"]').content;
-            csrfInput.value = document.querySelector('meta[name="_csrf"]').content;
-            form.appendChild(csrfInput);
+            const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+            const csrfParameter = document.querySelector('meta[name="_csrf_parameter"]').content;
 
-            ids.forEach(id => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'ids';
-                input.value = id;
-                form.appendChild(input);
-            });
-            form.submit();
+            const formData = new FormData();
+            formData.append(csrfParameter, csrfToken);
+            ids.forEach(id => formData.append('ids', id));
+
+            try {
+                const response = await fetch('/notifications/mark-as-read', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    // Update badge
+                    await fetchUnreadCount();
+                    // Reload page to update list
+                    window.location.reload();
+                } else {
+                    alert('Error marking notifications as read.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error marking notifications as read.');
+            }
         }
     </script>
     <meta name="_csrf" th:content="${_csrf.token}"/>
@@ -58,32 +87,61 @@
                         <span class="font-semibold text-lg" th:text="${displayName}">anhdtt2005</span>
                     </div>
                     <nav class="space-y-2">
-                        <a href="#" class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                           href="#">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
                             <span>My Profile</span>
                         </a>
-                        <a href="#" class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                           href="#">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
                             <span>My Order</span>
                         </a>
-                        <a href="#" class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                        <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                           href="#">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
                             <span>My Wishlist</span>
                         </a>
-                        <a href="#" class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                           href="#">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
                             <span>My Complaints</span>
                         </a>
-                        <a th:href="@{/account/settings}"
-                           class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                        <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                           th:href="@{/account/settings}"
                            th:with="statusRaw=${registration != null and registration.status != null ? registration.status : ''},
                                      statusUpper=${#strings.toUpperCase(statusRaw)},
                                      isContractPhase=${#strings.contains(statusUpper,'APPROVED') or statusUpper == 'REJECTED_CONTRACT' or statusUpper == 'PENDING_CONTRACT_REVIEW'}">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
                             <span th:text="${isContractPhase} ? 'My Contract' : 'Register Seller'">Register Seller</span>
                         </a>
-                        <a th:href="@{/account/notifications}" class="flex items-center space-x-3 px-4 py-2 text-red-500 bg-red-50 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        <a class="flex items-center space-x-3 px-4 py-2 text-red-500 bg-red-50 rounded-lg"
+                           th:href="@{/account/notifications}">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
                             <span>My Notification</span>
                         </a>
                     </nav>
@@ -93,59 +151,97 @@
                 <div class="bg-white rounded-lg shadow p-6">
                     <h2 class="text-2xl font-bold mb-6">My Notifications</h2>
 
+                    <!-- Search Bar -->
+                    <div class="mb-4">
+                        <form method="get" th:action="@{/account/notifications}" class="flex space-x-2">
+                            <input type="hidden" name="status" th:value="${status}"/>
+                            <input type="text" name="search" th:value="${search}" placeholder="Search notifications..."
+                                   class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"/>
+                            <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round"
+                                          stroke-linejoin="round" stroke-width="2"></path>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+
                     <div class="flex justify-between items-center mb-4">
                         <div class="flex space-x-2">
-                            <a th:href="@{/account/notifications}" class="px-3 py-1 text-sm font-medium rounded-md" th:classappend="${status == null} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'">All</a>
-                            <a th:href="@{/account/notifications(status='Unread')}" class="px-3 py-1 text-sm font-medium rounded-md" th:classappend="${status == 'Unread'} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'">Unread</a>
-                            <a th:href="@{/account/notifications(status='Read')}" class="px-3 py-1 text-sm font-medium rounded-md" th:classappend="${status == 'Read'} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'">Read</a>
+                            <a class="px-3 py-1 text-sm font-medium rounded-md"
+                               th:classappend="${status == null} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                               th:href="@{/account/notifications(search=${search})}">All</a>
+                            <a class="px-3 py-1 text-sm font-medium rounded-md"
+                               th:classappend="${status == 'Unread'} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                               th:href="@{/account/notifications(status='Unread', search=${search})}">Unread</a>
+                            <a class="px-3 py-1 text-sm font-medium rounded-md"
+                               th:classappend="${status == 'Read'} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                               th:href="@{/account/notifications(status='Read', search=${search})}">Read</a>
                         </div>
                         <div class="flex space-x-2">
-                            <form th:action="@{/notifications/mark-all-read}" method="post" class="inline">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <button type="submit" class="px-3 py-1 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">Mark all read</button>
+                            <form class="inline" method="post" th:action="@{/notifications/mark-all-read}">
+                                <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+                                <button class="px-3 py-1 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600"
+                                        type="submit">
+                                    Mark all read
+                                </button>
                             </form>
-                            <button onclick="markSelectedAsRead()" class="px-3 py-1 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600">Mark selected as read</button>
-                            <form id="markSelectedForm" th:action="@{/notifications/mark-as-read}" method="post" class="hidden"></form>
+                            <button class="px-3 py-1 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600"
+                                    onclick="markSelectedAsRead()">
+                                Mark selected as read
+                            </button>
+                            <form class="hidden" id="markSelectedForm" method="post"
+                                  th:action="@{/notifications/mark-as-read}"></form>
                         </div>
                     </div>
 
                     <div class="divide-y">
-                        <div th:each="notification : ${notifications}" class="p-4 flex items-start space-x-4" th:classappend="${notification.status == 'Unread'} ? 'bg-red-50' : ''">
-                            <input type="checkbox" name="notificationIds" th:value="${notification.id}" class="mt-1">
-                            <div class="w-2 h-2 rounded-full mt-2" th:classappend="${notification.status == 'Unread'} ? 'bg-red-500' : 'bg-transparent'"></div>
+                        <div class="p-4 flex items-start space-x-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                             th:classappend="${notification.status == 'Unread'} ? 'bg-red-50' : ''"
+                             th:each="notification : ${pageNotifications}"
+                             onclick="this.querySelector('input[type=checkbox]').click()">
+                            <input class="mt-1 w-5 h-5" name="notificationIds" th:value="${notification.id}"
+                                   type="checkbox">
+                            <div class="w-2 h-2 rounded-full mt-2"
+                                 th:classappend="${notification.status == 'Unread'} ? 'bg-red-500' : 'bg-transparent'"></div>
                             <div class="flex-grow">
                                 <p class="font-semibold" th:text="${notification.title}">Payment success</p>
-                                <p class="text-sm text-gray-600" th:text="${notification.content}">You have successfully purchased the product "Product Name".</p>
-                                <p class="text-xs text-gray-400 mt-1" th:text="${#dates.format(notification.createdAt, 'dd/MM/yyyy HH:mm')}">10 minutes ago</p>
+                                <p class="text-sm text-gray-600" th:text="${notification.content}">You have successfully
+                                    purchased the product "Product Name".</p>
+                                <p class="text-xs text-gray-400 mt-1"
+                                   th:text="${#dates.format(notification.createdAt, 'dd/MM/yyyy HH:mm')}">10 minutes
+                                    ago</p>
                             </div>
-                            <form th:if="${notification.status == 'Unread'}" th:action="@{/notifications/mark-as-read}" method="post" class="inline">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <input type="hidden" name="ids" th:value="${notification.id}">
-                                <button type="submit" class="text-xs text-gray-500 hover:text-gray-700">Mark as read</button>
+                            <form class="inline" method="post"
+                                  th:action="@{/notifications/mark-as-read}" th:if="${notification.status == 'Unread'}">
+                                <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+                                <input name="ids" th:value="${notification.id}" type="hidden">
+                                <button class="text-xs text-gray-500 hover:text-gray-700" type="submit">Mark as read
+                                </button>
                             </form>
                         </div>
-                        <div th:if="${notifications.isEmpty()}" class="p-6 text-center text-sm text-gray-500">
+                        <div class="p-6 text-center text-sm text-gray-500" th:if="${pageNotifications.isEmpty()}">
                             No notifications.
                         </div>
                     </div>
 
                     <!-- Pagination -->
-                    <div th:if="${totalPages > 1}" class="mt-6 flex justify-center">
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                            <a th:href="@{/account/notifications(page=${currentPage - 1}, status=${status})}"
+                    <div class="mt-6 flex justify-center" th:if="${totalPages > 1}">
+                        <nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            <a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                                th:classappend="${currentPage == 0} ? 'pointer-events-none text-gray-400' : ''"
-                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                               th:href="@{/account/notifications(page=${currentPage - 1}, status=${status}, search=${search})}">
                                 Previous
                             </a>
-                            <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                               th:href="@{/account/notifications(page=${i}, status=${status})}"
-                               th:text="${i + 1}"
+                            <a class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
                                th:classappend="${currentPage == i} ? 'z-10 bg-red-50 border-red-500 text-red-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'"
-                               class="relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                               th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                               th:href="@{/account/notifications(page=${i}, status=${status}, search=${search})}"
+                               th:text="${i + 1}">
                             </a>
-                            <a th:href="@{/account/notifications(page=${currentPage + 1}, status=${status})}"
+                            <a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                                th:classappend="${currentPage == totalPages - 1} ? 'pointer-events-none text-gray-400' : ''"
-                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                               th:href="@{/account/notifications(page=${currentPage + 1}, status=${status}, search=${search})}">
                                 Next
                             </a>
                         </nav>

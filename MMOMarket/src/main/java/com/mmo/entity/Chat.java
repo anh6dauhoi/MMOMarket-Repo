@@ -10,9 +10,9 @@ import java.util.Date;
 @Getter
 @Setter
 @Table(name = "Chats", indexes = {
-    @Index(name = "idx_sender_id", columnList = "sender_id"),
-    @Index(name = "idx_receiver_id", columnList = "receiver_id"),
-    @Index(name = "idx_complaint_id", columnList = "complaint_id")
+        @Index(name = "idx_sender_id", columnList = "sender_id"),
+        @Index(name = "idx_receiver_id", columnList = "receiver_id"),
+        @Index(name = "idx_complaint_id", columnList = "complaint_id")
 })
 public class Chat {
 

@@ -2,210 +2,1120 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>MMO Market - Withdraw Money</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        }
-                    }
-                }
+    <script src="/js/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+        .animate-fade-in {
+            animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
 </head>
 <body class="bg-gray-50 flex flex-col min-h-screen font-sans">
 <div th:replace="~{fragments/header :: header}"></div>
-
 <main class="flex-grow">
-    <!-- Define safe local vars from Map 'bank' once -->
-    <div th:with="
-         bankId=${bank != null ? bank['id'] : null},
-         bankName=${bank != null ? bank['bankName'] : ''},
-         accountNumber=${bank != null ? bank['accountNumber'] : ''},
-         accountHolder=${bank != null ? bank['accountHolder'] : ''},
-         branch=${bank != null ? bank['branch'] : ''}">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Flash messages -->
-            <div th:if="${successMessage}" class="mb-4 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-green-800" th:text="${successMessage}">Success message</div>
-            <div th:if="${errorMessage}" class="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-red-800" th:text="${errorMessage}">Error message</div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-4 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-green-800"
+             th:if="${successMessage}"
+             th:text="${successMessage}"></div>
+        <div class="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-red-800" th:if="${errorMessage}"
+             th:text="${errorMessage}"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+            <div class="lg:col-span-3 space-y-8">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <!-- Withdraw Form (bên trái) -->
+                    <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-md p-6 md:p-8 space-y-6 transition-all duration-300">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg class="h-7 w-7 text-primary-600" fill="none" stroke="currentColor"
+                                 viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"/>
+                            </svg>
+                            <h1 class="text-2xl font-bold text-primary-900">Withdraw Money</h1>
 
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <!-- include shared seller sidebar (keeps active state for /seller/withdraw-money) -->
-                <div th:replace="~{seller/sidebar :: sidebar}"></div>
+                        </div>
 
-                <div class="lg:col-span-3 space-y-8">
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        <!-- Withdraw Form -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
+                        <p class="text-gray-500 mb-2">Request a withdrawal to your bank account.</p>
+
+                        <div class="bg-primary-50 border border-primary-200 rounded-lg p-4 flex items-center gap-3">
+
+                            <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
+                                 viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"/>
+                            </svg>
+
                             <div>
-                                <h1 class="text-2xl font-bold text-gray-900">Withdraw Money</h1>
-                                <p class="text-gray-500 mt-1">Request a withdrawal to your bank account.</p>
-                            </div>
 
-                            <div class="bg-primary-50 border border-primary-200 rounded-lg p-4">
                                 <p class="text-sm font-medium text-primary-800">Available Balance</p>
+
                                 <p class="text-2xl font-bold text-primary-900 mt-1">
-                                    <!-- minor: ensure coins is null-safe -->
-                                    <span th:text="${coins != null ? coins : 0}">0</span>
+
+                                    <span id="availableBalance" th:text="${coins != null ? coins : 0}" th:data-coins="${coins != null ? coins : 0}">0</span>
+
                                     <span class="text-base font-normal">points</span>
+
                                 </p>
+
+                            </div>
+                        </div>
+
+                        <form class="space-y-4 mt-4" method="post" th:action="@{/seller/withdrawals}">
+
+                            <input th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"
+                                   type="hidden"/>
+
+                            <!-- Hidden inputs to submit selected bank info along with withdrawal -->
+                            <input type="hidden" id="hiddenBankName" name="bankName" value="" />
+                            <input type="hidden" id="hiddenAccountNumber" name="accountNumber" value="" />
+                            <input type="hidden" id="hiddenAccountHolder" name="accountHolder" value="" />
+                            <input type="hidden" id="hiddenBranch" name="branch" value="" />
+
+                            <div class="flex items-center gap-3">
+
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100">
+
+                                    <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor"
+                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"/></svg>
+
+                                </span>
+
+                                <div class="flex-1">
+
+                                    <label class="block text-xs font-semibold text-primary-700 mb-1" for="amount">Amount
+                                        <span class="text-red-500">*</span></label>
+
+                                    <input class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-base"
+                                           id="amount" min="50000" name="amount"
+                                           placeholder="Enter amount (min 50,000)"
+
+                                           required
+                                           type="number"
+                                           th:attr="max=${coins != null ? coins : 0}">
+
+                                </div>
+
                             </div>
 
-                            <form action="#" method="post" class="space-y-4">
-                                <!-- Simplify CSRF condition -->
-                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                <div>
-                                    <label for="amount" class="block text-sm font-medium text-gray-700">Amount <span class="text-red-500">*</span></label>
-                                    <input type="number" id="amount" name="amount" min="50000" placeholder="Enter amount (min 50,000)"
-                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
-                                </div>
-                                <div>
-                                    <label for="bankInfoId" class="block text-sm font-medium text-gray-700">Bank Account <span class="text-red-500">*</span></label>
-                                    <select id="bankInfoId" name="bankInfoId" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
+                            <div id="amountError" class="text-sm text-red-600 hidden">&nbsp;</div>
+
+                            <div class="flex items-center gap-3">
+
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100">
+
+                                    <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor"
+                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
+                                            d="M3 10l9-7 9 7-9 7-9-7z"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"/></svg>
+
+                                </span>
+
+                                <div class="flex-1">
+
+                                    <label class="block text-xs font-semibold text-primary-700 mb-1" for="bankInfoId">Bank
+                                        Account <span class="text-red-500">*</span></label>
+
+                                    <select class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-base"
+                                            id="bankInfoId"
+                                            name="bankInfoId"
+                                            onchange="onBankSelect()" required>
+
                                         <option value="">Select bank account</option>
-                                        <!-- Use local vars instead of accessing map directly -->
-                                        <option th:if="${bankId != null}"
-                                                th:value="${bankId}"
-                                                th:text="${bankName != '' ? bankName + ' - ****' : 'Selected Bank'}">
-                                            Selected Bank
-                                        </option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <button type="submit" class="w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors flex items-center justify-center space-x-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span>Request Withdrawal</span>
-                                </button>
-                                </div>
-                            </form>
-                        </div>
 
-                        <!-- Bank Information -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
-                            <div>
-                                <h2 class="text-2xl font-bold text-gray-900">Bank Details</h2>
-                                <p class="text-gray-500 mt-1">Your primary account for receiving funds.</p>
+                                        <option th:data-account-holder="${b.accountHolder}"
+
+                                                th:data-account-number="${b.accountNumber}"
+
+                                                th:data-bank-name="${b.bankName}"
+
+                                                th:data-branch="${b.branch}"
+
+                                                th:each="b : ${bankInfos}"
+
+                                                th:text="${b.bankName + ' - ' + #strings.substring(b.accountNumber, b.accountNumber.length() - 4)}"
+
+                                                th:value="${b.id}">
+
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
                             </div>
-                            <form th:action="@{/seller/bank-info}" method="post" class="space-y-4">
-                                <!-- Simplify CSRF condition -->
-                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                <div>
-                                    <label for="bankName" class="block text-sm font-medium text-gray-700">Bank Name <span class="text-red-500">*</span></label>
-                                    <input type="text" id="bankName" name="bankName" placeholder="e.g., Techcombank"
-                                           th:value="${bankName}"
-                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
-                                </div>
-                                <div>
-                                    <label for="accountNumber" class="block text-sm font-medium text-gray-700">Account Number <span class="text-red-500">*</span></label>
-                                    <input type="text" id="accountNumber" name="accountNumber" placeholder="Your account number"
-                                           th:value="${accountNumber}"
-                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
-                                </div>
-                                <div>
-                                    <label for="accountHolder" class="block text-sm font-medium text-gray-700">Account Holder Name</label>
-                                    <input type="text" id="accountHolder" name="accountHolder" placeholder="Full name on your account"
-                                           th:value="${accountHolder}"
-                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
-                                </div>
-                                <div>
-                                    <label for="branch" class="block text-sm font-medium text-gray-700">Branch (Optional)</label>
-                                    <input type="text" id="branch" name="branch" placeholder="e.g., Hanoi Branch"
-                                           th:value="${branch}"
-                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
-                                </div>
-                                <div>
-                                    <button type="submit" class="w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors flex items-center justify-center space-x-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+
+                            <div>
+
+                                <button class="w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 flex items-center justify-center gap-2"
+                                        type="submit">
+
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                                              stroke-linecap="round" stroke-linejoin="round"
+                                              stroke-width="2"/>
                                     </svg>
-                                    <span>Save Bank Details</span>
+
+                                    Request Withdrawal
+
                                 </button>
-                                </div>
-                            </form>
-                        </div>
+
+                            </div>
+
+                        </form>
+
                     </div>
 
-                    <!-- Withdrawal History -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-4">Withdrawal History</h2>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                    <!-- Bank Details/Bank Form (bên phải) -->
+
+                    <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-md p-6 md:p-8 space-y-6 transition-all duration-300">
+
+                        <div id="bankDetailsSection">
+
+                            <!-- Nếu chưa chọn bank, hiện form add new -->
+
+                            <form class="space-y-6" id="addBankForm" method="post" th:action="@{/seller/bank-info/add}">
+
+                                <input th:if="${_csrf != null}" th:name="${_csrf.parameterName}"
+                                       th:value="${_csrf.token}"
+                                       type="hidden"/>
+
+                                <div class="flex items-center gap-2 mb-4">
+
+                                    <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
+                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round"
+                                              stroke-width="2"/>
+                                    </svg>
+
+                                    <h2 class="text-xl font-bold text-primary-700">Add New Bank</h2>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500">
+
+                                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M3 10l9-7 9 7-9 7-9-7z"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-primary-700 mb-1">Bank Name
+                                            *</label>
+
+                                        <select id="addBankNameSelect" name="bankName" required
+                                                class="block w-full border-primary-400 rounded-md shadow-sm focus:ring-primary-600 focus:border-primary-600 text-base">
+                                            <option value="">Select a bank</option>
+                                            <option th:each="b : ${supportedBanks}"
+                                                    th:value="${b.displayName}"
+                                                    th:text="${b.displayName}">
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500">
+
+                                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-primary-700 mb-1">Account Number
+                                            *</label>
+
+                                        <input class="block w-full border-primary-400 rounded-md shadow-sm focus:ring-primary-600 focus:border-primary-600 font-mono font-bold tracking-wider text-base"
+                                               name="accountNumber"
+                                               required
+                                               type="text">
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500">
+
+                                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-primary-700 mb-1">Account Holder
+                                            *</label>
+
+                                        <input class="block w-full border-primary-400 rounded-md shadow-sm focus:ring-primary-600 focus:border-primary-600 text-base"
+                                               name="accountHolder"
+                                               required
+                                               type="text">
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500">
+
+                                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M16 7a4 4 0 01-8 0"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-primary-700 mb-1">Branch
+                                            (Optional)</label>
+
+                                        <input class="block w-full border-primary-400 rounded-md shadow-sm focus:ring-primary-600 focus:border-primary-600 text-base"
+                                               name="branch"
+                                               type="text">
+
+                                    </div>
+
+                                </div>
+
+                                <div>
+
+                                    <button class="w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-600 transition-all duration-200 flex items-center justify-center gap-2"
+                                            type="submit">
+
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round"
+                                                  stroke-width="2"/>
+                                        </svg>
+
+                                        Add Bank
+
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+                            <!-- Nếu đã chọn bank, hiện chi tiết + nút Edit/Delete -->
+
+                            <div class="hidden transition-all duration-300 ease-in-out" id="bankInfoDetail">
+
+                                <h2 class="text-xl font-bold text-primary-900 mb-4 flex items-center gap-2">
+
+                                    <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
+                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 10l9-7 9 7-9 7-9-7z" stroke-linecap="round" stroke-linejoin="round"
+                                              stroke-width="2"/>
+                                    </svg>
+
+                                    Bank Details
+
+                                </h2>
+
+                                <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-md p-6 space-y-5 hover:shadow-primary-200 transition-all duration-300">
+
+                                    <div class="flex items-center gap-3">
+
+                                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 shadow">
+
+                                            <svg class="h-6 w-6 text-primary-600" fill="none"
+                                                 stroke="currentColor" viewBox="0 0 24 24"
+                                                 xmlns="http://www.w3.org/2000/svg"><path
+                                                    d="M3 10l9-7 9 7-9 7-9-7z" stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"/></svg>
+
+                                        </span>
+
+                                        <div class="flex flex-col">
+
+                                            <span class="text-xs font-semibold text-primary-700">Bank Name</span>
+
+                                            <input class="font-semibold text-lg text-primary-900 bg-transparent border-0 focus:ring-0"
+                                                   id="bankNameDetail"
+                                                   readonly
+                                                   type="text">
+
+                                        </div>
+
+                                        <span class="ml-2 px-2 py-0.5 rounded-full bg-primary-200 text-primary-800 text-xs font-medium">Selected</span>
+
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+
+                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 shadow">
+
+                                            <svg class="h-5 w-5 text-gray-500" fill="none"
+                                                 stroke="currentColor" viewBox="0 0 24 24"
+                                                 xmlns="http://www.w3.org/2000/svg"><path
+                                                    d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
+                                                    stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"/></svg>
+
+                                        </span>
+
+                                        <div class="flex flex-col">
+
+                                            <span class="text-xs font-semibold text-gray-600">Account Number</span>
+
+                                            <input class="bg-transparent border-0 focus:ring-0 text-gray-800 font-mono font-bold tracking-wider text-base"
+                                                   id="accountNumberDetail"
+                                                   readonly
+                                                   type="text">
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+
+                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 shadow">
+
+                                            <svg class="h-5 w-5 text-gray-500" fill="none"
+                                                 stroke="currentColor" viewBox="0 0 24 24"
+                                                 xmlns="http://www.w3.org/2000/svg"><path
+                                                    d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"/></svg>
+
+                                        </span>
+
+                                        <div class="flex flex-col">
+
+                                            <span class="text-xs font-semibold text-gray-600">Account Holder</span>
+
+                                            <input class="bg-transparent border-0 focus:ring-0 text-gray-800 font-medium"
+                                                   id="accountHolderDetail"
+                                                   readonly
+                                                   type="text">
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+
+                                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 shadow">
+
+                                            <svg class="h-5 w-5 text-gray-500" fill="none"
+                                                 stroke="currentColor" viewBox="0 0 24 24"
+                                                 xmlns="http://www.w3.org/2000/svg"><path
+                                                    d="M16 7a4 4 0 01-8 0" stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"/></svg>
+
+                                        </span>
+
+                                        <div class="flex flex-col">
+
+                                            <span class="text-xs font-semibold text-gray-600">Branch</span>
+
+                                            <input class="bg-transparent border-0 focus:ring-0 text-gray-800 font-medium"
+                                                   id="branchDetail"
+                                                   readonly
+                                                   type="text">
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex gap-2 mt-6 w-full">
+                                    <button class="flex-1 px-5 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow hover:bg-primary-700 hover:scale-105 transition-all duration-200"
+                                            onclick="showEditBank()"
+                                            type="button">
+                                        <svg class="h-5 w-5 inline-block mr-1" fill="none"
+                                             stroke="currentColor" viewBox="0 0 24 24"
+                                             xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z"
+                                                  stroke-linecap="round" stroke-linejoin="round"
+                                                  stroke-width="2"/>
+                                        </svg>
+                                        Edit
+                                    </button>
+
+                                    <form class="flex-1" id="deleteBankForm"
+                                          method="post" th:action="@{'/seller/bank-info/' + 0 + '/delete'}">
+                                        <input th:if="${_csrf != null}" th:name="${_csrf.parameterName}"
+                                               th:value="${_csrf.token}"
+                                               type="hidden"/>
+                                        <button class="w-full px-5 py-2 bg-red-600 text-white rounded-lg font-semibold shadow hover:bg-red-700 hover:scale-105 transition-all duration-200"
+                                                onclick="return confirm('Delete this bank info?')"
+                                                type="submit">
+                                            <svg class="h-5 w-5 inline-block mr-1" fill="none"
+                                                 stroke="currentColor" viewBox="0 0 24 24"
+                                                 xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      stroke-width="2"/>
+                                            </svg>
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+
+                            </div>
+
+                            <!-- Form edit bank (ẩn mặc định) -->
+
+                            <form class="space-y-5 hidden transition-all" id="editBankForm" method="post"
+                                  th:action="@{'/seller/bank-info/' + 0 + '/edit'}">
+
+                                <input th:if="${_csrf != null}" th:name="${_csrf.parameterName}"
+                                       th:value="${_csrf.token}"
+                                       type="hidden"/>
+
+                                <h2 class="text-xl font-bold text-primary-800 mb-4 flex items-center gap-2">
+
+                                    <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
+                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z"
+                                              stroke-linecap="round" stroke-linejoin="round"
+                                              stroke-width="2"/>
+                                    </svg>
+
+                                    Edit Bank
+
+                                </h2>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100">
+
+                                        <svg class="h-5 w-5 text-primary-600" fill="none"
+                                             stroke="currentColor" viewBox="0 0 24 24"
+                                             xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M3 10l9-7 9 7-9 7-9-7z" stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-primary-700 mb-1">Bank Name
+                                            *</label>
+
+                                        <select id="editBankName" name="bankName" required
+                                                class="block w-full border-primary-400 rounded-md shadow-sm focus:ring-primary-600 focus:border-primary-600 text-base">
+                                            <option value="">Select a bank</option>
+                                            <option th:each="b : ${supportedBanks}"
+                                                    th:value="${b.displayName}"
+                                                    th:text="${b.displayName}">
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+
+                                        <svg class="h-5 w-5 text-gray-500" fill="none"
+                                             stroke="currentColor" viewBox="0 0 24 24"
+                                             xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Account Number
+                                            *</label>
+
+                                        <input class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 font-mono font-bold tracking-wider text-base"
+                                               id="editAccountNumber" name="accountNumber"
+                                               required
+                                               type="text">
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+
+                                        <svg class="h-5 w-5 text-gray-500" fill="none"
+                                             stroke="currentColor" viewBox="0 0 24 24"
+                                             xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Account Holder
+                                            *</label>
+
+                                        <input class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-base"
+                                               id="editAccountHolder" name="accountHolder"
+                                               required
+                                               type="text">
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex items-center gap-3">
+
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+
+                                             stroke="currentColor" viewBox="0 0 24 24"
+                                             xmlns="http://www.w3.org/2000/svg"><path
+                                                d="M16 7a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round"
+                                                stroke-width="2"/></svg>
+
+                                    </span>
+
+                                    <div class="flex-1">
+
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Branch
+                                            (Optional)</label>
+
+                                        <input class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-base"
+                                               id="editBranch" name="branch"
+                                               type="text">
+
+                                    </div>
+
+                                </div>
+
+                                <div class="flex gap-2 mt-4">
+
+                                    <button class="flex-1 px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                            type="submit">
+
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z"
+                                                  stroke-linecap="round" stroke-linejoin="round"
+                                                  stroke-width="2"/>
+                                        </svg>
+
+                                        Save
+
+                                    </button>
+
+                                    <button class="px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow hover:bg-gray-400 transition-all duration-200"
+                                            onclick="cancelEditBank()"
+                                            type="button">Cancel
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Withdrawal History Table (updated format) -->
+                <div class="bg-white rounded-2xl shadow-md border border-primary-200 p-6 md:p-8 mt-8 transition-all duration-300">
+                    <h2 class="text-2xl font-bold text-primary-700 mb-4 flex items-center gap-2">
+                        <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
+                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                    </svg>
+                        Withdrawal History
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <div th:if="${withdrawals != null && !withdrawals.isEmpty()}">
+                            <table class="min-w-full divide-y divide-primary-100 rounded-xl overflow-hidden">
+                                <thead class="bg-primary-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <!-- <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider">ID</th> -->
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider">
+                                        STT
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider cursor-pointer"
+                                        onclick="sortTable(1)">
+                                        Amount
+                                        <svg class="inline h-4 w-4 ml-1 sort-icon" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                        </svg>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider cursor-pointer"
+                                        onclick="sortTable(2)">
+                                        Date
+                                        <svg class="inline h-4 w-4 ml-1 sort-icon" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                        </svg>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider">
+                                        Actions
+                                    </th>
                                 </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#12345</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">50,000</td>
+                                <tbody class="bg-white divide-y divide-primary-50">
+                                <tr th:each="w, iterStat : ${withdrawals}" class="hover:bg-primary-50 transition-all">
+                                    <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="' #' + ${w.id}"></td> -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="${iterStat.index + 1}"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                                        th:text="${w.amount}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                        <span th:classappend="
+                                            ${w.status} == 'Pending' ? 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                                            (${w.status} == 'Approved' ? 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-600 border border-green-200' :
+                                            'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-600 border border-red-200')
+                                        " th:text="${w.status}"></span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-10-15</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                        th:text="${#dates.format(w.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap space-x-2">
+                                        <button type="button"
+                                                class="inline-block px-3 py-1 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 view-detail-btn"
+                                                th:attr="data-id=${w.id},data-amount=${w.amount},data-status=${w.status},data-date=${#dates.format(w.createdAt, 'yyyy-MM-dd HH:mm')},data-bankname=${w.bankName},data-accountnumber=${w.accountNumber},data-accountname=${w.accountName},data-branch=${w.branch},data-stt=${iterStat.index + 1}">
+                                            View Detail
+                                        </button>
+                                    </td>
                                 </tr>
                                 </tbody>
                             </table>
                         </div>
+                        <div th:if="${withdrawals == null || withdrawals.isEmpty()}">
+                            <p class="text-gray-500">No withdrawal history found.</p>
+                        </div>
                     </div>
                 </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- Modal Structure -->
+<div id="withdrawDetailModal"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden">
+    <div class="relative bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl w-full max-w-md p-8 border border-primary-200 animate-fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <svg class="h-8 w-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke-width="2"/>
+                    <path d="M12 8v4l3 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h3 class="text-2xl font-extrabold text-blue-700 drop-shadow">Withdrawal Details</h3>
+            </div>
+            <button id="closeModalBtn"
+                    class="text-3xl text-gray-400 hover:text-red-500 transition-colors duration-200 font-bold focus:outline-none">
+                &times;
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
+                    <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M12 8v4l3 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">STT:</span>
+                <span id="modalWithdrawStt" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
+                    <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M12 8v4l3 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">ID:</span>
+                <span id="modalWithdrawId" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
+                    <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Amount:</span>
+                <span id="modalWithdrawAmount" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100">
+                    <svg class="h-5 w-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle
+                            cx="12" cy="12" r="10" stroke-width="2"/><path d="M12 16v-4" stroke-width="2"
+                                                                           stroke-linecap="round"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Status:</span>
+                <span id="modalWithdrawStatus" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100">
+                    <svg class="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-7H3v7a2 2 0 002 2z" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Date:</span>
+                <span id="modalWithdrawDate" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100">
+                    <svg class="h-5 w-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M3 10l9-7 9 7-9 7-9-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Bank Name:</span>
+                <span id="modalWithdrawBankName" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-100">
+                    <svg class="h-5 w-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
+                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Account Number:</span>
+                <span id="modalWithdrawAccountNumber" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
+                    <svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Account Holder:</span>
+                <span id="modalWithdrawAccountHolder" class="ml-2 text-gray-900 font-bold"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100">
+                    <svg class="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                            d="M16 7a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                </span>
+                <span class="font-semibold text-gray-700">Branch:</span>
+                <span id="modalWithdrawBranch" class="ml-2 text-gray-900 font-bold"></span>
             </div>
         </div>
     </div>
-</main>
-
-<!-- include footer like my-shop -->
-<div th:replace="~{fragments/footer :: footer}"></div>
+</div>
 
 <script>
-    // JavaScript to handle the withdrawal form submission with validation
-    document.addEventListener('DOMContentLoaded', function() {
-        const withdrawalForm = document.querySelector('form[action="#"]');
-        if (withdrawalForm) {
-            withdrawalForm.addEventListener('submit', function(e) {
-                e.preventDefault();
 
-                const amount = parseInt(document.getElementById('amount').value.replace(/,/g, ''));
-                const bankId = document.getElementById('bankInfoId').value; // Fix selector (was incorrectly using input)
+    function onBankSelect() {
 
-                // Basic validation
-                if (!amount || isNaN(amount)) {
-                    alert('Please enter a valid amount.');
-                    return;
-                }
+        const select = document.getElementById('bankInfoId');
 
-                if (amount < 50000) {
-                    alert('Minimum withdrawal amount is 50,000 points.');
-                    return;
-                }
+        const addForm = document.getElementById('addBankForm');
 
-                // API call would go here
-                console.log('Withdrawal requested:', { amount, bankId });
-                alert('Withdrawal request feature will be implemented soon!');
+        const detail = document.getElementById('bankInfoDetail');
+
+        const editForm = document.getElementById('editBankForm');
+
+        const deleteForm = document.getElementById('deleteBankForm');
+
+        if (select.value) {
+
+            // Lấy option đang chọn
+
+            const selected = select.options[select.selectedIndex];
+
+            // Hiện chi tiết
+
+            addForm.classList.add('hidden');
+
+            detail.classList.remove('hidden');
+
+            editForm.classList.add('hidden');
+
+            // Đổ dữ liệu
+
+            document.getElementById('bankNameDetail').value = selected.getAttribute('data-bank-name') || '';
+
+            document.getElementById('accountNumberDetail').value = selected.getAttribute('data-account-number') || '';
+
+            document.getElementById('accountHolderDetail').value = selected.getAttribute('data-account-holder') || '';
+
+            document.getElementById('branchDetail').value = selected.getAttribute('data-branch') || '';
+
+            // Populate hidden inputs so they are sent with withdrawal form
+            const hiddenBankName = document.getElementById('hiddenBankName');
+            const hiddenAccountNumber = document.getElementById('hiddenAccountNumber');
+            const hiddenAccountHolder = document.getElementById('hiddenAccountHolder');
+            const hiddenBranch = document.getElementById('hiddenBranch');
+
+            if (hiddenBankName) hiddenBankName.value = selected.getAttribute('data-bank-name') || '';
+            if (hiddenAccountNumber) hiddenAccountNumber.value = selected.getAttribute('data-account-number') || '';
+            if (hiddenAccountHolder) hiddenAccountHolder.value = selected.getAttribute('data-account-holder') || '';
+            if (hiddenBranch) hiddenBranch.value = selected.getAttribute('data-branch') || '';
+
+            // Cập nhật action xóa/sửa
+
+            const bankId = select.value;
+
+            deleteForm.setAttribute('action', '/seller/bank-info/' + bankId + '/delete');
+
+            editForm.setAttribute('action', '/seller/bank-info/' + bankId + '/edit');
+
+            // Đổ dữ liệu vào form edit (nếu cần)
+
+            document.getElementById('editBankName').value = selected.getAttribute('data-bank-name') || '';
+
+            document.getElementById('editAccountNumber').value = selected.getAttribute('data-account-number') || '';
+
+            document.getElementById('editAccountHolder').value = selected.getAttribute('data-account-holder') || '';
+
+            document.getElementById('editBranch').value = selected.getAttribute('data-branch') || '';
+
+        } else {
+
+            // Không chọn bank nào, hiện form add
+
+            addForm.classList.remove('hidden');
+
+            detail.classList.add('hidden');
+
+            editForm.classList.add('hidden');
+
+            // Clear hidden inputs when no bank selected
+            const hiddenBankName = document.getElementById('hiddenBankName');
+            const hiddenAccountNumber = document.getElementById('hiddenAccountNumber');
+            const hiddenAccountHolder = document.getElementById('hiddenAccountHolder');
+            const hiddenBranch = document.getElementById('hiddenBranch');
+            if (hiddenBankName) hiddenBankName.value = '';
+            if (hiddenAccountNumber) hiddenAccountNumber.value = '';
+            if (hiddenAccountHolder) hiddenAccountHolder.value = '';
+            if (hiddenBranch) hiddenBranch.value = '';
+
+        }
+
+    }
+
+    function showEditBank() {
+
+        document.getElementById('bankInfoDetail').classList.add('hidden');
+
+        document.getElementById('editBankForm').classList.remove('hidden');
+
+    }
+
+    function cancelEditBank() {
+
+        document.getElementById('editBankForm').classList.add('hidden');
+
+        document.getElementById('bankInfoDetail').classList.remove('hidden');
+
+    }
+
+    window.onload = function () {
+
+        onBankSelect(); // Khởi tạo đúng trạng thái khi load trang
+
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('withdrawDetailModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const sttSpan = document.getElementById('modalWithdrawStt');
+        const idSpan = document.getElementById('modalWithdrawId');
+        const amountSpan = document.getElementById('modalWithdrawAmount');
+        const statusSpan = document.getElementById('modalWithdrawStatus');
+        const dateSpan = document.getElementById('modalWithdrawDate');
+        const bankNameSpan = document.getElementById('modalWithdrawBankName');
+        const accountNumberSpan = document.getElementById('modalWithdrawAccountNumber');
+        const accountHolderSpan = document.getElementById('modalWithdrawAccountHolder');
+        const branchSpan = document.getElementById('modalWithdrawBranch');
+
+        document.querySelectorAll('.view-detail-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                sttSpan.textContent = btn.getAttribute('data-stt');
+                idSpan.textContent = btn.getAttribute('data-id');
+                amountSpan.textContent = btn.getAttribute('data-amount');
+                statusSpan.textContent = btn.getAttribute('data-status');
+                dateSpan.textContent = btn.getAttribute('data-date');
+                bankNameSpan.textContent = btn.getAttribute('data-bankname');
+                accountNumberSpan.textContent = btn.getAttribute('data-accountnumber');
+                accountHolderSpan.textContent = btn.getAttribute('data-accountname');
+                branchSpan.textContent = btn.getAttribute('data-branch');
+                modal.classList.remove('hidden');
             });
+        });
+        closeModalBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+        });
+        // Optional: close modal when clicking outside the modal content
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    });
+
+    // Sort table function
+    const sortDirections = {0: 'asc', 2: 'asc'}; // 0 for Amount, 2 for Date
+
+    function sortTable(columnIndex) {
+        const table = document.querySelector('table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Toggle sort direction
+        sortDirections[columnIndex] = sortDirections[columnIndex] === 'asc' ? 'desc' : 'asc';
+        const direction = sortDirections[columnIndex];
+
+        // Sort rows
+        rows.sort((a, b) => {
+            const aText = a.cells[columnIndex].textContent.trim();
+            const bText = b.cells[columnIndex].textContent.trim();
+
+            let aVal, bVal;
+            if (columnIndex === 0) { // Amount
+                aVal = parseInt(aText.replace(/,/g, '')) || 0;
+                bVal = parseInt(bText.replace(/,/g, '')) || 0;
+            } else if (columnIndex === 2) { // Date
+                aVal = new Date(aText);
+                bVal = new Date(bText);
+            }
+
+            if (direction === 'asc') {
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+            } else {
+                return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+            }
+        });
+
+        // Re-append sorted rows
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Update icon direction (optional, but for visual feedback)
+        updateSortIcons(columnIndex, direction);
+    }
+
+    function updateSortIcons(activeColumn, direction) {
+        // Reset all icons
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.classList.remove('rotate-180');
+        });
+        // Set active icon
+        const th = document.querySelectorAll('th')[activeColumn];
+        const icon = th.querySelector('.sort-icon');
+        if (direction === 'desc') {
+            icon.classList.add('rotate-180');
+        }
+    }
+
+    // Client-side validation: ensure amount <= available balance
+    document.addEventListener('DOMContentLoaded', function () {
+        try {
+            const withdrawForm = document.querySelector('form[action="/seller/withdrawals"]');
+            if (!withdrawForm) return;
+            const amountInput = withdrawForm.querySelector('#amount');
+            const availableSpan = document.getElementById('availableBalance');
+            const amountError = document.getElementById('amountError');
+            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.trim() || 0) : 0;
+
+            // Set max attribute in case JS runs on client-side rendering
+            if (amountInput && !isNaN(available)) {
+                amountInput.setAttribute('max', String(available));
+            }
+
+            function showError(msg) {
+                if (!amountError) return;
+                amountError.textContent = msg;
+                amountError.classList.remove('hidden');
+            }
+
+            function clearError() {
+                if (!amountError) return;
+                amountError.textContent = '';
+                amountError.classList.add('hidden');
+            }
+
+            if (amountInput) {
+                amountInput.addEventListener('input', function () {
+                    clearError();
+                    const val = Number(amountInput.value || 0);
+                    if (!isFinite(val)) return;
+                    if (val > available) {
+                        showError('Amount cannot exceed available balance (' + available.toLocaleString() + ').');
+                    }
+                });
+            }
+
+            withdrawForm.addEventListener('submit', function (ev) {
+                if (!amountInput) return;
+                const val = Number(amountInput.value || 0);
+                if (!isFinite(val)) return;
+                if (val > available) {
+                    ev.preventDefault();
+                    showError('Amount cannot exceed available balance (' + available.toLocaleString() + ').');
+                    amountInput.focus();
+                    return false;
+                }
+                // Let server-side validation handle remaining checks
+            });
+        } catch (e) {
+            // fail silently to avoid breaking other scripts
+            console.error('Withdraw form validation setup failed', e);
         }
     });
+
 </script>
+
 </body>
+
 </html>

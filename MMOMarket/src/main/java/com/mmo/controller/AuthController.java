@@ -17,8 +17,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -100,10 +100,10 @@ public class AuthController {
 
     @PostMapping("/authen/verify")
     public String verify(@RequestParam String email, @RequestParam String code, Model model,
-                        @RequestParam(required = false) Boolean reset) {
+                         @RequestParam(required = false) Boolean reset) {
         User user = authService.findByEmail(email);
         if (user == null) {
-            model.addAttribute("message", "Email không tồn t��i.");
+            model.addAttribute("message", "Email không tồn tại.");
             model.addAttribute("email", email);
             return "authen/verify";
         }

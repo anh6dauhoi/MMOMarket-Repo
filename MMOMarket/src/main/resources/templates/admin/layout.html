@@ -2,79 +2,85 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Admin - Seller Registrations</title>
-    <meta name="_csrf" th:content="${_csrf.token}" />
-    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="_csrf_parameter" th:content="${_csrf.parameterName}"/>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         @media (max-width: 768px) {
             .sidebar-open {
                 transform: translateX(0);
             }
+
             .sidebar-closed {
                 transform: translateX(-100%);
             }
+
             .content-with-sidebar {
                 margin-left: 0;
             }
         }
+
         .transition-sidebar {
             transition: transform 0.3s ease-in-out;
         }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
-    <div class="relative flex h-screen overflow-hidden">
-        <!-- Mobile sidebar backdrop -->
-        <div id="sidebar-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden" onclick="toggleSidebar()"></div>
+<div class="relative flex h-screen overflow-hidden">
+    <!-- Mobile sidebar backdrop -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden" id="sidebar-backdrop"
+         onclick="toggleSidebar()"></div>
 
-        <!-- Sidebar -->
-        <div id="sidebar" class="fixed md:static w-64 h-full z-30 transition-sidebar transform -translate-x-full md:translate-x-0">
-            <div th:replace="~{admin/fragments/sidebar :: sidebar}"></div>
-        </div>
-
-        <!-- Main Content -->
-        <div id="main-content" class="flex-1 flex flex-col h-screen overflow-auto w-full">
-            <div th:replace="~{admin/fragments/header :: header}"></div>
-
-            <main class="flex-1 p-4 md:p-6">
-                <!-- Safe include if 'body' exists, else show placeholder -->
-                <th:block th:if="${body != null}" th:replace="~{${body} :: content}"></th:block>
-                <div th:unless="${body != null}" class="p-4 md:p-6 bg-white rounded shadow text-gray-500">
-                    Select a page to display.
-                </div>
-            </main>
-        </div>
+    <!-- Sidebar -->
+    <div class="fixed md:static w-64 h-full z-30 transition-sidebar transform -translate-x-full md:translate-x-0"
+         id="sidebar">
+        <div th:replace="~{admin/fragments/sidebar :: sidebar}"></div>
     </div>
 
-    <script>
-        // Sidebar toggle functionality
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const backdrop = document.getElementById('sidebar-backdrop');
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-screen overflow-auto w-full" id="main-content">
+        <div th:replace="~{admin/fragments/header :: header}"></div>
 
-            if (sidebar.classList.contains('-translate-x-full')) {
-                // Open sidebar
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('translate-x-0');
-                backdrop.classList.remove('hidden');
-            } else {
-                // Close sidebar
-                sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                backdrop.classList.add('hidden');
-            }
+        <main class="flex-1 p-4 md:p-6">
+            <!-- Safe include if 'body' exists, else show placeholder -->
+            <th:block th:if="${body != null}" th:replace="~{${body} :: content}"></th:block>
+            <div class="p-4 md:p-6 bg-white rounded shadow text-gray-500" th:unless="${body != null}">
+                Select a page to display.
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    // Sidebar toggle functionality
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+
+        if (sidebar.classList.contains('-translate-x-full')) {
+            // Open sidebar
+            sidebar.classList.remove('-translate-x-full');
+            sidebar.classList.add('translate-x-0');
+            backdrop.classList.remove('hidden');
+        } else {
+            // Close sidebar
+            sidebar.classList.remove('translate-x-0');
+            sidebar.classList.add('-translate-x-full');
+            backdrop.classList.add('hidden');
         }
+    }
 
-        // Initialize sidebar toggle button in the header
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add event listener to any elements with data-toggle-sidebar attribute
-            document.querySelectorAll('[data-toggle-sidebar]').forEach(button => {
-                button.addEventListener('click', toggleSidebar);
-            });
+    // Initialize sidebar toggle button in the header
+    document.addEventListener('DOMContentLoaded', function () {
+        // Add event listener to any elements with data-toggle-sidebar attribute
+        document.querySelectorAll('[data-toggle-sidebar]').forEach(button => {
+            button.addEventListener('click', toggleSidebar);
         });
-    </script>
+    });
+</script>
 </body>
 </html>

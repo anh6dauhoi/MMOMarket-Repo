@@ -30,7 +30,7 @@ public class Withdrawal {
     private Long amount;
 
     @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
-    private String status = "Pending"; // Pending, Approved, Rejected, Completed
+    private String status = "Pending"; // Pending, Approved, Rejected
 
     @Column(name = "bank_name", length = 100)
     private String bankName;

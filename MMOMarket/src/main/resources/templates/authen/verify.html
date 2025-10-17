@@ -2,11 +2,11 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>OTP Verification - MMO Market</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link th:href="@{/authen/css/authen.css}" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/authen/css/authen.css}">
     <style>
         body {
             background: url('/images/home.jpg') no-repeat center center fixed;
@@ -15,33 +15,40 @@
             -o-background-size: cover;
             background-size: cover;
         }
+
         .form-container {
             background: rgba(255, 255, 255, 0.95);
         }
+
         @media (max-width: 640px) {
             body {
                 background-position: top center;
             }
+
             .form-container {
                 margin: 0 16px;
                 max-width: calc(100% - 32px);
             }
         }
+
         /* Responsive OTP inputs */
         .otp-container {
             display: flex;
             gap: 8px;
             justify-content: center;
         }
+
         .otp-input {
             width: 40px;
             height: 48px;
             font-size: 1.25rem;
         }
+
         @media (min-width: 420px) {
             .otp-container {
                 gap: 12px;
             }
+
             .otp-input {
                 width: 48px;
                 height: 56px;
@@ -51,7 +58,7 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-<th:insert th:replace="~{fragments/header :: header}" />
+<th:insert th:replace="~{fragments/header :: header}"/>
 <main class="flex-1 flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 w-full">
     <div class="w-full max-w-md form-container rounded-lg shadow-lg p-5 sm:p-6 md:p-8">
         <div class="space-y-5 sm:space-y-6">
@@ -66,39 +73,67 @@
                             </div>
                         </div>
                         <div class="checkmark w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center absolute -bottom-1 -right-2 bg-green-500 rounded-full">
-                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="3"></path>
                             </svg>
                         </div>
                     </div>
                 </div>
             </div>
             <h2 class="text-xl sm:text-2xl font-bold text-red-500 text-center mb-2">Xác thực OTP</h2>
-            <p class="text-gray-600 text-center mb-6 sm:mb-8 text-sm sm:text-base">Nhập mã OTP đã gửi đến <span class="font-semibold text-gray-800" th:text="${email}"></span></p>
-            <form th:action="@{/authen/verify}" method="post" id="otpForm">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                <input type="hidden" name="email" th:value="${email}" />
-                <input type="hidden" name="code" id="fullOtpCode" />
-                <input type="hidden" name="reset" th:if="${reset}" value="true" />
+            <p class="text-gray-600 text-center mb-6 sm:mb-8 text-sm sm:text-base">Nhập mã OTP đã gửi đến <span
+                    class="font-semibold text-gray-800" th:text="${email}"></span></p>
+            <form id="otpForm" method="post" th:action="@{/authen/verify}">
+                <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+                <input name="email" th:value="${email}" type="hidden"/>
+                <input id="fullOtpCode" name="code" type="hidden"/>
+                <input name="reset" th:if="${reset}" type="hidden" value="true"/>
                 <div class="otp-container mb-6 px-2">
-                    <input type="text" maxlength="1" class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp1" autofocus>
-                    <input type="text" maxlength="1" class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp2">
-                    <input type="text" maxlength="1" class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp3">
-                    <input type="text" maxlength="1" class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp4">
-                    <input type="text" maxlength="1" class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp5">
-                    <input type="text" maxlength="1" class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp6">
+                    <input autofocus
+                           class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                           id="otp1"
+                           maxlength="1" type="text">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                           id="otp2"
+                           maxlength="1"
+                           type="text">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                           id="otp3"
+                           maxlength="1"
+                           type="text">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                           id="otp4"
+                           maxlength="1"
+                           type="text">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                           id="otp5"
+                           maxlength="1"
+                           type="text">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                           id="otp6"
+                           maxlength="1"
+                           type="text">
                 </div>
-                <p class="text-red-500 font-medium mb-4 text-center text-sm sm:text-base" id="timer">Thời gian còn lại: 4p59g</p>
-                <p class="text-gray-500 mb-6 text-center text-xs sm:text-sm">Chưa nhận được OTP? <button type="button" id="resendBtn" class="text-blue-500 font-medium hover:underline">Gửi lại OTP</button></p>
-                <button type="button" id="verifyBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-6 rounded-full transition-colors text-sm sm:text-base"
-                    th:text="${reset} ? 'Xác thực để đổi mật khẩu' : 'Xác thực'"></button>
-                <div th:if="${message}" class="text-red-500 text-xs sm:text-sm text-center mt-4" th:text="${message}" id="serverMessage"></div>
-                <div id="clientMessage" class="text-green-500 text-xs sm:text-sm text-center mt-2"></div>
+                <p class="text-red-500 font-medium mb-4 text-center text-sm sm:text-base" id="timer">Thời gian còn lại:
+                    4p59g</p>
+                <p class="text-gray-500 mb-6 text-center text-xs sm:text-sm">Chưa nhận được OTP?
+                    <button class="text-blue-500 font-medium hover:underline" id="resendBtn" type="button">Gửi lại OTP
+                    </button>
+                </p>
+                <button class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-6 rounded-full transition-colors text-sm sm:text-base"
+                        id="verifyBtn"
+                        th:text="${reset} ? 'Xác thực để đổi mật khẩu' : 'Xác thực'"
+                        type="button"></button>
+                <div class="text-red-500 text-xs sm:text-sm text-center mt-4" id="serverMessage" th:if="${message}"
+                     th:text="${message}"></div>
+                <div class="text-green-500 text-xs sm:text-sm text-center mt-2" id="clientMessage"></div>
             </form>
         </div>
     </div>
 </main>
-<th:insert th:replace="~{fragments/footer :: footer}" />
+<th:insert th:replace="~{fragments/footer :: footer}"/>
 <script>
     const otpInputs = document.querySelectorAll('.otp-input');
     const fullOtpCode = document.getElementById('fullOtpCode');
@@ -138,6 +173,7 @@
 
     // Timer
     let timeLeft = 299;
+
     function updateTimer() {
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
@@ -151,6 +187,7 @@
             resendBtn.disabled = false;
         }
     }
+
     updateTimer();
 
     // Resend OTP
@@ -165,14 +202,14 @@
                 '_csrf': document.querySelector('input[name="_csrf"]').value
             })
         }).then(response => response.text())
-        .then(text => {
-            timeLeft = 299;
-            timerElement.classList.remove('text-red-600');
-            updateTimer();
-            otpInputs.forEach(input => input.value = '');
-            otpInputs[0].focus();
-            document.getElementById('clientMessage').textContent = text;
-        }).catch(() => {
+            .then(text => {
+                timeLeft = 299;
+                timerElement.classList.remove('text-red-600');
+                updateTimer();
+                otpInputs.forEach(input => input.value = '');
+                otpInputs[0].focus();
+                document.getElementById('clientMessage').textContent = text;
+            }).catch(() => {
             document.getElementById('clientMessage').textContent = 'Lỗi khi gửi lại OTP.';
         });
     });

@@ -11,11 +11,11 @@ import java.util.Set;
 @Getter
 @Setter
 @Table(
-    name = "Products",
-    indexes = {
-        @Index(name = "idx_seller_id", columnList = "seller_id"),
-        @Index(name = "idx_category_id", columnList = "category_id")
-    }
+        name = "Products",
+        indexes = {
+                @Index(name = "idx_seller_id", columnList = "seller_id"),
+                @Index(name = "idx_category_id", columnList = "category_id")
+        }
 )
 public class Product {
 

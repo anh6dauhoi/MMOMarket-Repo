@@ -324,20 +324,6 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
--- Trigger kiểm tra số tiền rút và cảnh báo
-DELIMITER //
-CREATE TRIGGER trg_CheckWithdrawalAmount
-AFTER INSERT ON Withdrawals
-FOR EACH ROW
-BEGIN
-    DECLARE total_coins BIGINT;
-    SELECT coins INTO total_coins FROM Users WHERE id = NEW.seller_id;
-    IF NEW.amount > total_coins * 0.9 AND (NEW.bank_name IS NULL OR NEW.account_number IS NULL OR NEW.branch IS NULL) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Thông tin ngân hàng không đầy đủ, vượt 90% tổng số tiền. Vui lòng xác nhận!';
-    END IF;
-END//
-DELIMITER ;
-
 -- Trigger tăng lượt xem blog
 DELIMITER //
 CREATE TRIGGER trg_IncrementBlogViews

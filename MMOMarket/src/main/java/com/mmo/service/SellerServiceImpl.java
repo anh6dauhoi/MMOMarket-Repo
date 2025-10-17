@@ -4,6 +4,7 @@ import com.mmo.entity.SellerRegistration;
 import com.mmo.entity.User;
 import com.mmo.repository.SellerRegistrationRepository;
 import com.mmo.repository.UserRepository;
+import com.mmo.util.EmailTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -15,8 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -29,21 +30,16 @@ import java.util.*;
 @Service
 public class SellerServiceImpl implements SellerService {
 
+    private static final List<String> BANNED_WORDS = Arrays.asList("spam", "fake", "illegal");
+    private final Path storageRoot = Paths.get("uploads", "contracts");
     @Autowired
     private SellerRegistrationRepository sellerRegistrationRepository;
-
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private NotificationService notificationService;
-
     @Autowired
     private EmailService emailService;
-
-    private final Path storageRoot = Paths.get("uploads", "contracts");
-
-    private static final List<String> BANNED_WORDS = Arrays.asList("spam", "fake", "illegal");
 
     @Override
     public void registerSeller(SellerRegistration sellerRegistration) {
@@ -79,17 +75,19 @@ public class SellerServiceImpl implements SellerService {
 
                 // Notify + email: resubmitted after rejection
                 notificationService.createNotificationForUser(
-                        currentUser,
+                        currentUser.getId(),
                         "Seller registration submitted",
                         "We received your updated seller registration. Status: Pending."
                 );
+                // Notify all admins so they can review the resubmitted registration
+                notificationService.createNotificationForRole(
+                        "ADMIN",
+                        "Seller registration pending review",
+                        "Resubmitted seller registration from " + displayName(currentUser) + " (shop: " + shopName + ") is pending review."
+                );
                 emailService.sendEmailAsync(currentUser.getEmail(),
                         "We received your seller registration",
-                        buildEmail("Seller Registration Submitted",
-                                "Hello " + displayName(currentUser) + ",",
-                                "We received your request to become a seller.",
-                                "Current status: Pending.",
-                                "We'll notify you once it is reviewed."));
+                        EmailTemplate.sellerRegistrationSuccessEmail(displayName(currentUser)));
             } else {
                 // Already submitted or in progress
                 throw new IllegalStateException("You already have a registration in progress.");
@@ -106,17 +104,19 @@ public class SellerServiceImpl implements SellerService {
 
             // Notify + email: first submission
             notificationService.createNotificationForUser(
-                    currentUser,
+                    currentUser.getId(),
                     "Seller registration submitted",
                     "We received your seller registration. Status: Pending."
             );
+            // Notify all admins about a new seller registration needing approval
+            notificationService.createNotificationForRole(
+                    "ADMIN",
+                    "New seller registration",
+                    "New seller registration from " + displayName(currentUser) + " (shop: " + shopName + ") requires review."
+            );
             emailService.sendEmailAsync(currentUser.getEmail(),
                     "We received your seller registration",
-                    buildEmail("Seller Registration Submitted",
-                            "Hello " + displayName(currentUser) + ",",
-                            "We received your request to become a seller.",
-                            "Current status: Pending.",
-                            "We'll notify you once it is reviewed."));
+                    EmailTemplate.sellerRegistrationSuccessEmail(displayName(currentUser)));
         }
     }
 
@@ -178,17 +178,14 @@ public class SellerServiceImpl implements SellerService {
 
         // Notification: plain text (no JSON)
         notificationService.createNotificationForUser(
-                saved.getUser(),
+                saved.getUser().getId(),
                 "Seller registration approved",
                 "Your seller registration has been approved. Please proceed to the contract step."
         );
         // Email
         emailService.sendEmailAsync(saved.getUser().getEmail(),
                 "Your seller registration was approved",
-                buildEmail("Registration Approved",
-                        "Hello " + displayName(saved.getUser()) + ",",
-                        "Your seller registration has been approved.",
-                        "Please proceed to the contract step to continue."));
+                EmailTemplate.sellerStatusEmail(displayName(saved.getUser()), "approved", null));
 
         return saved;
     }
@@ -215,18 +212,14 @@ public class SellerServiceImpl implements SellerService {
 
         // Notification
         notificationService.createNotificationForUser(
-                saved.getUser(),
+                saved.getUser().getId(),
                 "Seller registration rejected",
                 ("Your seller request was rejected. Reason: " + reason)
         );
         // Email
         emailService.sendEmailAsync(saved.getUser().getEmail(),
                 "Your seller registration was rejected",
-                buildEmail("Registration Rejected",
-                        "Hello " + displayName(saved.getUser()) + ",",
-                        "Unfortunately, your seller registration was rejected.",
-                        "Reason: " + reason,
-                        "You may update your information and try again."));
+                EmailTemplate.sellerStatusEmail(displayName(saved.getUser()), "rejected", reason));
 
         return saved;
     }
@@ -252,17 +245,14 @@ public class SellerServiceImpl implements SellerService {
 
         // Notification: plain text
         notificationService.createNotificationForUser(
-                user,
+                user.getId(),
                 "Shop activated",
                 "Congratulations! Your shop is now active."
         );
         // Email (optional but useful)
         emailService.sendEmailAsync(user.getEmail(),
                 "Your shop is now active",
-                buildEmail("Shop Activated",
-                        "Hello " + displayName(user) + ",",
-                        "Congratulations! Your shop is now active.",
-                        "You can start listing products and selling."));
+                EmailTemplate.sellerStatusEmail(displayName(user), "approved", null));
     }
 
     @Override
@@ -329,17 +319,20 @@ public class SellerServiceImpl implements SellerService {
         reg.setUpdatedAt(new Date());
         sellerRegistrationRepository.save(reg);
         notificationService.createNotificationForUser(
-                user,
+                user.getId(),
                 "Signed contract submitted",
                 "We received your signed contract. Our admins will review it shortly."
+        );
+        // Notify admins that a signed contract was submitted for review
+        notificationService.createNotificationForRole(
+                "ADMIN",
+                "Signed contract submitted",
+                "Signed contract submitted by " + displayName(user) + " for registration id " + reg.getId() + ". Please review."
         );
         // Email
         emailService.sendEmailAsync(user.getEmail(),
                 "We received your signed contract",
-                buildEmail("Signed Contract Submitted",
-                        "Hello " + displayName(user) + ",",
-                        "We received your signed contract.",
-                        "Our admins will review it shortly."));
+                EmailTemplate.sellerVerificationEmail(displayName(user), "http://mmomarket.vn/seller/contract-review"));
     }
 
     @Override
@@ -374,17 +367,19 @@ public class SellerServiceImpl implements SellerService {
 
         // Notify + email
         notificationService.createNotificationForUser(
-                currentUser,
+                currentUser.getId(),
                 "Seller registration resubmitted",
                 "We received your updated seller registration. Status: Pending."
         );
+        // Notify admins about the resubmission
+        notificationService.createNotificationForRole(
+                "ADMIN",
+                "Seller registration resubmitted",
+                "Updated seller registration from " + displayName(currentUser) + " (shop: " + saved.getShopName() + ") is pending review."
+        );
         emailService.sendEmailAsync(currentUser.getEmail(),
                 "We received your seller registration",
-                buildEmail("Seller Registration Resubmitted",
-                        "Hello " + displayName(currentUser) + ",",
-                        "We received your updated request to become a seller.",
-                        "Current status: Pending.",
-                        "We'll notify you once it is reviewed."));
+                EmailTemplate.sellerRegistrationSuccessEmail(displayName(currentUser)));
 
         return saved;
     }
@@ -450,26 +445,25 @@ public class SellerServiceImpl implements SellerService {
         for (String l : lines) {
             if (l == null) continue;
             body.append("<p style=\"margin:8px 0;color:#374151;line-height:1.6\">")
-                .append(escapeHtml(l).replace("\n", "<br/>"))
-                .append("</p>");
+                    .append(escapeHtml(l).replace("\n", "<br/>"))
+                    .append("</p>");
         }
-        return ""
-            + "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head>"
-            + "<body style=\"background:#f5f7fb;margin:0;padding:24px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif\">"
-            + "  <div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;"
-            + "              box-shadow:0 6px 24px rgba(16,24,40,0.08);padding:28px 28px 24px\">"
-            + "    <div style=\"border-bottom:1px solid #eef2f7;padding-bottom:12px;margin-bottom:16px\">"
-            + "      <div style=\"font-size:14px;color:#6b7280;letter-spacing:.08em;text-transform:uppercase\">MMOMarket</div>"
-            + "    </div>"
-            + "    <h1 style=\"font-size:20px;margin:0 0 8px;color:#111827\">" + escapeHtml(title) + "</h1>"
-            +        body.toString()
-            + "    <hr style=\"border:none;border-top:1px solid #eef2f7;margin:20px 0\"/>"
-            + "    <p style=\"font-size:12px;color:#9ca3af;margin:0\">This is an automated message from MMOMarket. Please do not reply.</p>"
-            + "  </div>"
-            + "  <div style=\"max-width:640px;margin:12px auto 0;text-align:center;color:#9ca3af;font-size:12px\">"
-            + "    © " + Calendar.getInstance().get(Calendar.YEAR) + " MMOMarket. All rights reserved."
-            + "  </div>"
-            + "</body></html>";
+        return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head>"
+                + "<body style=\"background:#f5f7fb;margin:0;padding:24px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif\">"
+                + "  <div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;"
+                + "              box-shadow:0 6px 24px rgba(16,24,40,0.08);padding:28px 28px 24px\">"
+                + "    <div style=\"border-bottom:1px solid #eef2f7;padding-bottom:12px;margin-bottom:16px\">"
+                + "      <div style=\"font-size:14px;color:#6b7280;letter-spacing:.08em;text-transform:uppercase\">MMOMarket</div>"
+                + "    </div>"
+                + "    <h1 style=\"font-size:20px;margin:0 0 8px;color:#111827\">" + escapeHtml(title) + "</h1>"
+                + body
+                + "    <hr style=\"border:none;border-top:1px solid #eef2f7;margin:20px 0\"/>"
+                + "    <p style=\"font-size:12px;color:#9ca3af;margin:0\">This is an automated message from MMOMarket. Please do not reply.</p>"
+                + "  </div>"
+                + "  <div style=\"max-width:640px;margin:12px auto 0;text-align:center;color:#9ca3af;font-size:12px\">"
+                + "    © " + Calendar.getInstance().get(Calendar.YEAR) + " MMOMarket. All rights reserved."
+                + "  </div>"
+                + "</body></html>";
     }
 
     private String escapeHtml(String s) {
@@ -477,7 +471,7 @@ public class SellerServiceImpl implements SellerService {
         return s.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
-                .replace("\"","&quot;")
+                .replace("\"", "&quot;")
                 .replace("'", "&#39;");
     }
 }
