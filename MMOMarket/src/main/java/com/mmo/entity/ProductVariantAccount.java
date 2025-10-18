@@ -3,38 +3,39 @@ package com.mmo.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-
 import java.util.Date;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "ProductVariants", indexes = {
-        @Index(name = "idx_product_id", columnList = "product_id")
+@Table(name = "ProductVariantAccounts", indexes = {
+    @Index(name = "idx_variant_id_status", columnList = "variant_id, status")
 })
-public class ProductVariant {
-
+public class ProductVariantAccount {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // FK: product_id -> Products(id)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    private Product product;
+    @JoinColumn(name = "variant_id", nullable = false)
+    private ProductVariant variant;
 
-    @Column(name = "variant_name", nullable = false, length = 255)
-    private String variantName;
+    @Column(name = "account_data", columnDefinition = "TEXT", nullable = false)
+    private String accountData;
 
-    @Column(name = "price", nullable = false)
-    private Long price;
+    @Column(name = "status", columnDefinition = "ENUM('Available', 'Sold') NOT NULL DEFAULT 'Available'")
+    private String status = "Available";
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id", nullable = true)
+    private Transaction transaction;
 
-    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
-    private String status = "Pending";
+    @Column(name = "is_activated", columnDefinition = "TINYINT(1) DEFAULT 0")
+    private boolean isActivated;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "activated_at")
+    private Date activatedAt;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
@@ -53,7 +54,6 @@ public class ProductVariant {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    // Optional readonly audit relations
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
@@ -62,3 +62,4 @@ public class ProductVariant {
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
 }
+

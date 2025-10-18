@@ -12,6 +12,8 @@ import java.util.Date;
 @Setter
 @Table(name = "Commissions", indexes = {
         @Index(name = "idx_commission_user_id", columnList = "user_id")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_commission_user_id", columnNames = "user_id")
 })
 public class Commission {
 
@@ -21,7 +23,8 @@ public class Commission {
 
     // FK: user_id -> Users(id)
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
     private User user;
 
     // Default 5.00% when not provided

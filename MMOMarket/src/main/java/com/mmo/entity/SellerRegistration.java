@@ -10,7 +10,9 @@ import java.util.Date;
 @Entity
 @Getter
 @Setter
-@Table(name = "SellerRegistrations")
+@Table(name = "SellerRegistrations", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_seller_registration_user_id", columnNames = "user_id")
+})
 public class SellerRegistration {
 
     @Id
@@ -18,7 +20,8 @@ public class SellerRegistration {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
     private User user;
 
     @Size(min = 2, max = 100, message = "Shop name must be between 2 and 100 characters")

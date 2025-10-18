@@ -97,7 +97,6 @@ CREATE TABLE IF NOT EXISTS ProductVariants (
     product_id BIGINT NOT NULL, -- Mã sản phẩm
     variant_name VARCHAR(255) NOT NULL, -- Tên biến thể
     price BIGINT NOT NULL, -- Giá
-    stock INT DEFAULT 0, -- Tồn kho
     status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái Bán hoặc không do seller
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
@@ -109,6 +108,63 @@ CREATE TABLE IF NOT EXISTS ProductVariants (
     FOREIGN KEY (deleted_by) REFERENCES Users(id),
     INDEX idx_product_id (product_id)
 );
+
+-- Bảng Transactions - Quản lý giao dịch mua hàng
+-- Bảng Transactions (Tạm thời chưa có FK đến ProductVariantAccounts)
+CREATE TABLE IF NOT EXISTS Transactions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_id BIGINT NOT NULL,
+    seller_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    variant_id BIGINT NOT NULL,
+    delivered_account_id BIGINT NULL, -- Sẽ thêm FK sau
+    amount BIGINT NOT NULL,
+    commission BIGINT NOT NULL,
+    coins_used BIGINT NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    escrow_release_date DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    deleted_by BIGINT,
+    isDelete TINYINT(1) DEFAULT 0,
+
+    FOREIGN KEY (customer_id) REFERENCES Users(id) ON DELETE NO ACTION,
+    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE NO ACTION,
+    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE NO ACTION,
+    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id) ON DELETE NO ACTION,
+    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL,
+    FOREIGN KEY (deleted_by) REFERENCES Users(id) ON DELETE SET NULL
+    -- FK (delivered_account_id) sẽ được thêm bằng ALTER TABLE
+);
+
+-- Bảng ProductVariantAccounts (Có FK đến Transactions)
+CREATE TABLE IF NOT EXISTS ProductVariantAccounts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    variant_id BIGINT NOT NULL,
+    account_data TEXT NOT NULL,
+    status ENUM('Available', 'Sold') NOT NULL DEFAULT 'Available',
+    transaction_id BIGINT NULL,
+    is_activated TINYINT(1) DEFAULT 0,
+    activated_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    deleted_by BIGINT,
+    isDelete TINYINT(1) DEFAULT 0,
+
+    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id) ON DELETE NO ACTION, -- Đổi thành NO ACTION
+    FOREIGN KEY (transaction_id) REFERENCES Transactions(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL,
+    FOREIGN KEY (deleted_by) REFERENCES Users(id) ON DELETE SET NULL,
+
+    INDEX idx_variant_id_status (variant_id, status)
+);
+
+-- Thêm lại FK cho bảng Transactions
+ALTER TABLE Transactions
+ADD CONSTRAINT fk_delivered_account
+FOREIGN KEY (delivered_account_id) REFERENCES ProductVariantAccounts(id) ON DELETE NO ACTION;
 
 -- Bảng CoinDeposits - Quản lý giao dịch nạp Coin qua Sepay
 CREATE TABLE IF NOT EXISTS CoinDeposits (
@@ -123,31 +179,6 @@ CREATE TABLE IF NOT EXISTS CoinDeposits (
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
-);
-
--- Bảng Transactions - Quản lý giao dịch mua hàng
-CREATE TABLE IF NOT EXISTS Transactions (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    customer_id BIGINT NOT NULL, -- Mã khách hàng
-    seller_id BIGINT NOT NULL, -- Mã người bán
-    product_id BIGINT NOT NULL, -- Mã sản phẩm
-    variant_id BIGINT NOT NULL, -- Mã biến thể
-    amount BIGINT NOT NULL, -- Tổng Coin thanh toán
-    commission BIGINT NOT NULL, -- Coin hoa hồng khấu trừ
-    coins_used BIGINT NOT NULL, -- Coin sử dụng để thanh toán
-    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái: Pending, Completed, Refunded, Cancelled
-    escrow_release_date DATETIME, -- Ngày tự động chuyển Coin cho Seller (3 ngày sau)
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (customer_id) REFERENCES Users(id) ON DELETE NO ACTION,
-    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE NO ACTION,
-    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE NO ACTION,
-    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id) ON DELETE NO ACTION,
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
@@ -237,7 +268,7 @@ CREATE TABLE IF NOT EXISTS Reviews (
 -- Bảng Commissions - Quản lý hoa hồng theo cửa hàng, mặc định 5% nếu không cấu hình
 CREATE TABLE IF NOT EXISTS Commissions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL, -- Mã người dùng (Seller)
+    user_id BIGINT NOT NULL UNIQUE, -- Mã người dùng (Seller)
     percentage DECIMAL(5,2) NOT NULL DEFAULT 5.00, -- Tỷ lệ hoa hồng, mặc định 5%
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
@@ -290,7 +321,7 @@ CREATE TABLE IF NOT EXISTS BlogComments (
 -- Bảng SellerRegistrations - Quản lý yêu cầu đăng ký bán hàng
 CREATE TABLE IF NOT EXISTS SellerRegistrations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL, -- Mã người dùng
+    user_id BIGINT NOT NULL UNIQUE, -- Mã người dùng
     shop_name VARCHAR(255) NOT NULL, -- Tên cửa hàng
     description TEXT, -- Mô tả
     contract VARCHAR(255), -- Hợp đồng
@@ -307,7 +338,7 @@ CREATE TABLE IF NOT EXISTS SellerRegistrations (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
--- Bảng Notifications - Quản lý thông báo (bỏ cột status)
+-- Bảng Notifications - Quản lý thông báo
 CREATE TABLE IF NOT EXISTS Notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
     user_id BIGINT NOT NULL, -- Mã người dùng liên kết
@@ -323,67 +354,3 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
-
--- Trigger tăng lượt xem blog
-DELIMITER //
-CREATE TRIGGER trg_IncrementBlogViews
-AFTER UPDATE ON Blogs
-FOR EACH ROW
-BEGIN
-    IF EXISTS (SELECT 1 FROM inserted WHERE id = NEW.id) THEN
-        UPDATE Blogs SET views = views + 1 WHERE id = NEW.id;
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger ngăn xóa blog khi có bình luận hoặc lượt thích
-DELIMITER //
-CREATE TRIGGER trg_PreventBlogDelete
-BEFORE DELETE ON Blogs
-FOR EACH ROW
-BEGIN
-    IF EXISTS (SELECT 1 FROM BlogComments WHERE blog_id = OLD.id AND isDelete = 0) OR 
-       EXISTS (SELECT 1 FROM BlogLikes WHERE blog_id = OLD.id AND isDelete = 0) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Không thể xóa blog khi có bình luận hoặc lượt thích.';
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger tự động chuyển Coin cho Seller sau 3 ngày nếu không có khiếu nại
-DELIMITER //
-CREATE TRIGGER trg_AutoReleaseEscrow
-AFTER UPDATE ON Transactions
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Completed' AND OLD.status = 'Pending' AND NEW.escrow_release_date <= CURRENT_TIMESTAMP 
-       AND NOT EXISTS (SELECT 1 FROM Complaints WHERE transaction_id = NEW.id AND status = 'Open' AND isDelete = 0) THEN
-        UPDATE Users SET coins = coins + (NEW.amount - NEW.commission) WHERE id = NEW.seller_id;
-        INSERT INTO AuditLogs (user_id, action, details, created_at)
-        VALUES (NEW.seller_id, 'Receive Coins', CONCAT('Nhận ', (NEW.amount - NEW.commission), ' Coin từ giao dịch ', NEW.id), CURRENT_TIMESTAMP);
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger ngăn xóa sản phẩm khi đang có giao dịch
-DELIMITER //
-CREATE TRIGGER trg_PreventProductDelete
-BEFORE DELETE ON Products
-FOR EACH ROW
-BEGIN
-    IF EXISTS (SELECT 1 FROM Transactions WHERE product_id = OLD.id AND status IN ('Pending', 'Completed') AND isDelete = 0) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Không thể xóa sản phẩm khi đang có giao dịch.';
-    END IF;
-END//
-DELIMITER ;
-
--- Trigger ngăn xóa biến thể sản phẩm khi đang có giao dịch
-DELIMITER //
-CREATE TRIGGER trg_PreventVariantDelete
-BEFORE DELETE ON ProductVariants
-FOR EACH ROW
-BEGIN
-    IF EXISTS (SELECT 1 FROM Transactions WHERE variant_id = OLD.id AND status IN ('Pending', 'Completed') AND isDelete = 0) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Không thể xóa biến thể sản phẩm khi đang có giao dịch.';
-    END IF;
-END//
-DELIMITER ;

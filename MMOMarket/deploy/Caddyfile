@@ -1,0 +1,4 @@
+mmomarket.id.vn {
+    # Tự động lấy chứng chỉ SSL (HTTPS) từ Let's Encrypt
+    reverse_proxy app:8080
+}
