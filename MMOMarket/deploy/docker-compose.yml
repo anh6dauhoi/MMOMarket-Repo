@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Dịch vụ ứng dụng Spring Boot của bạn
+  app:
+    image: anh6dauhoi/mmomarket:latest
+    container_name: mmomarket-app
+    env_file:
+      - .env
+    expose:
+      - "8080"
+    depends_on:
+      - redis
+    networks:
+      - karental-network
+
+
+  # Dịch vụ Caddy (Web server/Reverse Proxy)
+  caddy:
+    image: caddy:latest
+    container_name: mmomarket-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - app
+    networks:
+      - karental-network
+
+volumes:
+  caddy_data:
+
+networks:
+  karental-network:
+    driver: bridge

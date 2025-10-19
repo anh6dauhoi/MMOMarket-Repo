@@ -16,38 +16,45 @@ public class Withdrawal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    // FK: seller_id -> Users(id)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
 
-    @ManyToOne
+    // FK: bank_info_id -> SellerBankInfo(id)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bank_info_id", nullable = false)
     private SellerBankInfo bankInfo;
 
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
     private Long amount;
 
-    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
-    private String status;
+    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
+    private String status = "Pending"; // Pending, Approved, Rejected
 
-    @Column(length = 100)
+    @Column(name = "bank_name", length = 100)
     private String bankName;
 
-    @Column(length = 50)
+    @Column(name = "account_number", length = 50)
     private String accountNumber;
 
-    @Column(length = 100)
+    // Beneficiary name
+    @Column(name = "account_name", length = 100)
+    private String accountName;
+
+    @Column(name = "branch", length = 100)
     private String branch;
 
-    @Column(length = 255)
+    // Evidence file path (Approved) OR rejection reason (Rejected)
+    @Column(name = "proof_file", length = 255)
     private String proofFile;
 
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -59,11 +66,12 @@ public class Withdrawal {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    @ManyToOne
+    // Optional readonly audit navigations
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
 }

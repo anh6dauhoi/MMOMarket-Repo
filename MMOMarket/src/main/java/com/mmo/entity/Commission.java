@@ -4,30 +4,39 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "Commissions")
+@Table(name = "Commissions", indexes = {
+        @Index(name = "idx_commission_user_id", columnList = "user_id")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_commission_user_id", columnNames = "user_id")
+})
 public class Commission {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    // FK: user_id -> Users(id)
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+    private User user;
 
-    @Column(nullable = false, columnDefinition = "DECIMAL(5,2) DEFAULT 5.00")
-    private Double percentage;
+    // Default 5.00% when not provided
+    @Column(name = "percentage", precision = 5, scale = 2, nullable = false, columnDefinition = "DECIMAL(5,2) DEFAULT 5.00")
+    private BigDecimal percentage = new BigDecimal("5.00");
 
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -39,10 +48,7 @@ public class Commission {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
-
+    // Optional readonly audit navigations
     @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;

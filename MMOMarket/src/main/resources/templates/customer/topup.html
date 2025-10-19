@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Top Up MMO Market</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -11,13 +11,34 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <!-- Page CSS -->
-    <link th:href="@{/css/topup.css}" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/customer/css/topup.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+
+        .topup-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
 <th:block th:replace="~{fragments/header :: header}"></th:block>
 
-<main>
+<main class="flex-1 flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 w-full">
     <section class="topup-section">
         <div class="container">
             <div class="topup-header">
@@ -37,9 +58,8 @@
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-hashtag"></i> Account Number</label>
-                        <div class="field-value with-action">
+                        <div class="field-value">
                             <span class="copy-badge">0813302283</span>
-                            <button class="copy-btn" type="button" data-copy="0813302283">Copy</button>
                         </div>
                     </div>
 
@@ -50,9 +70,8 @@
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-file-invoice"></i> Transfer content</label>
-                        <div class="field-value with-action">
-                            <span id="depositCodeVal" class="copy-badge" th:text="${depositCode}">MMOXXXX123456</span>
-                            <button class="copy-btn" type="button" data-copy-id="depositCodeVal">Copy</button>
+                        <div class="field-value">
+                            <span class="copy-badge" id="depositCodeVal" th:text="${depositCode}">MMOXXXX123456</span>
                         </div>
                     </div>
 
@@ -77,10 +96,11 @@
 
                 <div class="qr-card">
                     <h3 class="card-title"><i class="fa-solid fa-qrcode"></i> Scan QR code to top up</h3>
-                    <p class="scan-instruction">Use your banking app to scan the QR code and transfer money automatically</p>
+                    <p class="scan-instruction">Use your banking app to scan the QR code and transfer money
+                        automatically</p>
 
                     <div class="qr-image-wrapper">
-                        <img th:src="${vietQrUrl}" alt="QR Code for payment">
+                        <img alt="QR Code for payment" th:src="${vietQrUrl}">
                     </div>
 
                     <div class="quick-guide">
@@ -100,25 +120,6 @@
 
 <th:block th:replace="~{fragments/footer :: footer}"></th:block>
 
-<script>
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.copy-btn');
-    if (!btn) return;
-    let text = btn.getAttribute('data-copy');
-    const id = btn.getAttribute('data-copy-id');
-    if (!text && id) {
-      const el = document.getElementById(id);
-      if (el) text = el.innerText.trim();
-    }
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => {
-        const prev = btn.innerText;
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = prev, 1200);
-      });
-    }
-  });
-</script>
 
 </body>
 </html>

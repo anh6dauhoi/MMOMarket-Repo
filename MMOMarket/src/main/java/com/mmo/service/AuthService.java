@@ -2,15 +2,10 @@ package com.mmo.service;
 
 import com.mmo.entity.User;
 import com.mmo.repository.UserRepository;
-import com.mmo.util.EmailTemplate;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import jakarta.mail.internet.MimeMessage;
 
-import java.io.UnsupportedEncodingException;
 import java.util.Random;
 
 @Service
@@ -19,10 +14,9 @@ public class AuthService {
     private UserRepository userRepository;
 
     @Autowired
-    private JavaMailSender mailSender;
+    private EmailService emailService;
 
     public User findByEmail(String email) {
-        // Đảm bảo ánh xạ đúng với cột isDelete (camelCase) trong DB
         return userRepository.findByEmailAndIsDelete(email, false);
     }
 
@@ -35,7 +29,7 @@ public class AuthService {
         user.setEmail(email);
         user.setPassword(password); // Lưu plaintext
         user.setFullName(fullName); // Có thể null
-        user.setRole("ROLE_CUSTOMER");
+        user.setRole("CUSTOMER");
         user.setVerified(false); // Đúng với cột isVerified (camelCase)
         user.setCoins(0L);
         return userRepository.save(user);
@@ -51,16 +45,7 @@ public class AuthService {
     }
 
     public void sendVerificationCodeEmail(String email, String code) throws MessagingException {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-        try {
-            helper.setFrom("anh.tuan662005@gmail.com", "MMOMarket");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
-        helper.setTo(email);
-        helper.setSubject("MMOMarket - Xác thực tài khoản & Đổi mật khẩu");
-        helper.setText(EmailTemplate.verificationEmail(code), true);
-        mailSender.send(message);
+        // Delegate to async email service with retry; keep signature for controller compatibility
+        emailService.sendVerificationCodeEmailAsync(email, code);
     }
 }

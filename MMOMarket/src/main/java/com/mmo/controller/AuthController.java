@@ -10,19 +10,21 @@ import com.mmo.repository.EmailVerificationRepository;
 import com.mmo.service.AuthService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.CRC32;
 
 @Controller
 @SessionAttributes("user")
@@ -98,10 +100,10 @@ public class AuthController {
 
     @PostMapping("/authen/verify")
     public String verify(@RequestParam String email, @RequestParam String code, Model model,
-                        @RequestParam(required = false) Boolean reset) {
+                         @RequestParam(required = false) Boolean reset) {
         User user = authService.findByEmail(email);
         if (user == null) {
-            model.addAttribute("message", "Email không tồn t��i.");
+            model.addAttribute("message", "Email không tồn tại.");
             model.addAttribute("email", email);
             return "authen/verify";
         }
@@ -221,8 +223,8 @@ public class AuthController {
         }
         // Deterministic 6-digit numeric suffix based on email+id
         String seed = (user.getEmail() != null ? user.getEmail() : "") + id;
-        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
-        crc.update(seed.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        CRC32 crc = new CRC32();
+        crc.update(seed.getBytes(StandardCharsets.UTF_8));
         long val = Math.abs(crc.getValue() % 1_000_000L);
         String suffix = String.format("%06d", val);
         return "MMO" + mid + suffix;
@@ -241,7 +243,7 @@ public class AuthController {
     }
 
     @RequestMapping("/welcome")
-    public String welcome(Model model, org.springframework.security.core.Authentication authentication) {
+    public String welcome(Model model, Authentication authentication) {
         User user = null;
         String displayName = null;
 
@@ -255,7 +257,7 @@ public class AuthController {
                 user = new User();
                 user.setEmail(email);
                 user.setFullName(name);
-                user.setRole("ROLE_CUSTOMER");
+                user.setRole("CUSTOMER");
                 user.setVerified(true);
                 user = authService.saveUser(user);
                 ensureDepositCode(user);
@@ -295,7 +297,7 @@ public class AuthController {
     }
 
     @GetMapping("/customer/topup")
-    public String topupPage(Model model, org.springframework.security.core.Authentication authentication) {
+    public String topupPage(Model model, Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {
             User user = null;
             if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
@@ -328,7 +330,7 @@ public class AuthController {
             // Lấy các field phổ biến từ SePay (tùy biến theo cấu trúc thực tế)
             String description = json.path("description").asText(json.path("content").asText(""));
             long amount = json.path("amount").asLong(0);
-            String bankAccount = json.path("to_account").asText("0813302283");
+            json.path("to_account").asText("0813302283");
 
             // Tìm code theo cấu trúc MMO...
             Pattern p = Pattern.compile("MMO[A-Z0-9]{2,5}[0-9]{3,10}");

@@ -1,0 +1,655 @@
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null and totalPages > 0 ? totalPages : 1},
+              regCount=${registrations != null ? #lists.size(registrations) : 0}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+        <!-- Toast Notification Placeholder -->
+        <div class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50"
+             id="toast">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Title & Search -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Seller Registrations</h1>
+            <div class="relative w-full md:w-1/3">
+                <form id="searchForm" class="relative flex" method="get" action="/admin/seller-registrations" th:attr="data-status=${currentStatus}">
+                    <label for="seller-search" class="sr-only">Search sellers</label>
+                    <div class="relative w-full">
+                        <input id="seller-search" name="search" aria-label="Search sellers"
+                               class="w-full py-2 pl-14 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm bg-white transition-shadow duration-150 focus:shadow-md"
+                               placeholder="Search by customer name"
+                               type="text" th:value="${param.search}">
+                        <button type="submit" class="absolute inset-y-0 left-3 flex items-center justify-center text-gray-400 p-0 m-0 bg-transparent border-0 h-8 w-8" aria-label="Search">
+                            <svg class="h-6 w-6 mt-3" fill="none" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width:2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tab navigation - Scrollable on mobile -->
+        <div class="overflow-x-auto mb-6">
+            <div class="flex space-x-2 md:space-x-4 border-b min-w-max">
+                <a class="py-2 px-3 md:px-4"
+                   th:classappend="${currentStatus == 'All'} ? 'border-b-2 border-red-500 text-red-500 font-semibold' : 'text-gray-500 hover:text-red-500'"
+                   th:href="@{/admin/seller-registrations(status='All') }">All</a>
+                <a class="py-2 px-3 md:px-4"
+                   th:classappend="${currentStatus == 'Pending'} ? 'border-b-2 border-red-500 text-red-500 font-semibold' : 'text-gray-500 hover:text-red-500'"
+                   th:href="@{/admin/seller-registrations(status='Pending') }">Pending</a>
+                <a class="py-2 px-3 md:px-4"
+                   th:classappend="${currentStatus == 'Approved'} ? 'border-b-2 border-red-500 text-red-500 font-semibold' : 'text-gray-500 hover:text-red-500'"
+                   th:href="@{/admin/seller-registrations(status='Approved') }">Approved</a>
+                <a class="py-2 px-3 md:px-4"
+                   th:classappend="${currentStatus == 'Rejected'} ? 'border-b-2 border-red-500 text-red-500 font-semibold' : 'text-gray-500 hover:text-red-500'"
+                   th:href="@{/admin/seller-registrations(status='Rejected') }">Rejected</a>
+            </div>
+        </div>
+
+        <!-- Table for medium+ screens -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-50">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop
+                        Name
+                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email
+                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reg. Date
+                        <a href="#" class="ml-1 align-middle" title="Sort by Registration Date">
+                            <i class="fas fa-sort text-gray-400"></i>
+                        </a>
+                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
+                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    </th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                <tr class="hover:bg-gray-50" th:attr="data-row-id=${reg.id}" th:each="reg,iter : ${registrations}">
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${reg.user != null ? reg.user.fullName : 'N/A'}">Customer</td>
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${reg.shopName}">Shop Name</td>
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${reg.user != null ? reg.user.email : 'N/A'}">
+                        email@example.com
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap"
+                        th:text="${reg.createdAt != null ? #dates.format(reg.createdAt, 'yyyy-MM-dd') : ''}">2024-01-15
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap status-cell"
+                        th:with="
+                          rawStatus=${reg.status != null ? reg.status : ''},
+                          upper=${#strings.toUpperCase(rawStatus)},
+                          isApproved=${#strings.contains(upper,'APPROVED') or #strings.contains(upper,'ACTIVE')},
+                          isRejected=${#strings.contains(upper,'REJECTED')},
+                          isPending=${#strings.contains(upper,'PENDING')},
+                          isCompleted=${#strings.contains(upper,'COMPLETED')},
+                          isPendingContract=${upper == 'PENDING_CONTRACT_REVIEW'},
+                          displayStatus=${
+                             upper == 'APPROVED_REGISTRATION' ? 'Approved (Registration)' :
+                             upper == 'APPROVED_STAGE' ? 'Approved (Registration)' :
+                             upper == 'REJECTED_CONTRACT' ? 'Rejected (Contract)' :
+                             upper == 'REJECTED_REGISTRATION' ? 'Rejected (Registration)' :
+                             upper == 'PENDING_CONTRACT_REVIEW' ? 'Pending (Contract Review)' :
+                             (isApproved ? 'Approved' :
+                             (isRejected ? 'Rejected' :
+                             (isCompleted ? 'Completed' :
+                              #strings.capitalize(#strings.toLowerCase(rawStatus)))))}
+                        ">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                              th:classappend="${
+                                  (isApproved or isCompleted) ? 'bg-green-100 text-green-800' :
+                                  (isPendingContract ? 'bg-indigo-100 text-indigo-800' :
+                                  (isPending ? 'bg-yellow-100 text-yellow-800' :
+                                  (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')))
+                              }"
+                              th:text="${displayStatus}">Status</span>
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                        <button class="text-red-500 hover:underline view-detail" th:attr="data-id=${reg.id}">View
+                            detail
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4" th:attr="data-row-id=${reg.id}"
+                 th:each="reg,iter : ${registrations}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
+                        <span class="font-medium text-gray-700 mr-2" th:text="${reg.user != null ? reg.user.fullName : 'N/A'}">Customer</span>
+                        <h3 class="font-semibold text-gray-900" th:text="${reg.shopName}">Shop Name</h3>
+                    </div>
+                    <span class="px-2 py-1 inline-flex text-xs leading-none font-semibold rounded-full"
+                          th:classappend="${
+                              (isApproved or isCompleted) ? 'bg-green-100 text-green-800' :
+                              (isPendingContract ? 'bg-indigo-100 text-indigo-800' :
+                              (isPending ? 'bg-yellow-100 text-yellow-800' :
+                              (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')))
+                          }"
+                          th:text="${displayStatus}"
+                          th:with="
+                            rawStatus=${reg.status != null ? reg.status : ''},
+                            upper=${#strings.toUpperCase(rawStatus)},
+                            isApproved=${#strings.contains(upper,'APPROVED') or #strings.contains(upper,'ACTIVE')},
+                            isRejected=${#strings.contains(upper,'REJECTED')},
+                            isPending=${#strings.contains(upper,'PENDING')},
+                            isCompleted=${#strings.contains(upper,'COMPLETED')},
+                            isPendingContract=${upper == 'PENDING_CONTRACT_REVIEW'},
+                            displayStatus=${
+                               upper == 'APPROVED_REGISTRATION' ? 'Approved (Registration)' :
+                               upper == 'APPROVED_STAGE' ? 'Approved (Registration)' :
+                               upper == 'REJECTED_CONTRACT' ? 'Rejected (Contract)' :
+                               upper == 'REJECTED_REGISTRATION' ? 'Rejected (Registration)' :
+                               upper == 'PENDING_CONTRACT_REVIEW' ? 'Pending (Contract)' :
+                               (isApproved ? 'Approved' :
+                               (isRejected ? 'Rejected' :
+                               (isCompleted ? 'Completed' :
+                                #strings.capitalize(#strings.toLowerCase(rawStatus)))))}
+                          ">Status</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500">Email:</p>
+                        <p class="font-medium" th:text="${reg.user != null ? reg.user.email : 'N/A'}">
+                            email@example.com</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Registration Date:</p>
+                        <p class="font-medium"
+                           th:text="${reg.createdAt != null ? #dates.format(reg.createdAt, 'yyyy-MM-dd') : ''}">
+                            2024-01-15</p>
+                    </div>
+                </div>
+                <button class="w-full py-2 mt-2 bg-gray-50 text-red-500 hover:bg-gray-100 rounded font-medium text-sm view-detail"
+                        th:attr="data-id=${reg.id}">
+                    View Details
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination - Responsive -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Showing <span th:text="${regCount > 0 ? (page * size + 1) : 0}">0</span>
+                to <span th:text="${page * size + regCount}">0</span>
+                of <span th:text="${total * size}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/seller-registrations(status=${currentStatus}, page=${page - 1})}"
+                   th:if="${page > 0}">Previous</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md"
+                   th:classappend="${i == page} ? 'bg-red-500 text-white' : 'hover:bg-gray-100'"
+                   th:each="i : ${#numbers.sequence(0, total - 1)}"
+                   th:href="@{/admin/seller-registrations(status=${currentStatus}, page=${i})}"
+                   th:if="${(i == 0) || (i == page) || (i == page-1) || (i == page+1) || (i == total-1)}"
+                   th:text="${i + 1}">1</a>
+
+                <span class="px-2 sm:px-3 py-1" th:if="${page > 2 && total > 5}">...</span>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/seller-registrations(status=${currentStatus}, page=${page + 1})}"
+                   th:if="${page < total - 1}">Next</a>
+            </div>
+        </div>
+
+        <!-- Detail Modal -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" id="regModal">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-0 m-4 relative transform transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto">
+                <button class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                        id="closeRegModal">&times;</button>
+                <!-- Header -->
+                <div class="flex items-center gap-4 px-6 pt-6 pb-4 border-b">
+                    <div class="w-14 h-14 rounded-full flex items-center justify-center" id="d-status-icon">
+                        <i class="fas text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-1">Seller Registration</h3>
+                        <p class="text-base font-semibold" id="d-status-text"></p>
+                    </div>
+                </div>
+                <!-- Main Info -->
+                <div class="px-6 py-6 space-y-6">
+                    <!-- Customer ID + Name -->
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-500 min-w-[120px]">Customer</span>
+                        <span class="text-base text-gray-700" id="d-customerId"></span>
+                        <span class="text-lg font-medium text-gray-900" id="d-customerName"></span>
+                    </div>
+                    <!-- Email -->
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-500 min-w-[120px]">Email</span>
+                        <span class="text-base text-gray-700 break-words" id="d-email"></span>
+                    </div>
+                    <!-- Phone -->
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-500 min-w-[120px]">Phone</span>
+                        <span class="text-base text-gray-700" id="d-phone"></span>
+                    </div>
+                    <!-- Shop Name -->
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-500 min-w-[120px]">Shop Name</span>
+                        <span class="text-lg font-medium text-gray-900" id="d-shopName"></span>
+                    </div>
+                    <!-- Registration Date -->
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-500 min-w-[120px]">Registration Date</span>
+                        <span class="text-base text-gray-700" id="d-date"></span>
+                    </div>
+                    <!-- Description -->
+                    <div>
+                        <span class="font-semibold text-gray-500 mb-2 block">Description</span>
+                        <div class="bg-gray-50 p-3 rounded-lg text-base text-gray-800 break-words" id="d-description"></div>
+                    </div>
+                    <!-- Contract -->
+                    <div>
+                        <span class="font-semibold text-gray-500 mb-2 block">Contract</span>
+                        <div class="flex items-center flex-wrap gap-2" id="d-contract-area">
+                            <a class="text-blue-600 hover:underline hidden" href="#" id="d-contract-link">Download</a>
+                            <a class="text-green-600 hover:underline hidden" href="#" id="d-signed-link">Download signed</a>
+                            <div class="flex-grow hidden flex flex-col sm:flex-row sm:items-center gap-2"
+                                 id="d-contract-file-wrapper">
+                                <label class="cursor-pointer bg-white hover:bg-gray-50 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm transition-colors duration-200 whitespace-nowrap"
+                                       for="d-contract-file">
+                                    Choose File
+                                </label>
+                                <input accept=".pdf,.doc,.docx" class="hidden" id="d-contract-file" type="file"/>
+                                <span class="text-sm text-gray-500 truncate" id="file-chosen">No file chosen</span>
+                                <span class="hidden text-sm text-red-500" id="contract-error">Contract file is required</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Reject Reason -->
+                    <div class="hidden" id="d-reason-wrap">
+                        <span class="font-semibold text-red-500 mb-2 block">Reject Reason</span>
+                        <div class="bg-red-50 text-red-700 p-3 rounded-lg text-base break-words" id="d-reason"></div>
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 px-6 pb-6">
+                    <button class="flex-1 px-4 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            id="btnApprove">
+                        Approve
+                    </button>
+                    <button class="flex-1 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors hidden"
+                            id="btnActivate">
+                        Activate
+                    </button>
+                    <button class="flex-1 px-4 py-2 sm:py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                            id="btnReject">
+                        Reject
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reject Modal -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" id="rejectModal">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 md:p-8 m-4 relative transform transition-all duration-300 ease-out">
+                <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800">Reason for Rejection</h3>
+                <textarea class="w-full border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500" id="reason"
+                          placeholder="Please enter the reason for rejection..."
+                          rows="4"></textarea>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button class="px-4 sm:px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                            id="cancelReject">
+                        Cancel
+                    </button>
+                    <button class="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                            id="submitReject">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+                const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+                const regModal = document.getElementById('regModal');
+                const rejectModal = document.getElementById('rejectModal');
+                const closeRegModal = document.getElementById('closeRegModal');
+                const btnApprove = document.getElementById('btnApprove');
+                const btnReject = document.getElementById('btnReject');
+                const btnActivate = document.getElementById('btnActivate');
+                const submitReject = document.getElementById('submitReject');
+                const cancelReject = document.getElementById('cancelReject');
+                const contractFile = document.getElementById('d-contract-file');
+                const contractFileWrapper = document.getElementById('d-contract-file-wrapper');
+                const fileChosen = document.getElementById('file-chosen');
+                const contractLink = document.getElementById('d-contract-link');
+                const signedLink = document.getElementById('d-signed-link');
+                const contractArea = document.getElementById('d-contract-area');
+                const reasonWrap = document.getElementById('d-reason-wrap');
+                const statusIcon = document.getElementById('d-status-icon');
+                const statusText = document.getElementById('d-status-text');
+                let currentId = null;
+                let currentStatus = null;
+                let hasExistingContract = false; // Track if registration already has a contract
+
+                function open(el) {
+                    el.classList.remove('hidden');
+                    el.classList.add('flex');
+                }
+
+                function close(el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+
+                function showToast(message, isError = false) {
+                    const toast = document.getElementById('toast');
+                    const toastMessage = document.getElementById('toast-message');
+                    toastMessage.textContent = message;
+                    toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+                    toast.classList.remove('hidden');
+                    setTimeout(() => {
+                        toast.classList.add('hidden');
+                    }, 3000);
+                }
+
+                function updateTableRowStatus(id, newStatus) {
+                    const row = document.querySelector(`tr[data-row-id='${id}']`);
+                    if (!row) return;
+                    const statusCell = row.querySelector('.status-cell');
+                    if (!statusCell) return;
+
+                    const upperStatus = (newStatus || '').toUpperCase();
+                    let statusClass = 'bg-gray-100 text-gray-800';
+                    if (upperStatus === 'APPROVED' || upperStatus === 'ACTIVE' || upperStatus === 'APPROVED_STAGE' || upperStatus === 'APPROVED_REGISTRATION' || upperStatus === 'COMPLETED') {
+                        statusClass = 'bg-green-100 text-green-800';
+                    } else if (upperStatus === 'PENDING' || upperStatus === 'PENDING_CONTRACT_REVIEW') {
+                        statusClass = upperStatus === 'PENDING_CONTRACT_REVIEW' ? 'bg-indigo-100 text-indigo-800' : 'bg-yellow-100 text-yellow-800';
+                    } else if (upperStatus === 'REJECTED' || upperStatus === 'REJECTED_STAGE' || upperStatus === 'REJECTED_REGISTRATION' || upperStatus === 'REJECTED_CONTRACT') {
+                        statusClass = 'bg-red-100 text-red-800';
+                    }
+                    const label = (upperStatus === 'APPROVED_STAGE' || upperStatus === 'APPROVED_REGISTRATION') ? 'Approved (Registration)'
+                        : (upperStatus === 'REJECTED_STAGE' || upperStatus === 'REJECTED_REGISTRATION') ? 'Rejected (Registration)'
+                            : (upperStatus === 'REJECTED_CONTRACT') ? 'Rejected (Contract)'
+                                : (upperStatus === 'PENDING_CONTRACT_REVIEW') ? 'Pending (Contract Review)'
+                                    : (upperStatus === 'COMPLETED') ? 'Completed'
+                                        : (newStatus ? newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase() : 'Unknown');
+                    statusCell.innerHTML = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${label}</span>`;
+                }
+
+
+                function loadDetail(id) {
+                    fetch(`/admin/seller-registrations/${id}`)
+                        .then(r => r.ok ? r.json() : Promise.reject())
+                        .then(d => {
+                            console.log('Detail response:', d); // Debug: check if d.user exists
+                            currentId = d.id;
+                            currentStatus = d.status;
+                            document.getElementById('d-customerId').textContent = d.customerId ?? '';
+                            document.getElementById('d-shopName').textContent = d.shopName ?? '';
+                            document.getElementById('d-email').textContent = d.user?.email ?? d.email ?? '';
+                            document.getElementById('d-phone').textContent = d.user?.phone ?? d.phone ?? 'N/A';
+                            document.getElementById('d-date').textContent = d.registrationDate ?? '';
+                            document.getElementById('d-description').textContent = d.description ?? 'No description provided.';
+
+                            // Status display
+                            const statusUpper = (d.status || '').toUpperCase();
+                            const displayLabel = statusUpper === 'APPROVED_STAGE' || statusUpper === 'APPROVED_REGISTRATION' ? 'Approved (Registration)'
+                                : statusUpper === 'REJECTED_STAGE' || statusUpper === 'REJECTED_REGISTRATION' ? 'Rejected (Registration)'
+                                    : statusUpper === 'REJECTED_CONTRACT' ? 'Rejected (Contract)'
+                                        : statusUpper === 'PENDING_CONTRACT_REVIEW' ? 'Pending (Contract Review)'
+                                            : statusUpper === 'COMPLETED' ? 'Completed'
+                                                : (d.status || '');
+
+                            // Status header text with reason when rejected
+                            const reasonSuffix = ((statusUpper.startsWith('REJECTED')) && d.reason)
+                                ? ` — Reason: ${d.reason}` : '';
+                            statusText.textContent = displayLabel;
+
+                            statusText.className = 'text-lg font-semibold'; // reset
+                            statusIcon.className = 'w-12 h-12 rounded-full flex items-center justify-center mr-4'; // reset
+                            const icon = statusIcon.querySelector('i');
+                            icon.className = 'fas text-white text-xl';
+
+                            if (statusUpper.startsWith('APPROVED') || statusUpper === 'ACTIVE') {
+                                statusIcon.classList.add('bg-green-500');
+                                icon.classList.add('fa-check');
+                                statusText.classList.add('text-green-500');
+                            } else if (statusUpper === 'PENDING_CONTRACT_REVIEW') {
+                                statusIcon.classList.add('bg-indigo-500');
+                                icon.classList.add('fa-file-signature');
+                                statusText.classList.add('text-indigo-500');
+                            } else if (statusUpper === 'PENDING') {
+                                statusIcon.classList.add('bg-yellow-500');
+                                icon.classList.add('fa-clock');
+                                statusText.classList.add('text-yellow-500');
+                            } else if (statusUpper.startsWith('REJECTED')) {
+                                statusIcon.classList.add('bg-red-500');
+                                icon.classList.add('fa-times');
+                                statusText.classList.add('text-red-500');
+                            } else {
+                                statusIcon.classList.add('bg-gray-500');
+                                icon.classList.add('fa-question');
+                                statusText.classList.add('text-gray-500');
+                            }
+
+                            // Contract
+                            hasExistingContract = d.contractUrl ? true : false; // Track if contract exists
+                            if (d.contractUrl) {
+                                contractLink.href = d.contractUrl;
+                                contractLink.classList.remove('hidden');
+                            } else {
+                                contractLink.classList.add('hidden');
+                            }
+                            if (d.signedContractUrl) {
+                                signedLink.href = d.signedContractUrl;
+                                signedLink.classList.remove('hidden');
+                            } else {
+                                signedLink.classList.add('hidden');
+                            }
+                            // show/hide import
+                            if (!d.contractUrl && !statusUpper.startsWith('REJECTED')) {
+                                contractFileWrapper.classList.remove('hidden');
+                                contractFileWrapper.classList.add('flex');
+                                fileChosen.textContent = 'No file chosen';
+                                contractFile.value = '';
+
+                                // Mark contract as required for PENDING status
+                                if (statusUpper === 'PENDING') {
+                                    contractFile.classList.add('required');
+                                } else {
+                                    contractFile.classList.remove('required');
+                                }
+
+                                // Hide error message initially
+                                document.getElementById('contract-error').classList.add('hidden');
+                            } else {
+                                contractFileWrapper.classList.add('hidden');
+                                contractFileWrapper.classList.remove('flex');
+                            }
+                            // Reject reason
+                            if (d.reason && statusUpper.startsWith('REJECTED')) {
+                                reasonWrap.classList.remove('hidden');
+                                document.getElementById('d-reason').textContent = d.reason;
+                            } else {
+                                reasonWrap.classList.add('hidden');
+                            }
+                            // Buttons visibility - reset first
+                            btnActivate.classList.add('hidden');
+                            btnApprove.classList.remove('hidden');
+                            btnReject.classList.remove('hidden');
+
+                            // For Pending Contract Review: only show Activate and Reject, hide Approve
+                            if (statusUpper === 'PENDING_CONTRACT_REVIEW') {
+                                btnApprove.classList.add('hidden');
+                                btnActivate.classList.remove('hidden');
+                            }
+                            // Hide Approve for non-approvable statuses
+                            else if (statusUpper === 'APPROVED' || statusUpper === 'APPROVED_STAGE' ||
+                                statusUpper === 'APPROVED_REGISTRATION' || statusUpper === 'ACTIVE' ||
+                                statusUpper === 'COMPLETED' || statusUpper.startsWith('REJECTED')) {
+                                btnApprove.classList.add('hidden');
+                            }
+
+                            // Hide Reject button for already approved registrations (Stage 1) and rejected registrations
+                            // But keep it visible for PENDING_CONTRACT_REVIEW to allow contract rejection
+                            if ((statusUpper.startsWith('REJECTED') ||
+                                    statusUpper === 'APPROVED' ||
+                                    statusUpper === 'APPROVED_STAGE' ||
+                                    statusUpper === 'APPROVED_REGISTRATION' ||
+                                    statusUpper === 'ACTIVE' ||
+                                    statusUpper === 'COMPLETED') &&
+                                statusUpper !== 'PENDING_CONTRACT_REVIEW') {
+                                btnReject.classList.add('hidden');
+                            }
+
+                            // Show Activate when:
+                            // - Approved (or stage) and signed exists, or
+                            // - Pending contract review (signed exists), or
+                            // - Completed
+                            if ((statusUpper === 'APPROVED' || statusUpper === 'APPROVED_STAGE' || statusUpper === 'APPROVED_REGISTRATION') && d.signedContractUrl) {
+                                btnActivate.classList.remove('hidden');
+                            }
+                            if (statusUpper === 'PENDING_CONTRACT_REVIEW') {
+                                btnActivate.classList.remove('hidden');
+                            }
+                            if (statusUpper === 'COMPLETED') {
+                                btnActivate.classList.remove('hidden');
+                            }
+
+                            open(regModal);
+                        })
+                        .catch(() => showToast('Failed to load registration detail', true));
+                }
+
+                document.querySelectorAll('.view-detail').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = e.currentTarget.getAttribute('data-id');
+                        loadDetail(id);
+                    });
+                });
+
+                document.getElementById('closeRegModal').addEventListener('click', () => close(regModal));
+
+                contractFile.addEventListener('change', () => {
+                    fileChosen.textContent = contractFile.files.length > 0 ? contractFile.files[0].name : 'No file chosen';
+                });
+
+                btnApprove.addEventListener('click', () => {
+                    if (!currentId) return;
+
+                    // Contract file validation - only require if no existing contract
+                    if (!hasExistingContract && contractFile.classList.contains('required') &&
+                        (!contractFile.files || !contractFile.files[0])) {
+                        // Show error message if no file is selected and no existing contract
+                        document.getElementById('contract-error').classList.remove('hidden');
+                        return; // Stop execution
+                    }
+
+                    const fd = new FormData();
+                    if (contractFile && contractFile.files && contractFile.files[0]) {
+                        fd.append('contract', contractFile.files[0]);
+                    }
+
+                    fetch(`/admin/seller-registrations/${currentId}/approve`, {
+                        method: 'POST',
+                        headers: {[csrfHeader]: csrfToken},
+                        body: fd
+                    }).then(async r => {
+                        if (r.ok) {
+                            close(regModal);
+                            updateTableRowStatus(currentId, 'APPROVED_REGISTRATION');
+                            showToast('Registration approved successfully!');
+                        } else {
+                            const msg = await r.text();
+                            showToast(msg || 'Approve failed', true);
+                        }
+                    }).catch(e => showToast('Approve error: ' + e.message, true));
+                });
+
+                btnReject.addEventListener('click', () => open(rejectModal));
+                cancelReject.addEventListener('click', () => close(rejectModal));
+                document.getElementById('submitReject').addEventListener('click', () => {
+                    if (!currentId) return;
+                    const reason = document.getElementById('reason').value || '';
+                    const body = new URLSearchParams();
+                    body.append('reason', reason);
+                    fetch(`/admin/seller-registrations/${currentId}/reject`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded', [csrfHeader]: csrfToken},
+                        body
+                    }).then(async r => {
+                        if (r.ok) {
+                            // Fetch updated status to reflect correct rejected type
+                            fetch(`/admin/seller-registrations/${currentId}`)
+                                .then(resp => resp.ok ? resp.json() : Promise.reject())
+                                .then(d => {
+                                    close(rejectModal);
+                                    close(regModal);
+                                    updateTableRowStatus(currentId, d.status || 'Rejected');
+                                    showToast('Registration rejected.');
+                                })
+                                .catch(() => {
+                                    close(rejectModal);
+                                    close(regModal);
+                                    updateTableRowStatus(currentId, 'Rejected');
+                                    showToast('Registration rejected.');
+                                });
+                        } else {
+                            const msg = await r.text();
+                            showToast(msg || 'Reject failed', true);
+                        }
+                    }).catch(e => showToast('Reject error: ' + e.message, true));
+                });
+
+                btnActivate.addEventListener('click', () => {
+                    if (!currentId) return;
+                    fetch(`/admin/seller-registrations/${currentId}/activate`, {
+                        method: 'POST',
+                        headers: {[csrfHeader]: csrfToken}
+                    }).then(async r => {
+                        if (r.ok) {
+                            close(regModal);
+                            updateTableRowStatus(currentId, 'Active');
+                            showToast('Shop activated successfully!');
+                        } else {
+                            const msg = await r.text();
+                            showToast(msg || 'Activate failed', true);
+                        }
+                    }).catch(e => showToast('Activate error: ' + e.message, true));
+                });
+
+                // File input change listener for contract file
+                contractFile.addEventListener('change', (e) => {
+                    const fileName = e.target.files.length > 0 ? e.target.files[0].name : 'No file chosen';
+                    document.getElementById('file-chosen').textContent = fileName;
+                    document.getElementById('d-contract-file-wrapper').classList.remove('hidden');
+                });
+
+                // Debug: log search submit
+                document.getElementById('searchForm')?.addEventListener('submit', function(e) {
+                    console.log('Search submitted:', document.getElementById('seller-search').value);
+                });
+
+                // Add search form submit handler for Enter key (optional, for SPA feel)
+                document.getElementById('seller-search')?.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('searchForm').submit();
+                    }
+                });
+            })();
+        </script>
+    </div>
+</div>

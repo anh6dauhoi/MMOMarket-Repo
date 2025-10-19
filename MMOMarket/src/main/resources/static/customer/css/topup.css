@@ -18,7 +18,6 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: var(--light-grey);
     color: var(--text-color);
     line-height: 1.6;
 }
@@ -34,7 +33,7 @@ body {
     background-color: #FFF;
     padding: 15px 0;
     border-bottom: 1px solid var(--medium-grey);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .main-header .container {
@@ -150,7 +149,7 @@ body {
 }
 
 .topup-header h1 {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
     margin-bottom: 5px;
 }
@@ -168,12 +167,12 @@ body {
 .info-card, .qr-card {
     background-color: #FFF;
     padding: 30px;
-    border-radius: var(--border-radius);
+    border-radius: 12px;
     box-shadow: var(--box-shadow);
 }
 
 .card-title {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 500;
     margin-bottom: 25px;
     display: flex;
@@ -265,7 +264,9 @@ body {
 
 /* QR Card */
 .qr-card {
-    background-color: var(--primary-red);
+    padding-top: 36px;
+    padding-bottom: 36px;
+    background: linear-gradient(180deg, #E74C3C 0%, #d94131 100%);
     color: #FFF;
     text-align: center;
 }
@@ -280,12 +281,12 @@ body {
 }
 
 .qr-image-wrapper {
-    background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
-    padding: 15px;
-    border-radius: var(--border-radius);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+    padding: 20px;
+    border-radius: 12px;
     display: inline-block;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .qr-image-wrapper img {
@@ -340,59 +341,4 @@ body {
     font-weight: 700;
     font-size: 22px;
     color: var(--text-color);
-    margin-bottom: 10px;
-}
-
-.footer-left {
-    text-align: left;
-}
-
-.footer-links a {
-    color: var(--dark-grey);
-    text-decoration: none;
-    margin-left: 20px;
-    font-size: 14px;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-    .topup-container {
-        grid-template-columns: 1fr;
-    }
-    .main-nav {
-        display: none; /* Simple responsive handling */
-    }
-}
-
-@media (max-width: 768px) {
-    .main-header .container, .main-footer .container {
-        flex-direction: column;
-        gap: 15px;
-    }
-    .header-actions {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    .footer-links {
-        margin-top: 10px;
-    }
-    .footer-links a {
-        margin: 0 8px;
-    }
-}
-/* --- Top-up UI refinements (appended) --- */
-.topup-header h1 { font-size: 32px; }
-.card-title { font-size: 22px; }
-.info-card, .qr-card { border-radius: 12px; }
-.qr-card { padding-top: 36px; padding-bottom: 36px; background: linear-gradient(180deg, #E74C3C 0%, #d94131 100%); }
-.qr-image-wrapper { padding: 20px; border-radius: 12px; }
-
-.field-value.with-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.copy-btn { padding: 6px 10px; font-size: 12px; background: #fff; color: #E74C3C; border: 1px solid rgba(0,0,0,0.08); border-radius: 6px; cursor: pointer; transition: all .2s ease; }
-.copy-btn:hover { background: #FCEAE8; border-color: #E74C3C; }
-.copy-badge { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; letter-spacing: .3px; }
-
-@media (max-width: 640px) {
-  .qr-image-wrapper img { max-width: 240px; }
-  .topup-header h1 { font-size: 26px; }
 }

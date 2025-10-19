@@ -11,6 +11,9 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 
 @Controller
 public class NotificationController {
@@ -43,5 +46,27 @@ public class NotificationController {
         String referer = request.getHeader("Referer");
         return "redirect:" + (referer != null ? referer : "/welcome");
     }
-}
 
+    @PostMapping("/notifications/mark-as-read")
+    @Transactional
+    public String markSelectedAsRead(@RequestParam(name = "ids", required = false) List<Long> ids,
+                                     Authentication authentication,
+                                     HttpServletRequest request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/authen/login";
+        }
+        if (ids == null || ids.isEmpty()) {
+            String referer = request.getHeader("Referer");
+            return "redirect:" + (referer != null ? referer : "/account/notifications");
+        }
+        String email = authentication.getName();
+        if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
+            OAuth2User oauthUser = oauth2Token.getPrincipal();
+            String mail = oauthUser.getAttribute("email");
+            if (mail != null) email = mail;
+        }
+        notificationRepository.updateStatusForIdsAndEmail(email, ids, "Unread", "Readed");
+        String referer = request.getHeader("Referer");
+        return "redirect:" + (referer != null ? referer : "/account/notifications");
+    }
+}

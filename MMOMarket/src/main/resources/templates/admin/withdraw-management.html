@@ -1,0 +1,648 @@
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null and totalPages > 0 ? totalPages : 1},
+              withdrawCount=${withdrawals != null ? #lists.size(withdrawals) : 0}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+
+        <!-- Toast -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Title & Search -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Withdraw Management</h1>
+            <div class="relative w-full md:w-1/3">
+                <form id="searchForm" class="relative flex" method="get" action="/admin/withdraw-management" th:attr="data-status=${currentStatus}">
+                    <label for="withdraw-search" class="sr-only">Search withdrawals</label>
+                    <div class="relative w-full">
+                        <input id="withdraw-search" name="search" aria-label="Search withdrawals"
+                               class="w-full py-2 pl-14 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm bg-white transition-shadow duration-150 focus:shadow-md"
+                               placeholder="Search transactions"
+                               type="text" th:value="${currentSearch != null ? currentSearch : ''}">
+                        <button type="submit" class="absolute inset-y-0 left-3 flex items-center justify-center text-gray-400 p-0 m-0 bg-transparent border-0 h-8 w-8" aria-label="Search">
+                            <!-- inline SVG replaces font-icon to avoid baseline/vertical-align issues -->
+                            <svg class="h-6 w-6 mt-3" fill="none" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width:2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="overflow-x-auto mb-6">
+            <div class="flex space-x-2 md:space-x-4 border-b min-w-max">
+                <a th:class="${currentStatus == 'All'} ? 'py-2 px-3 md:px-4 border-b-2 border-green-500 text-green-500 font-semibold' : 'py-2 px-3 md:px-4 text-gray-500 hover:text-green-500'"
+                   th:with="url='/admin/withdraw-management?status=All' + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}">All</a>
+                <a th:class="${currentStatus == 'Pending'} ? 'py-2 px-3 md:px-4 border-b-2 border-green-500 text-green-500 font-semibold' : 'py-2 px-3 md:px-4 text-gray-500 hover:text-green-500'"
+                   th:with="url='/admin/withdraw-management?status=Pending' + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}">Pending</a>
+                <a th:class="${currentStatus == 'Approved'} ? 'py-2 px-3 md:px-4 border-b-2 border-green-500 text-green-500 font-semibold' : 'py-2 px-3 md:px-4 text-gray-500 hover:text-green-500'"
+                   th:with="url='/admin/withdraw-management?status=Approved' + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}">Approved</a>
+                <a th:class="${currentStatus == 'Rejected'} ? 'py-2 px-3 md:px-4 border-b-2 border-green-500 text-green-500 font-semibold' : 'py-2 px-3 md:px-4 text-gray-500 hover:text-green-500'"
+                   th:with="url='/admin/withdraw-management?status=Rejected' + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}">Rejected</a>
+            </div>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-50">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seller</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                        <a href="#" class="ml-1 align-middle" title="Sort by Date">
+                            <i class="fas fa-sort text-gray-400"></i>
+                        </a>
+                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+
+                <tr class="hover:bg-gray-50" th:each="withdrawal,iter : ${withdrawals}">
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${withdrawal.seller.fullName}">Ethan Davis</td>
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${withdrawal.seller.email}">seller@email.com</td>
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${withdrawal.createdAt != null ? #dates.format(withdrawal.createdAt,'yyyy-MM-dd') : ''}">2024-01-01</td>
+                    <td class="py-4 px-4 whitespace-nowrap status-cell"
+                        th:with="
+                rawStatus=${withdrawal.status != null ? withdrawal.status : ''},
+                upper=${#strings.toUpperCase(rawStatus)},
+                isApproved=${#strings.contains(upper,'APPROVED')},
+                isRejected=${#strings.contains(upper,'REJECTED')},
+                isPending=${#strings.contains(upper,'PENDING')},
+                displayStatus=${isApproved ? 'Approved' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(rawStatus))))}">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                  th:classappend="${isApproved} ? 'bg-green-100 text-green-800' : (isPending ? 'bg-yellow-100 text-yellow-800' : (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
+                  th:text="${displayStatus}">Status</span>
+                    </td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                        <button type="button"
+                                class="text-sm text-blue-600 hover:text-blue-800"
+                                th:attr="
+                      data-id=${withdrawal.id},
+                      data-seller=${withdrawal.seller.fullName},
+                      data-bank=${withdrawal.bankName},
+                      data-account=${withdrawal.accountNumber},
+                      data-branch=${withdrawal.branch},
+                      data-status=${withdrawal.status},
+                      data-amount=${withdrawal.amount},
+                      data-date=${withdrawal.createdAt != null ? #dates.format(withdrawal.createdAt,'yyyy-MM-dd') : '' }
+                    "
+                                onclick="openWithdrawModal(this)">
+                            View Detail
+                        </button>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(withdrawals)}">
+                    <td class="text-center py-10 text-gray-500" colspan="6">No withdrawal requests found.</td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4" th:each="withdrawal,iter : ${withdrawals}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
+                        <h3 class="font-semibold text-gray-900" th:text="${withdrawal.seller.fullName}">Ethan Davis</h3>
+                    </div>
+                    <span class="px-2 py-1 inline-flex text-xs leading-none font-semibold rounded-full"
+                          th:with="
+                  upper=${#strings.toUpperCase(withdrawal.status)},
+                  isApproved=${#strings.contains(upper,'APPROVED')},
+                  isRejected=${#strings.contains(upper,'REJECTED')},
+                  isPending=${#strings.contains(upper,'PENDING')},
+                  displayStatus=${isApproved ? 'Approved' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(withdrawal.status))))}"
+                          th:classappend="${isApproved} ? 'bg-green-100 text-green-800' : (isPending ? 'bg-yellow-100 text-yellow-800' : (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
+                          th:text="${displayStatus}">Status</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500">Email:</p>
+                        <p class="font-medium" th:text="${withdrawal.seller.email}">seller@email.com</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Date:</p>
+                        <p class="font-medium" th:text="${withdrawal.createdAt != null ? #dates.format(withdrawal.createdAt,'yyyy-MM-dd') : ''}">2024-01-01</p>
+                    </div>
+                </div>
+
+                <div class="text-sm text-center mt-2">
+                    <button type="button"
+                            class="inline-block px-3 py-1 border rounded-md text-sm text-blue-600 hover:bg-gray-50"
+                            th:attr="
+                    data-id=${withdrawal.id},
+                    data-seller=${withdrawal.seller.fullName},
+                    data-bank=${withdrawal.bankName},
+                    data-account=${withdrawal.accountNumber},
+                    data-branch=${withdrawal.branch},
+                    data-status=${withdrawal.status},
+                    data-amount=${withdrawal.amount},
+                    data-date=${withdrawal.createdAt != null ? #dates.format(withdrawal.createdAt,'yyyy-MM-dd') : '' }
+                  "
+                            onclick="openWithdrawModal(this)">
+                        View Detail
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-center py-10 text-gray-500" th:if="${#lists.isEmpty(withdrawals)}">
+                No withdrawal requests found.
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Showing <span th:text="${withdrawCount > 0 ? (page * size + 1) : 0}">0</span>
+                to <span th:text="${page * size + withdrawCount}">0</span>
+                of <span th:text="${total * size}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:with="url='/admin/withdraw-management?status=' + ${currentStatus} + '&page=' + ${page - 1} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}" th:if="${page > 0}">Previous</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md"
+                   th:classappend="${i == page} ? 'bg-green-500 text-white' : 'hover:bg-gray-100'"
+                   th:each="i : ${#numbers.sequence(0, total - 1)}"
+                   th:with="url='/admin/withdraw-management?status=' + ${currentStatus} + '&page=' + ${i} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}"
+                   th:if="${i == 0 or i == page or i == page - 1 or i == page + 1 or i == total - 1}"
+                   th:text="${i + 1}">1</a>
+
+                <span class="px-2 sm:px-3 py-1" th:if="${page > 2 and total > 5}">...</span>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:with="url='/admin/withdraw-management?status=' + ${currentStatus} + '&page=' + ${page + 1} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}" th:if="${page < total - 1}">Next</a>
+            </div>
+        </div>
+
+        <div id="withdrawModal"
+             class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+            <div class="bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-200 rounded-3xl shadow-2xl w-full max-w-2xl p-0 sm:p-0 m-4 relative transform transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto scale-95 opacity-0"
+                 id="withdrawModalContent">
+                <button id="closeWithdrawModal"
+                        class="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-3xl font-bold transition-colors duration-200 z-10">&times;</button>
+
+                <div class="px-8 pt-8 pb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center mb-8">
+                        <div id="w-status-icon"
+                             class="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-0 sm:mr-6 bg-gray-500 shadow-lg border-4 border-white">
+                            <i class="fas fa-question text-white text-2xl sm:text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-800 tracking-tight mb-1">Withdraw Detail</h3>
+                            <p id="w-status-text" class="text-lg sm:text-xl font-semibold text-gray-600"></p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-gray-700 mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 text-gray-500 shadow">
+                                <i class="fas fa-hashtag"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Transaction ID</p>
+                                <p id="w-transactionId" class="text-base sm:text-lg break-words font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-100 text-green-500 shadow">
+                                <i class="fas fa-user"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Seller</p>
+                                <p id="w-seller" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-100 text-blue-500 shadow">
+                                <i class="fas fa-university"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Bank</p>
+                                <p id="w-bank" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-yellow-100 text-yellow-500 shadow">
+                                <i class="fas fa-credit-card"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Account Number</p>
+                                <p id="w-account" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-purple-100 text-purple-500 shadow">
+                                <i class="fas fa-code-branch"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Branch</p>
+                                <p id="w-branch" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-pink-100 text-pink-500 shadow">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Amount</p>
+                                <p id="w-amount" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 text-indigo-500 shadow">
+                                <i class="fas fa-calendar-alt"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Date</p>
+                                <p id="w-date" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-200 text-gray-600 shadow">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Status</p>
+                                <p id="w-status" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-gray-200">
+
+                    <!-- Dynamic area: QR, proof image / reason, actions -->
+                    <div class="mt-4" id="w-dynamic-area">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Helper: get CSRF header/value if present in meta tags (Spring default)
+            function getCsrfHeaders() {
+                try {
+                    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+                    const token = document.querySelector('meta[name="_csrf"]')?.content;
+                    if (header && token) {
+                        const h = {};
+                        h[header] = token;
+                        return h;
+                    }
+                } catch (e) { /* ignore */ }
+                return {};
+            }
+
+            // Global để onclick gọi được
+            window.openWithdrawModal = function (btn) {
+                const modal = document.getElementById('withdrawModal');
+                const modalContent = document.getElementById('withdrawModalContent');
+                if (!modal) { console.error('Modal not found'); return; }
+
+                const id = btn?.dataset?.id;
+                if (!id) { console.error('Withdrawal id not found on button'); return; }
+
+                // Fetch full withdrawal detail from server (includes proofFile)
+                fetch('/admin/withdrawals/' + id, { headers: { 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Failed to get withdrawal detail: ' + res.status);
+                        return res.json();
+                    })
+                    .then(data => renderWithdrawModal(data, id))
+                    .catch(err => {
+                        console.error(err);
+                        showToast('Failed to load withdrawal details.');
+                    });
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.add('flex');
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            };
+
+            function renderWithdrawModal(data, id) {
+                const $ = (id) => document.getElementById(id);
+                const tx=$('w-transactionId'), sl=$('w-seller'), bk=$('w-bank'), acc=$('w-account'),
+                    br=$('w-branch'), amt=$('w-amount'), dt=$('w-date'), st=$('w-status'),
+                    stx=$('w-status-text'), icoWrap=$('w-status-icon'), ico=icoWrap?.querySelector('i'), dyn=$('w-dynamic-area');
+
+                tx.textContent  = id ? '#' + id : '';
+                sl.textContent  = data.sellerName || '';
+                bk.textContent  = data.bankName || '';
+                acc.textContent = data.accountNumber || '';
+                br.textContent  = data.branch || '';
+                amt.textContent = data.amount || '';
+                dt.textContent  = data.createdAt || data.date || '';
+                const S = (data.status || '').trim();
+                st.textContent  = S;
+                stx.textContent = S;
+
+                icoWrap.className = 'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mb-2 sm:mb-0 sm:mr-4';
+                ico.className = 'fas text-white text-xl';
+                stx.className = 'text-base sm:text-lg font-semibold';
+
+                const U = S.toUpperCase();
+                if (U.includes('APPROVED')) {
+                    icoWrap.classList.add('bg-green-500'); ico.classList.add('fa-check'); stx.classList.add('text-green-600');
+                } else if (U.includes('PENDING')) {
+                    icoWrap.classList.add('bg-yellow-500'); ico.classList.add('fa-clock'); stx.classList.add('text-yellow-600');
+                } else if (U.includes('REJECTED')) {
+                    icoWrap.classList.add('bg-red-500'); ico.classList.add('fa-times'); stx.classList.add('text-red-600');
+                } else {
+                    icoWrap.classList.add('bg-gray-500'); ico.classList.add('fa-question'); stx.classList.add('text-gray-600');
+                }
+
+                // Build dynamic content depending on status
+                dyn.innerHTML = '';
+
+                // --- Enhance dynamic area for modern look ---
+                // If Pending -> show QR + Approve/Reject actions
+                if (U.includes('PENDING')) {
+                    // Try to generate VietQR style URL similar to top-up page.
+                    function generateVietQrUrl(bankName, accountNumber, sellerName, txId) {
+                        if (!accountNumber) return null;
+                        const b = (bankName || '').toUpperCase();
+                        // mapping updated from provided list (upper-case keys)
+                        const map = {
+                            'VIETINBANK': '970415',
+                            'CTG': '970415',
+                            'VIETCOMBANK': '970436',
+                            'VCB': '970436',
+                            'BIDV': '970418',
+                            'AGRIBANK': '970405',
+                            'OCB': '970448',
+                            'COOPBANK': '970448',
+                            'MB BANK': '970422',
+                            'MB': '970422',
+                            'MBBANK': '970422',
+                            'TECHCOMBANK': '970407',
+                            'TCB': '970407',
+                            'ACB': '970416',
+                            'VPBANK': '970432',
+                            'TPBANK': '970423',
+                            'SACOMBANK': '970403',
+                            'HDBANK': '970437',
+                            'VIETCAPITALBANK': '970454',
+                            'SCB': '970429',
+                            'VIB': '970441',
+                            'SHB': '970443',
+                            'EXIMBANK': '970431',
+                            'MSB': '970426',
+                            'CAKE': '546034',
+                            'UBANK': '546035',
+                            'VIETTELMONEY': '971005',
+                            'TIMO': '963388',
+                            'VNPTMONEY': '970111',
+                            'SAIGONBANK': '970400',
+                            'BACABANK': '970439',
+                            'PVCOMBANK': '970412',
+                            'PVCOMBANK PAY': '970412',
+                            'NCB': '970412',
+                            'MVB': '970414',
+                            'SHINHANBANK': '970245',
+                            'ABBANK': '970425',
+                            'VIETABANK': '970427',
+                            'NAMABANK': '970428',
+                            'PGBANK': '970430',
+                            'VIETBANK': '970433',
+                            'BAOVIETBANK': '970434',
+                            'LPBANK': '970449',
+                            'KIENLONGBANK': '970452',
+                            'KBANK': '668888',
+                            'MAFC': '977777',
+                            'KEBHANAHN': '970467',
+                            'KEBHANAHCM': '970466',
+                            'CITIBANK': '533948',
+                            'VBSP': '999888',
+                            'CBBANK': '970444',
+                            'CIMB': '422589',
+                            'DDSBANK': '796500',
+                            'VIKKI': '970406',
+                            'PUBLICBANK': '970439',
+                            'KOOKMINHCM': '970463',
+                            'KOOKMINHN': '970462',
+                            'WOORI': '970457',
+                            'VRB': '970421',
+                            'GPBANK': '970408',
+                            'HONGL EONG': '970442',
+                            'HONGLEONG': '970442'
+                        };
+
+                        let code = null;
+                        // try exact match keys first
+                        for (const key in map) {
+                            if (b.includes(key)) { code = map[key]; break; }
+                        }
+                        if (!code) return null;
+
+                        // token part in filename (placeholder). In practice this may need to be bank/account specific.
+                        const token = 'jYp8Yod';
+                        const filename = code + '-' + accountNumber + '-' + token + '.jpg';
+                        const accountName = encodeURIComponent(sellerName || '');
+                        const addInfo = encodeURIComponent(txId ? ('WD#' + txId) : ('WD:' + accountNumber));
+                        return 'https://api.vietqr.io/image/' + filename + '?accountName=' + accountName + '&addInfo=' + addInfo;
+                    }
+
+                    // Prefer server-provided VietQR URL when available (built by AdminController); otherwise try client mapping then fallback to Google Charts QR
+                    let qrUrl = (data.vietQrUrl && data.vietQrUrl.length > 0) ? data.vietQrUrl : null;
+                    if (!qrUrl) {
+                        const vietQr = generateVietQrUrl(data.bankName, data.accountNumber, data.sellerName, id);
+                        qrUrl = vietQr ? vietQr : ('https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=' + encodeURIComponent((data.bankName || '') + '|' + (data.accountNumber || '')));
+                    }
+
+                    const container = document.createElement('div');
+                    container.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 items-start';
+
+                    const left = document.createElement('div');
+                    left.innerHTML = `
+                        <p class="font-semibold text-gray-500 mb-2">Payment QR</p>
+                        <div class="flex flex-col items-center">
+                            <img id="w-qr" src="${qrUrl}" alt="QR" class="w-48 h-48 border-2 border-gray-200 rounded-xl shadow-lg transition-transform duration-200 hover:scale-105 bg-white" />
+                            <p class="text-xs text-gray-400 mt-2">Scan to verify transaction</p>
+                        </div>
+                    `;
+
+                    const right = document.createElement('div');
+                    right.innerHTML = `
+                        <div id="w-actions" class="space-y-6">
+                            <div class="bg-gray-50 rounded-xl p-4 shadow-sm">
+                                <label class="font-semibold text-gray-500">Approve (upload proof image)</label>
+                                <form id="w-approve-form" enctype="multipart/form-data" class="mt-2 flex flex-col space-y-2">
+                                    <input type="file" id="w-proof-file" name="proof" accept="image/*" class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+                                    <button type="button" id="w-approve-btn" class="px-5 py-2 bg-gradient-to-r from-green-500 to-green-400 text-white rounded-lg font-semibold shadow hover:from-green-600 hover:to-green-500 transition-all duration-200">Approve</button>
+                                </form>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-4 shadow-sm">
+                                <label class="font-semibold text-gray-500">Reject (provide reason)</label>
+                                <textarea id="w-reject-reason" rows="3" placeholder="Enter rejection reason" class="w-full mt-2 p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-red-300"></textarea>
+                                <button type="button" id="w-reject-btn" class="mt-2 px-5 py-2 bg-gradient-to-r from-red-500 to-red-400 text-white rounded-lg font-semibold shadow hover:from-red-600 hover:to-red-500 transition-all duration-200">Reject</button>
+                            </div>
+                        </div>
+                    `;
+
+                    container.appendChild(left);
+                    container.appendChild(right);
+                    dyn.appendChild(container);
+
+                    // Attach handlers
+                    document.getElementById('w-approve-btn').addEventListener('click', function () {
+                        const fileInput = document.getElementById('w-proof-file');
+                        if (!fileInput || !fileInput.files || fileInput.files.length === 0) { showToast('Please choose a proof image to upload.'); return; }
+                        const f = fileInput.files[0];
+                        // Prepare FormData
+                        const fd = new FormData();
+                        fd.append('proof', f);
+                        fd.append('status', 'Approved');
+
+                        const headers = getCsrfHeaders();
+                        fetch('/admin/withdrawals/' + id + '/process', {
+                            method: 'POST',
+                            body: fd,
+                            headers: headers
+                        }).then(res => res.json().then(j => ({ ok: res.ok, status: res.status, body: j }))).then(r => {
+                            if (!r.ok) throw new Error('Status: ' + r.status + ' Body: ' + JSON.stringify(r.body));
+                            showToast('Withdrawal approved.');
+                            // Update modal UI to show proof download
+                            setTimeout(() => { location.reload(); }, 800);
+                        }).catch(err => { console.error(err); showToast('Failed to approve withdrawal.'); });
+                    });
+
+                    document.getElementById('w-reject-btn').addEventListener('click', function () {
+                        const reason = document.getElementById('w-reject-reason')?.value || '';
+                        if (!reason.trim()) { showToast('Please provide a rejection reason.'); return; }
+
+                        const headers = Object.assign({ 'Content-Type': 'application/json' }, getCsrfHeaders());
+                        fetch('/admin/withdrawals/' + id + '/process', {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({ status: 'Rejected', reason: reason })
+                        }).then(res => res.json().then(j => ({ ok: res.ok, status: res.status, body: j }))).then(r => {
+                            if (!r.ok) throw new Error('Status: ' + r.status + ' Body: ' + JSON.stringify(r.body));
+                            showToast('Withdrawal rejected. 95% refunded.');
+                            setTimeout(() => { location.reload(); }, 800);
+                        }).catch(err => { console.error(err); showToast('Failed to reject withdrawal.'); });
+                    });
+
+                    return;
+                }
+
+                // If Approved -> show proof image with download
+                if (U.includes('APPROVED')) {
+                    const pf = data.proofFile || '';
+                    const container = document.createElement('div');
+                    container.className = 'space-y-3';
+                    if (pf) {
+                        const img = document.createElement('img');
+                        img.src = pf;
+                        img.alt = 'Proof Image';
+                        img.className = 'max-w-xs h-auto border-2 border-gray-200 rounded-xl shadow-lg transition-transform duration-200 hover:scale-105';
+                        container.appendChild(img);
+
+                        const a = document.createElement('a');
+                        a.href = pf;
+                        a.download = '';
+                        a.className = 'inline-block mt-4 px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-lg font-semibold shadow hover:from-blue-700 hover:to-blue-500 transition-all duration-200';
+                        a.textContent = 'Download proof image';
+                        container.appendChild(a);
+                    } else {
+                        const p = document.createElement('p');
+                        p.className = 'text-sm text-gray-500';
+                        p.textContent = 'No proof file available.';
+                        container.appendChild(p);
+                    }
+                    dyn.appendChild(container);
+                    return;
+                }
+
+                // If Rejected -> show reason (stored in proofFile) and message
+                if (U.includes('REJECTED')) {
+                    const container = document.createElement('div');
+                    container.className = 'space-y-3';
+                    const title = document.createElement('p');
+                    title.className = 'font-semibold text-red-500 text-base';
+                    title.textContent = 'Rejection reason';
+                    const reason = document.createElement('p');
+                    reason.className = 'text-sm text-gray-700 bg-red-50 border border-red-100 rounded-lg p-3';
+                    reason.textContent = data.proofFile || 'No reason provided.';
+                    container.appendChild(title);
+                    container.appendChild(reason);
+                    dyn.appendChild(container);
+                    return;
+                }
+
+                // Fallback: show proofFile if present
+                if (data.proofFile) {
+                    const p = document.createElement('p');
+                    p.className = 'text-sm text-gray-500';
+                    p.textContent = data.proofFile;
+                    dyn.appendChild(p);
+                }
+            }
+
+            function showToast(message) {
+                const toast = document.getElementById('toast');
+                const msg = document.getElementById('toast-message');
+                if (!toast || !msg) return;
+                msg.textContent = message;
+                toast.classList.remove('hidden');
+                toast.classList.add('opacity-100');
+                setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+            }
+
+            // Đóng modal (sau khi DOM fragment render)
+            (function(){
+                const modal = document.getElementById('withdrawModal');
+                const modalContent = document.getElementById('withdrawModalContent');
+                const closeBtn = document.getElementById('closeWithdrawModal');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        modalContent.classList.remove('scale-100', 'opacity-100');
+                        modalContent.classList.add('scale-95', 'opacity-0');
+                        setTimeout(() => {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                        }, 200);
+                    });
+                }
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            modalContent.classList.remove('scale-100', 'opacity-100');
+                            modalContent.classList.add('scale-95', 'opacity-0');
+                            setTimeout(() => {
+                                modal.classList.add('hidden');
+                                modal.classList.remove('flex');
+                            }, 200);
+                        }
+                    });
+                }
+            })();
+        </script>
+
+    </div>
+</div>

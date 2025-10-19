@@ -1,25 +1,35 @@
 <div th:fragment="footer">
-    <footer class="bg-white border-t border-gray-200 py-8">
+    <footer class="bg-white border-t border-gray-200 py-6 sm:py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-gray-800 rounded flex items-center justify-center">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <!-- Logo and Company -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 bg-red-600 rounded flex items-center justify-center shadow-sm">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                            <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"></path>
                         </svg>
                     </div>
                     <span class="text-xl font-bold text-gray-900">MMO Market</span>
                 </div>
-                <div class="flex space-x-8">
-                    <a href="#" class="text-gray-600 hover:text-gray-900">About</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-900">Terms of Service</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-900">Privacy Policy</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-900">Contact</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-900">FAQS</a>
-                </div>
+
+                <!-- Navigation Links -->
+                <nav class="flex flex-wrap justify-center gap-x-4 gap-y-2 md:space-x-6">
+                    <a class="text-gray-600 hover:text-red-600 transition-colors text-sm md:text-base"
+                       href="#">About</a>
+                    <a class="text-gray-600 hover:text-red-600 transition-colors text-sm md:text-base" href="#">Terms of
+                        Service</a>
+                    <a class="text-gray-600 hover:text-red-600 transition-colors text-sm md:text-base" href="#">Privacy
+                        Policy</a>
+                    <a class="text-gray-600 hover:text-red-600 transition-colors text-sm md:text-base"
+                       href="#">Contact</a>
+                    <a class="text-gray-600 hover:text-red-600 transition-colors text-sm md:text-base" href="#">FAQS</a>
+                </nav>
             </div>
-            <div class="mt-4 text-center text-gray-500">
-                © 2025 MMO Market. All rights reserved.
+
+            <div class="border-t border-gray-100 mt-6 pt-6 text-center">
+                <p class="text-gray-500 text-sm">© 2025 MMO Market. All rights reserved.</p>
             </div>
         </div>
     </footer>
