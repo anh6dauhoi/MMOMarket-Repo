@@ -10,7 +10,8 @@ import java.util.Date;
 @Getter
 @Setter
 @Table(name = "CoinDeposits", indexes = {
-        @Index(name = "idx_user_id", columnList = "user_id")
+        @Index(name = "idx_user_id", columnList = "user_id"),
+        @Index(name = "idx_sepay_ref_code", columnList = "sepay_reference_code")
 })
 public class CoinDeposit {
 
@@ -31,6 +32,23 @@ public class CoinDeposit {
 
     @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
     private String status = "Pending";
+
+    @Column(name = "sepay_transaction_id", unique = true)
+    private Long sepayTransactionId;
+
+    @Column(name = "sepay_reference_code", length = 255)
+    private String sepayReferenceCode;
+
+    @Column(name = "gateway", length = 100)
+    private String gateway;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "transaction_date")
+    private Date transactionDate;
+
+    @Lob
+    @Column(name = "content")
+    private String content;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
