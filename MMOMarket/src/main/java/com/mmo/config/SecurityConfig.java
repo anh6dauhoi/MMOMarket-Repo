@@ -68,6 +68,8 @@ public class SecurityConfig {
         http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers(HttpMethod.POST, "/api/webhook/sepay").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/webhook/sepay").permitAll()
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/customer/topup").permitAll()
                         .requestMatchers(
@@ -76,6 +78,9 @@ public class SecurityConfig {
                                 "/customer/css/**", "/authen/css/**", "/admin/css/**"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+                .csrf(csrf -> csrf
+                    .ignoringRequestMatchers("/api/webhook/sepay")
                 )
                 .formLogin((form) -> form
                         .loginPage("/authen/login")

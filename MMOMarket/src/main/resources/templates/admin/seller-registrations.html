@@ -2,7 +2,8 @@
      th:with="page=${currentPage != null ? currentPage : 0},
               size=${10},
               total=${totalPages != null and totalPages > 0 ? totalPages : 1},
-              regCount=${registrations != null ? #lists.size(registrations) : 0}">
+              regCount=${registrations != null ? #lists.size(registrations) : 0},
+              currentSort=${currentSort != null ? currentSort : 'date_desc'}">
     <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
         <!-- Toast Notification Placeholder -->
         <div class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50"
@@ -52,25 +53,41 @@
         <!-- Table for medium+ screens -->
         <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full bg-white">
-                <thead class="bg-gray-50">
+                <!-- Header: use same red styling as sidebar headers -->
+                <thead class="bg-red-50">
                 <tr>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop
-                        Name
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Customer</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Shop Name</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Email</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
+                        <span class="inline-flex items-center">
+                            <span>Reg. Date</span>
+                            <a th:with="
+                                   sortParam=${currentSort == 'date_desc'} ? 'date_asc' : 'date_desc',
+                                   urlSort='/admin/seller-registrations?sort=' + ${sortParam}
+                                           + (${currentStatus != null and currentStatus != ''} ? '&status=' + ${currentStatus} : '')
+                                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                                           + '&page=' + ${page}
+                                   "
+                               th:href="${urlSort}"
+                               title="Sort by Registration Date"
+                               class="ml-2 inline-flex flex-col items-center justify-center text-red-700 hover:text-red-800">
+                                <!-- up arrow (active when date_asc) -->
+                                <svg class="h-3 w-3 mb-0.5" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                                     th:classappend="${currentSort == 'date_asc'} ? 'opacity-100' : 'opacity-40'">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5-5 5 5"/>
+                                </svg>
+                                <!-- down arrow (active when date_desc) -->
+                                <svg class="h-3 w-3 mt-0.5" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                                     th:classappend="${currentSort == 'date_desc'} ? 'opacity-100' : 'opacity-40'">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l5 5 5-5"/>
+                                </svg>
+                            </a>
+                        </span>
                     </th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email
-                    </th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Reg. Date
-                        <a href="#" class="ml-1 align-middle" title="Sort by Registration Date">
-                            <i class="fas fa-sort text-gray-400"></i>
-                        </a>
-                    </th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
-                    </th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
-                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Actions</th>
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">

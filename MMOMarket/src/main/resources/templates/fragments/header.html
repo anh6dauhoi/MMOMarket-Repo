@@ -193,7 +193,7 @@
                                     My Shop
                                 </a>
                                 <div class="border-t my-2"></div>
-                                <!-- Hide Register seller when shop is Active -->
+                                <!-- Register Seller only when shop is NOT Active -->
                                 <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
                                    th:href="@{/account/settings}"
                                    th:if="${currentUser == null or currentUser.shopStatus == null or !#strings.equalsIgnoreCase(currentUser.shopStatus, 'Active')}">
