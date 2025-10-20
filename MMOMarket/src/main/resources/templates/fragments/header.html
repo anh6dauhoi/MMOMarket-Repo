@@ -1,4 +1,5 @@
-<div th:fragment="header">
+<div th:fragment="header"
+     th:with="uri=${#httpServletRequest != null and #httpServletRequest.requestURI != null ? #httpServletRequest.requestURI : ''}">
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
@@ -30,13 +31,26 @@
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex space-x-4 lg:space-x-8">
                     <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/welcome' ? 'text-red-500 border-b-2 border-red-500' : ''}"
-                       th:href="@{/welcome}">Home</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="#">Category</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="#">Blog</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="#">Contact</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="/customer/topup"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/customer/topup' ? 'text-red-500 border-b-2 border-red-500' : ''}">Topup</a>
+                       th:classappend="${(uri == '/' or #strings.startsWith(uri,'/welcome') or #strings.startsWith(uri,'/homepage')) ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/homepage}">Home</a>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:classappend="${#strings.startsWith(uri,'/category') ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/category}">Category</a>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:classappend="${#strings.startsWith(uri,'/blog') ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/blog}">Blog</a>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:classappend="${#strings.startsWith(uri,'/contact') ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/contact}">Contact</a>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:href="@{/customer/topup}"
+                       th:classappend="${#strings.startsWith(uri,'/customer/topup') ? ' text-red-500 border-b-2 border-red-500' : ''}">
+                        Topup
+                    </a>
                 </nav>
 
                 <!-- Desktop search and user menu -->
@@ -238,15 +252,24 @@
                 <!-- Mobile Navigation -->
                 <nav class="pt-2 pb-3 space-y-1 border-t border-gray-200 mt-2">
                     <a class="block px-3 py-2 rounded-md font-medium"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/welcome' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}"
+                       th:classappend="${(uri == '/' or #strings.startsWith(uri,'/welcome') or #strings.startsWith(uri,'/homepage')) ? ' bg-red-50 text-red-500' : ' text-gray-700 hover:bg-gray-50'}"
                        th:href="@{/welcome}">Home</a>
+
                     <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
-                       href="#">Category</a>
-                    <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium" href="#">Blog</a>
+                       th:href="@{/category}"
+                       th:classappend="${#strings.startsWith(uri,'/category') ? ' bg-red-50 text-red-500' : ''}">Category</a>
+
                     <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
-                       href="#">Contact</a>
-                    <a class="block px-3 py-2 rounded-md font-medium" href="/customer/topup"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/customer/topup' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Topup</a>
+                       th:href="@{/blog}"
+                       th:classappend="${#strings.startsWith(uri,'/blog') ? ' bg-red-50 text-red-500' : ''}">Blog</a>
+
+                    <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
+                       th:href="@{/contact}"
+                       th:classappend="${#strings.startsWith(uri,'/contact') ? ' bg-red-50 text-red-500' : ''}">Contact</a>
+
+                    <a class="block px-3 py-2 rounded-md font-medium"
+                       th:href="@{/customer/topup}"
+                       th:classappend="${#strings.startsWith(uri,'/customer/topup') ? ' bg-red-50 text-red-500' : ' text-gray-700 hover:bg-gray-50'}">Topup</a>
                 </nav>
 
                 <!-- Mobile search -->
@@ -295,8 +318,6 @@
                                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                                       stroke-linecap="round" stroke-linejoin="round"
                                       stroke-width="2"></path>
-                            </svg>
-                            My Order
                         </a>
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
                            th:href="@{/account/notifications}">
@@ -341,8 +362,6 @@
                                     <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                                           stroke-linecap="round" stroke-linejoin="round"
                                           stroke-width="2"></path>
-                                </svg>
-                                Log out
                             </button>
                         </form>
                     </div>

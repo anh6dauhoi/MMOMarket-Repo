@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MMO Market - Shop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #fff 0%, #fff6f4 60%, #ffe5e2 100%);
+            min-height: 100vh;
+        }
+        .main-container {
+            background: rgba(255,255,255,0.98);
+            border-radius: 2rem;
+            box-shadow: none;
+            padding: 2.5rem 1.5rem;
+            max-width: 1300px;
+            margin: 2.5rem auto;
+            transition: none;
+            /* Make border thicker and more visible */
+            border: 2px solid #ffe5e2;
+        }
+        .main-container:hover {
+            box-shadow: none;
+            transform: none;
+        }
+        .product-card {
+            border-radius: 1.5rem;
+            border: 2.5px solid #ffe5e2;
+            box-shadow: none;
+            background: #fff;
+            transition: transform .18s, box-shadow .18s, border-color .18s;
+        }
+        .product-card:hover {
+            transform: translateY(-6px) scale(1.025);
+            box-shadow: none;
+            border-color: #F53E32;
+            z-index: 2;
+        }
+        .product-card img {
+            border-top-left-radius: 1.5rem;
+            border-top-right-radius: 1.5rem;
+            box-shadow: none;
+        }
+        .chip {
+            padding: 9px 16px;
+            border-radius: 9999px;
+            border: 2px solid #ffe5e2;
+            font-size: 15px;
+            font-weight: 500;
+            color: #374151;
+            background: rgba(255,255,255,0.8);
+            box-shadow: none;
+            transition: all 0.18s;
+            backdrop-filter: blur(1.5px);
+        }
+        .chip:focus, .chip:hover {
+            border-color: #F53E32;
+            box-shadow: none;
+            background: rgba(255,246,244,0.97);
+        }
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #fff6f4 60%, #ffe5e2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none;
+            border: 4px solid #ffe5e2;
+        }
+        .top-search {
+            width: 100%;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .top-search .chip {
+            border-radius: 16px;
+            border: 2px solid #ffe5e2;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+            box-shadow: none;
+        }
+        .top-search .btn-search {
+            padding: 10px 22px;
+            background: #fff;
+            color: #F53E32;
+            border-radius: 16px;
+            font-weight: 700;
+            border: 2px solid #ffe5e2;
+            box-shadow: none;
+            letter-spacing: 0.5px;
+            transition: opacity .15s, box-shadow .15s;
+        }
+        .top-search .btn-search:hover { opacity: .97; box-shadow: none; }
+        h1, h2 {
+            letter-spacing: 0.5px;
+            text-shadow: 0 1.5px 6px #ffe5e233;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .pagination-btn {
+            width: 40px;
+            height: 40px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            border: 2px solid #ffe5e2;
+            background: rgba(255,255,255,0.95);
+            color: #F53E32;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: none;
+            transition: background .15s, color .15s, box-shadow .15s;
+        }
+        .pagination-btn.active, .pagination-btn:focus {
+            background: linear-gradient(90deg, #F53E32 0%, #ffe5e2 100%);
+            color: #fff;
+            box-shadow: none;
+        }
+        .pagination-btn:hover {
+            background: #fff6f4;
+            color: #F53E32;
+            box-shadow: none;
+        }
+        .shop-info {
+            background: rgba(255,255,255,0.85);
+            border-radius: 1.2rem;
+            box-shadow: none;
+            padding: 1.2rem 1.5rem;
+            border: 4px solid #ffe5e2;
+        }
+        .shop-info h1 {
+            color: #F53E32;
+        }
+        .shop-info p, .shop-info span {
+            color: #7c6f57;
+        }
+        .product-title a {
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: 0.1px;
+        }
+        .product-title a:hover {
+            color: #F53E32;
+            text-shadow: 0 1.5px 6px #ffe5e233;
+        }
+        .product-price {
+            color: #F53E32;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+        .product-shop {
+            color: #bfa14a;
+            font-weight: 600;
+        }
+        .product-shop:hover {
+            color: #F53E32;
+        }
+        .product-card .text-yellow-500 {
+            color: #ffd700 !important;
+            font-weight: 600;
+        }
+        /* Responsive tweaks */
+        @media (max-width: 640px) {
+            .main-container { padding: 1rem 0.2rem; }
+            .shop-info { flex-direction: column; gap: 1.5rem; }
+            .product-card { border-radius: 1rem; }
+            .product-card img { border-radius: 1rem 1rem 0 0; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-[#fff] to-[#fff6f4] text-gray-900">
+
+<!-- Header -->
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="main-container">
+
+    <main>
+        <!-- Shop header -->
+        <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8 mb-10 shop-info"
+                 style="background: linear-gradient(90deg, #F53E32 0%, #ff7e6b 100%); box-shadow: 0 4px 24px 0 rgba(245,62,50,0.10); border: none;">
+            <div class="flex items-center gap-6">
+                <div class="avatar" style="background: rgba(255,255,255,0.18); border: 2.5px solid #fff;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" class="w-12 h-12">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 12c2.485 0 4.5-2.239 4.5-5S14.485 2 12 2 7.5 4.239 7.5 7s2.015 5 4.5 5z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 22a8 8 0 10-16 0h16z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 th:text="${shopName}" style="color:#fff; font-size:2.1rem; font-weight:800; letter-spacing:0.5px; text-shadow:0 2px 12px #F53E32cc;">Shop Name</h1>
+                    <p class="text-base mt-1" th:text="${shop != null && shop.description != null ? shop.description : 'Your go-to source for digital resources'}"
+                       style="color:#fff; opacity:0.92; font-size:1.08rem;">Shop description</p>
+                    <div class="flex items-center gap-6 text-base mt-2">
+                        <span style="color:#fff; font-weight:500;">Sold: <b th:text="${#numbers.formatInteger(totalSold, 0)}" style="color:#fff;">0</b></span>
+                        <span style="color:#fff; font-weight:500;">Success rate: <b th:text="${#numbers.formatDecimal(successRate, 0, 'POINT', 0, 'NONE')} + '%'" style="color:#fff;">0%</b></span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold"
+                        style="background:#fff; border:2px solid #fff; color:#F53E32; font-size:1.08rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="#F53E32" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    Chat
+                </button>
+            </div>
+        </section>
+
+        <!-- Top search -->
+        <form id="shop-search-form" class="mb-8" onsubmit="return false;">
+            <div class="top-search">
+                <input id="shop-search-input" type="search" placeholder="Search products in this shop..." class="chip flex-1" />
+                <button id="shop-search-clear" type="button" class="btn-search"
+                        style="background:#fff; color:#F53E32; border:1.5px solid #ffe5e2;">Clear</button>
+            </div>
+        </form>
+
+        <!-- Toolbar -->
+        <section>
+            <h2 class="mb-4 text-[#F53E32]">All Products</h2>
+
+            <!-- Filters -->
+            <form th:action="@{|/shop/${sellerIdentifier}|}" method="get" class="flex flex-wrap items-end gap-4 mb-8">
+                <input type="hidden" name="q" th:value="${q != null ? q : ''}" />
+
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-600 mb-1">Category</label>
+                    <select name="categoryId" class="chip">
+                        <option value="" th:selected="${selectedCategoryId == null}">All</option>
+                        <option th:each="cat : ${categories}"
+                                th:value="${cat.id}"
+                                th:text="${cat.name}"
+                                th:selected="${selectedCategoryId != null and selectedCategoryId == cat.id}">
+                        </option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-600 mb-1">Min price</label>
+                    <input type="number" min="0" name="minPrice" placeholder="0" class="chip"
+                           th:value="${minPrice != null ? minPrice : ''}">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-600 mb-1">Max price</label>
+                    <input type="number" min="0" name="maxPrice" placeholder="500000" class="chip"
+                           th:value="${maxPrice != null ? maxPrice : ''}">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-600 mb-1">Rating</label>
+                    <select name="minRating" class="chip">
+                        <option value="0" th:selected="${minRating == null or minRating == 0}">All</option>
+                        <option value="1" th:selected="${minRating == 1}">1+</option>
+                        <option value="2" th:selected="${minRating == 2}">2+</option>
+                        <option value="3" th:selected="${minRating == 3}">3+</option>
+                        <option value="4" th:selected="${minRating == 4}">4+</option>
+                        <option value="5" th:selected="${minRating == 5}">5</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-600 mb-1">Sort by</label>
+                    <select name="sort" class="chip">
+                        <option value="newest" th:selected="${sort == null or sort == 'newest'}">Newest</option>
+                        <option value="price-low-to-high" th:selected="${sort == 'price-low-to-high'}">Price: Low to High</option>
+                        <option value="price-high-to-low" th:selected="${sort == 'price-high-to-low'}">Price: High to Low</option>
+                    </select>
+                </div>
+                <button type="submit" class="px-6 py-3 border border-[#F53E32] text-[#F53E32] rounded-xl bg-white/60 hover:bg-[#F53E32] hover:text-white font-semibold shadow transition-all">Apply</button>
+            </form>
+
+            <!-- Products Grid -->
+            <!-- show 4 columns on medium+ screens -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                <div th:each="item : ${products}"
+                     class="product-card product-item bg-white rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 cursor-pointer shadow-lg">
+                    <a th:href="@{/products/{id}(id=${item.product.id})}">
+                        <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
+                             alt="Product Image"
+                             class="w-full h-56 object-cover">
+                    </a>
+                    <div class="p-5 text-center">
+                        <h3 class="font-semibold text-lg text-gray-900 truncate product-title">
+                            <a th:href="@{/products/{id}(id=${item.product.id})}"
+                               class="hover:text-[#F53E32] transition-colors"
+                               th:text="${item.product.name}">Product Name</a>
+                        </h3>
+                        <p class="product-price mt-2"
+                           th:text="${#numbers.formatDecimal(item.price,0,0)} + ' coins'">0 coins</p>
+                        <p class="text-gray-500 text-base"
+                           th:text="'Sold: ' + ${item.totalSold}">Sold: 0</p>
+
+                        <!-- Use slugified shop name for the /shop/{identifier} link -->
+                        <a th:href="@{|/shop/${#strings.toLowerCase(#strings.replace(item.shopName, ' ', '-'))}|}"
+                           class="product-shop text-base hover:text-[#F53E32]"
+                           th:text="'Shop: ' + ${item.shopName}">Shop: Name</a>
+
+                        <p class="text-yellow-500 text-base mt-1"
+                           th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1)} + ' / 5'">⭐ 0.0 / 5</p>
+                    </div>
+                </div>
+                <div th:if="${#lists.isEmpty(products)}" class="col-span-full text-center text-gray-500 py-10" id="no-results">
+                    No products found.
+                </div>
+            </div>
+
+            <!-- Pagination (client-side) -->
+            <div id="paginationControls" class="mt-12 flex items-center justify-center gap-3"></div>
+        </section>
+    </main>
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script>
+    // Debounce helper
+    function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); }; }
+
+    // --- Pagination config ---
+    const PAGE_SIZE = 8; // 8 products per page
+    let currentPage = 1;
+
+    function getAllProductItems() { return Array.from(document.querySelectorAll('.product-item')); }
+    function getVisibleItems() { return getAllProductItems().filter(el => !el.classList.contains('hidden')); }
+
+    function renderPage(page) {
+        const all = getAllProductItems();
+        const visible = getVisibleItems();
+        const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+        currentPage = Math.min(Math.max(1, page), totalPages);
+
+        // hide everything first
+        all.forEach(i => { i.style.display = 'none'; i.classList.remove('visible-by-page'); });
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end = start + PAGE_SIZE;
+        visible.forEach((el, idx) => {
+            if (idx >= start && idx < end) { el.style.display = ''; el.classList.add('visible-by-page'); }
+        });
+
+        updateNoResultsAndControls();
+    }
+
+    function updatePaginationControls() {
+        const visible = getVisibleItems();
+        const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+        const container = document.getElementById('paginationControls');
+        container.innerHTML = '';
+        if (visible.length === 0) return;
+
+        // Prev button (category-like style)
+        const prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition';
+        prev.innerText = 'Prev';
+        prev.disabled = currentPage <= 1;
+        prev.onclick = () => { if (currentPage > 1) renderPage(currentPage - 1); };
+        container.appendChild(prev);
+
+        // page numbers (condensed, up to 7 buttons)
+        const maxButtons = 7;
+        let startPage = Math.max(1, currentPage - 3);
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+        if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+
+        if (startPage > 1) {
+            container.appendChild(makePageButton(1));
+            if (startPage > 2) {
+                const dots = document.createElement('span'); dots.className='px-2 text-gray-400'; dots.innerText='...'; container.appendChild(dots);
+            }
+        }
+
+        for (let p = startPage; p <= endPage; p++) container.appendChild(makePageButton(p));
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const dots = document.createElement('span'); dots.className='px-2 text-gray-400'; dots.innerText='...'; container.appendChild(dots);
+            }
+            container.appendChild(makePageButton(totalPages));
+        }
+
+        // Next button (category-like style)
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition';
+        next.innerText = 'Next';
+        next.disabled = currentPage >= totalPages;
+        next.onclick = () => { if (currentPage < totalPages) renderPage(currentPage + 1); };
+        container.appendChild(next);
+    }
+
+    function makePageButton(p) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-10 h-10 grid place-items-center rounded-full text-sm transition';
+        btn.style.border = '1px solid #e5e7eb';
+        btn.innerText = p;
+        if (p === currentPage) {
+            // category-like active style
+            btn.classList.add('bg-red-600', 'text-white', 'shadow');
+            btn.style.border = '1px solid rgba(245,62,50,0.9)';
+        } else {
+            btn.classList.add('text-gray-700', 'hover:bg-red-50');
+        }
+        btn.onclick = () => renderPage(p);
+        return btn;
+    }
+
+    function updateNoResultsAndControls() {
+        const visible = getVisibleItems();
+        const noResults = document.getElementById('no-results');
+        if (visible.length === 0) {
+            if (noResults) { noResults.classList.remove('hidden'); noResults.style.display = ''; noResults.textContent = 'No products match your search.'; }
+        } else {
+            if (noResults) { noResults.classList.add('hidden'); noResults.style.display = 'none'; }
+        }
+        updatePaginationControls();
+    }
+
+    function applyPaginationReset() { currentPage = 1; renderPage(currentPage); }
+
+    // Filter product cards by query (name, shop, price) and re-run pagination
+    function filterShopProducts(query){
+        const q = (query || '').trim().toLowerCase();
+        const items = document.querySelectorAll('.product-item');
+        items.forEach(item => {
+            const titleEl = item.querySelector('.product-title');
+            const shopEl = item.querySelector('.product-shop');
+            const priceEl = item.querySelector('.product-price');
+            const title = titleEl ? titleEl.textContent.trim().toLowerCase() : '';
+            const shop = shopEl ? shopEl.textContent.trim().toLowerCase() : '';
+            const price = priceEl ? priceEl.textContent.trim().toLowerCase() : '';
+            const match = q === '' || title.includes(q) || shop.includes(q) || price.includes(q);
+            item.classList.toggle('hidden', !match);
+        });
+        applyPaginationReset();
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        const input = document.getElementById('shop-search-input');
+        const clearBtn = document.getElementById('shop-search-clear');
+        input && input.addEventListener('input', debounce(function(e){ filterShopProducts(e.target.value); }, 220));
+        clearBtn && clearBtn.addEventListener('click', function(){ if(input) input.value = ''; filterShopProducts(''); input && input.focus(); });
+        // initial pagination render
+        filterShopProducts(input ? input.value : '');
+    });
+</script>
+</body>
+</html>

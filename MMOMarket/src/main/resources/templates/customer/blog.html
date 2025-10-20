@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>MMO Market - Blog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        :root { --primary:#F53E32; }
+        .btn-primary{
+            background:var(--primary);
+            color:#fff;
+            transition:background .25s;
+        }
+        .btn-primary:hover{ background:#d7342a; }
+        .search-focus:focus{
+            outline:none;
+            box-shadow:0 0 0 3px rgba(245,62,50,.35);
+            border-color:var(--primary);
+        }
+        .card-hover{transition:transform .25s, box-shadow .25s;}
+        .card-hover:hover{transform:translateY(-4px); box-shadow:0 8px 20px -6px rgba(0,0,0,.12);}
+        .heart { cursor: pointer; transition: transform .12s; }
+        .heart.liked { color: #F53E32; transform: scale(1.05); }
+
+        /* Nút "Lên đầu trang" */
+        #scrollToTopBtn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.3s ease-in-out;
+        }
+        #scrollToTopBtn:hover {
+            background-color: #d7342a;
+        }
+    </style>
+    <!-- CSRF tokens for AJAX -->
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+</head>
+<body class="bg-gray-50 font-sans">
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-8">
+        <h1 class="text-5xl font-bold text-gray-800" style="font-family:serif">Blog</h1>
+        <!-- Changed: button to open modal instead of link -->
+        <button onclick="openNewBlogModal()"
+                class="btn-primary font-semibold px-5 py-2 rounded-lg text-sm">
+            New Post
+        </button>
+    </header>
+
+    <!-- Search Bar -->
+    <form method="get" action="#" th:action="@{/blog}" class="relative mb-10">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <i class="fas fa-search text-gray-400"></i>
+        </div>
+        <input id="blogSearch" name="q" type="text" placeholder="Search blog posts"
+               th:value="${query}"
+               class="w-full py-3 pl-12 pr-4 bg-gray-100 border border-gray-200 rounded-lg search-focus placeholder-gray-500"
+               aria-label="Search blog posts" autocomplete="off">
+    </form>
+
+    <!-- Dropdown for filtering posts -->
+    <div class="relative inline-block text-left mb-6">
+        <button id="filterDropdownButton" class="btn-primary font-semibold px-5 py-2 rounded-lg text-sm">
+            Filter Posts
+        </button>
+        <div id="filterDropdownMenu" class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg hidden">
+            <a href="/blog" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">All Posts</a>
+            <a href="/blog/my" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">My Posts</a>
+        </div>
+    </div>
+
+    <script>
+        // Toggle dropdown visibility
+        document.getElementById('filterDropdownButton').addEventListener('click', function () {
+            const menu = document.getElementById('filterDropdownMenu');
+            menu.classList.toggle('hidden');
+        });
+    </script>
+
+    <!-- Blog List -->
+    <div id="blogGrid" class="flex flex-col space-y-6">
+        <!-- changed: use #lists.isEmpty to check an empty list -->
+        <div th:if="${#lists.isEmpty(posts)}" class="text-center text-gray-500 py-10">
+            No posts found.
+        </div>
+
+        <div th:each="post : ${posts}" class="bg-white rounded-lg overflow-hidden card-hover flex flex-col md:flex-row">
+            <div class="md:w-1/4 w-full h-48 md:h-32 overflow-hidden">
+                <img th:src="${post.image != null ? post.image : '/images/placeholder-600x400.png'}"
+                     th:alt="${post.title}" class="w-full h-full object-cover">
+            </div>
+            <div class="p-5 md:w-3/4">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                    <!-- fixed: proper Thymeleaf URL with path variable -->
+                    <a th:href="@{/blog/{id}(id=${post.id})}"
+                       th:text="${post.title}" class="hover:underline text-gray-800"></a>
+                </h2>
+                <!-- changed: guard substring by checking length first -->
+                <p class="text-gray-600 text-sm mb-4"
+                   th:text="${post.content != null ? (post.content.length() > 200 ? post.content.substring(0,200).concat('...') : post.content) : ''}"></p>
+                <div class="flex items-center text-gray-500 text-sm space-x-4">
+                    <!-- clickable heart in list; id and onclick added -->
+                    <span class="flex items-center">
+                        <i th:attr="id=${'list-heart-' + post.id}"
+                           class="fas fa-heart heart"
+                           th:classappend="${likedBlogIds != null and likedBlogIds.contains(post.id)} ? ' liked' : ''"
+                           th:onclick="|toggleBlogLike(${post.id})|"></i>
+                        &nbsp;<span th:attr="id=${'list-like-count-' + post.id}"
+                                    th:text="${likesMap != null && likesMap.containsKey(post.id) ? likesMap[post.id] : (post.likes != null ? post.likes : 0)}">0</span>
+                    </span>
+                    <span class="flex items-center">
+                        <i class="fas fa-eye mr-1.5"></i>
+                        <span th:text="${viewsMap != null && viewsMap.containsKey(post.id) ? viewsMap[post.id] : (post.views != null ? post.views : 0)}">0</span>
+                    </span>
+                    <span class="flex items-center">
+                        <i class="fas fa-comment mr-1.5"></i>
+                        <span th:text="${commentsMap != null && commentsMap.containsKey(post.id) ? commentsMap[post.id] : 0}">0</span>
+                    </span>
+                    <span class="text-gray-400">•</span>
+                    <span class="text-gray-400 text-xs"
+                          th:text="${post.createdAt != null ? #dates.format(post.createdAt, 'dd MMM yyyy') : 'New'}">date</span>
+                </div>
+            </div>
+        </div>
+    </div> <!-- end #blogGrid -->
+
+    <!-- Nút "Lên đầu trang" -->
+    <button id="scrollToTopBtn" onclick="scrollToTop()">↑</button>
+
+</div> <!-- end container -->
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- NEW: Modal for new blog -->
+<div id="newBlogModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center" onclick="overlayClickClose(event)">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 relative" role="dialog" aria-modal="true" aria-labelledby="nb-title">
+        <!-- Tick / close button (top-right) -->
+        <button id="newBlogTick" title="Close" onclick="closeNewBlogModal()" class="absolute top-3 right-3 text-green-600 bg-green-50 rounded-full p-2 hover:bg-green-100 focus:outline-none">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <h2 id="nb-title" class="text-xl font-bold mb-4">Create New Blog Post</h2>
+        <form id="newBlogForm" novalidate enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700">Title</label>
+                <input type="text" id="blogTitle" name="title" required maxlength="200"
+                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                       placeholder="Enter title (max 200 chars)">
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700">Content</label>
+                <textarea id="blogContent" name="content" rows="5" required maxlength="20000"
+                          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                          placeholder="Write your content"></textarea>
+            </div>
+            <!-- Image file upload -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Upload image (optional)</label>
+                <input type="file" id="blogImageFile" name="imageFile" accept="image/*"
+                       class="mt-1 block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-gray-100 hover:file:bg-gray-200">
+            </div>
+
+            <p id="newBlogError" class="text-red-600 text-sm mb-3 hidden"></p>
+
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="closeNewBlogModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+                <button type="submit" id="newBlogSubmit" class="px-4 py-2 btn-primary rounded">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast area (top-center) -->
+<div id="globalToast" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-60 hidden">
+    <div id="globalToastMsg" class="bg-green-600 text-white px-4 py-2 rounded shadow-lg flex items-center space-x-2">
+        <i class="fas fa-check-circle"></i>
+        <span id="globalToastText">Success</span>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // Initialize to the next page after the server-rendered page to avoid duplicating page 0.
+    // Model attribute 'currentPage' is set in the controller (posts.getNumber()).
+    var currentPage = /*[[${currentPage} + 1]]*/ 1;
+    const pageSize = 6;
+    var isLoading = false;
+
+    // Function to load more blogs
+    function loadMoreBlogs() {
+        if (isLoading) return;
+        isLoading = true;
+
+        fetch(`/blog/infinite?page=${currentPage}&size=${pageSize}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.content && data.content.length > 0) {
+                    appendBlogsToGrid(data.content);
+                    currentPage++;
+                }
+            })
+            .catch(err => console.error('Failed to load more blogs:', err))
+            .finally(() => isLoading = false);
+    }
+
+    // Append blogs to the grid
+    function appendBlogsToGrid(blogs) {
+        const grid = document.getElementById('blogGrid');
+        blogs.forEach(blog => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'bg-white rounded-lg overflow-hidden card-hover flex flex-col md:flex-row';
+            wrapper.innerHTML = `
+                <div class="md:w-1/4 w-full h-48 md:h-32 overflow-hidden">
+                    <img src="${blog.image || '/images/placeholder-600x400.png'}" alt="${blog.title}" class="w-full h-full object-cover">
+                </div>
+                <div class="p-5 md:w-3/4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                        <a href="/blog/${blog.id}" class="hover:underline text-gray-800">${blog.title}</a>
+                    </h2>
+                    <p class="text-gray-600 text-sm mb-4">${blog.content.length > 200 ? blog.content.substring(0, 200) + '...' : blog.content}</p>
+                    <div class="flex items-center text-gray-500 text-sm space-x-4">
+                        <span class="flex items-center">
+                            <i class="fas fa-heart heart"></i>&nbsp;<span>${blog.likes || 0}</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-eye mr-1.5"></i><span>${blog.views || 0}</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-comment mr-1.5"></i><span>${blog.comments || 0}</span>
+                        </span>
+                        <span class="text-gray-400">•</span>
+                        <span class="text-gray-400 text-xs">${new Date(blog.createdAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(wrapper);
+        });
+    }
+
+    // Detect scroll to bottom and load more blogs
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+            loadMoreBlogs();
+        }
+
+        // Show "Lên đầu trang" button
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        if (window.scrollY > 300) {
+            scrollToTopBtn.style.display = 'block';
+        } else {
+            scrollToTopBtn.style.display = 'none';
+        }
+    });
+
+    // Scroll to top function
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadMoreBlogs();
+    });
+
+    // CSRF helpers
+    const csrfMeta = document.querySelector('meta[name="_csrf"]');
+    const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+    const CSRF_TOKEN = csrfMeta ? csrfMeta.getAttribute('content') : null;
+    const CSRF_HEADER = csrfHeaderMeta ? csrfHeaderMeta.getAttribute('content') : 'X-CSRF-TOKEN';
+    function csrfHeaders(extra = {}) {
+        const h = Object.assign({}, extra);
+        if (CSRF_TOKEN && CSRF_HEADER) h[CSRF_HEADER] = CSRF_TOKEN;
+        return h;
+    }
+    // Toggle like for a blog from list; updates both list and (if present) detail UI
+    function toggleBlogLike(blogId) {
+        fetch('/blog/' + blogId + '/like', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: csrfHeaders({ 'Accept': 'application/json' })
+        }).then(r => {
+            if (!r.ok) return r.text().then(t => { throw new Error(t || 'HTTP ' + r.status); });
+            return r.json();
+        }).then(json => {
+            if (!json) return;
+            const count = json.count ?? null;
+            const liked = !!json.liked;
+            // list UI
+            const listCount = document.getElementById('list-like-count-' + blogId);
+            if (listCount != null && count != null) listCount.innerText = count;
+            const listHeart = document.getElementById('list-heart-' + blogId);
+            if (listHeart) { if (liked) listHeart.classList.add('liked'); else listHeart.classList.remove('liked'); }
+            // detail UI (if current page is detail)
+            const detailSpan = document.getElementById('blog-like-count');
+            if (detailSpan && count != null) detailSpan.innerText = count;
+            const detailHeart = document.getElementById('blog-heart');
+            if (detailHeart) { if (liked) detailHeart.classList.add('liked'); else detailHeart.classList.remove('liked'); }
+        }).catch(err => console.error('Toggle like failed:', err));
+    }
+
+    // Modal open/close
+    function openNewBlogModal() {
+        document.getElementById('newBlogModal').classList.remove('hidden');
+        document.getElementById('blogTitle').focus();
+        document.addEventListener('keydown', escCloseListener);
+    }
+    function closeNewBlogModal() {
+        document.getElementById('newBlogModal').classList.add('hidden');
+        document.getElementById('newBlogForm').reset();
+        const err = document.getElementById('newBlogError');
+        err.classList.add('hidden'); err.innerText = '';
+        document.removeEventListener('keydown', escCloseListener);
+    }
+    function overlayClickClose(e) {
+        if (e.target && e.target.id === 'newBlogModal') closeNewBlogModal();
+    }
+    function escCloseListener(e) {
+        if (e.key === 'Escape') closeNewBlogModal();
+    }
+
+    // Show a short toast message
+    function showToast(message, ms = 1200) {
+        const toast = document.getElementById('globalToast');
+        const text = document.getElementById('globalToastText');
+        if (!toast || !text) return;
+        text.innerText = message;
+        toast.classList.remove('hidden');
+        // fade out after ms
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, ms);
+    }
+
+    // Validate fields
+    function validateNewBlogForm() {
+        const title = document.getElementById('blogTitle').value.trim();
+        const content = document.getElementById('blogContent').value.trim();
+        const err = document.getElementById('newBlogError');
+        if (!title || !content) {
+            err.innerText = 'Title and content are required.'; err.classList.remove('hidden'); return false;
+        }
+        if (title.length > 200) {
+            err.innerText = 'Title must be at most 200 characters.'; err.classList.remove('hidden'); return false;
+        }
+        err.classList.add('hidden'); err.innerText = '';
+        return true;
+    }
+
+    // helper to build and prepend a new blog card into the list
+    function prependNewBlogCard(data) {
+        const grid = document.getElementById('blogGrid');
+        if (!grid) return false;
+
+        const id = data.blogId;
+        const title = document.getElementById('blogTitle').value.trim();
+        const content = document.getElementById('blogContent').value.trim();
+        const img = (data.image && data.image.trim()) ? data.image : '/images/placeholder-600x400.png';
+
+        // remove "No posts found." if present
+        const emptyEl = grid.querySelector('div.text-center.text-gray-500');
+        if (emptyEl) emptyEl.remove();
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bg-white rounded-lg overflow-hidden card-hover flex flex-col md:flex-row';
+
+        wrapper.innerHTML =
+            '<div class="md:w-1/4 w-full h-48 md:h-32 overflow-hidden">' +
+            '<img src="'+ img +'" alt="'+ escapeHtml(title) +'" class="w-full h-full object-cover">' +
+            '</div>' +
+            '<div class="p-5 md:w-3/4">' +
+            '<h2 class="text-2xl font-bold text-gray-800 mb-2">' +
+            '<a href="/blog/'+ id +'" class="hover:underline text-gray-800">' + escapeHtml(title) + '</a>' +
+            '</h2>' +
+            '<p class="text-gray-600 text-sm mb-4">' + escapeHtml(content.length > 200 ? content.substring(0,200) + '...' : content) + '</p>' +
+            '<div class="flex items-center text-gray-500 text-sm space-x-4">' +
+            '<span class="flex items-center">' +
+            '<i id="list-heart-'+ id +'" class="fas fa-heart heart" onclick="toggleBlogLike('+ id +')"></i>&nbsp;' +
+            '<span id="list-like-count-' + id + '">0</span>' +
+            '</span>' +
+            '<span class="flex items-center"><i class="fas fa-eye mr-1.5"></i><span>0</span></span>' +
+            '<span class="flex items-center"><i class="fas fa-comment mr-1.5"></i><span>0</span></span>' +
+            '<span class="text-gray-400">•</span>' +
+            '<span class="text-gray-400 text-xs">New</span>' +
+            '</div>' +
+            '</div>';
+
+        grid.prepend(wrapper);
+        return true;
+    }
+
+    // Submit new blog form via AJAX (multipart FormData)
+    document.getElementById('newBlogForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!validateNewBlogForm()) return;
+
+        const form = e.currentTarget;
+        const err = document.getElementById('newBlogError');
+        const submitBtn = document.getElementById('newBlogSubmit');
+        submitBtn.disabled = true; const prevText = submitBtn.innerText; submitBtn.innerText = 'Creating...';
+
+        const fd = new FormData(form); // contains title, content, and imageFile
+
+        fetch('/blog', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: csrfHeaders({ 'Accept': 'application/json' }),
+            body: fd
+        }).then(resp => resp.text().then(text => {
+            let json = {};
+            try { json = text ? JSON.parse(text) : {}; } catch(_) {}
+            if (!resp.ok) {
+                if (resp.status === 401) { window.location.href = '/login'; return Promise.reject(); }
+                const msg = (json && json.error) ? json.error : (text || ('HTTP ' + resp.status));
+                throw new Error(msg);
+            }
+            return json;
+        })).then(json => {
+            if (json && json.ok) {
+                // show success toast, close modal and redirect to blog list so newly created post appears reliably
+                showToast('Created successfully');
+                closeNewBlogModal();
+                // small delay to let user see toast then navigate
+                setTimeout(() => {
+                    window.location.href = '/blog';
+                }, 900);
+            } else {
+                throw new Error((json && json.error) ? json.error : 'Unknown error');
+            }
+        }).catch(errMsg => {
+            if (!errMsg) return;
+            err.innerText = errMsg.message || (''+errMsg) || 'Request failed';
+            err.classList.remove('hidden');
+        }).finally(() => {
+            submitBtn.disabled = false; submitBtn.innerText = prevText;
+        });
+    });
+
+    // ...existing helper functions (escapeHtml, etc.)...
+</script>
+</body>
+</html>

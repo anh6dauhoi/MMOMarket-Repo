@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MMO Market - About us</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --bg:#ffffff;
+            --muted:#6b7280;
+            --accent:#ff4d47;
+            --cta:#1f6feb;
+            --card:#fbf7f7;
+            --border:#e6e4e4;
+            --container:1100px;
+            --radius:10px;
+            font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:#111;}
+        .wrap{max-width:var(--container);margin:44px auto;padding:0 28px;}
+        .hero{display:flex;gap:36px;align-items:center;flex-wrap:wrap;margin-bottom:36px}
+        .hero .img{flex:1 1 420px;min-width:280px}
+        .hero img{width:100%;height:250px;object-fit:cover;border-radius:12px;border:1px solid var(--border)}
+        .hero .content{flex:1 1 360px;min-width:260px}
+        h1{color:var(--accent);font-size:36px;margin:0 0 12px 0;font-weight:800}
+        p.lead{color:var(--muted);margin:0 0 18px 0;line-height:1.5}
+        .btn{display:inline-block;background:var(--cta);color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;box-shadow:0 6px 18px rgba(31,111,235,0.12)}
+        /* Mission & Values */
+        .section{margin:36px 0}
+        .section h2{margin:0 0 12px 0;font-size:18px}
+        .card{background:#fff;border:1px solid var(--border);padding:18px;border-radius:10px}
+        .values{display:flex;gap:12px;margin:14px 0 18px;flex-wrap:wrap}
+        .value{flex:1 1 150px;padding:12px;border-radius:8px;border:1px solid var(--border);background:#fff;display:flex;gap:10px;align-items:center}
+        .value .icon{width:36px;height:36px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700}
+        .muted{color:var(--muted);line-height:1.6}
+        hr.sep{border:0;height:1px;background:var(--border);margin:28px 0}
+        /* Team */
+        .team{display:flex;gap:28px;justify-content:space-between;flex-wrap:wrap}
+        .member{flex:1 1 200px;text-align:center}
+        .avatar{width:160px;height:160px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:8px solid #feeae6;display:block}
+        .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+        .name{font-weight:600}
+        .role{font-size:13px;color:var(--muted);margin-top:6px}
+        /* Contact form */
+        .form{max-width:520px}
+        .field{margin-bottom:14px}
+        label{display:block;font-size:13px;margin-bottom:6px;color:#333}
+        input[type="text"], input[type="email"], textarea{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:#fff;resize:vertical;font-size:14px}
+        textarea{min-height:120px}
+        .submit{background:var(--accent);color:#fff;padding:10px 14px;border-radius:8px;border:none;font-weight:600;cursor:pointer}
+        /* Responsive */
+        @media (max-width:820px){
+            .hero img{height:200px}
+            .avatar{width:140px;height:140px}
+        }
+        @media (max-width:520px){
+            h1{font-size:28px}
+            .team{justify-content:center}
+            .member{flex:1 1 100%;max-width:260px}
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+    <div th:insert="~{fragments/header :: header}"></div>
+    <div class="hero">
+        <div class="img card">
+            <img src="https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=1200&auto=format&fit=crop&crop=faces" alt="About illustration">
+        </div>
+        <div class="content">
+            <h1>About MMO Market</h1>
+            <p class="lead">MMO Market is your one-stop destination for premium online resources. From account, keys and services, we provide the tools you need to excel in the digital world.</p>
+            <a href="#" class="btn">Explore Now</a>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Our Mission</h2>
+        <div class="card">
+            <p class="muted">At MMO Market, our mission is to democratize access to essential online resources. We believe everyone deserves the opportunity to leverage digital tools regardless of background or budget. We provide high-quality resources at affordable prices, empowering users to achieve their goals.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Our Values</h2>
+        <div class="values">
+            <div class="value"><div class="icon">Q</div><div><strong>Quality</strong><div class="muted" style="font-size:13px">High standards & reliable resources</div></div></div>
+            <div class="value"><div class="icon">C</div><div><strong>Community</strong><div class="muted" style="font-size:13px">Share knowledge & collaborate</div></div></div>
+            <div class="value"><div class="icon">$</div><div><strong>Affordability</strong><div class="muted" style="font-size:13px">Competitive pricing & options</div></div></div>
+        </div>
+        <p class="muted">We are committed to providing resources that meet the highest standards of quality and reliability while fostering a supportive community and flexible pricing options.</p>
+    </div>
+
+    <div class="section">
+        <h2>Meet Our Team</h2>
+        <div class="team" style="margin-top:18px">
+            <div class="member">
+                <div class="avatar"><img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop&crop=faces" alt="Sarah Chen"></div>
+                <div class="name">Sarah Chen</div>
+                <div class="role">Admin</div>
+            </div>
+            <div class="member">
+                <div class="avatar"><img src="https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=800&auto=format&fit=crop&crop=faces" alt="David Lee"></div>
+                <div class="name">David Lee</div>
+                <div class="role">Admin</div>
+            </div>
+            <div class="member">
+                <div class="avatar"><img src="https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=800&auto=format&fit=crop&crop=faces" alt="Emily Wong"></div>
+                <div class="name">Emily Wong</div>
+                <div class="role">Admin</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Contact Us</h2>
+        <form class="form" method="post" action="#">
+            <div class="field">
+                <label for="name">Name</label>
+                <input id="name" name="name" type="text" placeholder="Your Name">
+            </div>
+            <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" placeholder="Your Email">
+            </div>
+            <div class="field">
+                <label for="message">Message</label>
+                <textarea id="message" name="message" placeholder="Your Message"></textarea>
+            </div>
+            <button type="submit" class="submit">Send Message</button>
+        </form>
+    </div>
+
+    <hr class="sep">
+</div>
+<div th:insert="~{fragments/footer :: footer}"></div>
+</body>
+</html>
