@@ -22,6 +22,18 @@
         .animate-fade-in {
             animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        body {
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 flex flex-col min-h-screen font-sans">
@@ -589,9 +601,8 @@
 
                                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
 
-                                        <svg class="h-5 w-5 text-gray-500" fill="none"
-                                             stroke="currentColor" viewBox="0 0 24 24"
-                                             xmlns="http://www.w3.org/2000/svg"><path
+                                        <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
                                                 d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
                                                 stroke-linecap="round" stroke-linejoin="round"
                                                 stroke-width="2"/></svg>
@@ -699,7 +710,7 @@
                                         Status
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider cursor-pointer"
-                                        onclick="sortTable(2)">
+                                        onclick="sortTable(3)">
                                         Date
                                         <svg class="inline h-4 w-4 ml-1 sort-icon" fill="none" stroke="currentColor"
                                              viewBox="0 0 24 24">
@@ -1006,11 +1017,14 @@
     });
 
     // Sort table function
-    const sortDirections = {0: 'asc', 2: 'asc'}; // 0 for Amount, 2 for Date
+    // Fix: Amount is column 1, Date is column 3
+    const sortDirections = {1: 'asc', 3: 'asc'}; // 1 for Amount, 3 for Date
 
     function sortTable(columnIndex) {
         const table = document.querySelector('table');
+        if (!table) return;
         const tbody = table.querySelector('tbody');
+        if (!tbody) return;
         const rows = Array.from(tbody.querySelectorAll('tr'));
 
         // Toggle sort direction
@@ -1023,12 +1037,15 @@
             const bText = b.cells[columnIndex].textContent.trim();
 
             let aVal, bVal;
-            if (columnIndex === 0) { // Amount
+            if (columnIndex === 1) { // Amount
                 aVal = parseInt(aText.replace(/,/g, '')) || 0;
                 bVal = parseInt(bText.replace(/,/g, '')) || 0;
-            } else if (columnIndex === 2) { // Date
+            } else if (columnIndex === 3) { // Date
                 aVal = new Date(aText);
                 bVal = new Date(bText);
+            } else {
+                aVal = aText;
+                bVal = bText;
             }
 
             if (direction === 'asc') {
@@ -1051,10 +1068,12 @@
             icon.classList.remove('rotate-180');
         });
         // Set active icon
-        const th = document.querySelectorAll('th')[activeColumn];
-        const icon = th.querySelector('.sort-icon');
-        if (direction === 'desc') {
-            icon.classList.add('rotate-180');
+        const ths = document.querySelectorAll('th');
+        if (ths[activeColumn]) {
+            const icon = ths[activeColumn].querySelector('.sort-icon');
+            if (icon && direction === 'desc') {
+                icon.classList.add('rotate-180');
+            }
         }
     }
 

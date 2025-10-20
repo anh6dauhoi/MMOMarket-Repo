@@ -4,15 +4,18 @@ import com.mmo.dto.SellerRegistrationDTO;
 import com.mmo.dto.ProcessWithdrawalRequest;
 import com.mmo.dto.AdminWithdrawalResponse;
 import com.mmo.dto.WithdrawalDetailResponse;
+import com.mmo.dto.CoinDepositDetailResponse;
 import com.mmo.entity.SellerRegistration;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
+import com.mmo.entity.CoinDeposit;
 import com.mmo.service.SellerService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -66,16 +69,48 @@ public class AdminController {
     @GetMapping("/seller-registrations")
     public String sellerRegistrations(@RequestParam(name = "status", defaultValue = "All") String status,
                                       @RequestParam(name = "page", defaultValue = "0") int page,
+                                      @RequestParam(name = "search", defaultValue = "") String search,
+                                      @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
                                       Model model) {
-        Pageable pageable = PageRequest.of(page, 10, Sort.by("createdAt").descending());
-        Page<SellerRegistration> registrationPage = sellerService.findAllRegistrations(status, pageable);
+        // Determine sort direction for createdAt
+        Sort.Direction dir = Sort.Direction.DESC;
+        if (sort != null) {
+            String s = sort.trim().toLowerCase();
+            if ("date_asc".equals(s) || "created_at_asc".equals(s)) dir = Sort.Direction.ASC;
+        }
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(dir, "createdAt"));
+
+        Page<SellerRegistration> registrationPage;
+        if (search == null || search.isBlank()) {
+            // use existing service method (2 args)
+            registrationPage = sellerService.findAllRegistrations(status, pageable);
+        } else {
+            // fallback: perform JPQL search and manual paging into PageImpl
+            StringBuilder q = new StringBuilder("SELECT s FROM SellerRegistration s LEFT JOIN FETCH s.user u WHERE 1=1");
+            if (!"All".equalsIgnoreCase(status)) {
+                q.append(" AND LOWER(s.status) = LOWER(:status)");
+            }
+            q.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search) OR LOWER(s.shopName) LIKE LOWER(:search) OR CAST(s.id AS string) LIKE :search)");
+            q.append(" ORDER BY s.createdAt ").append(dir.isAscending() ? "ASC" : "DESC");
+            jakarta.persistence.Query query = entityManager.createQuery(q.toString(), SellerRegistration.class);
+            if (!"All".equalsIgnoreCase(status)) query.setParameter("status", status);
+            query.setParameter("search", "%" + search + "%");
+            List<SellerRegistration> all = query.getResultList();
+            int total = all.size();
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), total);
+            List<SellerRegistration> pageContent = start <= end ? all.subList(start, end) : List.of();
+            registrationPage = new PageImpl<>(pageContent, pageable, total);
+        }
 
         model.addAttribute("registrations", registrationPage.getContent());
         model.addAttribute("currentStatus", status);
         model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort);
         model.addAttribute("totalPages", registrationPage.getTotalPages());
-        model.addAttribute("pageTitle", "Seller Registrations"); // for dynamic header title
-        model.addAttribute("body", "admin/seller-registrations"); // was "admin/seller-registrations :: content"
+        model.addAttribute("pageTitle", "Seller Registrations");
+        model.addAttribute("body", "admin/seller-registrations");
         return "admin/layout";
     }
 
@@ -160,37 +195,49 @@ public class AdminController {
     public String withdrawManagement(@RequestParam(name = "status", defaultValue = "All") String status,
                                      @RequestParam(name = "page", defaultValue = "0") int page,
                                      @RequestParam(name = "search", defaultValue = "") String search,
+                                     @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
                                      Model model) {
-        String queryStr = "SELECT w FROM Withdrawal w WHERE 1=1";
+        // Build base JPQL
+        StringBuilder sb = new StringBuilder("SELECT w FROM Withdrawal w LEFT JOIN FETCH w.seller s WHERE 1=1");
         if (!"All".equalsIgnoreCase(status)) {
-            queryStr += " AND LOWER(w.status) = LOWER(:status)";
+            sb.append(" AND LOWER(w.status) = LOWER(:status)");
         }
-        if (!search.isBlank()) {
-            queryStr += " AND (LOWER(w.seller.fullName) LIKE LOWER(:search) OR LOWER(w.seller.email) LIKE LOWER(:search) OR CAST(w.id AS string) LIKE :search)";
+        if (search != null && !search.isBlank()) {
+            sb.append(" AND (LOWER(s.fullName) LIKE LOWER(:search) OR LOWER(s.email) LIKE LOWER(:search) OR CAST(w.id AS string) LIKE :search)");
         }
-        queryStr += " ORDER BY w.createdAt DESC";
-        jakarta.persistence.Query query = entityManager.createQuery(queryStr, Withdrawal.class);
+
+        // Determine ordering based on sort param
+        String orderField = "w.createdAt";
+        String orderDir = "DESC";
+        if (sort != null) {
+            String s = sort.trim().toLowerCase();
+            if ("date_asc".equals(s) || "created_at_asc".equals(s)) orderDir = "ASC";
+            else orderDir = "DESC";
+        }
+        sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
+
+        jakarta.persistence.Query query = entityManager.createQuery(sb.toString(), Withdrawal.class);
         if (!"All".equalsIgnoreCase(status)) {
             query.setParameter("status", status);
         }
-        if (!search.isBlank()) {
+        if (search != null && !search.isBlank()) {
             query.setParameter("search", "%" + search + "%");
         }
-        List<Withdrawal> allWithdrawals = query.getResultList();
-        int total = allWithdrawals.size();
+
+        List<Withdrawal> all = query.getResultList();
+        int total = all.size();
         int totalPages = (int) Math.ceil((double) total / 10);
-        List<Withdrawal> withdrawals = allWithdrawals.stream()
+        List<Withdrawal> pageList = all.stream()
                 .skip((long) page * 10)
                 .limit(10)
                 .toList();
 
-        model.addAttribute("withdrawals", withdrawals);
+        model.addAttribute("withdrawals", pageList);
         model.addAttribute("currentStatus", status);
         model.addAttribute("currentPage", page);
         model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort); // expose current sort to template
         model.addAttribute("totalPages", totalPages);
-        // Provide configured/supported banks to template for VietQR generation mapping
-        model.addAttribute("supportedBanks", Bank.listAll());
         model.addAttribute("pageTitle", "Withdraw Management");
         model.addAttribute("body", "admin/withdraw-management");
         return "admin/layout";
@@ -443,6 +490,111 @@ public class AdminController {
         model.addAttribute("body", "admin/my-notification");
         return "admin/layout";
     }
+
+    @GetMapping("/topup-management")
+    public String topupManagement(@RequestParam(name = "status", defaultValue = "All") String status,
+                                  @RequestParam(name = "page", defaultValue = "0") int page,
+                                  @RequestParam(name = "search", defaultValue = "") String search,
+                                  Model model) {
+        String queryStr = "SELECT c FROM CoinDeposit c WHERE 1=1";
+        if (!"All".equalsIgnoreCase(status)) {
+            queryStr += " AND LOWER(c.status) = LOWER(:status)";
+        }
+        if (!search.isBlank()) {
+            queryStr += " AND (LOWER(c.user.fullName) LIKE LOWER(:search) OR LOWER(c.user.email) LIKE LOWER(:search) OR CAST(c.id AS string) LIKE :search OR LOWER(c.sepayReferenceCode) LIKE LOWER(:search))";
+        }
+        queryStr += " ORDER BY c.createdAt DESC";
+        jakarta.persistence.Query query = entityManager.createQuery(queryStr, CoinDeposit.class);
+        if (!"All".equalsIgnoreCase(status)) {
+            query.setParameter("status", status);
+        }
+        if (!search.isBlank()) {
+            query.setParameter("search", "%" + search + "%");
+        }
+        List<CoinDeposit> all = query.getResultList();
+        int total = all.size();
+        int totalPages = (int) Math.ceil((double) total / 10);
+        List<CoinDeposit> pageList = all.stream()
+                .skip((long) page * 10)
+                .limit(10)
+                .toList();
+
+        model.addAttribute("coinDeposits", pageList);
+        model.addAttribute("currentStatus", status);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageTitle", "Top-up Management");
+        model.addAttribute("body", "admin/topup-management");
+        return "admin/layout";
+    }
+
+    @GetMapping(value = "/coin-deposits/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getCoinDepositDetail(@PathVariable Long id, Authentication auth) {
+        try {
+            // Auth check: try param auth then security context
+            Authentication authentication = auth;
+            if (authentication == null || !authentication.isAuthenticated()) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            // Basic admin validation (authorities or DB role)
+            boolean hasAdminAuthority = false;
+            try {
+                if (authentication.getAuthorities() != null) {
+                    for (GrantedAuthority ga : authentication.getAuthorities()) {
+                        String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
+                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
+                            hasAdminAuthority = true;
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            User admin = null;
+            try {
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", authentication.getName())
+                        .getResultStream().findFirst().orElse(null);
+            } catch (Exception ignored) {}
+
+            boolean okAdmin = hasAdminAuthority;
+            if (!okAdmin && admin != null && admin.getRole() != null) {
+                String role = admin.getRole().trim();
+                if (role.toUpperCase().startsWith("ROLE_")) role = role.substring(5);
+                okAdmin = "ADMIN".equalsIgnoreCase(role);
+            }
+            if (!okAdmin) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+
+            CoinDeposit cd = entityManager.createQuery("SELECT c FROM CoinDeposit c LEFT JOIN FETCH c.user WHERE c.id = :id", CoinDeposit.class)
+                    .setParameter("id", id)
+                    .getResultStream().findFirst().orElse(null);
+            if (cd == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Top-up not found");
+
+            CoinDepositDetailResponse resp = new CoinDepositDetailResponse(
+                    cd.getId(),
+                    cd.getUser() != null ? cd.getUser().getId() : null,
+                    cd.getUser() != null ? cd.getUser().getFullName() : "",
+                    cd.getUser() != null ? cd.getUser().getEmail() : "",
+                    cd.getAmount(),
+                    cd.getCoinsAdded(),
+                    cd.getStatus(),
+                    cd.getSepayTransactionId(),
+                    cd.getSepayReferenceCode(),
+                    cd.getGateway(),
+                    cd.getTransactionDate() != null ? cd.getTransactionDate().toString() : "",
+                    cd.getContent(),
+                    cd.getCreatedAt() != null ? cd.getCreatedAt().toString() : "",
+                    cd.getUpdatedAt() != null ? cd.getUpdatedAt().toString() : ""
+            );
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
 }
-
-

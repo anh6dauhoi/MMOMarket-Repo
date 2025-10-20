@@ -166,21 +166,29 @@ ALTER TABLE Transactions
 ADD CONSTRAINT fk_delivered_account
 FOREIGN KEY (delivered_account_id) REFERENCES ProductVariantAccounts(id) ON DELETE NO ACTION;
 
--- Bảng CoinDeposits - Quản lý giao dịch nạp Coin qua Sepay
+-- Bảng CoinDeposits - Cập nhật để tích hợp SePay Webhook
 CREATE TABLE IF NOT EXISTS CoinDeposits (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL, -- Mã người dùng
-    amount BIGINT NOT NULL, -- Số tiền nạp (VNĐ)
-    coins_added BIGINT NOT NULL, -- Coin được cộng (1 VNĐ = 1 Coin)
-    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái: Pending, Completed, Failed
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,             -- Mã ID tự tăng
+    user_id BIGINT NOT NULL,                           -- Mã người dùng
+    amount BIGINT NOT NULL,                           -- Số tiền nạp (VNĐ) từ SePay
+    coins_added BIGINT NOT NULL,                       -- Coin được cộng (thường bằng amount)
+    status VARCHAR(20) DEFAULT 'Pending',             -- Trạng thái: Pending, Completed, Failed
+    sepay_transaction_id BIGINT NULL UNIQUE,           -- ID giao dịch gốc từ SePay (UNIQUE để chống trùng)
+    sepay_reference_code VARCHAR(255) NULL,            -- Mã tham chiếu gốc từ SePay
+    gateway VARCHAR(100) NULL,                         -- Ngân hàng/Cổng thanh toán từ SePay
+    transaction_date DATETIME NULL,                    -- Thời gian giao dịch gốc từ SePay
+    content TEXT NULL,                                 -- Nội dung chuyển khoản gốc từ SePay
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,     -- Thời gian tạo bản ghi trong hệ thống
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật bản ghi
+    created_by BIGINT,                                 -- Người tạo (thường là user_id hoặc null nếu là hệ thống)
+    deleted_by BIGINT,                                 -- Người xóa
+    isDelete TINYINT(1) DEFAULT 0,                     -- Trạng thái xóa mềm
+
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
+    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL,
+    FOREIGN KEY (deleted_by) REFERENCES Users(id) ON DELETE SET NULL,
+
+    INDEX idx_sepay_ref_code (sepay_reference_code)    -- Index để tìm kiếm nhanh theo mã tham chiếu
 );
 
 -- Bảng Withdrawals - Quản lý yêu cầu rút tiền của Seller
