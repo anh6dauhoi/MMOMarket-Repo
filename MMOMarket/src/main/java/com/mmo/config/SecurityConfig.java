@@ -1,5 +1,7 @@
 package com.mmo.config;
 
+import com.mmo.repository.UserRepository;
+import com.mmo.entity.User;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,21 +15,21 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.sql.DataSource;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -40,20 +42,34 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder, UserRepository userRepository) {
         return new AuthenticationProvider() {
             @Override
             public Authentication authenticate(Authentication authentication) throws AuthenticationException {
                 String username = authentication.getName();
-                String password = authentication.getCredentials().toString();
+                String rawPassword = authentication.getCredentials().toString();
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 if (!userDetails.isEnabled()) {
-                    throw new DisabledException("Tài khoản chưa được xác thực. Vui lòng verify email.");
+                    throw new DisabledException("Account is not verified. Please check your email for verification.");
                 }
-                if ("sa123".equals(password) || password.equals(userDetails.getPassword())) {
-                    return new UsernamePasswordAuthenticationToken(username, password, userDetails.getAuthorities());
+
+                String stored = userDetails.getPassword();
+                // Avoid NPE with null/blank stored passwords (e.g., OAuth-only accounts)
+                if (stored != null && !stored.isBlank() && passwordEncoder.matches(rawPassword, stored)) {
+                    return new UsernamePasswordAuthenticationToken(username, rawPassword, userDetails.getAuthorities());
                 }
-                throw new BadCredentialsException("Email hoặc mật khẩu không đúng.");
+                // Fallback for legacy plaintext passwords: if equals, authenticate and upgrade hash
+                if (stored != null && rawPassword.equals(stored)) {
+                    try {
+                        User u = userRepository.findByEmailAndIsDelete(username, false);
+                        if (u != null) {
+                            u.setPassword(passwordEncoder.encode(rawPassword));
+                            userRepository.save(u);
+                        }
+                    } catch (Exception ignored) { }
+                    return new UsernamePasswordAuthenticationToken(username, rawPassword, userDetails.getAuthorities());
+                }
+                throw new BadCredentialsException("Incorrect email or password.");
             }
 
             @Override
@@ -64,7 +80,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider, UserDetailsService userDetailsService) throws Exception {
         http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests((requests) -> requests
@@ -91,9 +107,9 @@ public class SecurityConfig {
                             response.sendRedirect(isAdmin ? "/admin/seller-registrations" : "/welcome");
                         })
                         .failureHandler((request, response, exception) -> {
-                            String errorMessage = "Email hoặc mật khẩu không đúng.";
+                            String errorMessage = "Incorrect email or password.";
                             if (exception instanceof DisabledException) {
-                                errorMessage = "Tài khoản chưa được xác thực. Vui lòng verify email.";
+                                errorMessage = "Account is not verified. Please check your email for verification.";
                             } else if (exception instanceof BadCredentialsException) {
                                 errorMessage = exception.getMessage();
                             }
@@ -101,6 +117,12 @@ public class SecurityConfig {
                             response.sendRedirect("/authen/login?error");
                         })
                         .permitAll()
+                )
+                .rememberMe(remember -> remember
+                        .userDetailsService(userDetailsService)
+                        .rememberMeParameter("remember-me")
+                        .key("MMOMarket-RememberMe-Secret-Key-ChangeMe")
+                        .tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(30))
                 )
                 .oauth2Login((oauth2) -> oauth2
                         .loginPage("/authen/login")
@@ -113,6 +135,7 @@ public class SecurityConfig {
                 .logout((logout) -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/authen/login?logout")
+                        .deleteCookies("JSESSIONID", "remember-me")
                         .permitAll()
                 )
                 .exceptionHandling((exceptions) -> exceptions

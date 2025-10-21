@@ -12,4 +12,7 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
     Optional<EmailVerification> findTopByUserOrderByCreatedAtDesc(User user);
 
     Optional<EmailVerification> findByUserAndVerificationCodeAndIsUsedFalse(User user, String verificationCode);
+
+    // New: pick the latest verification for this user+code that is not marked used
+    Optional<EmailVerification> findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(User user, String verificationCode);
 }
