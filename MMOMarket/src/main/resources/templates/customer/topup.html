@@ -100,7 +100,8 @@
                         automatically</p>
 
                     <div class="qr-image-wrapper">
-                        <img alt="QR Code for payment" th:src="${vietQrUrl}">
+                        <img alt="QR Code for payment"
+                             th:src="@{'https://qr.sepay.vn/img?acc=0813302283&bank=MBBank&des=' + ${depositCode}}"/>
                     </div>
 
                     <div class="quick-guide">

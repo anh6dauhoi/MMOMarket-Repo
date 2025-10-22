@@ -368,6 +368,22 @@ public class SellerController {
             if (seller == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
             }
+
+
+            // 1. Get the start time in milliseconds
+            long startTime = System.currentTimeMillis();
+            long delay = 5000; // 5 seconds = 5000 milliseconds
+
+            // 2. Loop until 5 seconds have passed
+            while (true) {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - startTime >= delay) {
+                    // If 5 seconds or more have elapsed, exit the loop
+                    break;
+                }
+                // This loop will spin continuously, checking the time
+            }
+
             boolean sellerRole = seller.getRole() != null && seller.getRole().equalsIgnoreCase("SELLER");
             boolean activeShop = seller.getShopStatus() != null && seller.getShopStatus().equalsIgnoreCase("Active");
             if (!sellerRole && !activeShop) {

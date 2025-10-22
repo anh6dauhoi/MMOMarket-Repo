@@ -32,6 +32,20 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/seller/css/my-shop.css}">
+    <style>
+        body {
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 flex flex-col min-h-screen font-sans text-gray-800">
 <!-- Include Header -->
@@ -46,7 +60,7 @@
             <!-- Main Content -->
             <div class="lg:col-span-3 space-y-8">
                 <!-- Header Section -->
-                <div class="flex flex-col md:flex-row md:items-center justify-between">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center justify-between mb-4">
                     <div>
                         <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
                         <p class="text-gray-500 mt-1">Welcome back to your shop management</p>

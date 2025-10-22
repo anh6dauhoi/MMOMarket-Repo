@@ -27,7 +27,6 @@ public enum Bank {
     CAKE("CAKE", "CAKE", "546034"),
     UBANK("Ubank", "UBANK", "546035"),
 
-    // wallets / e-money / alternative channels
     VIETTELMONEY("ViettelMoney", "VIETTELMONEY", "971005"),
     TIMO("Timo", "TIMO", "963388"),
     VNPTMONEY("VNPTMoney", "VNPTMONEY", "970111"),
@@ -46,7 +45,6 @@ public enum Bank {
     COOPBANK("COOPBANK", "COOPBANK", "970448"),
     LPBANK("LPBank", "LPBANK", "970449"),
 
-    // banks / organizations / financial institutions
     KIENLONGBANK("KienLongBank", "KIENLONGBANK", "970452"),
     KBANK("KBank", "KBANK", "668888"),
     MAFC("MAFC", "MAFC", "977777"),

@@ -70,8 +70,22 @@
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <meta name="_csrf_parameter" th:content="${_csrf.parameterName}"/>
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 flex flex-col min-h-screen">
+<body class="min-h-screen flex flex-col bg-gray-50">
 <div th:insert="~{fragments/header :: header}"></div>
 
 <main class="flex-grow">
@@ -123,17 +137,25 @@
                             </svg>
                             <span>My Complaints</span>
                         </a>
-                        <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                           th:href="@{/account/settings}"
-                           th:with="statusRaw=${registration != null and registration.status != null ? registration.status : ''},
-                                     statusUpper=${#strings.toUpperCase(statusRaw)},
-                                     isContractPhase=${#strings.contains(statusUpper,'APPROVED') or statusUpper == 'REJECTED_CONTRACT' or statusUpper == 'PENDING_CONTRACT_REVIEW'}">
+                        <a class="flex items-center space-x-3 px-4 py-2 text-red-500 bg-red-50 rounded-lg"
+                           th:if="${registration != null and registration.status != null and #strings.toUpperCase(registration.status).contains('ACTIVE')}"
+                           th:href="@{/account/settings}">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
                                       stroke-linecap="round" stroke-linejoin="round"
                                       stroke-width="2"></path>
                             </svg>
-                            <span th:text="${isContractPhase} ? 'My Contract' : 'Register Seller'">Register Seller</span>
+                            <span>My Contract</span>
+                        </a>
+                        <a class="flex items-center space-x-3 px-4 py-2 text-red-500 bg-red-50 rounded-lg"
+                           th:if="${registration == null or registration.status == null or !#strings.toUpperCase(registration.status).contains('ACTIVE')}"
+                           th:href="@{/account/settings}">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                                      stroke-linecap="round" stroke-linejoin="round"
+                                      stroke-width="2"></path>
+                            </svg>
+                            <span>Register Seller</span>
                         </a>
                         <a class="flex items-center space-x-3 px-4 py-2 text-red-500 bg-red-50 rounded-lg"
                            th:href="@{/account/notifications}">

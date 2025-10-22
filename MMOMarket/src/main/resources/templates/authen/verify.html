@@ -8,53 +8,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/authen/css/authen.css}">
     <style>
-        body {
-            background: url('/images/home.jpg') no-repeat center center fixed;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover;
-        }
-
-        .form-container {
-            background: rgba(255, 255, 255, 0.95);
-        }
-
+        body { background: url('/images/home.jpg') no-repeat center center fixed; background-size: cover; }
+        .form-container { background: rgba(255, 255, 255, 0.95); }
         @media (max-width: 640px) {
-            body {
-                background-position: top center;
-            }
-
-            .form-container {
-                margin: 0 16px;
-                max-width: calc(100% - 32px);
-            }
+            body { background-position: top center; }
+            .form-container { margin: 0 16px; max-width: calc(100% - 32px); }
         }
-
-        /* Responsive OTP inputs */
-        .otp-container {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-        }
-
-        .otp-input {
-            width: 40px;
-            height: 48px;
-            font-size: 1.25rem;
-        }
-
-        @media (min-width: 420px) {
-            .otp-container {
-                gap: 12px;
-            }
-
-            .otp-input {
-                width: 48px;
-                height: 56px;
-                font-size: 1.5rem;
-            }
-        }
+        .otp-container { display: flex; gap: 8px; justify-content: center; }
+        .otp-input { width: 40px; height: 48px; font-size: 1.25rem; }
+        @media (min-width: 420px) { .otp-container { gap: 12px; } .otp-input { width: 48px; height: 56px; font-size: 1.5rem; } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -73,61 +35,37 @@
                             </div>
                         </div>
                         <div class="checkmark w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center absolute -bottom-1 -right-2 bg-green-500 rounded-full">
-                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor"
-                                 viewBox="0 0 24 24">
-                                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"
-                                      stroke-width="3"></path>
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
                             </svg>
                         </div>
                     </div>
                 </div>
             </div>
-            <h2 class="text-xl sm:text-2xl font-bold text-red-500 text-center mb-2">Xác thực OTP</h2>
-            <p class="text-gray-600 text-center mb-6 sm:mb-8 text-sm sm:text-base">Nhập mã OTP đã gửi đến <span
-                    class="font-semibold text-gray-800" th:text="${email}"></span></p>
+            <h2 class="text-xl sm:text-2xl font-bold text-red-500 text-center mb-2">Verify your OTP</h2>
+            <p class="text-gray-600 text-center mb-6 sm:mb-8 text-sm sm:text-base">Enter the 6-digit code sent to <span class="font-semibold text-gray-800" th:text="${email}"></span></p>
             <form id="otpForm" method="post" th:action="@{/authen/verify}">
                 <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
                 <input name="email" th:value="${email}" type="hidden"/>
                 <input id="fullOtpCode" name="code" type="hidden"/>
                 <input name="reset" th:if="${reset}" type="hidden" value="true"/>
                 <div class="otp-container mb-6 px-2">
-                    <input autofocus
-                           class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-                           id="otp1"
-                           maxlength="1" type="text">
-                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-                           id="otp2"
-                           maxlength="1"
-                           type="text">
-                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-                           id="otp3"
-                           maxlength="1"
-                           type="text">
-                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-                           id="otp4"
-                           maxlength="1"
-                           type="text">
-                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-                           id="otp5"
-                           maxlength="1"
-                           type="text">
-                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-                           id="otp6"
-                           maxlength="1"
-                           type="text">
+                    <input autofocus class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp1" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp2" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp3" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp4" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp5" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+                    <input class="otp-input text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition" id="otp6" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
                 </div>
-                <p class="text-red-500 font-medium mb-4 text-center text-sm sm:text-base" id="timer">Thời gian còn lại:
-                    4p59g</p>
-                <p class="text-gray-500 mb-6 text-center text-xs sm:text-sm">Chưa nhận được OTP?
-                    <button class="text-blue-500 font-medium hover:underline" id="resendBtn" type="button">Gửi lại OTP
-                    </button>
+                <p class="text-red-500 font-medium mb-4 text-center text-sm sm:text-base" id="timer">Time left: 4m59s</p>
+                <p class="text-gray-500 mb-6 text-center text-xs sm:text-sm">Haven't received the OTP?
+                    <button class="text-blue-500 font-medium hover:underline" id="resendBtn" type="button">Resend OTP</button>
                 </p>
-                <button class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-6 rounded-full transition-colors text-sm sm:text-base"
+                <button class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 sm:py-3 px-6 rounded-full transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                         id="verifyBtn"
-                        th:text="${reset} ? 'Xác thực để đổi mật khẩu' : 'Xác thực'"
-                        type="button"></button>
-                <div class="text-red-500 text-xs sm:text-sm text-center mt-4" id="serverMessage" th:if="${message}"
-                     th:text="${message}"></div>
+                        th:text="${reset} ? 'Verify to reset password' : 'Verify'"
+                        type="button" disabled></button>
+                <div class="text-red-500 text-xs sm:text-sm text-center mt-4" id="serverMessage" th:if="${message}" th:text="${message}"></div>
                 <div class="text-green-500 text-xs sm:text-sm text-center mt-2" id="clientMessage"></div>
             </form>
         </div>
@@ -142,9 +80,47 @@
     const resendBtn = document.getElementById('resendBtn');
     const timerElement = document.getElementById('timer');
 
-    // Xử lý input OTP
+    let timeLeft = 299;
+    let timerId = null;
+
+    function updateFullOtpCode() {
+        fullOtpCode.value = Array.from(otpInputs).map(input => input.value).join('');
+        const valid = fullOtpCode.value.length === 6 && /^\d{6}$/.test(fullOtpCode.value) && timeLeft > 0;
+        verifyBtn.disabled = !valid;
+    }
+
+    function startTimer() {
+        stopTimer();
+        timerElement.classList.remove('text-red-600');
+        tick();
+    }
+
+    function tick() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerElement.textContent = `Time left: ${minutes}m${seconds.toString().padStart(2, '0')}s`;
+        if (timeLeft > 0) {
+            timeLeft--;
+            timerId = setTimeout(tick, 1000);
+        } else {
+            timerElement.textContent = 'Time expired';
+            timerElement.classList.add('text-red-600');
+            resendBtn.disabled = false;
+            updateFullOtpCode();
+        }
+    }
+
+    function stopTimer() {
+        if (timerId) {
+            clearTimeout(timerId);
+            timerId = null;
+        }
+    }
+
+    // Init inputs behavior
     otpInputs.forEach((input, index) => {
         input.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
             if (e.target.value.length === 1 && index < otpInputs.length - 1) {
                 otpInputs[index + 1].focus();
             }
@@ -155,66 +131,53 @@
                 otpInputs[index - 1].focus();
             }
         });
+        input.addEventListener('paste', (e) => {
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            if (/^\d{6}$/.test(text)) {
+                e.preventDefault();
+                for (let i = 0; i < 6; i++) { otpInputs[i].value = text[i]; }
+                updateFullOtpCode();
+                verifyBtn.focus();
+            }
+        });
     });
 
-    function updateFullOtpCode() {
-        fullOtpCode.value = Array.from(otpInputs).map(input => input.value).join('');
-    }
-
-    // Xử lý verify
+    // Verify submit
     verifyBtn.addEventListener('click', () => {
         updateFullOtpCode();
-        if (fullOtpCode.value.length === 6) {
-            otpForm.submit(); // Submit form đến backend
-        } else {
-            alert('Vui lòng nhập đầy đ�� mã OTP');
-        }
+        if (!verifyBtn.disabled) otpForm.submit();
     });
-
-    // Timer
-    let timeLeft = 299;
-
-    function updateTimer() {
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
-        timerElement.textContent = `Thời gian còn lại: ${minutes}p${seconds.toString().padStart(2, '0')}g`;
-        if (timeLeft > 0) {
-            timeLeft--;
-            setTimeout(updateTimer, 1000);
-        } else {
-            timerElement.textContent = 'Thời gian hết hạn';
-            timerElement.classList.add('text-red-600');
-            resendBtn.disabled = false;
-        }
-    }
-
-    updateTimer();
 
     // Resend OTP
     resendBtn.addEventListener('click', () => {
+        resendBtn.disabled = true;
         fetch('/authen/resend-otp', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 'email': document.querySelector('input[name="email"]').value,
                 '_csrf': document.querySelector('input[name="_csrf"]').value
             })
         }).then(response => response.text())
             .then(text => {
-                timeLeft = 299;
-                timerElement.classList.remove('text-red-600');
-                updateTimer();
+                // Reset inputs and timer
                 otpInputs.forEach(input => input.value = '');
                 otpInputs[0].focus();
+                timeLeft = 299;
+                startTimer();
+                updateFullOtpCode();
                 document.getElementById('clientMessage').textContent = text;
+                resendBtn.disabled = false;
             }).catch(() => {
-            document.getElementById('clientMessage').textContent = 'Lỗi khi gửi lại OTP.';
-        });
+                document.getElementById('clientMessage').textContent = 'Failed to resend OTP.';
+                resendBtn.disabled = false;
+            });
     });
 
+    // Initial focus & start timer
     otpInputs[0].focus();
+    updateFullOtpCode();
+    startTimer();
 </script>
 </body>
 </html>

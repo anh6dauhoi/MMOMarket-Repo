@@ -10,8 +10,7 @@ CREATE TABLE IF NOT EXISTS Users (
     full_name VARCHAR(255), -- Tên đầy đủ
     role VARCHAR(255) NOT NULL, 
     phone VARCHAR(20), -- Số điện thoại
-    shop_status VARCHAR(50) DEFAULT 'Inactive', -- Trạng thái cửa hàng, dùng ENUM để đảm bảo dữ liệu
-    shop_level TINYINT UNSIGNED DEFAULT 0,
+    shop_status VARCHAR(50) DEFAULT 'Inactive',
     coins BIGINT DEFAULT 0, -- Coin để thanh toán trong hệ thống, 1 Coin = 1 VNĐ
     depositCode VARCHAR(50),
     isVerified TINYINT(1) DEFAULT 0, -- Trạng thái xác minh email
@@ -20,9 +19,19 @@ CREATE TABLE IF NOT EXISTS Users (
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm: 0 - tồn tại, 1 - xóa
-    FOREIGN KEY (created_by) REFERENCES Users(id),
+	FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id),
     INDEX idx_email (email) -- Index cho email
+);
+
+-- Bảng SearchHistory - Lưu lịch sử tìm kiếm
+CREATE TABLE IF NOT EXISTS SearchHistory (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,                          
+    search_query VARCHAR(255) NOT NULL,               
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,    
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE, 
+    INDEX idx_user_query (user_id, created_at DESC)   
 );
 
 -- Bảng EmailVerifications - Quản lý mã xác minh email
@@ -34,6 +43,25 @@ CREATE TABLE IF NOT EXISTS EmailVerifications (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_used TINYINT(1) DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+-- Bảng ShopInfo (Đăng ký Bán hàng & Thông tin Shop)
+CREATE TABLE IF NOT EXISTS ShopInfo (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
+    user_id BIGINT NOT NULL, -- Mã người dùng
+    shop_name VARCHAR(255) NOT NULL, -- Tên cửa hàng
+    description TEXT, -- Mô tả
+	shop_level TINYINT UNSIGNED DEFAULT 0,
+	commission DECIMAL(5,2) NOT NULL DEFAULT 5.00, -- Tỷ lệ hoa hồng, mặc định 5%
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
+    created_by BIGINT, -- Người tạo
+    deleted_by BIGINT, -- Người xóa
+    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL,
+    FOREIGN KEY (deleted_by) REFERENCES Users(id) ON DELETE SET NULL,
+    UNIQUE KEY unique_active_shop (user_id, isDelete)
 );
 
 -- Bảng SellerBankInfo - Quản lý thông tin ngân hàng của Seller
@@ -49,10 +77,10 @@ CREATE TABLE IF NOT EXISTS SellerBankInfo (
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+	FOREIGN KEY (user_id) REFERENCES Users(id),
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id),
-    INDEX idx_user_id (user_id) -- Index cho user_id
+    INDEX idx_user_id (user_id)
 );
 
 -- Bảng Categories - Quản lý danh mục sản phẩm/dịch vụ (do Admin tạo)
@@ -66,7 +94,7 @@ CREATE TABLE IF NOT EXISTS Categories (
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (created_by) REFERENCES Users(id),
+	FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
@@ -83,8 +111,8 @@ CREATE TABLE IF NOT EXISTS Products (
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES Categories(id) ON DELETE NO ACTION,
+	FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES Categories(id),
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id),
     INDEX idx_seller_id (seller_id),
@@ -97,20 +125,31 @@ CREATE TABLE IF NOT EXISTS ProductVariants (
     product_id BIGINT NOT NULL, -- Mã sản phẩm
     variant_name VARCHAR(255) NOT NULL, -- Tên biến thể
     price BIGINT NOT NULL, -- Giá
-    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái Bán hoặc không do seller
+     status VARCHAR(20) DEFAULT 'Pending', 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE,
+	FOREIGN KEY (product_id) REFERENCES Products(id) ,
     FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id),
+    FOREIGN KEY (deleted_by) REFERENCES Users(id) ,
     INDEX idx_product_id (product_id)
 );
 
+-- Bảng Wishlists - Lưu trữ danh sách sản phẩm yêu thích của người dùng
+CREATE TABLE IF NOT EXISTS Wishlists (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,              
+    product_id BIGINT NOT NULL,           
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 
+    UNIQUE KEY unique_wishlist_item (user_id, product_id),
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,   
+    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE 
+);
+
 -- Bảng Transactions - Quản lý giao dịch mua hàng
--- Bảng Transactions (Tạm thời chưa có FK đến ProductVariantAccounts)
 CREATE TABLE IF NOT EXISTS Transactions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     customer_id BIGINT NOT NULL,
@@ -129,13 +168,12 @@ CREATE TABLE IF NOT EXISTS Transactions (
     deleted_by BIGINT,
     isDelete TINYINT(1) DEFAULT 0,
 
-    FOREIGN KEY (customer_id) REFERENCES Users(id) ON DELETE NO ACTION,
-    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE NO ACTION,
-    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE NO ACTION,
-    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id) ON DELETE NO ACTION,
-    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL,
-    FOREIGN KEY (deleted_by) REFERENCES Users(id) ON DELETE SET NULL
-    -- FK (delivered_account_id) sẽ được thêm bằng ALTER TABLE
+	FOREIGN KEY (customer_id) REFERENCES Users(id),
+    FOREIGN KEY (seller_id) REFERENCES Users(id),
+    FOREIGN KEY (product_id) REFERENCES Products(id),
+    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id),
+    FOREIGN KEY (created_by) REFERENCES Users(id),
+    FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
 -- Bảng ProductVariantAccounts (Có FK đến Transactions)
@@ -153,11 +191,10 @@ CREATE TABLE IF NOT EXISTS ProductVariantAccounts (
     deleted_by BIGINT,
     isDelete TINYINT(1) DEFAULT 0,
 
-    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id) ON DELETE NO ACTION, -- Đổi thành NO ACTION
+    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id) ON DELETE CASCADE,
     FOREIGN KEY (transaction_id) REFERENCES Transactions(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL,
-    FOREIGN KEY (deleted_by) REFERENCES Users(id) ON DELETE SET NULL,
-
+    FOREIGN KEY (created_by) REFERENCES Users(id),
+    FOREIGN KEY (deleted_by) REFERENCES Users(id),
     INDEX idx_variant_id_status (variant_id, status)
 );
 
@@ -166,21 +203,29 @@ ALTER TABLE Transactions
 ADD CONSTRAINT fk_delivered_account
 FOREIGN KEY (delivered_account_id) REFERENCES ProductVariantAccounts(id) ON DELETE NO ACTION;
 
--- Bảng CoinDeposits - Quản lý giao dịch nạp Coin qua Sepay
+-- Bảng CoinDeposits - Cập nhật để tích hợp SePay Webhook
 CREATE TABLE IF NOT EXISTS CoinDeposits (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL, -- Mã người dùng
-    amount BIGINT NOT NULL, -- Số tiền nạp (VNĐ)
-    coins_added BIGINT NOT NULL, -- Coin được cộng (1 VNĐ = 1 Coin)
-    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái: Pending, Completed, Failed
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,             -- Mã ID tự tăng
+    user_id BIGINT NOT NULL,                           -- Mã người dùng
+    amount BIGINT NOT NULL,                           -- Số tiền nạp (VNĐ) từ SePay
+    coins_added BIGINT NOT NULL,                       -- Coin được cộng (thường bằng amount)
+    status VARCHAR(20) DEFAULT 'Pending',             -- Trạng thái: Pending, Completed, Failed
+    sepay_transaction_id BIGINT NULL UNIQUE,           -- ID giao dịch gốc từ SePay (UNIQUE để chống trùng)
+    sepay_reference_code VARCHAR(255) NULL,            -- Mã tham chiếu gốc từ SePay
+    gateway VARCHAR(100) NULL,                         -- Ngân hàng/Cổng thanh toán từ SePay
+    transaction_date DATETIME NULL,                    -- Thời gian giao dịch gốc từ SePay
+    content TEXT NULL,                                 -- Nội dung chuyển khoản gốc từ SePay
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,     -- Thời gian tạo bản ghi trong hệ thống
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật bản ghi
+    created_by BIGINT,                                 -- Người tạo (thường là user_id hoặc null nếu là hệ thống)
+    deleted_by BIGINT,                                 -- Người xóa
+    isDelete TINYINT(1) DEFAULT 0,                     -- Trạng thái xóa mềm
+
+    FOREIGN KEY (user_id) REFERENCES Users(id),
     FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
+    FOREIGN KEY (deleted_by) REFERENCES Users(id),
+
+    INDEX idx_sepay_ref_code (sepay_reference_code)    -- Index để tìm kiếm nhanh theo mã tham chiếu
 );
 
 -- Bảng Withdrawals - Quản lý yêu cầu rút tiền của Seller
@@ -189,7 +234,7 @@ CREATE TABLE IF NOT EXISTS Withdrawals (
     seller_id BIGINT NOT NULL, -- Mã Seller
     bank_info_id BIGINT NOT NULL, -- Mã thông tin ngân hàng
     amount BIGINT NOT NULL, -- Số Coin rút
-    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái: Pending, Approved, Rejected, Completed
+    status VARCHAR(20) DEFAULT 'Pending', -- Trạng thái: Pending, Approved, Rejected
     bank_name VARCHAR(100), -- Tên ngân hàng
     account_number VARCHAR(50), -- Số tài khoản
     account_name VARCHAR(100), -- Tên người thụ hưởng
@@ -200,7 +245,7 @@ CREATE TABLE IF NOT EXISTS Withdrawals (
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE NO ACTION,
+	FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE NO ACTION,
     FOREIGN KEY (bank_info_id) REFERENCES SellerBankInfo(id) ON DELETE NO ACTION,
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
@@ -265,21 +310,6 @@ CREATE TABLE IF NOT EXISTS Reviews (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
--- Bảng Commissions - Quản lý hoa hồng theo cửa hàng, mặc định 5% nếu không cấu hình
-CREATE TABLE IF NOT EXISTS Commissions (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL UNIQUE, -- Mã người dùng (Seller)
-    percentage DECIMAL(5,2) NOT NULL DEFAULT 5.00, -- Tỷ lệ hoa hồng, mặc định 5%
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
-);
-
 -- Bảng Blogs - Quản lý bài viết blog với đếm số lượt thích
 CREATE TABLE IF NOT EXISTS Blogs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
@@ -318,26 +348,6 @@ CREATE TABLE IF NOT EXISTS BlogComments (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
--- Bảng SellerRegistrations - Quản lý yêu cầu đăng ký bán hàng
-CREATE TABLE IF NOT EXISTS SellerRegistrations (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    user_id BIGINT NOT NULL UNIQUE, -- Mã người dùng
-    shop_name VARCHAR(255) NOT NULL, -- Tên cửa hàng
-    description TEXT, -- Mô tả
-    contract VARCHAR(255), -- Hợp đồng
-    signed_contract VARCHAR(255), -- Hợp đồng đã ký
-    status VARCHAR(50) DEFAULT 'Pending', -- Trạng thái
-    reason VARCHAR(255), -- Lý do từ chối
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
-);
-
 -- Bảng Notifications - Quản lý thông báo
 CREATE TABLE IF NOT EXISTS Notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
@@ -354,3 +364,94 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (created_by) REFERENCES Users(id),
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
+
+DELIMITER //
+
+CREATE TRIGGER trg_CleanOldVerificationCodes
+BEFORE INSERT ON EmailVerifications
+FOR EACH ROW
+BEGIN
+    -- Xóa tất cả các mã xác minh (OTP) cũ, chưa được sử dụng,
+    -- và có thể đã hết hạn của cùng một người dùng (NEW.user_id)
+    -- trước khi lưu mã mới.
+    DELETE FROM EmailVerifications
+    WHERE user_id = NEW.user_id 
+      AND is_used = 0;
+END//
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE TRIGGER trg_ManageNotificationLimit
+BEFORE INSERT ON Notifications
+FOR EACH ROW
+BEGIN
+    DECLARE notification_count INT;
+    DECLARE excess_count INT;
+
+    -- 1. Đếm tổng số thông báo hiện tại của người dùng
+    SELECT COUNT(id) INTO notification_count
+    FROM Notifications
+    WHERE user_id = NEW.user_id AND isDelete = 0;
+
+    -- 2. Kiểm tra nếu vượt quá giới hạn 50
+    IF notification_count >= 50 THEN
+        -- Số lượng cần xóa (ví dụ: 50 + 1 = 51, cần xóa 1 bản ghi cũ nhất)
+        SET excess_count = notification_count - 50 + 1; 
+
+        -- 3. Xóa các bản ghi cũ nhất (sắp xếp theo created_at tăng dần)
+        DELETE FROM Notifications
+        WHERE user_id = NEW.user_id 
+          AND isDelete = 0
+          AND id IN (
+            SELECT id FROM (
+                SELECT id 
+                FROM Notifications
+                WHERE user_id = NEW.user_id AND isDelete = 0
+                ORDER BY created_at ASC
+                LIMIT excess_count
+            ) AS TmpTable -- Cần bảng tạm khi DELETE FROM cùng bảng trong MySQL
+          );
+    END IF;
+END//
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE TRIGGER trg_LimitSearchHistory
+AFTER INSERT ON SearchHistory
+FOR EACH ROW
+BEGIN
+    DECLARE history_count INT;
+    DECLARE history_limit INT DEFAULT 10;
+    DECLARE oldest_id BIGINT;
+
+    -- 1. Đếm tổng số bản ghi hiện tại của user (sau khi đã INSERT)
+    SELECT COUNT(id) INTO history_count
+    FROM SearchHistory
+    WHERE user_id = NEW.user_id;
+
+    -- 2. Nếu số lượng vượt quá giới hạn (ví dụ: > 10)
+    --    Lặp lại việc xóa bản ghi cũ nhất cho đến khi đạt giới hạn
+    WHILE history_count > history_limit DO
+
+        -- Tìm ID của bản ghi cũ nhất
+        SELECT id INTO oldest_id
+        FROM SearchHistory
+        WHERE user_id = NEW.user_id
+        ORDER BY created_at ASC
+        LIMIT 1;
+
+        -- Xóa bản ghi cũ nhất dựa trên ID đã tìm được
+        DELETE FROM SearchHistory
+        WHERE id = oldest_id;
+
+        -- Giảm bộ đếm sau khi xóa
+        SET history_count = history_count - 1;
+
+    END WHILE;
+END//
+
+DELIMITER ;
