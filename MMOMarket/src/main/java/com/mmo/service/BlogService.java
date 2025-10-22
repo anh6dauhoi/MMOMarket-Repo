@@ -11,11 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +21,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.stream.Collectors;
 
 @Service
 public class BlogService {
@@ -38,26 +33,6 @@ public class BlogService {
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    // session-based fallback for guests (comment likes only)
-    private final ConcurrentHashMap<Long, CopyOnWriteArraySet<String>> COMMENT_LIKES = new ConcurrentHashMap<>();
-
-    private SimpleJdbcInsert blogsInsert;
-
-    // centralize upload directory
-    private String ensureUploadDirExists(String base) {
-        try {
-            java.nio.file.Path p = java.nio.file.Paths.get(base);
-            java.nio.file.Files.createDirectories(p);
-        } catch (Exception ignored) {}
-        return base;
-    }
-
-    // Expose base dir for controller image serving
-    public String blogUploadBaseDir() {
-        String base = System.getProperty("user.dir") + java.io.File.separator + "uploads" + java.io.File.separator + "blogs";
-        return ensureUploadDirExists(base);
-    }
 
     // Create helper tables if they don't exist (no new Java files; DB tables are created at runtime)
     @PostConstruct
@@ -100,13 +75,6 @@ public class BlogService {
                             ")"
             );
         } catch (DataAccessException ignored) { /* ignore DDL errors */ }
-
-        // Initialize SimpleJdbcInsert for Blogs
-        try {
-            blogsInsert = new SimpleJdbcInsert(jdbcTemplate)
-                    .withTableName("Blogs")
-                    .usingGeneratedKeyColumns("id");
-        } catch (Exception ignored) { }
     }
 
     // helper safe DB methods to avoid throwing on empty results / duplicate inserts / other DB oddities
@@ -140,14 +108,42 @@ public class BlogService {
         }
     }
 
-    // List posts: rely on DB ORDER BY created_at DESC, id DESC
-    public Page<Blog> listPosts(String q, int page, int size) {
-        PageRequest pageable = PageRequest.of(Math.max(0, page), Math.max(1, size)); // unsorted; SQL has ORDER BY
-        if (q == null || q.trim().isEmpty()) {
-            return blogRepository.findAllActiveNative(pageable);
+    // List posts with search + sort (SQL handles ordering)
+    public Page<Blog> listPosts(String q, String sort, int page, int size) {
+        PageRequest pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        String s = (sort == null || sort.isBlank()) ? "newest" : sort.trim().toLowerCase();
+        boolean hasQ = q != null && !q.trim().isEmpty();
+        String term = hasQ ? q.trim() : null;
+
+        if (!hasQ) {
+            switch (s) {
+                case "oldest":
+                    return blogRepository.findAllActiveOrderByCreatedAsc(pageable);
+                case "most-liked":
+                    return blogRepository.findAllActiveOrderByLikes(pageable);
+                case "most-viewed":
+                    return blogRepository.findAllActiveOrderByViews(pageable);
+                case "most-commented":
+                    return blogRepository.findAllActiveOrderByComments(pageable);
+                case "newest":
+                default:
+                    return blogRepository.findAllActiveNative(pageable);
+            }
+        } else {
+            switch (s) {
+                case "oldest":
+                    return blogRepository.searchByTitleOrContentOrderByCreatedAsc(term, pageable);
+                case "most-liked":
+                    return blogRepository.searchByTitleOrContentOrderByLikes(term, pageable);
+                case "most-viewed":
+                    return blogRepository.searchByTitleOrContentOrderByViews(term, pageable);
+                case "most-commented":
+                    return blogRepository.searchByTitleOrContentOrderByComments(term, pageable);
+                case "newest":
+                default:
+                    return blogRepository.searchByTitleOrContent(term, pageable);
+            }
         }
-        String term = q.trim();
-        return blogRepository.searchByTitleOrContent(term, pageable);
     }
 
     // Resolve identifier: reuse ordered native search; no additional re-sort needed
@@ -440,153 +436,6 @@ public class BlogService {
         return result;
     }
 
-    // NEW: create a new blog post (use direct insert to avoid JPA-triggered UPDATEs)
-    @Transactional
-    public Map<String, Object> createBlog(String title, String content, String image, Long authorId) {
-        Map<String, Object> resp = new HashMap<>();
-        try {
-            String t = title == null ? "" : title.trim();
-            String c = content == null ? "" : content.trim();
-            if (t.isEmpty() || c.isEmpty()) {
-                resp.put("error", "title_and_content_required");
-                return resp;
-            }
-            if (t.length() > 200) {
-                resp.put("error", "title_too_long");
-                return resp;
-            }
-            if (blogsInsert == null) {
-                resp.put("error", "init_failed");
-                return resp;
-            }
-            Map<String, Object> params = new HashMap<>();
-            params.put("title", t);
-            params.put("content", c);
-            params.put("image", (image == null || image.isBlank()) ? null : image.trim());
-            params.put("author_id", authorId);
-            params.put("views", 0);
-            params.put("likes", 0);
-            // set timestamps so it shows on top
-            java.sql.Timestamp nowTs = new java.sql.Timestamp(System.currentTimeMillis());
-            params.put("created_at", nowTs);
-            params.put("updated_at", nowTs);
-            Number key = blogsInsert.executeAndReturnKey(params);
-            resp.put("ok", true);
-            resp.put("blogId", key != null ? key.longValue() : null);
-        } catch (Exception e) {
-            resp.put("error", "creation_failed");
-        }
-        return resp;
-    }
-
-    // Overload: create blog with file upload or URL image
-    @Transactional
-    public Map<String, Object> createBlog(String title,
-                                          String content,
-                                          org.springframework.web.multipart.MultipartFile imageFile,
-                                          String imageUrl,
-                                          Long authorId) {
-        Map<String, Object> resp = new HashMap<>();
-        try {
-            String t = title == null ? "" : title.trim();
-            String c = content == null ? "" : content.trim();
-            if (t.isEmpty() || c.isEmpty()) {
-                resp.put("error", "title_and_content_required");
-                return resp;
-            }
-            if (t.length() > 200) {
-                resp.put("error", "title_too_long");
-                return resp;
-            }
-
-            String finalImage = null;
-
-            // Prefer uploaded file over URL if present
-            if (imageFile != null && !imageFile.isEmpty()) {
-                String orig = imageFile.getOriginalFilename();
-                String ext = "";
-                if (orig != null && orig.contains(".")) {
-                    ext = orig.substring(orig.lastIndexOf('.')).toLowerCase(Locale.ROOT);
-                    // whitelist basic image extensions
-                    if (!ext.matches("\\.(png|jpg|jpeg|gif|webp)$")) {
-                        ext = ".jpg";
-                    }
-                } else {
-                    ext = ".jpg";
-                }
-                String filename = java.util.UUID.randomUUID().toString().replace("-", "") + ext;
-                java.nio.file.Path dir = java.nio.file.Paths.get(blogUploadBaseDir());
-                java.nio.file.Path dest = dir.resolve(filename).normalize();
-                // save file
-                try (java.io.InputStream in = imageFile.getInputStream()) {
-                    java.nio.file.Files.copy(in, dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    finalImage = "/blog/image/" + filename;
-                } catch (Exception e) {
-                    // fallback: ignore file, try URL if provided
-                }
-            }
-
-            if (finalImage == null && imageUrl != null && !imageUrl.isBlank()) {
-                // minimal sanitize
-                String u = imageUrl.trim();
-                if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("/")) {
-                    finalImage = u;
-                }
-            }
-
-            if (blogsInsert == null) {
-                resp.put("error", "init_failed");
-                return resp;
-            }
-            Map<String, Object> params = new HashMap<>();
-            params.put("title", t);
-            params.put("content", c);
-            params.put("image", finalImage);
-            params.put("author_id", authorId);
-            params.put("views", 0);
-            params.put("likes", 0);
-            // set timestamps so it shows on top
-            java.sql.Timestamp nowTs = new java.sql.Timestamp(System.currentTimeMillis());
-            params.put("created_at", nowTs);
-            params.put("updated_at", nowTs);
-            Number key = blogsInsert.executeAndReturnKey(params);
-            resp.put("ok", true);
-            resp.put("blogId", key != null ? key.longValue() : null);
-            resp.put("image", finalImage);
-        } catch (Exception e) {
-            resp.put("error", "creation_failed");
-        }
-        return resp;
-    }
-
-    // Overload: create blog with file only (no URL)
-    @Transactional
-    public Map<String, Object> createBlog(String title,
-                                          String content,
-                                          org.springframework.web.multipart.MultipartFile imageFile,
-                                          Long authorId) {
-        // delegate to existing method with imageUrl = null
-        return createBlog(title, content, imageFile, null, authorId);
-    }
-
-    // Existing: returns List<Blog> for an author
-    public java.util.List<Blog> listPostsByUser(Long userId) {
-        return blogRepository.findAllByAuthorId(userId);
-    }
-
-    // NEW: paged + optional search term for "My Posts" (returns Page<Blog>)
-    public Page<Blog> listPostsByUser(Long userId, String q, int page, int size) {
-        PageRequest pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
-        if (userId == null) {
-            return Page.empty(pageable);
-        }
-        if (q == null || q.trim().isEmpty()) {
-            return blogRepository.findAllActiveByAuthorNative(userId, pageable);
-        } else {
-            String term = q.trim();
-            return blogRepository.searchByAuthorAndTerm(userId, term, pageable);
-        }
-    }
 
     // NEW: safely read blog content as a plain String (avoids Clob/Lob serialization issues)
     public String getContentById(Long blogId) {

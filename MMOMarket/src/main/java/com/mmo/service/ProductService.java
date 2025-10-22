@@ -30,6 +30,9 @@ import java.util.stream.Collectors;
 import java.util.Comparator;
 import org.springframework.data.domain.PageRequest;
 
+// NEW: import ShopService
+import com.mmo.service.ShopService;
+
 @Service
 public class ProductService {
 
@@ -48,6 +51,10 @@ public class ProductService {
     // new repository to count variant accounts (stock)
     @Autowired
     private ProductVariantAccountRepository productVariantAccountRepository;
+
+    // NEW: reuse seller average rating logic
+    @Autowired
+    private ShopService shopService;
 
     // Resolve shop name: SellerRegistration.shopName -> seller.fullName -> seller.email -> "Shop"
     private String resolveShopName(Product p) {
@@ -317,6 +324,22 @@ public class ProductService {
         // Determine a default (lowest) price to show initially (from raw variants)
         Long displayPrice = rawVariants.stream().map(ProductVariant::getPrice).min(Long::compareTo).orElse(0L);
         model.put("displayPrice", displayPrice);
+
+        // --- NEW: compute seller aggregated rating as average across ALL reviews of the seller (weighted by review count) ---
+        double sellerAvgVal = 0.0;
+        if (p.getSeller() != null && p.getSeller().getId() != null) {
+            sellerAvgVal = shopService.getSellerAverageRating(p.getSeller().getId());
+        }
+        model.put("sellerRating", Math.round(sellerAvgVal * 10.0) / 10.0);
+
+        // NEW: seller total sold (count of Completed transactions across all products of this seller)
+        Long shopTotalSold = 0L;
+        if (p.getSeller() != null && p.getSeller().getId() != null) {
+            Long s = productRepository.getTotalSoldForSeller(p.getSeller().getId());
+            shopTotalSold = (s != null) ? s : 0L;
+        }
+        model.put("shopTotalSold", shopTotalSold);
+
         return model;
     }
 

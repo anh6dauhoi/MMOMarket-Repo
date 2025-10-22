@@ -4,6 +4,7 @@ package com.mmo.controller;
 import com.mmo.entity.SellerRegistration;
 import com.mmo.entity.User;
 import com.mmo.service.ProductService;
+import com.mmo.service.ShopService;
 import com.mmo.repository.ProductRepository;
 import com.mmo.repository.ReviewRepository;
 import com.mmo.repository.SellerRegistrationRepository;
@@ -26,19 +27,22 @@ public class ShopController {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
     private final CategoryRepository categoryRepository;
+    private final ShopService shopService;
 
     public ShopController(ProductService productService,
                           UserRepository userRepository,
                           SellerRegistrationRepository sellerRegistrationRepository,
                           ProductRepository productRepository,
                           ReviewRepository reviewRepository,
-                          CategoryRepository categoryRepository) {
+                          CategoryRepository categoryRepository,
+                          ShopService shopService) {
         this.productService = productService;
         this.userRepository = userRepository;
         this.sellerRegistrationRepository = sellerRegistrationRepository;
         this.productRepository = productRepository;
         this.reviewRepository = reviewRepository;
         this.categoryRepository = categoryRepository;
+        this.shopService = shopService;
     }
 
     @GetMapping("/shop/{sellerId}")
@@ -67,7 +71,7 @@ public class ShopController {
         Long totalSold = productRepository.getTotalSoldForSeller(sellerId);
         if (totalSold == null) totalSold = 0L;
 
-        Double avgRating = reviewRepository.getAverageRatingBySeller(sellerId);
+        Double avgRating = shopService.getSellerAverageRating(sellerId);
         if (avgRating == null) avgRating = 0.0;
 
         Double successRate = 30.0;
@@ -89,6 +93,7 @@ public class ShopController {
         model.addAttribute("products", products);
 
         model.addAttribute("sellerId", sellerId);
+        model.addAttribute("sellerIdentifier", sellerId); // Add this for form action
 
         // Filters data
         model.addAttribute("categories", categoryRepository.findAll());

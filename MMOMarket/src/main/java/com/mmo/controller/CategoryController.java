@@ -9,10 +9,14 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Controller
 public class CategoryController {
@@ -52,7 +56,7 @@ public class CategoryController {
 
         // Fetch products by category with filters
         List<Map<String, Object>> products = productService.getProductsByCategory(effectiveCategoryId, 0L, maxPrice, sort, minRating);
-        model.addAttribute("products", products != null ? products : List.of());
+        model.addAttribute("products", products != null ? products : Collections.emptyList());
 
         // Add filter state
         model.addAttribute("maxPrice", maxPrice);
@@ -83,7 +87,7 @@ public class CategoryController {
 
         // Fetch all products
         List<Map<String, Object>> products = productService.getProductsByCategory(null, 0L, maxPrice, sort, minRating);
-        model.addAttribute("products", products != null ? products : List.of());
+        model.addAttribute("products", products != null ? products : Collections.emptyList());
 
         // Add filter state
         model.addAttribute("maxPrice", maxPrice);
@@ -92,5 +96,20 @@ public class CategoryController {
         model.addAttribute("categoryId", 0L);
 
         return "customer/category";
+    }
+
+    // new API for header dropdown
+    @GetMapping("/api/categories")
+    @ResponseBody
+    public List<Map<String, Object>> apiCategories() {
+        List<Category> categories = categoryService.findAll();
+        return categories.stream()
+                .map(c -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", c.getId());
+                    m.put("name", c.getName());
+                    return m;
+                })
+                .collect(Collectors.toList());
     }
 }

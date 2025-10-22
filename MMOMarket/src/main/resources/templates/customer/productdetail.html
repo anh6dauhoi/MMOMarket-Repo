@@ -7,424 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <style>
-        :root {
-            --primary-color: #F53E32;
-            --primary-hover: #d32b1f;
-            --accent-color: #fff1f0;
-            --text-color: #222;
-            --secondary-text-color: #6c757d;
-            --background-color: #f8f9fa;
-            --white-color: #fff;
-            --border-color: #ececec;
-            --shadow: 0 8px 32px rgba(220, 38, 38, 0.08);
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 32px auto;
-            padding: 0 24px;
-        }
-
-        .breadcrumb a {
-            color: var(--secondary-text-color);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .breadcrumb a:hover {
-            color: var(--primary-color);
-        }
-
-        .product-main {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 48px;
-            margin-bottom: 48px;
-            background-color: var(--white-color);
-            padding: 40px 32px;
-            border-radius: 18px;
-            box-shadow: var(--shadow);
-        }
-
-        .product-image img {
-            width: 100%;
-            height: 576px;
-            border-radius: 14px;
-            border: 1.5px solid var(--border-color);
-            object-fit: cover;
-            box-shadow: 0 4px 24px rgba(245, 62, 50, 0.06);
-        }
-
-        .product-info h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin: 0 0 16px;
-            letter-spacing: -0.5px;
-        }
-
-        .product-meta {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            font-size: 15px;
-            color: var(--secondary-text-color);
-            margin-bottom: 28px;
-        }
-
-        .star-rating {
-            color: #ffc107;
-            font-size: 1.1em;
-        }
-
-        .product-description {
-            font-size: 1.08rem;
-            line-height: 1.7;
-            margin-bottom: 28px;
-            color: #444;
-        }
-
-        .variation-selector {
-            margin-bottom: 28px;
-        }
-
-        .variation-selector label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 10px;
-            font-size: 1rem;
-            color: var(--text-color);
-        }
-
-        .variation-selector select {
-            width: 100%;
-            padding: 13px 16px;
-            border-radius: 10px;
-            border: 1.5px solid var(--border-color);
-            font-size: 1rem;
-            background-color: var(--white-color);
-            transition: border-color 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(245, 62, 50, 0.03);
-        }
-
-        .variation-selector select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(245, 62, 50, 0.13);
-        }
-
-        .price-section {
-            background-color: var(--accent-color);
-            padding: 24px 20px;
-            border-radius: 12px;
-            margin-bottom: 28px;
-            border: 1.5px solid #ffe2e0;
-            box-shadow: 0 2px 8px rgba(245, 62, 50, 0.03);
-        }
-
-        .price-display {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--primary-color);
-            letter-spacing: -1px;
-        }
-
-        .quantity-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 18px;
-        }
-
-        .quantity-selector label {
-            font-weight: 500;
-            color: var(--secondary-text-color);
-        }
-
-        .quantity-selector button {
-            width: 38px;
-            height: 38px;
-            border: 1.5px solid var(--border-color);
-            background: var(--white-color);
-            font-size: 22px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background 0.2s, border-color 0.2s;
-            color: var(--primary-color);
-            font-weight: 700;
-        }
-
-        .quantity-selector button:hover {
-            background-color: var(--accent-color);
-            border-color: var(--primary-color);
-        }
-
-        .quantity-selector span {
-            min-width: 44px;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 16px;
-            margin-top: 28px;
-        }
-
-        .btn {
-            padding: 16px 0;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.08rem;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-            flex-grow: 1;
-            transition: background 0.2s, box-shadow 0.2s, color 0.2s;
-            box-shadow: 0 2px 8px rgba(245, 62, 50, 0.03);
-            letter-spacing: 0.2px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(90deg, #F53E32 60%, #ff6a5b 100%);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(245, 62, 50, 0.13);
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(90deg, #d32b1f 60%, #ff6a5b 100%);
-            color: #fff;
-            box-shadow: 0 8px 24px rgba(245, 62, 50, 0.18);
-        }
-
-        .btn-secondary {
-            background-color: var(--white-color);
-            color: var(--primary-color);
-            border: 1.5px solid var(--primary-color);
-        }
-
-        .btn-secondary:hover {
-            background-color: var(--accent-color);
-            color: var(--primary-hover);
-            border-color: var(--primary-hover);
-        }
-
-        .btn-chat {
-            background: linear-gradient(90deg, #fff 60%, #ffe2e0 100%);
-            color: var(--primary-color);
-            width: 100%;
-            margin-top: 14px;
-            border: 1.5px solid var(--primary-color);
-            font-weight: 700;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(245, 62, 50, 0.03);
-        }
-
-        .btn-chat:hover {
-            background: linear-gradient(90deg, #ffe2e0 60%, #fff 100%);
-            color: var(--primary-hover);
-            border-color: var(--primary-hover);
-        }
-
-        .section {
-            margin-bottom: 48px;
-            background: var(--white-color);
-            padding: 36px 32px;
-            border-radius: 18px;
-            box-shadow: var(--shadow);
-        }
-
-        .section-title {
-            font-size: 1.35rem;
-            font-weight: 700;
-            margin-bottom: 24px;
-            padding-bottom: 14px;
-            border-bottom: 2px solid var(--accent-color);
-            color: var(--primary-color);
-            letter-spacing: -0.5px;
-        }
-
-        .product-details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 28px;
-            font-size: 1.05rem;
-        }
-        .product-details-grid > div > strong {
-            color: var(--secondary-text-color);
-            font-weight: 500;
-        }
-        .product-details-grid > div > span {
-            font-weight: 600;
-        }
-
-        .seller-info {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-        }
-
-        .seller-info img {
-            width: 84px;
-            height: 84px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--primary-color);
-            background: var(--accent-color);
-        }
-
-        .seller-details h3 {
-            margin: 0 0 6px;
-            font-weight: 700;
-            font-size: 1.13rem;
-            color: var(--primary-color);
-        }
-        .seller-details p {
-            color: var(--secondary-text-color);
-            font-size: 1rem;
-        }
-
-        .review {
-            border-bottom: 1.5px solid var(--border-color);
-            padding-bottom: 22px;
-            margin-bottom: 22px;
-        }
-        .review:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .review-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 10px;
-        }
-
-        .review-header img {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1.5px solid var(--primary-color);
-        }
-
-        .review-header strong {
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .review-meta {
-            font-size: 14px;
-            color: var(--secondary-text-color);
-        }
-
-        .star-rating i {
-            margin-right: 2px;
-        }
-
-        .related-products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 28px;
-        }
-
-        .product-card {
-            border: 1.5px solid var(--border-color);
-            border-radius: 14px;
-            overflow: hidden;
-            background: var(--white-color);
-            transition: box-shadow 0.2s, transform 0.2s;
-            text-decoration: none;
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 2px 8px rgba(245, 62, 50, 0.04);
-        }
-
-        .product-card:hover {
-            transform: translateY(-5px) scale(1.03);
-            box-shadow: 0 8px 28px rgba(245, 62, 50, 0.10);
-            border-color: var(--primary-color);
-        }
-
-        .product-card img {
-            width: 100%;
-            height: 170px;
-            object-fit: cover;
-            border-bottom: 1.5px solid var(--border-color);
-        }
-
-        .product-card-content {
-            padding: 18px 16px 14px 16px;
-            text-align: left;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .product-card h4 {
-            font-size: 1.08rem;
-            margin: 0 0 8px;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .product-card-price {
-            font-size: 1.13rem;
-            font-weight: 800;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-        }
-
-        .product-card-meta {
-            font-size: 13px;
-            color: var(--secondary-text-color);
-            margin-top: auto;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .product-card-meta .fa-star {
-            color: #ffc107;
-        }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            .product-main {
-                grid-template-columns: 1fr;
-                padding: 24px 10px;
-            }
-            .section {
-                padding: 24px 10px;
-            }
-        }
-        @media (max-width: 600px) {
-            .container {
-                padding: 0 4px;
-            }
-            .product-main, .section {
-                padding: 12px 2px;
-                border-radius: 8px;
-            }
-            .product-image img {
-                height: 220px;
-            }
-            .related-products-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/customer/css/productdetail.css}">
 </head>
 <body>
 <div th:replace="~{fragments/header :: header}"></div>
@@ -443,7 +26,7 @@
                 </span>
                 <span class="star-rating">
                     <i class="fas fa-star"></i>
-                    <span th:text="${avgRating}">0.0</span>
+                    <span th:text="${#numbers.formatDecimal(avgRating, 1, 1,'POINT')}">0.0</span>
                 </span>
                 <span>|</span>
                 <span th:text="${reviewsCount + ' Reviews'}">0 Reviews</span>
@@ -459,8 +42,7 @@
                             style="appearance:none;-webkit-appearance:none;-moz-appearance:none;width:100%;padding:13px 44px 13px 16px;border-radius:10px;border:1.5px solid var(--border-color);font-size:1rem;background-color:var(--white-color);transition:border-color 0.2s,box-shadow 0.2s;box-shadow:0 2px 8px rgba(245,62,50,0.03);outline:none;cursor:pointer;">
                             <option th:each="v : ${variants}"
                                     th:value="${v.id}"
-                                    th:data-price="${v.price}"
-                                    th:data-stock="${v.stock}"
+                                    th:attr="data-price=${v.price}, data-stock=${v.stock}"
                                     th:text="${v.variantName}">
                                 Variant
                             </option>
@@ -481,8 +63,9 @@
             </div>
 
             <div class="price-section">
-                <div class="price-display" id="priceDisplay"
-                     th:text="${displayPrice + ' coins'}">0 coins</div>
+                <div class="price-display" id="priceDisplay">
+                    <span class="format-price" th:attr="data-price=${displayPrice}">0</span> coins
+                </div>
                 <div class="quantity-selector">
                     <label for="quantity" style="font-weight: 500; margin-right: 10px;">Quantity:</label>
                     <button type="button" onclick="changeQuantity(-1)">-</button>
@@ -502,21 +85,36 @@
     <div class="section">
         <h2 class="section-title">Seller Information</h2>
         <div class="seller-info">
-            <a th:href="@{/shop/{id}(id=${product.seller.id})}" style="display:flex;align-items:center;gap:18px;text-decoration:none;">
-                <div class="avatar" style="width:84px;height:84px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fff6f4 60%,#ffe5e2 100%);border-radius:9999px;border:2.5px solid #fff;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#F53E32" stroke-width="1.5" class="w-12 h-12">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 12c2.485 0 4.5-2.239 4.5-5S14.485 2 12 2 7.5 4.239 7.5 7s2.015 5 4.5 5z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 22a8 8 0 10-16 0h16z"></path>
-                    </svg>
+            <!-- redesigned seller block -->
+            <a th:href="@{/shop/{id}(id=${product.seller.id})}" class="seller-card" aria-label="View shop">
+                <div class="seller-avatar">
+                    <div class="inner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#F53E32" stroke-width="1.5" width="44" height="44" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 12c2.485 0 4.5-2.239 4.5-5S14.485 2 12 2 7.5 4.239 7.5 7s2.015 5 4.5 5z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 22a8 8 0 10-16 0h16z"></path>
+                        </svg>
+                    </div>
                 </div>
+
                 <div class="seller-details">
-                    <h3 th:text="${shopName}" style="color:inherit;">Shop</h3>
-                    <p>
-                        <span><i class="fas fa-star" style="color:#ffc107"></i> </span>
-                        <span th:text="${avgRating}">0.0</span> / 5.0
-                        |
-                        <span th:text="${totalSold + ' Sold'}">0 Sold</span>
-                    </p>
+                    <div class="seller-header">
+                        <h3 th:text="${shopName}">Shop</h3>
+                    </div>
+
+                    <div class="seller-meta">
+                        <span class="rating">
+                            <i class="fa-solid fa-star" aria-hidden="true"></i>
+                            <span th:text="${#numbers.formatDecimal(sellerRating != null ? sellerRating : avgRating, 1, 1,'POINT')}">4.9</span>
+                            <span>/ 5.0</span>
+                        </span>
+                    </div>
+
+                    <div class="seller-stats">
+                        <span class="stat-pill">
+                            <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
+                            <span th:text="'Sold: ' + ${#numbers.formatInteger(shopTotalSold != null ? shopTotalSold : 0, 0)}">Sold: 0</span>
+                        </span>
+                    </div>
                 </div>
             </a>
         </div>
@@ -534,7 +132,8 @@
                           reviewDate=${rv.createdAt != null ? rv.createdAt.toLocalDateTime().toLocalDate() : ''},
                           rate=${rv.rating != null ? rv.rating : 0}">
                 <div class="review-header">
-                    <img src="https://via.placeholder.com/40?text=U" alt="Reviewer Avatar">
+                    <!-- Use local default avatar -->
+                    <img th:src="@{/images/default-avatar.svg}" src="/images/default-avatar.svg" alt="Reviewer Avatar" width="48" height="48">
                     <div>
                         <strong th:text="${reviewerName}">User</strong>
                         <div class="review-meta" th:text="${reviewDate}">2024-01-01</div>
@@ -565,11 +164,13 @@
                 <img th:src="${rp['displayImage']}" th:alt="${prod.name}">
                 <div class="product-card-content">
                     <h4 th:text="${prod.name}">Name</h4>
-                    <div class="product-card-price" th:text="${rp['price']} + ' coins'">0 coins</div>
+                    <div class="product-card-price">
+                        <span class="format-price" th:attr="data-price=${rp['price']}">0</span> coins
+                    </div>
                     <div class="product-card-meta">
                         <i class="fas fa-star" style="color:#ffc107;"></i>
                         <span th:text="${rp['averageRating']}">0.0</span> / 5.0 |
-                        Sold <span th:text="${rp['totalSold']}">0</span>
+                        Sold: <span th:text="${rp['totalSold']}">0</span>
                     </div>
                 </div>
             </a>
@@ -591,7 +192,8 @@
 <script>
     function changeQuantity(amount) {
         const quantityEl = document.getElementById('quantity');
-        let q = parseInt(quantityEl.innerText, 10);
+        if (!quantityEl) return;
+        let q = parseInt(quantityEl.innerText, 10) || 1;
         q += amount;
         if (q < 1) q = 1;
         const select = document.getElementById('variation');
@@ -609,23 +211,60 @@
     }
 
     function updatePrice() {
+        const span = document.querySelector('#priceDisplay .format-price');
+        if (!span) return;
         const select = document.getElementById('variation');
-        if (!select) return;
-        const price = select.options[select.selectedIndex].getAttribute('data-price');
-        if (price) document.getElementById('priceDisplay').innerText = price + ' coins';
+        let price = null;
+        if (select) {
+            price = select.options[select.selectedIndex].getAttribute('data-price');
+        }
+        // Fallback to existing data-price on span or to displayPrice set by server
+        if (!price) price = span.getAttribute('data-price') || span.textContent || '0';
+        // normalize to number-like string
+        span.setAttribute('data-price', price);
+        span.textContent = formatWithDots(price);
     }
 
     function updateStock() {
         const select = document.getElementById('variation');
         const stockEl = document.getElementById('stockDisplay');
-        if (!select || !stockEl) return;
+        if (!stockEl) return;
+        if (!select) {
+            // if no variants, try to read default stock from server-rendered attribute
+            stockEl.innerText = stockEl.getAttribute('data-stock') || stockEl.innerText || '0';
+            return;
+        }
         const stock = select.options[select.selectedIndex].getAttribute('data-stock');
-        if (stock) stockEl.innerText = stock;
+        if (stock != null) stockEl.innerText = stock;
+    }
+
+    // format numbers like 50.000
+    function formatWithDots(n){
+        const num = Math.round(Number(String(n).replace(/[^0-9.-]+/g,'')) || 0);
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Initial update for variant-based price & stock
         updatePrice();
         updateStock();
+
+        // Format all other price elements (related products, etc.)
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+
+        // Attach change handler to variant select if present
+        const select = document.getElementById('variation');
+        if (select) {
+            select.removeEventListener('change', onVariantChange); // safe remove if previously attached
+            select.addEventListener('change', onVariantChange);
+        }
+
+        // Ensure quantity buttons still work if they were inline onclick
+        // (no changes needed for inline attributes; kept for compatibility)
     });
 </script>
 </body>

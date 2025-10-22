@@ -5,11 +5,8 @@
     <title th:text="${post.title}">Blog Post</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/customer/css/blog-detail.css}">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <style>
-        .heart { cursor: pointer; transition: transform .12s; }
-        .heart.liked { color: #F53E32; transform: scale(1.05); }
-    </style>
 
     <!-- CSRF tokens for AJAX (Spring Security) -->
     <meta name="_csrf" th:content="${_csrf.token}" />
@@ -18,7 +15,7 @@
 <body class="bg-gray-50 font-sans">
 <div th:replace="~{fragments/header :: header}"></div>
 
-<div id="post-container" th:attr="data-post-id=${post.id}" class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 bg-white rounded-lg shadow">
+<div id="post-container" th:attr="data-post-id=${post.id}" class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 bg-white rounded-xl shadow border border-gray-100">
     <header class="mb-6">
         <h1 class="text-4xl font-bold text-gray-800" th:text="${post.title}">Title</h1>
         <div class="text-sm text-gray-500 mt-2 flex items-center space-x-4">
@@ -41,7 +38,7 @@
     </header>
 
     <div class="mb-6">
-        <img th:src="${post.image != null ? post.image : '/images/placeholder-1200x600.png'}" th:alt="${post.title}" class="w-full h-64 object-cover rounded">
+        <img th:src="${post.image != null ? post.image : '/images/placeholder-1200x600.png'}" th:alt="${post.title}" class="w-full h-64 object-cover rounded-xl shadow">
     </div>
 
     <article class="prose max-w-none text-gray-800" th:utext="${post.content}">
@@ -57,11 +54,16 @@
         <div id="commentsContainer">
             <div th:if="${comments == null or #lists.isEmpty(comments)}" class="text-gray-500">No comments yet.</div>
 
-            <div th:each="comment : ${comments}" class="mb-6 border rounded p-4 bg-gray-50" th:attr="data-comment-id=${comment.id}">
+            <div th:each="comment : ${comments}" class="mb-6 comment-card p-4" th:attr="data-comment-id=${comment.id}">
                 <div class="flex justify-between items-start">
-                    <div>
-                        <div class="font-semibold text-gray-800" th:text="${comment.user != null ? comment.user.fullName : 'Anonymous'}">Author</div>
-                        <div class="text-sm text-gray-500" th:text="${#dates.format(comment.createdAt, 'dd MMM yyyy HH:mm')}">date</div>
+                    <div class="flex items-start gap-3">
+                        <div class="comment-avatar">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800" th:text="${comment.user != null ? comment.user.fullName : 'Anonymous'}">Author</div>
+                            <div class="text-sm text-gray-500" th:text="${#dates.format(comment.createdAt, 'dd MMM yyyy HH:mm')}">date</div>
+                        </div>
                     </div>
                     <div class="flex items-center space-x-4">
                         <div class="flex items-center text-sm text-gray-600">
@@ -80,19 +82,22 @@
         </div>
 
         <!-- Comment form -->
-        <div class="mt-6 border rounded p-4 bg-white">
+        <div class="mt-6 border rounded-xl p-4 bg-white">
             <h4 class="font-semibold mb-2">Leave a comment</h4>
-            <textarea id="commentContent" rows="4" class="w-full border rounded p-2" placeholder="Write your comment..."></textarea>
+            <textarea id="commentContent" rows="4" class="w-full border rounded-lg p-3 focus:outline-none focus:ring-4 focus:ring-red-200" placeholder="Write your comment..."></textarea>
             <div class="mt-3 flex justify-end space-x-2">
-                <button class="px-4 py-2 bg-gray-200 rounded" onclick="document.getElementById('commentContent').value=''">Clear</button>
-                <button class="px-4 py-2 bg-blue-600 text-white rounded" onclick="submitComment()" id="submitCommentBtn">Post Comment</button>
+                <button class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100" onclick="document.getElementById('commentContent').value=''">Clear</button>
+                <button class="px-4 py-2 rounded-lg text-white shadow bg-gradient-to-r from-[#F53E32] to-[#ff6a5b] hover:opacity-95" onclick="submitComment()" id="submitCommentBtn">Post Comment</button>
             </div>
             <div id="commentError" class="text-red-500 text-sm mt-2 hidden"></div>
         </div>
     </div>
 
     <div class="mt-8">
-        <a th:href="@{/blog}" class="text-sm text-gray-600 hover:underline">&larr; Back to blog</a>
+        <a th:href="@{/blog}" class="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to blog</span>
+        </a>
     </div>
 </div>
 
@@ -112,51 +117,63 @@
         return h;
     }
 
-    // toggle blog like (improved response handling)
+    // 401-aware JSON handler (redirect to login if unauthenticated)
+    function handleFetchJson(response) {
+        if (response && response.status === 401) {
+            const hdr = response.headers ? response.headers.get('X-Redirect') : null;
+            const fallback = '/authen/login?redirect=' + encodeURIComponent(location.pathname + location.search + location.hash);
+            return Promise.resolve({ redirect: hdr || fallback, _status: 401 });
+        }
+        if (response.ok) {
+            return response.text().then(text => {
+                try { return text ? JSON.parse(text) : {}; }
+                catch (e) { throw new Error(text || 'Invalid JSON response'); }
+            });
+        }
+        return response.text().then(text => { throw new Error(text || ('HTTP ' + response.status)); });
+    }
+
+    // toggle blog like (redirect if guest)
     function toggleBlogLike(blogId) {
-        const url = '/blog/' + blogId + '/like';
-        fetch(url, {
+        fetch('/blog/' + blogId + '/like', {
             method: 'POST',
             credentials: 'same-origin',
             headers: csrfHeaders({ 'Accept': 'application/json' })
         }).then(handleFetchJson)
-            .then(json => {
-                if (json && json.count !== undefined) {
-                    const span = document.getElementById('blog-like-count');
-                    if (span) span.innerText = json.count;
-                    const heart = document.getElementById('blog-heart');
-                    if (heart) {
-                        if (json.liked) heart.classList.add('liked'); else heart.classList.remove('liked');
-                    }
-                } else if (json && json.error) {
-                    console.warn('Like error:', json.error);
-                }
-            }).catch(err => console.error('Like request failed', err));
+          .then(json => {
+              if (json && json.redirect) { window.location.href = json.redirect; return; }
+              if (json && json.count !== undefined) {
+                  const span = document.getElementById('blog-like-count');
+                  if (span) span.innerText = json.count;
+                  const heart = document.getElementById('blog-heart');
+                  if (heart) { if (json.liked) heart.classList.add('liked'); else heart.classList.remove('liked'); }
+              } else if (json && json.error) {
+                  console.warn('Like error:', json.error);
+              }
+          }).catch(err => console.error('Like request failed', err));
     }
 
-    // existing comment-like toggle (uses endpoint /blog/comment/{id}/like) with improved handling
+    // toggle comment like (redirect if guest)
     function toggleCommentLike(commentId) {
-        const url = '/blog/comment/' + commentId + '/like';
-        fetch(url, {
+        fetch('/blog/comment/' + commentId + '/like', {
             method: 'POST',
             credentials: 'same-origin',
             headers: csrfHeaders({ 'Accept': 'application/json' })
         }).then(handleFetchJson)
-            .then(json => {
-                if (json && json.count !== undefined) {
-                    const span = document.getElementById('cl-' + commentId);
-                    if (span) span.innerText = json.count;
-                    const heart = document.getElementById('heart-' + commentId);
-                    if (heart) {
-                        if (json.liked) heart.classList.add('liked'); else heart.classList.remove('liked');
-                    }
-                } else if (json && json.error) {
-                    console.warn('Like error:', json.error);
-                }
-            }).catch(err => console.error('Like request failed', err));
+          .then(json => {
+              if (json && json.redirect) { window.location.href = json.redirect; return; }
+              if (json && json.count !== undefined) {
+                  const span = document.getElementById('cl-' + commentId);
+                  if (span) span.innerText = json.count;
+                  const heart = document.getElementById('heart-' + commentId);
+                  if (heart) { if (json.liked) heart.classList.add('liked'); else heart.classList.remove('liked'); }
+              } else if (json && json.error) {
+                  console.warn('Like error:', json.error);
+              }
+          }).catch(err => console.error('Like request failed', err));
     }
 
-    // submit new comment via POST; expects JSON response {ok:true, comment:{...}}
+    // submit new comment (redirect if guest)
     function submitComment() {
         const content = document.getElementById('commentContent').value.trim();
         const errorEl = document.getElementById('commentError');
@@ -183,61 +200,44 @@
             headers: csrfHeaders({ 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }),
             body: body.toString()
         })
-            .then(handleFetchJson)
-            .then(json => {
-                btn.disabled = false;
-                if (json && json.ok && json.comment) {
-                    const c = json.comment;
-                    // create DOM node for new comment and append to commentsContainer
-                    const container = document.getElementById('commentsContainer');
-                    const div = document.createElement('div');
-                    div.className = 'mb-6 border rounded p-4 bg-gray-50';
-                    div.setAttribute('data-comment-id', c.id);
-                    const date = new Date(c.createdAt);
-                    div.innerHTML = '<div class="flex justify-between items-start">' +
-                        '<div><div class="font-semibold text-gray-800">' + escapeHtml(c.author) + '</div>' +
-                        '<div class="text-sm text-gray-500">' + date.toLocaleString() + '</div></div>' +
-                        '<div class="flex items-center space-x-4"><div class="flex items-center text-sm text-gray-600">' +
-                        '<i class="fas fa-heart heart" id="heart-' + c.id + '" onclick="toggleCommentLike(' + c.id + ')"></i>' +
-                        '<span class="ml-2" id="cl-' + c.id + '">0</span></div></div></div>' +
-                        '<div class="mt-3 text-gray-800">' + c.content + '</div>';
-                    // remove "No comments yet." placeholder if present
-                    const placeholder = container.querySelector('.text-gray-500');
-                    if (placeholder && placeholder.innerText.includes('No comments')) placeholder.remove();
-                    container.appendChild(div);
-                    document.getElementById('commentContent').value = '';
-                } else if (json && json.error) {
-                    errorEl.innerText = json.error;
-                    errorEl.classList.remove('hidden');
-                } else {
-                    errorEl.innerText = 'Failed to post comment.';
-                    errorEl.classList.remove('hidden');
-                }
-            })
-            .catch(err => {
-                btn.disabled = false;
-                errorEl.innerText = err && err.message ? err.message : 'Request failed.';
+        .then(handleFetchJson)
+        .then(json => {
+            btn.disabled = false;
+            if (json && json.redirect) { window.location.href = json.redirect; return; }
+            if (json && json.ok && json.comment) {
+                const c = json.comment;
+                // create DOM node for new comment and append to commentsContainer
+                const container = document.getElementById('commentsContainer');
+                const div = document.createElement('div');
+                div.className = 'mb-6 border rounded p-4 bg-gray-50';
+                div.setAttribute('data-comment-id', c.id);
+                const date = new Date(c.createdAt);
+                div.innerHTML = '<div class="flex justify-between items-start">' +
+                    '<div><div class="font-semibold text-gray-800">' + escapeHtml(c.author) + '</div>' +
+                    '<div class="text-sm text-gray-500">' + date.toLocaleString() + '</div></div>' +
+                    '<div class="flex items-center space-x-4"><div class="flex items-center text-sm text-gray-600">' +
+                    '<i class="fas fa-heart heart" id="heart-' + c.id + '" onclick="toggleCommentLike(' + c.id + ')"></i>' +
+                    '<span class="ml-2" id="cl-' + c.id + '">0</span></div></div></div>' +
+                    '<div class="mt-3 text-gray-800">' + c.content + '</div>';
+                // remove "No comments yet." placeholder if present
+                const placeholder = container.querySelector('.text-gray-500');
+                if (placeholder && placeholder.innerText.includes('No comments')) placeholder.remove();
+                container.appendChild(div);
+                document.getElementById('commentContent').value = '';
+            } else if (json && json.error) {
+                errorEl.innerText = json.error;
                 errorEl.classList.remove('hidden');
-                console.error(err);
-            });
-    }
-
-    // helper to parse JSON on OK responses, otherwise read text and throw to be caught
-    function handleFetchJson(response) {
-        if (response.ok) {
-            // try parse JSON; if parsing fails, throw text
-            return response.text().then(text => {
-                try {
-                    return text ? JSON.parse(text) : {};
-                } catch (e) {
-                    throw new Error(text || 'Invalid JSON response');
-                }
-            });
-        } else {
-            return response.text().then(text => {
-                throw new Error(text || ('HTTP ' + response.status));
-            });
-        }
+            } else {
+                errorEl.innerText = 'Failed to post comment.';
+                errorEl.classList.remove('hidden');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            errorEl.innerText = err && err.message ? err.message : 'Request failed.';
+            errorEl.classList.remove('hidden');
+            console.error(err);
+        });
     }
 
     function escapeHtml(unsafe) {

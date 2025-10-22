@@ -4,134 +4,140 @@ import com.mmo.entity.Blog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
 public interface BlogRepository extends JpaRepository<Blog, Long> {
-    // Safe native search: include all mapped columns and coalesce isDelete. Newest first.
+    // Search (newest)
     @Query(
-            value =
-                    "SELECT " +
-                            " b.id, b.title, b.content, b.image, " +
-                            " b.author_id, b.views, b.likes, " +
-                            " b.created_at, b.updated_at, " +
-                            " b.created_by, b.deleted_by, " +
-                            " COALESCE(b.isDelete,0) AS isDelete " +
-                            "FROM Blogs b " +
-                            "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') " +
-                            "   OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
-                            "AND COALESCE(b.isDelete,0) = 0 " +
-                            "ORDER BY b.created_at DESC, b.id DESC",
-            countQuery =
-                    "SELECT COUNT(*) FROM Blogs b " +
-                            "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') " +
-                            "   OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
-                            "AND COALESCE(b.isDelete,0) = 0",
-            nativeQuery = true
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY b.created_at DESC, b.id DESC",
+        countQuery =
+                "SELECT COUNT(*) FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
     )
     Page<Blog> searchByTitleOrContent(@Param("term") String term, Pageable pageable);
 
-    // Safe list: exclude deleted, include all mapped columns. Newest first.
+    // Search (oldest)
     @Query(
-            value =
-                    "SELECT " +
-                            " b.id, b.title, b.content, b.image, " +
-                            " b.author_id, b.views, b.likes, " +
-                            " b.created_at, b.updated_at, " +
-                            " b.created_by, b.deleted_by, " +
-                            " COALESCE(b.isDelete,0) AS isDelete " +
-                            "FROM Blogs b " +
-                            "WHERE COALESCE(b.isDelete,0) = 0 " +
-                            "ORDER BY b.created_at DESC, b.id DESC",
-            countQuery = "SELECT COUNT(*) FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0",
-            nativeQuery = true
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY b.created_at ASC, b.id ASC",
+        countQuery =
+                "SELECT COUNT(*) FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> searchByTitleOrContentOrderByCreatedAsc(@Param("term") String term, Pageable pageable);
+
+    // Search (most liked)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY (COALESCE(b.likes,0) + (SELECT COUNT(1) FROM BlogLikes bl WHERE bl.blog_id = b.id)) DESC, b.created_at DESC, b.id DESC",
+        countQuery =
+                "SELECT COUNT(*) FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> searchByTitleOrContentOrderByLikes(@Param("term") String term, Pageable pageable);
+
+    // Search (most viewed)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY (COALESCE(b.views,0) + (SELECT COUNT(1) FROM BlogViews bv WHERE bv.blog_id = b.id)) DESC, b.created_at DESC, b.id DESC",
+        countQuery =
+                "SELECT COUNT(*) FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> searchByTitleOrContentOrderByViews(@Param("term") String term, Pageable pageable);
+
+    // Search (most commented)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY (SELECT COUNT(1) FROM BlogComments bc WHERE bc.blog_id = b.id AND COALESCE(bc.isDelete,0)=0) DESC, b.created_at DESC, b.id DESC",
+        countQuery =
+                "SELECT COUNT(*) FROM Blogs b " +
+                "WHERE (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
+                "AND COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> searchByTitleOrContentOrderByComments(@Param("term") String term, Pageable pageable);
+
+    // List (newest)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0 ORDER BY b.created_at DESC, b.id DESC",
+        countQuery = "SELECT COUNT(*) FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
     )
     Page<Blog> findAllActiveNative(Pageable pageable);
 
-    // optional: order by createdAt desc (fallback to repository .findAll(Pageable) with sort)
-    Page<Blog> findAllByOrderByCreatedAtDesc(Pageable pageable);
-
-    // find first blog by exact title (case-insensitive) — used as a name/slug fallback
-    Optional<Blog> findFirstByTitleIgnoreCase(String title);
-
-    // Replaced JPQL updates with native updates to avoid managed-entity full-updates that previously caused DB trigger errors
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE Blogs SET views = COALESCE(views,0) + 1 WHERE id = :id", nativeQuery = true)
-    void incrementViews(@Param("id") Long id);
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE Blogs SET likes = COALESCE(likes,0) + 1 WHERE id = :id", nativeQuery = true)
-    void incrementLikes(@Param("id") Long id);
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE Blogs SET likes = CASE WHEN likes IS NULL OR likes <= 0 THEN 0 ELSE likes - 1 END WHERE id = :id", nativeQuery = true)
-    void decrementLikes(@Param("id") Long id);
-
-    // Native by id: include all mapped columns; skip deleted; newest-first is irrelevant here
+    // List (oldest)
     @Query(
-            value =
-                    "SELECT " +
-                            " b.id, b.title, b.content, b.image, " +
-                            " b.author_id, b.views, b.likes, " +
-                            " b.created_at, b.updated_at, " +
-                            " b.created_by, b.deleted_by, " +
-                            " COALESCE(b.isDelete,0) AS isDelete " +
-                            "FROM Blogs b " +
-                            "WHERE b.id = :id AND COALESCE(b.isDelete,0) = 0",
-            nativeQuery = true
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0 ORDER BY b.created_at ASC, b.id ASC",
+        countQuery = "SELECT COUNT(*) FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> findAllActiveOrderByCreatedAsc(Pageable pageable);
+
+    // List (most liked)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY (COALESCE(b.likes,0) + (SELECT COUNT(1) FROM BlogLikes bl WHERE bl.blog_id = b.id)) DESC, b.created_at DESC, b.id DESC",
+        countQuery = "SELECT COUNT(*) FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> findAllActiveOrderByLikes(Pageable pageable);
+
+    // List (most viewed)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY (COALESCE(b.views,0) + (SELECT COUNT(1) FROM BlogViews bv WHERE bv.blog_id = b.id)) DESC, b.created_at DESC, b.id DESC",
+        countQuery = "SELECT COUNT(*) FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> findAllActiveOrderByViews(Pageable pageable);
+
+    // List (most commented)
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0 " +
+                "ORDER BY (SELECT COUNT(1) FROM BlogComments bc WHERE bc.blog_id = b.id AND COALESCE(bc.isDelete,0)=0) DESC, b.created_at DESC, b.id DESC",
+        countQuery = "SELECT COUNT(*) FROM Blogs b WHERE COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
+    )
+    Page<Blog> findAllActiveOrderByComments(Pageable pageable);
+
+    // By id active
+    @Query(
+        value = "SELECT b.id,b.title,b.content,b.image,b.author_id,b.views,b.likes,b.created_at,b.updated_at,b.created_by,b.deleted_by,COALESCE(b.isDelete,0) AS isDelete " +
+                "FROM Blogs b WHERE b.id = :id AND COALESCE(b.isDelete,0) = 0",
+        nativeQuery = true
     )
     Optional<Blog> findActiveByIdNative(@Param("id") Long id);
-
-    // Find all blogs by a specific author
-    @Query("SELECT b FROM Blog b WHERE b.author.id = :authorId AND b.isDelete = false ORDER BY b.createdAt DESC")
-    java.util.List<Blog> findAllByAuthorId(@Param("authorId") Long authorId);
-
-    // Find all active blogs by author (paged, native) - used for "My Posts"
-    @Query(
-            value =
-                    "SELECT " +
-                            " b.id, b.title, b.content, b.image, " +
-                            " b.author_id, b.views, b.likes, " +
-                            " b.created_at, b.updated_at, " +
-                            " b.created_by, b.deleted_by, " +
-                            " COALESCE(b.isDelete,0) AS isDelete " +
-                            "FROM Blogs b " +
-                            "WHERE b.author_id = :authorId AND COALESCE(b.isDelete,0) = 0 " +
-                            "ORDER BY b.created_at DESC, b.id DESC",
-            countQuery = "SELECT COUNT(*) FROM Blogs b WHERE b.author_id = :authorId AND COALESCE(b.isDelete,0) = 0",
-            nativeQuery = true
-    )
-    Page<Blog> findAllActiveByAuthorNative(@Param("authorId") Long authorId, Pageable pageable);
-
-    // Search active blogs by author + term (paged, native)
-    @Query(
-            value =
-                    "SELECT " +
-                            " b.id, b.title, b.content, b.image, " +
-                            " b.author_id, b.views, b.likes, " +
-                            " b.created_at, b.updated_at, " +
-                            " b.created_by, b.deleted_by, " +
-                            " COALESCE(b.isDelete,0) AS isDelete " +
-                            "FROM Blogs b " +
-                            "WHERE b.author_id = :authorId " +
-                            "  AND COALESCE(b.isDelete,0) = 0 " +
-                            "  AND (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') " +
-                            "       OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%')) " +
-                            "ORDER BY b.created_at DESC, b.id DESC",
-            countQuery =
-                    "SELECT COUNT(*) FROM Blogs b " +
-                            "WHERE b.author_id = :authorId " +
-                            "  AND COALESCE(b.isDelete,0) = 0 " +
-                            "  AND (LOWER(b.title) LIKE CONCAT('%', LOWER(:term), '%') " +
-                            "       OR LOWER(b.content) LIKE CONCAT('%', LOWER(:term), '%'))",
-            nativeQuery = true
-    )
-    Page<Blog> searchByAuthorAndTerm(@Param("authorId") Long authorId, @Param("term") String term, Pageable pageable);
 }

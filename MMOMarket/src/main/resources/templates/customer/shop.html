@@ -6,183 +6,7 @@
     <title>MMO Market - Shop</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #fff 0%, #fff6f4 60%, #ffe5e2 100%);
-            min-height: 100vh;
-        }
-        .main-container {
-            background: rgba(255,255,255,0.98);
-            border-radius: 2rem;
-            box-shadow: none;
-            padding: 2.5rem 1.5rem;
-            max-width: 1300px;
-            margin: 2.5rem auto;
-            transition: none;
-            /* Make border thicker and more visible */
-            border: 2px solid #ffe5e2;
-        }
-        .main-container:hover {
-            box-shadow: none;
-            transform: none;
-        }
-        .product-card {
-            border-radius: 1.5rem;
-            border: 2.5px solid #ffe5e2;
-            box-shadow: none;
-            background: #fff;
-            transition: transform .18s, box-shadow .18s, border-color .18s;
-        }
-        .product-card:hover {
-            transform: translateY(-6px) scale(1.025);
-            box-shadow: none;
-            border-color: #F53E32;
-            z-index: 2;
-        }
-        .product-card img {
-            border-top-left-radius: 1.5rem;
-            border-top-right-radius: 1.5rem;
-            box-shadow: none;
-        }
-        .chip {
-            padding: 9px 16px;
-            border-radius: 9999px;
-            border: 2px solid #ffe5e2;
-            font-size: 15px;
-            font-weight: 500;
-            color: #374151;
-            background: rgba(255,255,255,0.8);
-            box-shadow: none;
-            transition: all 0.18s;
-            backdrop-filter: blur(1.5px);
-        }
-        .chip:focus, .chip:hover {
-            border-color: #F53E32;
-            box-shadow: none;
-            background: rgba(255,246,244,0.97);
-        }
-        .avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 9999px;
-            background: linear-gradient(135deg, #fff6f4 60%, #ffe5e2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: none;
-            border: 4px solid #ffe5e2;
-        }
-        .top-search {
-            width: 100%;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-        .top-search .chip {
-            border-radius: 16px;
-            border: 2px solid #ffe5e2;
-            font-size: 16px;
-            background: rgba(255,255,255,0.9);
-            box-shadow: none;
-        }
-        .top-search .btn-search {
-            padding: 10px 22px;
-            background: #fff;
-            color: #F53E32;
-            border-radius: 16px;
-            font-weight: 700;
-            border: 2px solid #ffe5e2;
-            box-shadow: none;
-            letter-spacing: 0.5px;
-            transition: opacity .15s, box-shadow .15s;
-        }
-        .top-search .btn-search:hover { opacity: .97; box-shadow: none; }
-        h1, h2 {
-            letter-spacing: 0.5px;
-            text-shadow: 0 1.5px 6px #ffe5e233;
-        }
-        h1 {
-            font-size: 2rem;
-            font-weight: 800;
-        }
-        h2 {
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-        .pagination-btn {
-            width: 40px;
-            height: 40px;
-            display: grid;
-            place-items: center;
-            border-radius: 50%;
-            border: 2px solid #ffe5e2;
-            background: rgba(255,255,255,0.95);
-            color: #F53E32;
-            font-weight: 700;
-            font-size: 1rem;
-            box-shadow: none;
-            transition: background .15s, color .15s, box-shadow .15s;
-        }
-        .pagination-btn.active, .pagination-btn:focus {
-            background: linear-gradient(90deg, #F53E32 0%, #ffe5e2 100%);
-            color: #fff;
-            box-shadow: none;
-        }
-        .pagination-btn:hover {
-            background: #fff6f4;
-            color: #F53E32;
-            box-shadow: none;
-        }
-        .shop-info {
-            background: rgba(255,255,255,0.85);
-            border-radius: 1.2rem;
-            box-shadow: none;
-            padding: 1.2rem 1.5rem;
-            border: 4px solid #ffe5e2;
-        }
-        .shop-info h1 {
-            color: #F53E32;
-        }
-        .shop-info p, .shop-info span {
-            color: #7c6f57;
-        }
-        .product-title a {
-            font-size: 1.08rem;
-            font-weight: 700;
-            color: #1a1a1a;
-            letter-spacing: 0.1px;
-        }
-        .product-title a:hover {
-            color: #F53E32;
-            text-shadow: 0 1.5px 6px #ffe5e233;
-        }
-        .product-price {
-            color: #F53E32;
-            font-size: 1.05rem;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-        }
-        .product-shop {
-            color: #bfa14a;
-            font-weight: 600;
-        }
-        .product-shop:hover {
-            color: #F53E32;
-        }
-        .product-card .text-yellow-500 {
-            color: #ffd700 !important;
-            font-weight: 600;
-        }
-        /* Responsive tweaks */
-        @media (max-width: 640px) {
-            .main-container { padding: 1rem 0.2rem; }
-            .shop-info { flex-direction: column; gap: 1.5rem; }
-            .product-card { border-radius: 1rem; }
-            .product-card img { border-radius: 1rem 1rem 0 0; }
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/customer/css/shop.css}">
 </head>
 <body class="bg-gradient-to-br from-[#fff] to-[#fff6f4] text-gray-900">
 
@@ -209,6 +33,11 @@
                     <div class="flex items-center gap-6 text-base mt-2">
                         <span style="color:#fff; font-weight:500;">Sold: <b th:text="${#numbers.formatInteger(totalSold, 0)}" style="color:#fff;">0</b></span>
                         <span style="color:#fff; font-weight:500;">Success rate: <b th:text="${#numbers.formatDecimal(successRate, 0, 'POINT', 0, 'NONE')} + '%'" style="color:#fff;">0%</b></span>
+                        <span class="shop-rating">
+                            <span class="star">⭐</span>
+                            <span th:text="${#numbers.formatDecimal(averageRating != null ? averageRating : 0.0, 1, 1,'POINT')}">0.0</span>
+                            <span>/ 5.0</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -299,8 +128,9 @@
                                class="hover:text-[#F53E32] transition-colors"
                                th:text="${item.product.name}">Product Name</a>
                         </h3>
-                        <p class="product-price mt-2"
-                           th:text="${#numbers.formatDecimal(item.price,0,0)} + ' coins'">0 coins</p>
+                        <p class="product-price mt-2">
+                            <span class="format-price" th:attr="data-price=${item.price}">0</span> coins
+                        </p>
                         <p class="text-gray-500 text-base"
                            th:text="'Sold: ' + ${item.totalSold}">Sold: 0</p>
 
@@ -310,7 +140,7 @@
                            th:text="'Shop: ' + ${item.shopName}">Shop: Name</a>
 
                         <p class="text-yellow-500 text-base mt-1"
-                           th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1)} + ' / 5'">⭐ 0.0 / 5</p>
+                           th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                     </div>
                 </div>
                 <div th:if="${#lists.isEmpty(products)}" class="col-span-full text-center text-gray-500 py-10" id="no-results">
@@ -450,13 +280,27 @@
         applyPaginationReset();
     }
 
+    // small helper for formatting with dots
+    function formatWithDots(n){
+        const num = Math.round(Number(n) || 0);
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
     document.addEventListener('DOMContentLoaded', function(){
+        // existing init
         const input = document.getElementById('shop-search-input');
         const clearBtn = document.getElementById('shop-search-clear');
         input && input.addEventListener('input', debounce(function(e){ filterShopProducts(e.target.value); }, 220));
         clearBtn && clearBtn.addEventListener('click', function(){ if(input) input.value = ''; filterShopProducts(''); input && input.focus(); });
         // initial pagination render
         filterShopProducts(input ? input.value : '');
+
+        // format all prices on page
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
     });
 </script>
 </body>

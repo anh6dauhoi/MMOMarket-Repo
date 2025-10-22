@@ -17,14 +17,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "WHERE p.isDelete = false AND pv.isDelete = false AND pv.price BETWEEN :minPrice AND :maxPrice")
     List<Product> findAllProducts(@Param("minPrice") Long minPrice, @Param("maxPrice") Long maxPrice, Pageable pageable);
 
-    @Query("SELECT p FROM Product p LEFT JOIN Transaction t ON p.id = t.product.id WHERE p.isDelete = false GROUP BY p.id ORDER BY COUNT(t.id) DESC")
+    // Order by total units sold (COUNT completed transactions), not coin amount
+    @Query("SELECT p FROM Product p " +
+           "LEFT JOIN Transaction t ON p.id = t.product.id AND t.isDelete = false AND LOWER(t.status) = 'completed' " +
+           "WHERE p.isDelete = false " +
+           "GROUP BY p.id " +
+           "ORDER BY COUNT(t.id) DESC")
     List<Product> findTopSellingProducts(Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.product.id = :productId AND t.isDelete = false AND t.status = 'Completed'")
-    Long getTotalSoldForProduct(Long productId);
+    // Total units sold for a product: count of completed transactions
+    @Query("SELECT COALESCE(COUNT(t.id), 0) FROM Transaction t " +
+           "WHERE t.product.id = :productId AND t.isDelete = false AND LOWER(t.status) = 'completed'")
+    Long getTotalSoldForProduct(@Param("productId") Long productId);
 
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t JOIN t.product p WHERE p.seller.id = :sellerId AND t.isDelete = false AND t.status = 'Completed'")
-    Long getTotalSoldForSeller(Long sellerId);
+    // Total units sold for a seller: count of completed transactions across all products
+    @Query("SELECT COALESCE(COUNT(t.id), 0) FROM Transaction t JOIN t.product p " +
+           "WHERE p.seller.id = :sellerId AND t.isDelete = false AND LOWER(t.status) = 'completed'")
+    Long getTotalSoldForSeller(@Param("sellerId") Long sellerId);
 
     @Query("SELECT p FROM Product p JOIN p.category c JOIN ProductVariant pv ON p.id = pv.product.id " +
             "WHERE c.id = :categoryId AND p.isDelete = false AND pv.isDelete = false " +
@@ -55,6 +64,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "AND pv.price BETWEEN :minPrice AND :maxPrice")
     List<Product> findBySellerAndCategoryWithPrice(@Param("sellerId") Long sellerId,
                                                    @Param("categoryId") Long categoryId,
-                                                   @Param("minPrice") Long minPrice,@Param("maxPrice") Long maxPrice,
+                                                   @Param("minPrice") Long minPrice,
+                                                   @Param("maxPrice") Long maxPrice,
                                                    Pageable pageable);
 }

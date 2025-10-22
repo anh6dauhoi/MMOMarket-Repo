@@ -7,148 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: #111827;
-        }
-
-        /* --- Banner --- */
-        .main-container {
-            position: relative;
-            width: 100%;
-            height: 65vh;
-            overflow: hidden;
-        }
-
-        .main-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: brightness(55%);
-        }
-
-        .main-text {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 3.2em;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-shadow: 2px 2px 16px rgba(0,0,0,0.6);
-            text-align: center;
-        }
-
-        .main-button {
-            position: absolute;
-            top: 62%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 14px 40px;
-            font-size: 1.1em;
-            font-weight: 600;
-            background: linear-gradient(135deg, #F53E32, #d53027);
-            color: white;
-            border: none;
-            border-radius: 9999px;
-            box-shadow: 0 4px 12px rgba(245, 62, 50, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .main-button:hover {
-            background: linear-gradient(135deg, #d53027, #b8241d);
-            transform: translateX(-50%) scale(1.08);
-            box-shadow: 0 6px 16px rgba(245, 62, 50, 0.5);
-        }
-
-        /* --- Section Title --- */
-        h2.section-title {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: #111827;
-            text-align: center;
-            margin-bottom: 2rem;
-            position: relative;
-        }
-
-        h2.section-title::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px;
-            height: 4px;
-            background-color: #F53E32;
-            border-radius: 2px;
-        }
-
-        /* --- Hover Card Effect --- */
-        .hover-card {
-            transition: all 0.3s ease;
-        }
-
-        .hover-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-        }
-
-        /* --- Category Card --- */
-        .category-card {
-            background: linear-gradient(to bottom right, #fff7f6, #ffe3e1);
-            border: 1px solid #fbcac5;
-        }
-
-        .category-card:hover {
-            box-shadow: 0 10px 20px rgba(245, 62, 50, 0.2);
-        }
-
-        .category-icon {
-            background-color: #fff;
-            color: #F53E32;
-        }
-
-        .category-icon:hover {
-            transform: scale(1.1);
-        }
-
-        /* --- Button (View Shop) --- */
-        .btn-primary {
-            background: linear-gradient(to right, #F53E32, #d53027);
-            color: #fff;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(to right, #d53027, #b8241d);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 62, 50, 0.4);
-        }
-
-        /* --- Highlight Glow --- */
-        .hover-glow {
-            background: linear-gradient(to top, rgba(245, 62, 50, 0.08), transparent);
-        }
-
-        /* --- Accent Text --- */
-        .text-accent {
-            color: #F53E32;
-        }
-
-        .bg-accent-light {
-            background-color: #fff1f0;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/customer/css/homepage.css}">
 </head>
 
 <body>
 <!-- Header -->
-<div th:replace="~{fragments/header :: header}"></div>
+<div th:replace="~{fragments/header :: header(active='home')}"></div>
 
 <!-- Main Banner -->
 <div class="main-container">
@@ -211,15 +75,16 @@
                     <div class="p-4 text-center">
                         <h3 class="font-semibold text-lg text-gray-900 truncate group-hover:text-[#F53E32]"
                             th:text="${item.product.name}"></h3>
-                        <p class="text-[#F53E32] font-bold mt-1"
-                           th:text="|${#numbers.formatDecimal(item.price,0,0)} coins|"></p>
+                        <p class="text-[#F53E32] font-bold mt-1">
+                           <span class="format-price" th:attr="data-price=${item.price}">0</span> coins
+                        </p>
                         <p class="text-gray-500 text-sm" th:text="|Sold: ${item.totalSold}|"></p>
                         <a th:href="@{/shop/{id}(id=${item.product.seller.id})}"
                            class="text-gray-600 text-sm hover:text-[#F53E32]"
                            th:text="|Shop: ${item.shopName}|"
                            onclick="event.stopPropagation();"></a>
                         <p class="text-yellow-500 text-sm mt-1"
-                           th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1)} + ' / 5'">⭐ 0.0 / 5</p>
+                           th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                     </div>
                 </a>
             </div>
@@ -237,7 +102,7 @@
                  class="w-24 h-24 rounded-full mx-auto mb-4 object-cover border border-gray-200 shadow">
             <h3 class="font-semibold text-xl text-gray-800" th:text="${seller.shopName}">Shop Name</h3>
             <p class="text-yellow-600 font-medium">
-                ⭐ <span th:text="${#numbers.formatDecimal(seller.ratingAverage, 1, 1)}">4.9</span>/5
+                ⭐ <span th:text="${#numbers.formatDecimal(seller.ratingAverage, 1, 1,'POINT')}">4.9</span>/5
             </p>
             <p class="text-gray-700 text-sm mt-1">Sold: <span th:text="${seller.totalSold}">10000</span></p>
             <p class="text-gray-700 text-sm mb-4"
@@ -303,5 +168,21 @@
 <div th:replace="~{fragments/footer :: footer}"></div>
 
 <script>lucide.createIcons();</script>
+
+<!-- Price formatter: format numbers like 50.000 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function formatWithDots(n){
+            // round if not integer, show as integer grouping
+            const num = Math.round(Number(n) || 0);
+            return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+    });
+</script>
 </body>
 </html>

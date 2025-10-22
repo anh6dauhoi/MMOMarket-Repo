@@ -6,60 +6,10 @@
     <title>MMO Market - Category</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-
-        /* Tông đỏ chủ đạo */
-        :root {
-            --primary-red: #F53E32;
-        }
-
-        .chip {
-            @apply px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 cursor-pointer;
-            border-color: var(--primary-red);
-            color: var(--primary-red);
-        }
-        .chip-active {
-            @apply bg-red-600 text-white shadow-lg;
-        }
-        .product-card {
-            @apply bg-white border rounded-xl overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1;
-            border-color: #f5f5f5;
-        }
-        .toggle-btn {
-            @apply text-red-600 text-sm mt-2 hover:underline cursor-pointer;
-        }
-        .range-slider::-webkit-slider-thumb {
-            @apply bg-red-600;
-        }
-        .range-slider::-moz-range-thumb {
-            @apply bg-red-600;
-        }
-
-        /* top search styles */
-        .top-search-input {
-            padding: 12px 16px;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            font-size: 15px;
-            background: white;
-            width: 100%;
-            box-shadow: 0 6px 18px rgba(245,62,50,0.04);
-        }
-        .top-search-btn {
-            padding: 10px 16px;
-            background: var(--primary-red);
-            color: #fff;
-            border-radius: 12px;
-            font-weight: 600;
-            border: none;
-            box-shadow: 0 6px 18px rgba(245,62,50,0.12);
-        }
-        .top-search-btn:hover { opacity: .95; }
-    </style>
+    <link rel="stylesheet" th:href="@{/customer/css/category.css}">
 </head>
 <body class="bg-gray-50 text-gray-900">
-<div th:replace="~{fragments/header :: header}"></div>
+<div th:replace="~{fragments/header :: header(active='category')}"></div>
 
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="grid grid-cols-12 gap-8">
@@ -220,8 +170,9 @@
                             <h3 class="font-semibold text-lg text-gray-900 truncate product-title group-hover:text-[#F53E32]"
                                 th:text="${item.product.name}">Product Name</h3>
 
-                            <p class="text-[#F53E32] font-bold mt-1 product-price"
-                               th:text="${#numbers.formatDecimal(item.price,0,0)} + ' coins'">0 coins</p>
+                            <p class="text-[#F53E32] font-bold mt-1 product-price">
+                                <span class="format-price" th:attr="data-price=${item.price}">0</span> coins
+                            </p>
 
                             <p class="text-gray-500 text-sm"
                                th:text="'Sold: ' + ${item.totalSold}">Sold: 0</p>
@@ -232,7 +183,7 @@
                                onclick="event.stopPropagation();">Shop: Name</a>
 
                             <p class="text-yellow-500 text-sm mt-1"
-                               th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1)} + ' / 5'">⭐ 0.0 / 5</p>
+                               th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                         </div>
                     </a>
                 </div>
@@ -400,6 +351,12 @@
         applyPaginationReset();
     }
 
+    // add formatter function and call it inside DOMContentLoaded
+    function formatWithDots(n){
+        const num = Math.round(Number(n) || 0);
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
     document.addEventListener('DOMContentLoaded', function(){
         const input = document.getElementById('category-search-input');
         const clearBtn = document.getElementById('category-search-clear');
@@ -416,7 +373,14 @@
             input && input.focus();
         });
 
-        // initial pagination render (honors server-side 'no products' rendering)
+        // format prices on page
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+
+        // initial pagination render
         applyPaginationReset();
     });
 </script>
