@@ -104,7 +104,7 @@ public class SecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             boolean isAdmin = authentication.getAuthorities().stream()
                                     .anyMatch(a -> "ADMIN".equals(a.getAuthority()));
-                            response.sendRedirect(isAdmin ? "/admin/seller-registrations" : "/welcome");
+                            response.sendRedirect(isAdmin ? "/admin" : "/welcome");
                         })
                         .failureHandler((request, response, exception) -> {
                             String errorMessage = "Incorrect email or password.";
@@ -129,7 +129,7 @@ public class SecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             boolean isAdmin = authentication.getAuthorities().stream()
                                     .anyMatch(a -> "ADMIN".equals(a.getAuthority()));
-                            response.sendRedirect(isAdmin ? "/admin/seller-registrations" : "/welcome");
+                            response.sendRedirect(isAdmin ? "/admin" : "/welcome");
                         })
                 )
                 .logout((logout) -> logout

@@ -24,6 +24,18 @@ CREATE TABLE IF NOT EXISTS Users (
     INDEX idx_email (email) -- Index cho email
 );
 
+-- Bảng SystemConfigurations - Lưu trữ các cấu hình động của hệ thống
+CREATE TABLE IF NOT EXISTS SystemConfigurations (
+    config_key VARCHAR(100) PRIMARY KEY,     
+    config_value VARCHAR(255) NOT NULL,               
+    description VARCHAR(255) NULL,         
+    value_type VARCHAR(255) NULL, 
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 
+    updated_by BIGINT NULL,                   
+
+    FOREIGN KEY (updated_by) REFERENCES Users(id) ON DELETE SET NULL
+);
+
 -- Bảng SearchHistory - Lưu lịch sử tìm kiếm
 CREATE TABLE IF NOT EXISTS SearchHistory (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
