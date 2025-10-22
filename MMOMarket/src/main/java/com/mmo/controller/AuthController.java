@@ -10,6 +10,7 @@ import com.mmo.repository.EmailVerificationRepository;
 import com.mmo.service.AuthService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -20,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +41,10 @@ public class AuthController {
     @Autowired
     private CoinDepositRepository coinDepositRepository;
 
+    @Autowired
+    @Qualifier("emailExecutor")
+    private Executor emailExecutor;
+
     @GetMapping("/authen/register")
     public String showRegisterForm() {
         return "authen/register";
@@ -48,36 +55,46 @@ public class AuthController {
         try {
             // Kiểm tra mật khẩu xác nhận
             if (!password.equals(confirmPassword)) {
-                model.addAttribute("message", "Mật khẩu xác nhận không khớp.");
+                model.addAttribute("message", "Password confirmation does not match.");
+                model.addAttribute("email", email);
+                return "authen/register";
+            }
+            // Kiểm tra độ mạnh mật khẩu
+            if (password == null || password.length() < 8 || !password.matches("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")) {
+                model.addAttribute("message", "Password must be at least 8 characters and include letters and numbers.");
                 model.addAttribute("email", email);
                 return "authen/register";
             }
 
             // Kiểm tra email đã tồn tại
             if (authService.findByEmail(email) != null) {
-                model.addAttribute("message", "Email đã được sử dụng. Vui lòng chọn email khác.");
+                model.addAttribute("message", "Email is already in use. Please choose another email.");
                 model.addAttribute("email", email);
                 return "authen/register";
             }
 
-            // Đăng ký user
+            // Đăng ký user (đồng bộ)
             User user = authService.register(email, password, fullName != null ? fullName : "Unknown");
-            String code = authService.generateVerificationCode();
 
-            EmailVerification verification = new EmailVerification();
-            verification.setUser(user);
-            verification.setVerificationCode(code);
-            verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
-            verification.setUsed(false);
-            emailVerificationRepository.save(verification);
+            // Tạo OTP + gửi email hoàn toàn bất đồng bộ để điều hướng nhanh
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    EmailVerification verification = new EmailVerification();
+                    verification.setUser(user);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    authService.sendVerificationCodeEmail(email, code);
+                } catch (Exception ignored) { }
+            });
 
-            // Gửi mã xác thực qua email (ném exception nếu lỗi)
-            authService.sendVerificationCodeEmail(email, code);
-
+            // Điều hướng ngay sang trang verify
             model.addAttribute("email", email);
             return "authen/verify";
-        } catch (MessagingException e) {
-            model.addAttribute("message", "Không thể gửi mã xác thực. Vui lòng kiểm tra lại cấu hình email hoặc thử lại sau.");
+        } catch (Exception e) {
+            model.addAttribute("message", "Unable to process registration at the moment. Please try again later.");
             model.addAttribute("email", email);
             return "authen/register";
         }
@@ -87,14 +104,17 @@ public class AuthController {
     public String login(Model model, @RequestParam(value = "error", required = false) String error) {
         if (error != null) {
             String errorMessage = (String) model.getAttribute("message");
-            model.addAttribute("message", errorMessage != null ? errorMessage : "Email hoặc mật khẩu không đúng. Vui lòng thử lại hoặc xác thực tài khoản.");
+            model.addAttribute("message", errorMessage != null ? errorMessage : "Incorrect email or password. Please try again or verify your account.");
         }
         return "authen/login";
     }
 
     @GetMapping("/authen/verify")
-    public String showVerifyForm(@RequestParam String email, Model model) {
+    public String showVerifyForm(@RequestParam String email, @RequestParam(required = false) Boolean reset, Model model) {
         model.addAttribute("email", email);
+        if (Boolean.TRUE.equals(reset)) {
+            model.addAttribute("reset", true);
+        }
         return "authen/verify";
     }
 
@@ -103,43 +123,48 @@ public class AuthController {
                          @RequestParam(required = false) Boolean reset) {
         User user = authService.findByEmail(email);
         if (user == null) {
-            model.addAttribute("message", "Email không tồn tại.");
+            model.addAttribute("message", "Verification code is incorrect or already used.");
+            model.addAttribute("email", email);
+            if (Boolean.TRUE.equals(reset)) model.addAttribute("reset", true);
+            return "authen/verify";
+        }
+
+        // Validate OTP định dạng numeric 6 ký tự để chống sửa F12
+        if (code == null || !code.matches("^\\d{6}$")) {
+            model.addAttribute("message", "Invalid OTP code.");
             model.addAttribute("email", email);
             return "authen/verify";
         }
 
-        EmailVerification verification = emailVerificationRepository.findByUserAndVerificationCode(user, code);
+        // Lấy bản ghi OTP mới nhất, chưa dùng
+        Optional<EmailVerification> optionalVerification = emailVerificationRepository
+                .findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, code);
+        EmailVerification verification = optionalVerification.orElse(null);
         if (verification == null) {
-            model.addAttribute("message", "Mã xác thực không đúng.");
-            model.addAttribute("email", email);
-            return "authen/verify";
-        }
-
-        if (verification.isUsed()) {
-            model.addAttribute("message", "Mã xác thực đã được sử dụng.");
+            model.addAttribute("message", "Verification code is incorrect or already used.");
             model.addAttribute("email", email);
             return "authen/verify";
         }
 
         if (verification.getExpiryDate().before(new Date())) {
-            model.addAttribute("message", "Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới.");
+            model.addAttribute("message", "Verification code has expired. Please request a new code.");
             model.addAttribute("email", email);
             return "authen/verify";
         }
 
-        verification.setUsed(true);
-        emailVerificationRepository.save(verification);
-
-        if (reset != null && reset) {
-            // Nếu là flow reset password, chuyển qua trang đổi mật khẩu mới
+        if (Boolean.TRUE.equals(reset)) {
+            // Flow reset mật khẩu: KHÔNG đánh dấu used tại đây để dùng lại ở bước đặt mật khẩu mới
             model.addAttribute("email", email);
             model.addAttribute("code", code);
             return "authen/new-password";
         } else {
-            // Đăng ký tài khoản
+            // Flow đăng ký: đánh dấu used và xác thực tài khoản
+            verification.setUsed(true);
+            emailVerificationRepository.save(verification);
+
             user.setVerified(true);
             authService.saveUser(user);
-            model.addAttribute("message", "Xác thực thành công! Bạn có thể đăng nhập.");
+            model.addAttribute("message", "Verification successful! You can log in now.");
             return "authen/login";
         }
     }
@@ -151,63 +176,74 @@ public class AuthController {
 
     @PostMapping("/authen/forgot-password")
     public String forgotPassword(@RequestParam String email, Model model) {
+        // Kiểm tra tài khoản tồn tại; nếu không, báo lỗi và ở lại trang quên mật khẩu
         User user = authService.findByEmail(email);
         if (user == null) {
-            model.addAttribute("error", "Email không tồn tại.");
+            model.addAttribute("error", "Email does not exist.");
             return "authen/forgot-password";
         }
 
-        try {
-            String code = authService.generateVerificationCode();
-            EmailVerification verification = new EmailVerification();
-            verification.setUser(user);
-            verification.setVerificationCode(code);
-            verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
-            verification.setUsed(false);
-            emailVerificationRepository.save(verification);
+        // Có tài khoản -> chuyển ngay sang trang nhập OTP, đồng thời tạo OTP + gửi email bất đồng bộ
+        emailExecutor.execute(() -> {
+            try {
+                String code = authService.generateVerificationCode();
+                EmailVerification verification = new EmailVerification();
+                verification.setUser(user);
+                verification.setVerificationCode(code);
+                verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
+                verification.setUsed(false);
+                emailVerificationRepository.save(verification);
+                authService.sendVerificationCodeEmail(email, code);
+            } catch (Exception ignored) { }
+        });
 
-            // Gửi mã xác thực qua email
-            authService.sendVerificationCodeEmail(email, code);
-
-            model.addAttribute("email", email);
-            model.addAttribute("reset", true); // Đánh dấu là flow reset password
-            return "authen/verify";
-        } catch (Exception e) {
-            model.addAttribute("error", "Không thể gửi mã xác thực. Vui lòng thử lại.");
-            return "authen/forgot-password";
-        }
+        model.addAttribute("email", email);
+        model.addAttribute("reset", true);
+        return "authen/verify";
     }
 
     @PostMapping("/authen/new-password")
     public String newPassword(@RequestParam String email, @RequestParam String password, @RequestParam String confirmPassword, @RequestParam String code, Model model) {
-        if (!password.equals(confirmPassword)) {
-            model.addAttribute("error", "Mật khẩu xác nhận không khớp.");
+        // Backend validation để chống sửa tham số
+        if (password == null || password.length() < 8 || !password.matches("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")) {
+            model.addAttribute("error", "Password must be at least 8 characters and include letters and numbers.");
             model.addAttribute("email", email);
+            model.addAttribute("code", code);
+            return "authen/new-password";
+        }
+        if (!password.equals(confirmPassword)) {
+            model.addAttribute("error", "Password confirmation does not match.");
+            model.addAttribute("email", email);
+            model.addAttribute("code", code);
             return "authen/new-password";
         }
 
         User user = authService.findByEmail(email);
         if (user == null) {
-            model.addAttribute("error", "Email không tồn tại.");
+            model.addAttribute("error", "Email does not exist.");
             model.addAttribute("email", email);
+            model.addAttribute("code", code);
             return "authen/new-password";
         }
 
-        EmailVerification verification = emailVerificationRepository.findByUserAndVerificationCode(user, code);
-        if (verification == null || verification.isUsed() || verification.getExpiryDate().before(new Date())) {
-            model.addAttribute("error", "Mã xác thực không hợp lệ hoặc đã hết hạn.");
+        // Chỉ chấp nhận OTP mới nhất, chưa used
+        Optional<EmailVerification> optionalVerification = emailVerificationRepository
+                .findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, code);
+        EmailVerification verification = optionalVerification.orElse(null);
+        if (verification == null || verification.getExpiryDate().before(new Date())) {
+            model.addAttribute("error", "Verification code is invalid or has expired.");
             model.addAttribute("email", email);
+            model.addAttribute("code", code);
             return "authen/new-password";
         }
 
-        user.setPassword(password); // Lưu mật khẩu plaintext
+        // Cập nhật mật khẩu bằng encoder
+        authService.updatePassword(user, password);
         verification.setUsed(true);
-        authService.saveUser(user);
         emailVerificationRepository.save(verification);
 
-        // Chỉ set message một l��n, tránh double message
         model.asMap().clear();
-        model.addAttribute("message", "Cập nhật mật khẩu thành công! Bạn có th��� đăng nhập.");
+        model.addAttribute("message", "Password updated successfully! You can log in.");
         return "authen/login";
     }
 
@@ -291,7 +327,7 @@ public class AuthController {
             model.addAttribute("user", user);
         }
         if (displayName != null) {
-            model.addAttribute("message", "Chào mừng " + displayName + " đến với MMOMarket!");
+            model.addAttribute("message", "Welcome " + displayName + " to MMOMarket!");
         }
         return "customer/welcome";
     }
@@ -368,23 +404,20 @@ public class AuthController {
     @PostMapping("/authen/resend-otp")
     @ResponseBody
     public String resendOtp(@RequestParam String email) {
-        User user = authService.findByEmail(email);
-        if (user == null) {
-            return "Email không tồn tại";
-        }
-        String code = authService.generateVerificationCode();
-        EmailVerification verification = new EmailVerification();
-        verification.setUser(user);
-        verification.setVerificationCode(code);
-        verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
-        verification.setUsed(false);
-        emailVerificationRepository.save(verification);
-        // Gửi email mã xác thực mới cho user
         try {
-            authService.sendVerificationCodeEmail(email, code);
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
-        }
-        return "Đã gửi lại mã OTP thành công!";
+            User user = authService.findByEmail(email);
+            if (user != null) {
+                String code = authService.generateVerificationCode();
+                EmailVerification verification = new EmailVerification();
+                verification.setUser(user);
+                verification.setVerificationCode(code);
+                verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
+                verification.setUsed(false);
+                emailVerificationRepository.save(verification);
+                authService.sendVerificationCodeEmail(email, code);
+            }
+        } catch (Exception ignored) { }
+        // Luôn trả về thông báo chung để tránh lộ thông tin email tồn tại
+        return "If the email exists, a new OTP has been sent.";
     }
 }
