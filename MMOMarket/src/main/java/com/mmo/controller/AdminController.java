@@ -1,17 +1,14 @@
 package com.mmo.controller;
 
-import com.mmo.dto.SellerRegistrationDTO;
-import com.mmo.dto.ProcessWithdrawalRequest;
-import com.mmo.dto.AdminWithdrawalResponse;
-import com.mmo.dto.WithdrawalDetailResponse;
-import com.mmo.dto.CoinDepositDetailResponse;
-import com.mmo.entity.SellerRegistration;
-import com.mmo.entity.User;
-import com.mmo.entity.Withdrawal;
-import com.mmo.entity.CoinDeposit;
-import com.mmo.service.SellerService;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -24,27 +21,45 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Optional;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-// Added imports
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.GrantedAuthority;
+import com.mmo.dto.AdminWithdrawalResponse;
+import com.mmo.dto.CoinDepositDetailResponse;
+import com.mmo.dto.CreateCategoryRequest;
+import com.mmo.dto.ProcessWithdrawalRequest;
+import com.mmo.dto.SellerRegistrationDTO;
+import com.mmo.dto.UpdateCategoryRequest;
+import com.mmo.dto.WithdrawalDetailResponse;
+import com.mmo.entity.Category;
+import com.mmo.entity.CoinDeposit;
+import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.User;
+import com.mmo.entity.Withdrawal;
+import com.mmo.service.CategoryService;
+import com.mmo.service.SellerService;
 import com.mmo.util.Bank;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Controller
 @RequestMapping("/admin")
@@ -62,6 +77,15 @@ public class AdminController {
 
     @Autowired
     private com.mmo.service.EmailService emailService;
+
+    @Autowired
+    private CategoryService categoryService;
+
+    @Autowired
+    private com.mmo.service.BlogService blogService;
+
+    @Autowired
+    private com.mmo.service.ShopService shopService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -595,6 +619,552 @@ public class AdminController {
             return ResponseEntity.ok(resp);
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // ==================== CATEGORY MANAGEMENT ====================
+
+    @GetMapping("/categories")
+    public String categoriesManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                       @RequestParam(name = "search", defaultValue = "") String search,
+                                       Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<Category> categoryPage;
+
+        if (search == null || search.trim().isEmpty()) {
+            categoryPage = categoryService.getAllCategories(pageable);
+        } else {
+            categoryPage = categoryService.searchCategories(search.trim(), pageable);
+        }
+
+        model.addAttribute("categories", categoryPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", categoryPage.getTotalPages());
+        model.addAttribute("pageTitle", "Categories Management");
+        model.addAttribute("body", "admin/categories");
+        return "admin/layout";
+    }
+
+    @PostMapping("/categories")
+    @ResponseBody
+    public ResponseEntity<?> createCategory(@RequestBody CreateCategoryRequest request, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.createCategory(request, admin.getId());
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/categories/{id}")
+    @ResponseBody
+    public ResponseEntity<?> getCategoryById(@PathVariable Long id) {
+        try {
+            Category category = categoryService.getCategoryById(id);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/categories/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateCategory(@PathVariable Long id,
+                                           @RequestBody UpdateCategoryRequest request,
+                                           Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.updateCategory(id, request);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/categories/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteCategory(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            categoryService.deleteCategory(id, admin.getId());
+            return ResponseEntity.ok().body("Category deleted successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/categories/deleted")
+    public String deletedCategories(@RequestParam(name = "page", defaultValue = "0") int page,
+                                    @RequestParam(name = "search", defaultValue = "") String search,
+                                    Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<Category> categoryPage;
+
+        if (search == null || search.trim().isEmpty()) {
+            categoryPage = categoryService.getDeletedCategories(pageable);
+        } else {
+            categoryPage = categoryService.searchDeletedCategories(search.trim(), pageable);
+        }
+
+        model.addAttribute("categories", categoryPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", categoryPage.getTotalPages());
+        model.addAttribute("pageTitle", "Deleted Categories");
+        model.addAttribute("body", "admin/deleted-categories");
+        return "admin/layout";
+    }
+
+    @GetMapping("/categories/deleted/list")
+    @ResponseBody
+    public ResponseEntity<?> getDeletedCategoriesList() {
+        try {
+            Pageable pageable = PageRequest.of(0, 100);
+            Page<Category> categoryPage = categoryService.getDeletedCategories(pageable);
+            return ResponseEntity.ok(categoryPage.getContent());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping("/categories/{id}/restore")
+    @ResponseBody
+    public ResponseEntity<?> restoreCategory(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.restoreCategory(id);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // ==================== BLOG MANAGEMENT ====================
+
+    @GetMapping("/blogs")
+    public String blogsManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                  @RequestParam(name = "search", defaultValue = "") String search,
+                                  Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<com.mmo.entity.Blog> blogPage;
+
+        if (search == null || search.trim().isEmpty()) {
+            blogPage = blogService.getAllBlogs(pageable);
+        } else {
+            blogPage = blogService.searchBlogs(search.trim(), pageable);
+        }
+
+        model.addAttribute("blogs", blogPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", blogPage.getTotalPages());
+        model.addAttribute("pageTitle", "Blogs Management");
+        model.addAttribute("body", "admin/blogs");
+        return "admin/layout";
+    }
+
+    @PostMapping("/blogs")
+    @ResponseBody
+    public ResponseEntity<?> createBlog(@RequestBody com.mmo.dto.CreateBlogRequest request, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.createBlog(request, admin.getId());
+            return ResponseEntity.ok(blog);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/blogs/{id}")
+    @ResponseBody
+    public ResponseEntity<?> getBlog(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.getBlogById(id);
+            long commentsCount = blogService.getCommentsCount(id);
+            com.mmo.dto.BlogResponse response = com.mmo.dto.BlogResponse.fromEntity(blog, commentsCount);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/blogs/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateBlog(@PathVariable Long id,
+                                       @RequestBody com.mmo.dto.UpdateBlogRequest request,
+                                       Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.updateBlog(id, request);
+            return ResponseEntity.ok(blog);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/blogs/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteBlog(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            blogService.deleteBlog(id, admin.getId());
+            return ResponseEntity.ok().body("Blog deleted successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/blogs/deleted")
+    public String deletedBlogs(@RequestParam(name = "page", defaultValue = "0") int page,
+                               @RequestParam(name = "search", defaultValue = "") String search,
+                               Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<com.mmo.entity.Blog> blogPage;
+
+        if (search == null || search.trim().isEmpty()) {
+            blogPage = blogService.getDeletedBlogs(pageable);
+        } else {
+            blogPage = blogService.searchDeletedBlogs(search.trim(), pageable);
+        }
+
+        model.addAttribute("blogs", blogPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", blogPage.getTotalPages());
+        model.addAttribute("pageTitle", "Deleted Blogs");
+        model.addAttribute("body", "admin/deleted-blogs");
+        return "admin/layout";
+    }
+
+    @GetMapping("/blogs/deleted/list")
+    @ResponseBody
+    public ResponseEntity<?> getDeletedBlogsList() {
+        try {
+            Pageable pageable = PageRequest.of(0, 100);
+            Page<com.mmo.entity.Blog> blogPage = blogService.getDeletedBlogs(pageable);
+            return ResponseEntity.ok(blogPage.getContent());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping("/blogs/{id}/restore")
+    @ResponseBody
+    public ResponseEntity<?> restoreBlog(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.restoreBlog(id);
+            return ResponseEntity.ok(blog);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // ==================== SHOP MANAGEMENT ====================
+
+    @GetMapping("/shops")
+    public String shops(@RequestParam(name = "page", defaultValue = "0") int page,
+                       @RequestParam(name = "search", required = false) String search,
+                       Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<com.mmo.dto.ShopResponse> shopPage;
+
+        if (search != null && !search.trim().isEmpty()) {
+            shopPage = shopService.searchShops(search, pageable);
+        } else {
+            shopPage = shopService.getAllShops(pageable);
+        }
+
+        model.addAttribute("shops", shopPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", shopPage.getTotalPages());
+        model.addAttribute("pageTitle", "Shop Management");
+        model.addAttribute("body", "admin/shops");
+        return "admin/layout";
+    }
+
+    @PutMapping("/shops/{id}/commission")
+    @ResponseBody
+    public ResponseEntity<?> updateCommission(@PathVariable Long id,
+                                             @RequestBody com.mmo.dto.UpdateCommissionRequest request,
+                                             Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            shopService.updateCommission(id, request, admin.getId());
+            return ResponseEntity.ok().body("Commission updated successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/shops/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteShop(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            shopService.deleteShop(id, admin.getId());
+            return ResponseEntity.ok().body("Shop deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/shops/deleted")
+    public String deletedShops(@RequestParam(name = "page", defaultValue = "0") int page, Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<com.mmo.dto.ShopResponse> shopPage = shopService.getDeletedShops(pageable);
+
+        model.addAttribute("shops", shopPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", shopPage.getTotalPages());
+        model.addAttribute("pageTitle", "Deleted Shops");
+        model.addAttribute("body", "admin/deleted-shops");
+        return "admin/layout";
+    }
+
+    @GetMapping("/shops/deleted/list")
+    @ResponseBody
+    public ResponseEntity<?> getDeletedShopsList() {
+        try {
+            Pageable pageable = PageRequest.of(0, 100); // Get up to 100 deleted shops
+            Page<com.mmo.dto.ShopResponse> shopPage = shopService.getDeletedShops(pageable);
+            return ResponseEntity.ok(shopPage.getContent());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping("/shops/{id}/restore")
+    @ResponseBody
+    public ResponseEntity<?> restoreShop(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            shopService.restoreShop(id);
+            return ResponseEntity.ok().body("Shop restored successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // ==================== CHANGE PASSWORD ====================
+
+    @GetMapping("/change-password")
+    public String changePasswordPage(Model model) {
+        model.addAttribute("pageTitle", "Change Password");
+        model.addAttribute("body", "admin/change-password");
+        return "admin/layout";
+    }
+
+    @PostMapping("/change-password")
+    @Transactional
+    public String changePassword(@ModelAttribute com.mmo.dto.ChangePasswordRequest request,
+                                Authentication auth,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "You must be logged in");
+                return "redirect:/authen/login";
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Access denied");
+                return "redirect:/";
+            }
+
+            // Validate current password
+            if (!org.springframework.security.crypto.bcrypt.BCrypt.checkpw(
+                    request.getCurrentPassword(), admin.getPassword())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Current password is incorrect");
+                return "redirect:/admin/change-password";
+            }
+
+            // Validate new password
+            if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password must be at least 6 characters");
+                return "redirect:/admin/change-password";
+            }
+
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password and confirm password do not match");
+                return "redirect:/admin/change-password";
+            }
+
+            // Update password
+            admin.setPassword(org.springframework.security.crypto.bcrypt.BCrypt.hashpw(
+                    request.getNewPassword(), org.springframework.security.crypto.bcrypt.BCrypt.gensalt()));
+            entityManager.merge(admin);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Password changed successfully!");
+            return "redirect:/admin/change-password";
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to change password: " + ex.getMessage());
+            return "redirect:/admin/change-password";
         }
     }
 }
