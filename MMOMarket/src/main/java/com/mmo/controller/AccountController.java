@@ -1,11 +1,12 @@
 package com.mmo.controller;
 
-import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.ShopInfo;
 import com.mmo.entity.User;
 import com.mmo.repository.NotificationRepository;
-import com.mmo.repository.SellerRegistrationRepository;
 import com.mmo.repository.UserRepository;
 import com.mmo.service.NotificationService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,7 +20,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import com.mmo.dto.SellerRegistrationForm;
 
 @Controller
 public class AccountController {
@@ -30,14 +34,13 @@ public class AccountController {
     private UserRepository userRepository;
 
     @Autowired
-    private SellerRegistrationRepository sellerRegistrationRepository;
-
-    @Autowired
     private NotificationRepository notificationRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @GetMapping("/account/settings")
     public String accountSettings(Model model, Authentication authentication) {
-        // If already registered, show status. Else, show form with backing model
         if (authentication != null && authentication.isAuthenticated()) {
             String email = authentication.getName();
             if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
@@ -47,12 +50,25 @@ public class AccountController {
             }
             Optional<User> userOpt = userRepository.findByEmail(email);
             if (userOpt.isPresent()) {
-                Optional<SellerRegistration> regOpt = sellerRegistrationRepository.findByUserId(userOpt.get().getId());
-                regOpt.ifPresent(reg -> model.addAttribute("registration", reg));
+                User user = userOpt.get();
+                boolean active = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+                if (active) {
+                    ShopInfo shop = entityManager.createQuery(
+                                    "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false",
+                                    ShopInfo.class)
+                            .setParameter("u", user)
+                            .getResultStream().findFirst().orElse(null);
+                    Map<String, Object> registration = new HashMap<>();
+                    registration.put("id", 0L);
+                    registration.put("status", "Active");
+                    registration.put("shopName", shop != null ? shop.getShopName() : (user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop"));
+                    registration.put("description", shop != null ? shop.getDescription() : "");
+                    model.addAttribute("registration", registration);
+                }
             }
         }
         if (!model.containsAttribute("sellerRegistration") && !model.containsAttribute("registration")) {
-            model.addAttribute("sellerRegistration", new SellerRegistration());
+            model.addAttribute("sellerRegistration", new SellerRegistrationForm());
         }
         return "customer/account-setting";
     }
@@ -67,18 +83,31 @@ public class AccountController {
                 if (mail != null) email = mail;
             }
             Pageable pageable = PageRequest.of(page, size);
-            // Normalize status for DB: map 'Read' (UI) -> 'Readed' (DB)
             String effectiveStatus = (status != null && status.equalsIgnoreCase("Read")) ? "Readed" : status;
             Page<com.mmo.entity.Notification> notificationPage = notificationService.getNotificationsForUser(email, effectiveStatus, search, pageable);
-            // Remove notifications from model to avoid overriding GlobalModelAttributes
             model.addAttribute("pageNotifications", notificationPage.getContent());
             model.addAttribute("currentPage", notificationPage.getNumber());
             model.addAttribute("totalPages", notificationPage.getTotalPages());
             model.addAttribute("status", status);
             model.addAttribute("search", search);
 
-            // Provide seller registration for sidebar conditional label (My Contract vs Register Seller)
-            userRepository.findByEmail(email).flatMap(u -> sellerRegistrationRepository.findByUserId(u.getId())).ifPresent(reg -> model.addAttribute("registration", reg));
+            // Provide synthetic registration for sidebar label (Active vs Register)
+            userRepository.findByEmail(email).ifPresent(user -> {
+                boolean active = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+                if (active) {
+                    ShopInfo shop = entityManager.createQuery(
+                                    "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false",
+                                    ShopInfo.class)
+                            .setParameter("u", user)
+                            .getResultStream().findFirst().orElse(null);
+                    Map<String, Object> registration = new HashMap<>();
+                    registration.put("id", 0L);
+                    registration.put("status", "Active");
+                    registration.put("shopName", shop != null ? shop.getShopName() : (user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop"));
+                    registration.put("description", shop != null ? shop.getDescription() : "");
+                    model.addAttribute("registration", registration);
+                }
+            });
         }
         return "customer/my-notification";
     }
@@ -100,7 +129,6 @@ public class AccountController {
             String mail = oauthUser.getAttribute("email");
             if (mail != null) email = mail;
         }
-        // Only count notifications that are not deleted
         return notificationRepository.countByUser_EmailAndStatusAndIsDelete(email, "Unread", false);
     }
 }

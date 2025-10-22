@@ -1,4 +1,4 @@
-<!--/*@thymesVar id="sellerRegistration" type="com.mmo.entity.SellerRegistration"*/-->
+<!--/*@thymesVar id="sellerRegistration" type="com.mmo.dto.SellerRegistrationForm"*/-->
 <div th:fragment="content">
     <style>
         body {
@@ -10,67 +10,129 @@
         }
 
         @media (max-width: 640px) {
-            body {
-                background-position: top center;
-            }
+            body { background-position: top center; }
         }
+
+        .modal-backdrop { background: rgba(0,0,0,0.6); }
+        .modal { max-width: 900px; width: 100%; }
+        .modal-body { height: 70vh; }
     </style>
 
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-2xl font-bold mb-2">Become a Seller</h2>
-        <p class="text-gray-500 mb-8">Fill out the form below to start selling your products.</p>
+        <p class="text-gray-600 mb-1">Provide your shop details and agree to the terms to activate your seller account.</p>
+        <p class="text-gray-700 font-semibold mb-8">A one-time activation fee of 200,000 coins will be deducted upon confirmation.</p>
 
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
-             role="alert" th:if="${successMessage}">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert" th:if="${successMessage}">
             <span class="block sm:inline" th:text="${successMessage}"></span>
         </div>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert" th:if="${errorMessage}">
+            <span class="block sm:inline" th:text="${errorMessage}"></span>
+        </div>
 
-        <form method="POST" th:action="@{/seller/register}" th:object="${sellerRegistration}">
+        <form id="sellerRegisterForm" method="POST" th:action="@{/seller/register}" th:object="${sellerRegistration}">
             <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
             <div class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700" for="shopName">Shop Name *</label>
                     <input class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
                            id="shopName" placeholder="Enter your shop name"
-                           th:field="*{shopName}"
-                           type="text">
-                    <p class="text-red-500 text-xs italic" th:errors="*{shopName}"
-                       th:if="${#fields.hasErrors('shopName')}"></p>
+                           th:field="*{shopName}" type="text" required>
+                    <p class="text-red-500 text-xs italic" th:errors="*{shopName}" th:if="${#fields.hasErrors('shopName')}"></p>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700" for="description">Shop Description *</label>
-                    <textarea
-                            class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
-                            id="description" placeholder="Tell us about your shop..."
-                            rows="4"
-                            th:field="*{description}"></textarea>
-                    <p class="text-red-500 text-xs italic" th:errors="*{description}"
-                       th:if="${#fields.hasErrors('description')}"></p>
+                    <textarea class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                              id="description" placeholder="Tell us about your shop..." rows="4" th:field="*{description}" required></textarea>
+                    <p class="text-red-500 text-xs italic" th:errors="*{description}" th:if="${#fields.hasErrors('description')}"></p>
                 </div>
 
                 <div class="flex items-start">
                     <div class="flex items-center h-5">
-                        <input class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded" id="agree"
-                               name="agree"
-                               required type="checkbox">
+                        <input class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded" id="agree" name="agree" required type="checkbox">
                     </div>
                     <div class="ml-3 text-sm">
                         <label class="text-gray-700" for="agree">
-                            I agree to the <a class="font-medium text-red-500 hover:underline" href="#">Terms and
-                            Policy</a>.
+                            I agree to the <button type="button" class="font-medium text-red-500 hover:underline" id="viewTermsBtn">Terms and Policy</button>.
                         </label>
                         <p class="mt-1 text-red-500 text-xs italic" th:if="${agreeError}" th:text="${agreeError}"></p>
                     </div>
                 </div>
 
                 <div>
-                    <button class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                            type="submit">
-                        Submit Application
+                    <button id="triggerSubmit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" type="submit">
+                        Confirm and Pay 200,000 coins
                     </button>
                 </div>
             </div>
         </form>
     </div>
+
+    <!-- Modal: PDF Reader & Confirmation -->
+    <div id="pdfModal" class="fixed inset-0 hidden items-center justify-center modal-backdrop z-50">
+        <div class="modal bg-white rounded-lg shadow-xl overflow-hidden mx-4">
+            <div class="px-6 py-4 border-b flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800">Terms and Policy</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="pdfFrame" src="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" class="w-full h-full" title="Terms PDF"></iframe>
+            </div>
+            <div class="px-6 py-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p class="text-sm text-gray-600">Please review the Terms and Policy. By confirming, 200,000 coins will be deducted from your balance.</p>
+                <div class="flex gap-3 justify-end">
+                    <button id="cancelSubmit" class="px-4 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">Cancel</button>
+                    <button id="confirmSubmit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">I Agree and Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="~{customer/account-setting :: sidebar(activePage='register')}" class="mt-4"></div>
+
+    <script>
+        (function() {
+            const form = document.getElementById('sellerRegisterForm');
+            const modal = document.getElementById('pdfModal');
+            const closeBtn = document.getElementById('closeModal');
+            const cancelBtn = document.getElementById('cancelSubmit');
+            const confirmBtn = document.getElementById('confirmSubmit');
+            const viewTermsBtn = document.getElementById('viewTermsBtn');
+
+            function openModal() {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            function closeModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            // Show modal when clicking Terms link
+            viewTermsBtn?.addEventListener('click', function(e) {
+                e.preventDefault();
+                openModal();
+            });
+
+            // Intercept form submit to show modal first
+            form.addEventListener('submit', function(e) {
+                // If we already confirmed, skip modal
+                if (form.dataset.confirmed === 'true') return;
+                e.preventDefault();
+                openModal();
+            });
+
+            closeBtn?.addEventListener('click', closeModal);
+            cancelBtn?.addEventListener('click', function(){ closeModal(); });
+            confirmBtn?.addEventListener('click', function() {
+                // Prevent double submit
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Processing...';
+                // Mark as confirmed to bypass modal next submit
+                form.dataset.confirmed = 'true';
+                form.submit();
+            });
+        })();
+    </script>
 </div>
