@@ -1,12 +1,12 @@
 package com.mmo.service;
 
 import com.mmo.entity.User;
-import com.mmo.entity.SellerRegistration;
 import com.mmo.entity.Product;
+import com.mmo.entity.ShopInfo;
 import com.mmo.repository.UserRepository;
 import com.mmo.repository.ReviewRepository;
 import com.mmo.repository.ProductRepository;
-import com.mmo.repository.SellerRegistrationRepository;
+import com.mmo.repository.ShopInfoRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.ArrayList;
@@ -21,13 +21,16 @@ public class ShopService {
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
-    private final SellerRegistrationRepository sellerRegistrationRepository;
+    private final ShopInfoRepository shopInfoRepository;
 
-    public ShopService(UserRepository userRepository, ReviewRepository reviewRepository, ProductRepository productRepository, SellerRegistrationRepository sellerRegistrationRepository) {
+    public ShopService(UserRepository userRepository,
+                       ReviewRepository reviewRepository,
+                       ProductRepository productRepository,
+                       ShopInfoRepository shopInfoRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.productRepository = productRepository;
-        this.sellerRegistrationRepository = sellerRegistrationRepository;
+        this.shopInfoRepository = shopInfoRepository;
     }
 
     // Try to obtain review count for a product using common repository method names (safe reflection).
@@ -157,16 +160,34 @@ public class ShopService {
                 Long totalSold = productRepository.getTotalSoldForSeller(seller.getId());
                 if (totalSold == null) totalSold = 0L;
                 double successRate = shopAvgRating > 4.0 ? 90.0 : shopAvgRating > 3.0 ? 70.0 : shopAvgRating > 2.0 ? 50.0 : 30.0;
-                Optional<SellerRegistration> shopOpt = sellerRegistrationRepository.findByUserId(seller.getId());
-                SellerRegistration shop = shopOpt.orElse(null);
-                String shopName =
-                    (shop != null && shop.getShopName() != null && !shop.getShopName().isEmpty())
-                        ? shop.getShopName()
-                        : (seller.getFullName() != null && !seller.getFullName().isEmpty())
+
+                // Prefer ShopInfo for shop metadata (primary + fallback)
+                String shopName = null;
+                try {
+                    Optional<ShopInfo> shopInfoOpt = shopInfoRepository.findByUserIdAndIsDeleteFalse(seller.getId());
+                    if (shopInfoOpt != null && shopInfoOpt.isPresent() && shopInfoOpt.get().getShopName() != null && !shopInfoOpt.get().getShopName().isEmpty()) {
+                        shopName = shopInfoOpt.get().getShopName();
+                    }
+                } catch (Exception ignored) {}
+
+                if (shopName == null) {
+                    try {
+                        Optional<ShopInfo> shopInfoFallback = shopInfoRepository.findByUser_Id(seller.getId());
+                        if (shopInfoFallback != null && shopInfoFallback.isPresent() && shopInfoFallback.get().getShopName() != null && !shopInfoFallback.get().getShopName().isEmpty()) {
+                            shopName = shopInfoFallback.get().getShopName();
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                // final fallback to user's displayable fields
+                if (shopName == null || shopName.isEmpty()) {
+                    shopName =
+                        (seller.getFullName() != null && !seller.getFullName().isEmpty())
                         ? seller.getFullName()
                         : (seller.getEmail() != null && !seller.getEmail().isEmpty())
                         ? seller.getEmail()
                         : "Shop";
+                }
 
                 Map<String, Object> data = new HashMap<>();
                 data.put("id", seller.getId());
@@ -193,28 +214,42 @@ public class ShopService {
                 if (!sellerOpt.isPresent()) continue;
                 User seller = sellerOpt.get();
 
+                // Prefer ShopInfo first (primary + fallback)
+                String shopName2 = null;
+                try {
+                    Optional<ShopInfo> shopInfoOpt2 = shopInfoRepository.findByUserIdAndIsDeleteFalse(userId);
+                    if (shopInfoOpt2 != null && shopInfoOpt2.isPresent() && shopInfoOpt2.get().getShopName() != null && !shopInfoOpt2.get().getShopName().isEmpty()) {
+                        shopName2 = shopInfoOpt2.get().getShopName();
+                    }
+                } catch (Exception ignored) {}
+
+                if (shopName2 == null) {
+                    try {
+                        Optional<ShopInfo> shopInfoFallback2 = shopInfoRepository.findByUser_Id(userId);
+                        if (shopInfoFallback2 != null && shopInfoFallback2.isPresent() && shopInfoFallback2.get().getShopName() != null && !shopInfoFallback2.get().getShopName().isEmpty()) {
+                            shopName2 = shopInfoFallback2.get().getShopName();
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                String finalShopName = (shopName2 != null && !shopName2.isEmpty())
+                        ? shopName2
+                        : (seller.getFullName() != null && !seller.getFullName().isEmpty())
+                        ? seller.getFullName()
+                        : (seller.getEmail() != null && !seller.getEmail().isEmpty())
+                        ? seller.getEmail()
+                        : "Shop";
+
                 // Prefer sum amount if available; otherwise use count
                 Long totalSold = productRepository.getTotalSoldForSeller(userId);
                 if (totalSold == null) totalSold = totalSoldCount;
 
                 double successRate = avgRating > 4.0 ? 90.0 : avgRating > 3.0 ? 70.0 : avgRating > 2.0 ? 50.0 : 30.0;
 
-                Optional<SellerRegistration> shopOpt2 = sellerRegistrationRepository.findByUserId(userId);
-                SellerRegistration shop2 = shopOpt2.orElse(null);
-
-                String shopName2 =
-                        (shop2 != null && shop2.getShopName() != null && !shop2.getShopName().isEmpty())
-                                ? shop2.getShopName()
-                                : (seller.getFullName() != null && !seller.getFullName().isEmpty())
-                                ? seller.getFullName()
-                                : (seller.getEmail() != null && !seller.getEmail().isEmpty())
-                                ? seller.getEmail()
-                                : "Shop";
-
                 Map<String, Object> data = new HashMap<>();
                 data.put("id", userId);
                 data.put("seller", seller);
-                data.put("shopName", shopName2);
+                data.put("shopName", finalShopName);
                 data.put("ratingAverage", Math.round(avgRating * 10.0) / 10.0);
                 data.put("totalSold", totalSold);
                 data.put("successRate", successRate);
