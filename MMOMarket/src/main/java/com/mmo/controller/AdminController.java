@@ -9,6 +9,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -38,7 +41,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -52,6 +54,7 @@ import com.mmo.dto.WithdrawalDetailResponse;
 import com.mmo.entity.Category;
 import com.mmo.entity.CoinDeposit;
 import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.ShopInfo;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
 import com.mmo.service.CategoryService;
@@ -60,11 +63,14 @@ import com.mmo.util.Bank;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 
 @Controller
 @RequestMapping("/admin")
 @SuppressWarnings("unchecked")
 public class AdminController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
     @Autowired
     private SellerService sellerService;
@@ -87,8 +93,207 @@ public class AdminController {
     @Autowired
     private com.mmo.service.ShopService shopService;
 
+    @Autowired
+    private com.mmo.repository.UserRepository userRepository;
+
     @PersistenceContext
     private EntityManager entityManager;
+
+    // ==================== USER MANAGEMENT ====================
+    @GetMapping("/users")
+    public String usersManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                  @RequestParam(name = "search", defaultValue = "") String search,
+                                  @RequestParam(name = "role", defaultValue = "") String role,
+                                  @RequestParam(name = "shopStatus", defaultValue = "") String shopStatus,
+                                  @RequestParam(name = "sort", defaultValue = "") String sort,
+                                  Model model) {
+        // Determine sort field and direction
+        String sortField = "createdAt";
+        Sort.Direction sortDirection = Sort.Direction.DESC;
+        
+        if (sort != null && !sort.isBlank()) {
+            if (sort.equals("role_asc")) {
+                sortField = "role";
+                sortDirection = Sort.Direction.ASC;
+            } else if (sort.equals("role_desc")) {
+                sortField = "role";
+                sortDirection = Sort.Direction.DESC;
+            } else if (sort.equals("shopStatus_asc")) {
+                sortField = "shopStatus";
+                sortDirection = Sort.Direction.ASC;
+            } else if (sort.equals("shopStatus_desc")) {
+                sortField = "shopStatus";
+                sortDirection = Sort.Direction.DESC;
+            } else if (sort.equals("coins_asc")) {
+                sortField = "coins";
+                sortDirection = Sort.Direction.ASC;
+            } else if (sort.equals("coins_desc")) {
+                sortField = "coins";
+                sortDirection = Sort.Direction.DESC;
+            }
+        }
+        
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(sortDirection, sortField));
+        
+        StringBuilder query = new StringBuilder("SELECT u FROM User u WHERE 1=1");
+        
+        if (search != null && !search.isBlank()) {
+            query.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
+        }
+        
+        if (role != null && !role.isBlank()) {
+            query.append(" AND LOWER(u.role) = LOWER(:role)");
+        }
+        
+        if (shopStatus != null && !shopStatus.isBlank()) {
+            query.append(" AND LOWER(u.shopStatus) = LOWER(:shopStatus)");
+        }
+        
+        query.append(" ORDER BY u.").append(sortField).append(" ").append(sortDirection.name());
+        
+        var q = entityManager.createQuery(query.toString(), User.class);
+        
+        if (search != null && !search.isBlank()) {
+            q.setParameter("search", "%" + search + "%");
+        }
+        
+        if (role != null && !role.isBlank()) {
+            q.setParameter("role", role);
+        }
+        
+        if (shopStatus != null && !shopStatus.isBlank()) {
+            q.setParameter("shopStatus", shopStatus);
+        }
+        
+        List<User> allUsers = q.getResultList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), allUsers.size());
+        List<User> pageContent = allUsers.subList(start, end);
+        Page<User> userPage = new PageImpl<>(pageContent, pageable, allUsers.size());
+        
+        model.addAttribute("users", userPage.getContent());
+        model.addAttribute("totalPages", userPage.getTotalPages());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentRole", role);
+        model.addAttribute("currentShopStatus", shopStatus);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("pageTitle", "User Management");
+        model.addAttribute("body", "admin/users");
+        return "admin/layout";
+    }
+
+    @GetMapping("/users/{id}")
+    @ResponseBody
+    public ResponseEntity<?> getUser(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            User user = entityManager.find(User.class, id);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+            
+            return ResponseEntity.ok(user);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/users/{id}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateUser(@PathVariable Long id,
+                                       @RequestBody java.util.Map<String, Object> request,
+                                       Authentication auth) {
+        logger.info("=== START updateUser - ID: {}, Request: {}", id, request);
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                logger.warn("Unauthorized access attempt");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                logger.warn("Forbidden access attempt by: {}", auth.getName());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            // Use repository instead of EntityManager
+            logger.debug("Finding user with ID: {}", id);
+            User user = userRepository.findById(id).orElse(null);
+            if (user == null) {
+                logger.warn("User not found with ID: {}", id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+
+            logger.debug("User found - Before update: fullName={}, phone={}, role={}, coins={}", 
+                user.getFullName(), user.getPhone(), user.getRole(), user.getCoins());
+
+            if (request.containsKey("fullName")) {
+                user.setFullName((String) request.get("fullName"));
+                logger.debug("Updated fullName to: {}", user.getFullName());
+            }
+            if (request.containsKey("phone")) {
+                String phone = (String) request.get("phone");
+                if (phone != null && !phone.isEmpty() && !phone.matches("^0\\d{9}$")) {
+                    logger.warn("Invalid phone format: {}", phone);
+                    return ResponseEntity.badRequest().body("Phone must be 10 digits starting with 0");
+                }
+                user.setPhone(phone);
+                logger.debug("Updated phone to: {}", user.getPhone());
+            }
+            if (request.containsKey("role")) {
+                user.setRole((String) request.get("role"));
+                logger.debug("Updated role to: {}", user.getRole());
+            }
+            if (request.containsKey("coins")) {
+                Object coinsObj = request.get("coins");
+                logger.debug("Coins object type: {}, value: {}", coinsObj != null ? coinsObj.getClass().getName() : "null", coinsObj);
+                if (coinsObj instanceof Number) {
+                    Long oldCoins = user.getCoins();
+                    user.setCoins(((Number) coinsObj).longValue());
+                    logger.debug("Updated coins from {} to {}", oldCoins, user.getCoins());
+                } else if (coinsObj instanceof String) {
+                    try {
+                        Long oldCoins = user.getCoins();
+                        user.setCoins(Long.parseLong((String) coinsObj));
+                        logger.debug("Updated coins (from String) from {} to {}", oldCoins, user.getCoins());
+                    } catch (NumberFormatException e) {
+                        logger.warn("Invalid coins format: {}", coinsObj);
+                    }
+                } else {
+                    logger.warn("Coins is neither Number nor String, it's: {}", coinsObj != null ? coinsObj.getClass().getName() : "null");
+                }
+            }
+
+            logger.debug("User after update - Before save: fullName={}, phone={}, role={}, coins={}", 
+                user.getFullName(), user.getPhone(), user.getRole(), user.getCoins());
+
+            // Use repository.save() instead of entityManager.merge()
+            User savedUser = userRepository.save(user);
+            logger.info("User saved successfully - After save: fullName={}, phone={}, role={}, coins={}", 
+                savedUser.getFullName(), savedUser.getPhone(), savedUser.getRole(), savedUser.getCoins());
+            
+            return ResponseEntity.ok("User updated successfully");
+        } catch (Exception ex) {
+            logger.error("Error updating user with ID: {}", id, ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
 
     @GetMapping("/seller-registrations")
     public String sellerRegistrations(@RequestParam(name = "status", defaultValue = "All") String status,
@@ -627,19 +832,58 @@ public class AdminController {
     @GetMapping("/categories")
     public String categoriesManagement(@RequestParam(name = "page", defaultValue = "0") int page,
                                        @RequestParam(name = "search", defaultValue = "") String search,
+                                       @RequestParam(name = "type", defaultValue = "") String type,
+                                       @RequestParam(name = "sort", defaultValue = "") String sort,
                                        Model model) {
         Pageable pageable = PageRequest.of(page, 10);
-        Page<Category> categoryPage;
-
-        if (search == null || search.trim().isEmpty()) {
-            categoryPage = categoryService.getAllCategories(pageable);
-        } else {
-            categoryPage = categoryService.searchCategories(search.trim(), pageable);
+        
+        // Build dynamic query with LEFT JOIN FETCH to eagerly load products
+        StringBuilder jpql = new StringBuilder("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.products WHERE c.isDelete = false");
+        
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
         }
+        
+        if (type != null && !type.trim().isEmpty()) {
+            jpql.append(" AND LOWER(c.type) = LOWER(:type)");
+        }
+        
+        // Add sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("products_asc")) {
+                jpql.append(" ORDER BY SIZE(c.products) ASC");
+            } else if (sort.equals("products_desc")) {
+                jpql.append(" ORDER BY SIZE(c.products) DESC");
+            }
+        }
+        
+        // Create query
+        TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
+        
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+        
+        if (type != null && !type.trim().isEmpty()) {
+            query.setParameter("type", type.trim());
+        }
+        
+        // Get all results first (needed for total count and sorting)
+        List<Category> allResults = query.getResultList();
+        int total = allResults.size();
+        
+        // Apply pagination manually
+        int start = page * 10;
+        int end = Math.min(start + 10, total);
+        List<Category> categories = allResults.subList(start, end);
+        
+        Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
 
         model.addAttribute("categories", categoryPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("currentSearch", search);
+        model.addAttribute("currentType", type);
+        model.addAttribute("currentSort", sort);
         model.addAttribute("totalPages", categoryPage.getTotalPages());
         model.addAttribute("pageTitle", "Categories Management");
         model.addAttribute("body", "admin/categories");
@@ -737,25 +981,124 @@ public class AdminController {
     }
 
     @GetMapping("/categories/deleted")
+    @Transactional(readOnly = true)
     public String deletedCategories(@RequestParam(name = "page", defaultValue = "0") int page,
                                     @RequestParam(name = "search", defaultValue = "") String search,
+                                    @RequestParam(name = "type", defaultValue = "") String type,
+                                    @RequestParam(name = "sort", defaultValue = "") String sort,
                                     Model model) {
-        Pageable pageable = PageRequest.of(page, 10);
-        Page<Category> categoryPage;
+        logger.info("=== ENTERED deletedCategories METHOD ===");
+        logger.info("Parameters - page: {}, search: {}, type: {}, sort: {}", page, search, type, sort);
+        
+        try {
+            logger.info("Step 1: Creating pageable");
+            Pageable pageable = PageRequest.of(page, 10);
+            
+            logger.info("Step 2: Building query");
+            // Simple query - load only category data
+            StringBuilder jpql = new StringBuilder("SELECT c FROM Category c WHERE c.isDelete = true");
+            
+            if (search != null && !search.trim().isEmpty()) {
+                jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
+            }
+            
+            if (type != null && !type.trim().isEmpty()) {
+                jpql.append(" AND LOWER(c.type) = LOWER(:type)");
+            }
+            
+            jpql.append(" ORDER BY c.updatedAt DESC");
+            
+            logger.info("Step 3: Query built: {}", jpql.toString());
+            
+            // Create query
+            TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
+            
+            if (search != null && !search.trim().isEmpty()) {
+                query.setParameter("search", "%" + search.trim() + "%");
+            }
+            
+            if (type != null && !type.trim().isEmpty()) {
+                query.setParameter("type", type.trim());
+            }
+            
+            logger.info("Step 4: Executing query");
+            // Get all results first
+            List<Category> allResults = query.getResultList();
+            logger.info("Step 5: Found {} deleted categories", allResults.size());
+            
+            int total = allResults.size();
+            
+            // Apply pagination manually
+            int start = page * 10;
+            int end = Math.min(start + 10, total);
+            List<Category> categories = start < total ? allResults.subList(start, end) : new java.util.ArrayList<>();
+            
+            logger.info("Step 6: Paginated {} categories (from {} to {})", categories.size(), start, end);
+            
+            logger.info("Step 7: Loading lazy relationships");
+            // Eager load relationships for the paginated results within transaction
+            for (int i = 0; i < categories.size(); i++) {
+                Category cat = categories.get(i);
+                logger.debug("Loading details for category {}/{}: id={}, name={}", i+1, categories.size(), cat.getId(), cat.getName());
+                try {
+                    // Force load products collection to calculate count
+                    if (cat.getProducts() != null) {
+                        int productCount = cat.getProducts().size(); // This will trigger lazy load within transaction
+                        logger.debug("Category {} has {} products", cat.getId(), productCount);
+                    } else {
+                        logger.debug("Category {} has null products collection", cat.getId());
+                    }
+                    
+                    // Load deletedByUser if exists
+                    if (cat.getDeletedBy() != null) {
+                        logger.debug("Loading deletedByUser for category {} (deletedBy={})", cat.getId(), cat.getDeletedBy());
+                        User deletedByUser = entityManager.find(User.class, cat.getDeletedBy());
+                        if (deletedByUser != null) {
+                            cat.setDeletedByUser(deletedByUser);
+                            logger.debug("Loaded deletedByUser: {}", deletedByUser.getEmail());
+                        } else {
+                            logger.warn("DeletedByUser not found for ID: {}", cat.getDeletedBy());
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to load details for category {}: {}", cat.getId(), e.getMessage(), e);
+                }
+            }
+            
+            logger.info("Step 8: Creating page object");
+            Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
 
-        if (search == null || search.trim().isEmpty()) {
-            categoryPage = categoryService.getDeletedCategories(pageable);
-        } else {
-            categoryPage = categoryService.searchDeletedCategories(search.trim(), pageable);
+            logger.info("Step 9: Adding attributes to model");
+            model.addAttribute("categories", categoryPage.getContent());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentType", type);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", categoryPage.getTotalPages());
+            model.addAttribute("pageTitle", "Deleted Categories");
+            model.addAttribute("body", "admin/deleted-categories");
+            
+            logger.info("Step 10: Returning view - admin/layout");
+            return "admin/layout";
+        } catch (Exception ex) {
+            logger.error("=== ERROR in deletedCategories ===", ex);
+            logger.error("Exception class: {}", ex.getClass().getName());
+            logger.error("Exception message: {}", ex.getMessage());
+            if (ex.getCause() != null) {
+                logger.error("Cause: {}", ex.getCause().getMessage());
+            }
+            
+            model.addAttribute("categories", new java.util.ArrayList<>());
+            model.addAttribute("currentPage", 0);
+            model.addAttribute("totalPages", 0);
+            model.addAttribute("currentSearch", "");
+            model.addAttribute("currentType", "");
+            model.addAttribute("currentSort", "");
+            model.addAttribute("pageTitle", "Deleted Categories");
+            model.addAttribute("body", "admin/deleted-categories");
+            model.addAttribute("errorMessage", "Failed to load deleted categories: " + ex.getMessage());
+            return "admin/layout";
         }
-
-        model.addAttribute("categories", categoryPage.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("totalPages", categoryPage.getTotalPages());
-        model.addAttribute("pageTitle", "Deleted Categories");
-        model.addAttribute("body", "admin/deleted-categories");
-        return "admin/layout";
     }
 
     @GetMapping("/categories/deleted/list")
@@ -800,19 +1143,72 @@ public class AdminController {
     @GetMapping("/blogs")
     public String blogsManagement(@RequestParam(name = "page", defaultValue = "0") int page,
                                   @RequestParam(name = "search", defaultValue = "") String search,
+                                  @RequestParam(name = "status", defaultValue = "") String status,
+                                  @RequestParam(name = "sort", defaultValue = "") String sort,
                                   Model model) {
         Pageable pageable = PageRequest.of(page, 10);
-        Page<com.mmo.entity.Blog> blogPage;
-
-        if (search == null || search.trim().isEmpty()) {
-            blogPage = blogService.getAllBlogs(pageable);
-        } else {
-            blogPage = blogService.searchBlogs(search.trim(), pageable);
+        
+        // Build dynamic query
+        StringBuilder jpql = new StringBuilder("SELECT b FROM Blog b WHERE b.isDelete = false");
+        
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" AND LOWER(b.title) LIKE LOWER(:search)");
         }
+        
+        if (status != null && !status.trim().isEmpty()) {
+            if (status.equals("popular")) {
+                jpql.append(" AND b.likes >= 100");
+            } else if (status.equals("new")) {
+                jpql.append(" AND b.createdAt >= :sevenDaysAgo");
+            }
+        }
+        
+        // Add sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("likes_asc")) {
+                jpql.append(" ORDER BY b.likes ASC");
+            } else if (sort.equals("likes_desc")) {
+                jpql.append(" ORDER BY b.likes DESC");
+            } else if (sort.equals("views_asc")) {
+                jpql.append(" ORDER BY b.views ASC");
+            } else if (sort.equals("views_desc")) {
+                jpql.append(" ORDER BY b.views DESC");
+            } else if (sort.equals("comments_asc")) {
+                jpql.append(" ORDER BY SIZE(b.comments) ASC");
+            } else if (sort.equals("comments_desc")) {
+                jpql.append(" ORDER BY SIZE(b.comments) DESC");
+            }
+        }
+        
+        // Create query
+        TypedQuery<com.mmo.entity.Blog> query = entityManager.createQuery(jpql.toString(), com.mmo.entity.Blog.class);
+        
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+        
+        if (status != null && status.equals("new")) {
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.add(java.util.Calendar.DAY_OF_MONTH, -7);
+            query.setParameter("sevenDaysAgo", cal.getTime());
+        }
+        
+        // Get total count
+        List<com.mmo.entity.Blog> allResults = query.getResultList();
+        int total = allResults.size();
+        
+        // Apply pagination
+        query.setFirstResult(page * 10);
+        query.setMaxResults(10);
+        List<com.mmo.entity.Blog> blogs = query.getResultList();
+        
+        Page<com.mmo.entity.Blog> blogPage = new PageImpl<>(blogs, pageable, total);
 
         model.addAttribute("blogs", blogPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("currentSearch", search);
+        model.addAttribute("currentStatus", status);
+        model.addAttribute("currentSort", sort);
         model.addAttribute("totalPages", blogPage.getTotalPages());
         model.addAttribute("pageTitle", "Blogs Management");
         model.addAttribute("body", "admin/blogs");
@@ -986,20 +1382,70 @@ public class AdminController {
 
     @GetMapping("/shops")
     public String shops(@RequestParam(name = "page", defaultValue = "0") int page,
-                       @RequestParam(name = "search", required = false) String search,
+                       @RequestParam(name = "search", defaultValue = "") String search,
+                       @RequestParam(name = "status", defaultValue = "") String status,
+                       @RequestParam(name = "sort", defaultValue = "") String sort,
                        Model model) {
         Pageable pageable = PageRequest.of(page, 10);
-        Page<com.mmo.dto.ShopResponse> shopPage;
-
+        
+        // Build dynamic query using ShopInfo entity
+        StringBuilder jpql = new StringBuilder(
+            "SELECT s FROM ShopInfo s WHERE s.isDelete = false"
+        );
+        
         if (search != null && !search.trim().isEmpty()) {
-            shopPage = shopService.searchShops(search, pageable);
-        } else {
-            shopPage = shopService.getAllShops(pageable);
+            jpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
         }
+        
+        if (status != null && !status.trim().isEmpty()) {
+            jpql.append(" AND s.user.shopStatus = :status");
+        }
+        
+        // Add sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("rating_asc")) {
+                jpql.append(" ORDER BY (SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = s.user.id) ASC NULLS FIRST");
+            } else if (sort.equals("rating_desc")) {
+                jpql.append(" ORDER BY (SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = s.user.id) DESC NULLS LAST");
+            } else if (sort.equals("commission_asc")) {
+                jpql.append(" ORDER BY s.commission ASC");
+            } else if (sort.equals("commission_desc")) {
+                jpql.append(" ORDER BY s.commission DESC");
+            }
+        }
+        
+        // Create query
+        TypedQuery<ShopInfo> query = entityManager.createQuery(jpql.toString(), ShopInfo.class);
+        
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+        
+        if (status != null && !status.trim().isEmpty()) {
+            query.setParameter("status", status);
+        }
+        
+        // Get total count
+        List<ShopInfo> allResults = query.getResultList();
+        int total = allResults.size();
+        
+        // Apply pagination
+        query.setFirstResult(page * 10);
+        query.setMaxResults(10);
+        List<ShopInfo> shopInfos = query.getResultList();
+        
+        // Convert to ShopResponse
+        List<com.mmo.dto.ShopResponse> shops = shopInfos.stream()
+            .map(shop -> com.mmo.dto.ShopResponse.fromEntity(shop, 0L, 0.0))
+            .collect(java.util.stream.Collectors.toList());
+        
+        Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
 
         model.addAttribute("shops", shopPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("currentSearch", search);
+        model.addAttribute("currentStatus", status);
+        model.addAttribute("currentSort", sort);
         model.addAttribute("totalPages", shopPage.getTotalPages());
         model.addAttribute("pageTitle", "Shop Management");
         model.addAttribute("body", "admin/shops");
@@ -1029,6 +1475,49 @@ public class AdminController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/shops/{id}/detail")
+    @ResponseBody
+    public ResponseEntity<?> getShopDetail(@PathVariable Long id) {
+        try {
+            // Find shop by ID
+            ShopInfo shop = entityManager.find(ShopInfo.class, id);
+            if (shop == null || shop.isDelete()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Shop not found");
+            }
+
+            // Get product count using seller_id
+            Long productCount = entityManager.createQuery(
+                "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", 
+                Long.class)
+                .setParameter("sellerId", shop.getUser().getId())
+                .getSingleResult();
+
+            // Get average rating - Review -> Product -> Seller
+            Double avgRating = entityManager.createQuery(
+                "SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = :sellerId AND r.isDelete = false", 
+                Double.class)
+                .setParameter("sellerId", shop.getUser().getId())
+                .getSingleResult();
+
+            // Build response
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("id", shop.getId());
+            response.put("shopName", shop.getShopName());
+            response.put("status", shop.getUser() != null ? shop.getUser().getShopStatus() : "Inactive");
+            response.put("productCount", productCount);
+            response.put("rating", avgRating != null ? avgRating : 0.0);
+            response.put("commission", shop.getCommission());
+            response.put("sellerId", shop.getUser() != null ? shop.getUser().getId() : null);
+            response.put("sellerName", shop.getUser() != null ? shop.getUser().getFullName() : "-");
+            response.put("sellerEmail", shop.getUser() != null ? shop.getUser().getEmail() : "-");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            logger.error("Error getting shop detail for ID: {}", id, ex);
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }

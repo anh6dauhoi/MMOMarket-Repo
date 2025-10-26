@@ -1,10 +1,23 @@
 package com.mmo.entity;
 
-import jakarta.persistence.*;
+import java.util.Date;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.Date;
 
 @Entity
 @Getter
@@ -34,6 +47,11 @@ public class Category {
     private Long deletedBy;
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
+    
+    // Products relationship
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    private List<Product> products;
+    
     // Optional readonly audit relations
     @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
@@ -41,6 +59,12 @@ public class Category {
     @ManyToOne
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
+    
+    // Transient field for product count
+    @Transient
+    public Integer getProductCount() {
+        return products != null ? products.size() : 0;
+    }
 
     /**
      * Category type enum representing the possible values for the type column

@@ -5,19 +5,20 @@
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Deleted Shops</h1>
-            <p class="mt-1 text-sm text-gray-600">Manage deleted shops and restore them</p>
+            <h1 class="text-2xl font-bold text-gray-900">Banned Shops</h1>
+            <p class="mt-1 text-sm text-gray-600">Manage banned shops and restore them</p>
         </div>
         <a th:href="@{/admin/shops}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Back to Shops
         </a>
     </div>
 
-    <!-- Deleted Shops Table -->
+    <!-- Banned Shops Table -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop Name
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seller ID
@@ -26,7 +27,7 @@
                         Name</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Commission</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deleted
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banned
                         By</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
                     </th>
@@ -34,16 +35,19 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 <tr th:if="${#lists.isEmpty(shops)}">
-                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        <p class="mt-2">No deleted shops found</p>
+                        <p class="mt-2">No banned shops found</p>
                     </td>
                 </tr>
-                <tr th:each="shop : ${shops}" class="hover:bg-gray-50">
+                <tr th:each="shop,iter : ${shops}" class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900" th:text="${iter.index + 1}">1</div>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900" th:text="${shop.shopName}">Shop Name</div>
                     </td>

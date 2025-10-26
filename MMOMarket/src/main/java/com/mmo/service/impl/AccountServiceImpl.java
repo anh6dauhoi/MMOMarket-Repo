@@ -29,9 +29,8 @@ public class AccountServiceImpl implements AccountService {
             throw new IllegalArgumentException("User not found");
         }
 
-        // Validate input
+        // Validate and update full name
         if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
-            // Validate full name length
             String fullName = request.getFullName().trim();
             if (fullName.length() < 2) {
                 throw new IllegalArgumentException("Full name must be at least 2 characters");
@@ -40,17 +39,16 @@ public class AccountServiceImpl implements AccountService {
                 throw new IllegalArgumentException("Full name is too long (max 255 characters)");
             }
             user.setFullName(fullName);
+        } else {
+            throw new IllegalArgumentException("Full name is required");
         }
 
         // Validate and update phone
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
             String phone = request.getPhone().trim();
-            // Basic phone validation: only digits, spaces, +, -, ()
-            if (!phone.matches("^[+\\d\\s\\-()]+$")) {
-                throw new IllegalArgumentException("Invalid phone number format");
-            }
-            if (phone.length() > 20) {
-                throw new IllegalArgumentException("Phone number is too long (max 20 characters)");
+            // Phone validation: exactly 10 digits starting with 0
+            if (!phone.matches("^0\\d{9}$")) {
+                throw new IllegalArgumentException("Phone number must be exactly 10 digits and start with 0");
             }
             user.setPhone(phone);
         } else {

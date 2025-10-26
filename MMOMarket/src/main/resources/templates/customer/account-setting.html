@@ -128,13 +128,19 @@
 
                         <!-- Profile Tab -->
                         <div id="profile-tab" class="tab-content p-6">
-                            <div class="mb-6">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-1">My profile</h3>
-                                <p class="text-sm text-gray-500">Manage profile information to keep your account secure
-                                </p>
+                            <div class="mb-6 flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-1">My profile</h3>
+                                    <p class="text-sm text-gray-500">Manage profile information to keep your account secure
+                                    </p>
+                                </div>
+                                <button type="button" id="editProfileBtn"
+                                    class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm">
+                                    Edit
+                                </button>
                             </div>
 
-                            <form th:action="@{/account/update-profile}" method="post" class="space-y-6">
+                            <form id="profileForm" th:action="@{/account/update-profile}" method="post" class="space-y-6">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
 
                                 <div>
@@ -142,34 +148,37 @@
 
                                     <div class="space-y-4">
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                                            <input type="text" th:value="${user != null ? user.email : ''}" readonly
+                                            <label class="block text-sm font-medium text-gray-700 mb-2" for="emailInput">Email</label>
+                                            <input type="text" id="emailInput" th:value="${user != null ? user.email : ''}" readonly
                                                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
                                         </div>
 
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                                            <input type="text" name="fullName"
+                                            <label class="block text-sm font-medium text-gray-700 mb-2" for="fullNameInput">Name</label>
+                                            <input type="text" name="fullName" id="fullNameInput"
                                                 th:value="${user != null ? user.fullName : ''}"
-                                                placeholder="Enter your full name"
-                                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
+                                                placeholder="Enter your full name" readonly
+                                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
+                                            <p id="fullNameError" class="text-xs text-red-600 mt-1 hidden"></p>
                                         </div>
 
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                                            <input type="text" name="phone" th:value="${user != null ? user.phone : ''}"
-                                                placeholder="Enter your phone number"
-                                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2" for="phoneInput">Phone</label>
+                                            <input type="text" name="phone" id="phoneInput" 
+                                                th:value="${user != null ? user.phone : ''}"
+                                                placeholder="Enter 10 digits (e.g., 0912345678)" readonly
+                                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
+                                            <p id="phoneError" class="text-xs text-red-600 mt-1 hidden"></p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="flex space-x-3 pt-4">
-                                    <button type="submit"
-                                        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm">
+                                <div id="profileButtons" class="flex space-x-3 pt-4 hidden">
+                                    <button type="submit" id="saveProfileBtn" disabled
+                                        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-gray-300">
                                         Save
                                     </button>
-                                    <button type="button" onclick="window.location.reload()"
+                                    <button type="button" id="cancelProfileBtn"
                                         class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
                                         Cancel
                                     </button>
@@ -185,12 +194,11 @@
                                 </p>
                             </div>
 
-                            <form th:action="@{/account/change-password}" method="post" class="space-y-6 max-w-md">
+                            <form id="passwordForm" th:action="@{/account/change-password}" method="post" class="space-y-6 max-w-md">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
 
                                 <div th:if="${user != null and user.password != null and user.password != ''}">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Current password
-                                        *</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="currentPassword">Current password *</label>
                                     <div class="relative">
                                         <input type="password" name="currentPassword" id="currentPassword"
                                             placeholder="Enter current password" required
@@ -203,7 +211,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">New password *</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="newPassword">New password *</label>
                                     <div class="relative">
                                         <input type="password" name="newPassword" id="newPassword"
                                             placeholder="Enter new password" required
@@ -213,13 +221,11 @@
                                             <i class="fas fa-eye" id="newPassword-icon"></i>
                                         </button>
                                     </div>
-                                    <p class="mt-1 text-xs text-gray-500">At least 8 characters with letters and numbers
-                                    </p>
+                                    <p id="passwordHint" class="text-xs text-gray-500 mt-1">At least 8 characters with letters and numbers</p>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm password
-                                        *</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="confirmPassword">Confirm password *</label>
                                     <div class="relative">
                                         <input type="password" name="confirmPassword" id="confirmPassword"
                                             placeholder="Re-enter new password" required
@@ -229,14 +235,15 @@
                                             <i class="fas fa-eye" id="confirmPassword-icon"></i>
                                         </button>
                                     </div>
+                                    <p id="passwordMatchHint" class="text-xs mt-1"></p>
                                 </div>
 
                                 <div class="flex space-x-3 pt-4">
-                                    <button type="submit"
-                                        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm">
+                                    <button type="submit" id="savePasswordBtn" disabled
+                                        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-gray-300">
                                         Save
                                     </button>
-                                    <button type="button" onclick="window.location.reload()"
+                                    <button type="button" onclick="resetPasswordForm()"
                                         class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
                                         Cancel
                                     </button>
@@ -289,7 +296,202 @@
                     window.history.pushState({}, '', newUrl);
                 });
             });
+
+            // Initialize profile edit mode
+            initProfileEditMode();
+            
+            // Initialize password validation
+            initPasswordValidation();
         });
+
+        // Profile Edit Mode
+        function initProfileEditMode() {
+            const editBtn = document.getElementById('editProfileBtn');
+            const cancelBtn = document.getElementById('cancelProfileBtn');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            const profileButtons = document.getElementById('profileButtons');
+            const fullNameInput = document.getElementById('fullNameInput');
+            const phoneInput = document.getElementById('phoneInput');
+            const fullNameError = document.getElementById('fullNameError');
+            const phoneError = document.getElementById('phoneError');
+            
+            // Store original values
+            let originalFullName = fullNameInput.value;
+            let originalPhone = phoneInput.value;
+
+            // Edit button click
+            editBtn.addEventListener('click', function() {
+                // Enable inputs
+                fullNameInput.readOnly = false;
+                phoneInput.readOnly = false;
+                fullNameInput.classList.remove('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                phoneInput.classList.remove('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                fullNameInput.classList.add('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+                phoneInput.classList.add('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+                
+                // Show/hide buttons
+                editBtn.classList.add('hidden');
+                profileButtons.classList.remove('hidden');
+                
+                // Focus on first input
+                fullNameInput.focus();
+                
+                // Store current values
+                originalFullName = fullNameInput.value;
+                originalPhone = phoneInput.value;
+            });
+
+            // Cancel button click
+            cancelBtn.addEventListener('click', function() {
+                // Restore original values
+                fullNameInput.value = originalFullName;
+                phoneInput.value = originalPhone;
+                
+                // Disable inputs
+                disableProfileInputs();
+                
+                // Clear errors
+                clearProfileErrors();
+                
+                // Show/hide buttons
+                editBtn.classList.remove('hidden');
+                profileButtons.classList.add('hidden');
+            });
+
+            // Real-time validation
+            fullNameInput.addEventListener('input', validateProfile);
+            phoneInput.addEventListener('input', validateProfile);
+
+            function validateProfile() {
+                let isValid = true;
+                
+                // Validate full name
+                const fullName = fullNameInput.value.trim();
+                if (fullName.length === 0) {
+                    fullNameError.textContent = '';
+                    fullNameError.classList.add('hidden');
+                } else if (fullName.length < 2) {
+                    fullNameError.textContent = 'Full name must be at least 2 characters';
+                    fullNameError.classList.remove('hidden');
+                    isValid = false;
+                } else if (fullName.length > 255) {
+                    fullNameError.textContent = 'Full name is too long (max 255 characters)';
+                    fullNameError.classList.remove('hidden');
+                    isValid = false;
+                } else {
+                    fullNameError.textContent = '';
+                    fullNameError.classList.add('hidden');
+                }
+                
+                // Validate phone
+                const phone = phoneInput.value.trim();
+                if (phone.length > 0) {
+                    if (!phone.match(/^0\d{9}$/)) {
+                        phoneError.textContent = 'Phone number must be exactly 10 digits and start with 0';
+                        phoneError.classList.remove('hidden');
+                        isValid = false;
+                    } else {
+                        phoneError.textContent = '';
+                        phoneError.classList.add('hidden');
+                    }
+                } else {
+                    phoneError.textContent = '';
+                    phoneError.classList.add('hidden');
+                }
+                
+                // Check if values changed
+                const hasChanges = (fullName !== originalFullName.trim()) || (phone !== originalPhone.trim());
+                
+                // Enable save button only if valid and has changes
+                saveBtn.disabled = !isValid || !hasChanges;
+            }
+
+            function disableProfileInputs() {
+                fullNameInput.readOnly = true;
+                phoneInput.readOnly = true;
+                fullNameInput.classList.add('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                phoneInput.classList.add('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                fullNameInput.classList.remove('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+                phoneInput.classList.remove('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+            }
+
+            function clearProfileErrors() {
+                fullNameError.textContent = '';
+                fullNameError.classList.add('hidden');
+                phoneError.textContent = '';
+                phoneError.classList.add('hidden');
+            }
+        }
+
+        // Password Validation (similar to register page)
+        function initPasswordValidation() {
+            const currentPassword = document.getElementById('currentPassword');
+            const newPassword = document.getElementById('newPassword');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const savePasswordBtn = document.getElementById('savePasswordBtn');
+            const passwordHint = document.getElementById('passwordHint');
+            const passwordMatchHint = document.getElementById('passwordMatchHint');
+
+            function isValidPassword(value) {
+                return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(value);
+            }
+
+            function validatePasswordForm() {
+                // Check if current password field exists and has value
+                const currentPasswordOk = !currentPassword || currentPassword.value.length > 0;
+                
+                // Validate new password
+                const newPw = newPassword.value;
+                const isNewPwValid = isValidPassword(newPw);
+                passwordHint.className = 'text-xs mt-1 ' + (isNewPwValid ? 'text-green-600' : 'text-gray-500');
+                
+                // Check if passwords match
+                const confirmPw = confirmPassword.value;
+                const doPasswordsMatch = newPw && (newPw === confirmPw);
+                
+                if (confirmPw) {
+                    if (doPasswordsMatch) {
+                        passwordMatchHint.textContent = 'Passwords match';
+                        passwordMatchHint.className = 'text-xs mt-1 text-green-600';
+                    } else {
+                        passwordMatchHint.textContent = 'Password confirmation does not match';
+                        passwordMatchHint.className = 'text-xs mt-1 text-red-600';
+                    }
+                } else {
+                    passwordMatchHint.textContent = '';
+                    passwordMatchHint.className = 'text-xs mt-1';
+                }
+                
+                // Enable save button only if all validations pass
+                savePasswordBtn.disabled = !(currentPasswordOk && isNewPwValid && doPasswordsMatch);
+            }
+
+            // Add event listeners
+            if (currentPassword) {
+                currentPassword.addEventListener('input', validatePasswordForm);
+            }
+            newPassword.addEventListener('input', validatePasswordForm);
+            confirmPassword.addEventListener('input', validatePasswordForm);
+            
+            // Initial validation
+            validatePasswordForm();
+        }
+
+        // Reset password form
+        function resetPasswordForm() {
+            const form = document.getElementById('passwordForm');
+            form.reset();
+            
+            // Clear hints
+            const passwordHint = document.getElementById('passwordHint');
+            const passwordMatchHint = document.getElementById('passwordMatchHint');
+            passwordHint.className = 'text-xs mt-1 text-gray-500';
+            passwordMatchHint.textContent = '';
+            passwordMatchHint.className = 'text-xs mt-1';
+            
+            // Disable save button
+            document.getElementById('savePasswordBtn').disabled = true;
+        }
 
         // Toggle password visibility
         function togglePassword(fieldId) {
