@@ -95,7 +95,6 @@ public class WishlistController {
             Optional<?> opt = (Optional<?>) byUsernameMethod.invoke(userRepository, emailOrUsername);
             if (opt != null && opt.isPresent()) return (User) opt.get();
         } catch (NoSuchMethodException nsme) {
-            // repository has no such method -- ignore
         } catch (Exception ignored) {}
 
         return null;
