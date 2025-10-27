@@ -10,5 +10,7 @@ public interface ShopInfoRepository extends JpaRepository<ShopInfo, Long> {
 
     // fallback convenience
     Optional<ShopInfo> findByUser_Id(Long userId);
-}
 
+    // NEW: find by shop name (case-insensitive) for slug support
+    Optional<ShopInfo> findFirstByShopNameIgnoreCaseAndIsDeleteFalse(String shopName);
+}

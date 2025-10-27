@@ -26,7 +26,7 @@
                     </div>
                     <div th:each="cat, iterStat : ${categories}"
                          th:classappend="${iterStat.index >= 4 ? ' hidden extra-category' : ''}">
-                        <a th:href="@{/category/{id}(id=${cat.id})}"
+                        <a th:href="@{/category(id=${cat.id})}"
                            th:class="${cat.name == selectedCategory ? 'block w-full text-left py-2 px-3 rounded bg-red-600 text-white font-semibold shadow' : 'block w-full text-left py-2 px-3 rounded hover:bg-red-50 text-red-600 transition'}">
                             <span th:text="${cat.name}">Category Name</span>
                         </a>
@@ -53,7 +53,7 @@
                 <div class="my-6 border-t"></div>
 
                 <h3 class="text-gray-900 font-semibold text-lg mb-3">Filters</h3>
-                <form id="filter-form" th:action="@{/category/{id}(id=${categoryId})}" method="get">
+                <form id="filter-form" th:action="@{/category(id=${categoryId})}" method="get">
                     <div>
                         <p class="text-sm font-medium text-gray-800 mb-2">Price Range</p>
                         <div class="px-1">
@@ -161,31 +161,32 @@
             <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 <div th:each="item : ${products}"
                      class="hover-card product-item bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 hover:-translate-y-2">
-                    <!-- CHANGED: make entire card clickable -->
-                    <a th:href="@{/products/{id}(id=${item.product.id})}" class="block group">
-                        <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
-                             alt="Product Image"
-                             class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105">
+                    <div class="block group">
+                        <a th:href="@{/products(id=${item.product.id})}">
+                            <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
+                                 alt="Product Image"
+                                 class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105">
+                        </a>
                         <div class="p-4 text-center">
-                            <h3 class="font-semibold text-lg text-gray-900 truncate product-title group-hover:text-[#F53E32]"
-                                th:text="${item.product.name}">Product Name</h3>
-
+                            <h3 class="font-semibold text-lg text-gray-900 truncate product-title group-hover:text-[#F53E32]">
+                                <a th:href="@{/products(id=${item.product.id})}" th:text="${item.product.name}">Product Name</a>
+                            </h3>
                             <p class="text-[#F53E32] font-bold mt-1 product-price">
                                 <span class="format-price" th:attr="data-price=${item.price}">0</span> coins
                             </p>
-
                             <p class="text-gray-500 text-sm"
                                th:text="'Sold: ' + ${item.totalSold}">Sold: 0</p>
-
-                            <a th:href="@{/shop/{id}(id=${item.product.seller.id})}"
+                            <a th:if="${item['shopId'] != null}" th:href="@{/shop(id=${item['shopId']})}"
                                class="text-gray-600 text-sm hover:text-[#F53E32] product-shop"
-                               th:text="'Shop: ' + ${item.shopName}"
-                               onclick="event.stopPropagation();">Shop: Name</a>
-
+                               th:text="'Shop: ' + ${item.shopName}">Shop: Name</a>
+                            <a th:unless="${item['shopId'] != null}"
+                               th:href="@{/shop/by-seller/{sellerId}(sellerId=${item.product.seller.id})}"
+                               class="text-gray-600 text-sm hover:text-[#F53E32] product-shop"
+                               th:text="'Shop: ' + ${item.shopName}">Shop: Name</a>
                             <p class="text-yellow-500 text-sm mt-1"
                                th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                         </div>
-                    </a>
+                    </div>
                 </div>
 
                 <!-- Hiển thị nếu không có sản phẩm -->
@@ -193,8 +194,6 @@
                     No products found in this category.
                 </div>
             </div>
-
-
             <!-- Pagination (client-side, populated dynamically) -->
             <div id="paginationControls" class="mt-8 flex items-center justify-center gap-2" aria-label="Pagination"></div>
         </section>

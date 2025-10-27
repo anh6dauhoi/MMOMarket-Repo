@@ -27,7 +27,12 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 th:text="${shopName}" style="color:#fff; font-size:2.1rem; font-weight:800; letter-spacing:0.5px; text-shadow:0 2px 12px #F53E32cc;">Shop Name</h1>
+                    <div class="flex items-center gap-3">
+                        <h1 th:text="${shopName}"
+                            style="color:#fff; font-size:2.1rem; font-weight:800; letter-spacing:0.5px; text-shadow:0 2px 12px #F53E32cc;">
+                            Shop Name
+                        </h1>
+                    </div>
                     <p class="text-base mt-1" th:text="${shop != null && shop.description != null ? shop.description : 'Your go-to source for digital resources'}"
                        style="color:#fff; opacity:0.92; font-size:1.08rem;">Shop description</p>
                     <div class="flex items-center gap-6 text-base mt-2">
@@ -53,9 +58,10 @@
         </section>
 
         <!-- Top search -->
-        <form id="shop-search-form" class="mb-8" onsubmit="return false;">
+        <form id="shop-search-form" class="mb-8" method="get" th:action="@{/shop(id=${shopIdentifier})}">
             <div class="top-search">
-                <input id="shop-search-input" type="search" placeholder="Search products in this shop..." class="chip flex-1" />
+                <input id="shop-search-input" name="q" type="search" placeholder="Search products in this shop..." class="chip flex-1"
+                       th:value="${q != null ? q : ''}" />
                 <button id="shop-search-clear" type="button" class="btn-search"
                         style="background:#fff; color:#F53E32; border:1.5px solid #ffe5e2;">Clear</button>
             </div>
@@ -66,7 +72,7 @@
             <h2 class="mb-4 text-[#F53E32]">All Products</h2>
 
             <!-- Filters -->
-            <form th:action="@{|/shop/${sellerIdentifier}|}" method="get" class="flex flex-wrap items-end gap-4 mb-8">
+            <form th:action="@{/shop(id=${shopIdentifier})}" method="get" class="flex flex-wrap items-end gap-4 mb-8">
                 <input type="hidden" name="q" th:value="${q != null ? q : ''}" />
 
                 <div class="flex flex-col">
@@ -117,14 +123,14 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                 <div th:each="item : ${products}"
                      class="product-card product-item bg-white rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 cursor-pointer shadow-lg">
-                    <a th:href="@{/products/{id}(id=${item.product.id})}">
+                    <a th:href="@{/products(id=${item.product.id})}">
                         <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
                              alt="Product Image"
                              class="w-full h-56 object-cover">
                     </a>
                     <div class="p-5 text-center">
                         <h3 class="font-semibold text-lg text-gray-900 truncate product-title">
-                            <a th:href="@{/products/{id}(id=${item.product.id})}"
+                            <a th:href="@{/products(id=${item.product.id})}"
                                class="hover:text-[#F53E32] transition-colors"
                                th:text="${item.product.name}">Product Name</a>
                         </h3>
@@ -134,8 +140,8 @@
                         <p class="text-gray-500 text-base"
                            th:text="'Sold: ' + ${item.totalSold}">Sold: 0</p>
 
-                        <!-- Use slugified shop name for the /shop/{identifier} link -->
-                        <a th:href="@{|/shop/${#strings.toLowerCase(#strings.replace(item.shopName, ' ', '-'))}|}"
+                        <!-- Link back to this shop using ShopInfo.id -->
+                        <a th:href="@{/shop(id=${shopIdentifier})}"
                            class="product-shop text-base hover:text-[#F53E32]"
                            th:text="'Shop: ' + ${item.shopName}">Shop: Name</a>
 
@@ -290,8 +296,13 @@
         // existing init
         const input = document.getElementById('shop-search-input');
         const clearBtn = document.getElementById('shop-search-clear');
+        const searchForm = document.getElementById('shop-search-form');
         input && input.addEventListener('input', debounce(function(e){ filterShopProducts(e.target.value); }, 220));
-        clearBtn && clearBtn.addEventListener('click', function(){ if(input) input.value = ''; filterShopProducts(''); input && input.focus(); });
+        clearBtn && clearBtn.addEventListener('click', function(){
+            if (input) input.value = '';
+            // submit GET without q (or with empty q) => key=value in URL
+            if (searchForm) searchForm.submit();
+        });
         // initial pagination render
         filterShopProducts(input ? input.value : '');
 

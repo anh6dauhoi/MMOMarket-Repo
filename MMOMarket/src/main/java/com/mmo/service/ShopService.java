@@ -163,10 +163,12 @@ public class ShopService {
 
                 // Prefer ShopInfo for shop metadata (primary + fallback)
                 String shopName = null;
+                Long shopId = null;
                 try {
                     Optional<ShopInfo> shopInfoOpt = shopInfoRepository.findByUserIdAndIsDeleteFalse(seller.getId());
                     if (shopInfoOpt != null && shopInfoOpt.isPresent() && shopInfoOpt.get().getShopName() != null && !shopInfoOpt.get().getShopName().isEmpty()) {
                         shopName = shopInfoOpt.get().getShopName();
+                        shopId = shopInfoOpt.get().getId();
                     }
                 } catch (Exception ignored) {}
 
@@ -175,6 +177,7 @@ public class ShopService {
                         Optional<ShopInfo> shopInfoFallback = shopInfoRepository.findByUser_Id(seller.getId());
                         if (shopInfoFallback != null && shopInfoFallback.isPresent() && shopInfoFallback.get().getShopName() != null && !shopInfoFallback.get().getShopName().isEmpty()) {
                             shopName = shopInfoFallback.get().getShopName();
+                            if (shopId == null) shopId = shopInfoFallback.get().getId();
                         }
                     } catch (Exception ignored) {}
                 }
@@ -191,6 +194,7 @@ public class ShopService {
 
                 Map<String, Object> data = new HashMap<>();
                 data.put("id", seller.getId());
+                data.put("shopId", shopId);
                 data.put("seller", seller);
                 data.put("shopName", shopName);
                 data.put("ratingAverage", Math.round(shopAvgRating * 10.0) / 10.0);
@@ -216,10 +220,12 @@ public class ShopService {
 
                 // Prefer ShopInfo first (primary + fallback)
                 String shopName2 = null;
+                Long shopId2 = null;
                 try {
                     Optional<ShopInfo> shopInfoOpt2 = shopInfoRepository.findByUserIdAndIsDeleteFalse(userId);
                     if (shopInfoOpt2 != null && shopInfoOpt2.isPresent() && shopInfoOpt2.get().getShopName() != null && !shopInfoOpt2.get().getShopName().isEmpty()) {
                         shopName2 = shopInfoOpt2.get().getShopName();
+                        shopId2 = shopInfoOpt2.get().getId();
                     }
                 } catch (Exception ignored) {}
 
@@ -228,6 +234,7 @@ public class ShopService {
                         Optional<ShopInfo> shopInfoFallback2 = shopInfoRepository.findByUser_Id(userId);
                         if (shopInfoFallback2 != null && shopInfoFallback2.isPresent() && shopInfoFallback2.get().getShopName() != null && !shopInfoFallback2.get().getShopName().isEmpty()) {
                             shopName2 = shopInfoFallback2.get().getShopName();
+                            if (shopId2 == null) shopId2 = shopInfoFallback2.get().getId();
                         }
                     } catch (Exception ignored) {}
                 }
@@ -248,6 +255,7 @@ public class ShopService {
 
                 Map<String, Object> data = new HashMap<>();
                 data.put("id", userId);
+                data.put("shopId", shopId2);
                 data.put("seller", seller);
                 data.put("shopName", finalShopName);
                 data.put("ratingAverage", Math.round(avgRating * 10.0) / 10.0);

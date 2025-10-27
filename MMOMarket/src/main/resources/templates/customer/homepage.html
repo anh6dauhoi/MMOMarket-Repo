@@ -28,7 +28,7 @@
 
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 justify-items-center">
             <!-- Category Loop -->
-            <a th:each="category : ${categories}" th:href="@{/category/{id}(id=${category.id})}"
+            <a th:each="category : ${categories}" th:href="@{/category(id=${category.id})}"
                class="group relative flex flex-col items-center justify-center w-full max-w-[220px] h-56
                       category-card rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-2 transition-all duration-300 ease-out">
                 <div class="w-16 h-16 flex items-center justify-center rounded-full bg-white shadow-md mb-4
@@ -66,27 +66,31 @@
     <div class="max-w-7xl mx-auto">
         <h2 class="section-title">Best Seller</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-            <div th:each="item : ${bestSellers}"
-                 class="hover-card bg-white rounded-2xl overflow-hidden border border-gray-100">
-                <!-- CHANGED: clickable card -->
-                <a th:href="@{/products/{id}(id=${item.product.id})}" class="block group">
-                    <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
-                         class="w-full h-52 object-cover transition-transform duration-300 group-hover:scale-105" alt="Product Image">
+            <div th:each="item : ${bestSellers}" class="hover-card bg-white rounded-2xl overflow-hidden border border-gray-100">
+                <div class="block group">
+                    <a th:href="@{/products(id=${item.product.id})}">
+                        <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
+                             class="w-full h-52 object-cover transition-transform duration-300 group-hover:scale-105" alt="Product Image">
+                    </a>
                     <div class="p-4 text-center">
-                        <h3 class="font-semibold text-lg text-gray-900 truncate group-hover:text-[#F53E32]"
-                            th:text="${item.product.name}"></h3>
+                        <h3 class="font-semibold text-lg text-gray-900 truncate group-hover:text-[#F53E32]">
+                            <a th:href="@{/products(id=${item.product.id})}" th:text="${item.product.name}">Product</a>
+                        </h3>
                         <p class="text-[#F53E32] font-bold mt-1">
                            <span class="format-price" th:attr="data-price=${item.price}">0</span> coins
                         </p>
                         <p class="text-gray-500 text-sm" th:text="|Sold: ${item.totalSold}|"></p>
-                        <a th:href="@{/shop/{id}(id=${item.product.seller.id})}"
+                        <a th:if="${item['shopId'] != null}" th:href="@{/shop(id=${item['shopId']})}"
                            class="text-gray-600 text-sm hover:text-[#F53E32]"
-                           th:text="|Shop: ${item.shopName}|"
-                           onclick="event.stopPropagation();"></a>
+                           th:text="|Shop: ${item.shopName}|"></a>
+                        <a th:unless="${item['shopId'] != null}"
+                           th:href="@{/shop/by-seller/{sellerId}(sellerId=${item.product.seller.id})}"
+                           class="text-gray-600 text-sm hover:text-[#F53E32]"
+                           th:text="|Shop: ${item.shopName}|"></a>
                         <p class="text-yellow-500 text-sm mt-1"
                            th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                     </div>
-                </a>
+                </div>
             </div>
         </div>
     </div>
@@ -96,8 +100,7 @@
 <section class="py-20 px-6 bg-white">
     <h2 class="section-title">Reputable Seller</h2>
     <div class="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
-        <div th:each="seller : ${reputableSellers}"
-             class="hover-card bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+        <div th:each="seller : ${reputableSellers}" class="hover-card bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
             <img th:src="${seller.avatar != null and seller.avatar != '' ? seller.avatar : '/images/default-avatar.svg'}" alt="Avatar"
                  class="w-24 h-24 rounded-full mx-auto mb-4 object-cover border border-gray-200 shadow">
             <h3 class="font-semibold text-xl text-gray-800" th:text="${seller.shopName}">Shop Name</h3>
@@ -107,10 +110,11 @@
             <p class="text-gray-700 text-sm mt-1">Sold: <span th:text="${seller.totalSold}">10000</span></p>
             <p class="text-gray-700 text-sm mb-4"
                th:text="|Success rating: ${seller.successRate}%|">Success rating: 90%</p>
-            <a th:href="@{/shop/{id}(id=${seller.id})}"
-               class="inline-block btn-primary px-5 py-2 rounded-full font-medium shadow-md">
-                View Shop
-            </a>
+            <a th:if="${seller['shopId'] != null}" th:href="@{/shop(id=${seller['shopId']})}"
+               class="inline-block btn-primary px-5 py-2 rounded-full font-medium shadow-md">View Shop</a>
+            <a th:unless="${seller['shopId'] != null}"
+               th:href="@{/shop/by-seller/{sellerId}(sellerId=${seller['id']})}"
+               class="inline-block btn-primary px-5 py-2 rounded-full font-medium shadow-md">View Shop</a>
         </div>
     </div>
 </section>

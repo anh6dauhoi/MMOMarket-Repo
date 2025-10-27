@@ -8,6 +8,25 @@
 <body class="bg-gray-50 flex flex-col min-h-screen">
 <div th:insert="~{fragments/header :: header}"></div>
 
+<!-- Toast notification: render container unconditionally, inner items decide visibility (null-safe) -->
+<div class="fixed top-5 right-5 z-50 w-[320px]">
+    <div th:if="${param.added != null}"
+         class="flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
+        <span class="flex-1">Added to wishlist successfully.</span>
+        <button type="button" onclick="this.closest('.fixed').remove()" aria-label="Close">✕</button>
+    </div>
+    <div th:if="${param.exists != null}"
+         class="flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg">
+        <span class="flex-1">This item is already in your wishlist.</span>
+        <button type="button" onclick="this.closest('.fixed').remove()" aria-label="Close">✕</button>
+    </div>
+    <div th:if="${param.removed != null}"
+         class="flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
+        <span class="flex-1">Item removed.</span>
+        <button type="button" onclick="this.closest('.fixed').remove()" aria-label="Close">✕</button>
+    </div>
+</div>
+
 <main class="flex-grow">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -40,8 +59,9 @@
                                 </svg>
                                 <span>My Order</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                               href="#">
+                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg"
+                               th:href="@{/account/wishlist}"
+                               th:classappend="${activeTab != null and activeTab == 'wishlist'} ? ' text-white bg-red-500' : ' text-gray-700 hover:bg-gray-100'">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                                           stroke-linecap="round" stroke-linejoin="round"
@@ -82,21 +102,93 @@
                 </div>
             </div>
             <div class="lg:col-span-3">
-                <!-- Hide seller-status if ACTIVE -->
-                <div th:if="${registration != null && registration.id != null && !#strings.toUpperCase(registration.status).contains('ACTIVE')}">
-                    <div th:replace="~{customer/seller-status :: content}"></div>
+                <!-- Wishlist content: guard activeTab null explicitly -->
+                <div th:if="${activeTab != null and activeTab == 'wishlist'}">
+                    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h1 class="text-2xl font-bold">My Wishlist</h1>
+                            <div class="space-y-1 text-sm">
+                                <div th:if="${param.added != null}" class="text-green-600 font-medium">Added to wishlist successfully.</div>
+                                <div th:if="${param.exists != null}" class="text-yellow-600 font-medium">This item is already in your wishlist.</div>
+                            </div>
+                        </div>
+
+                        <div th:if="${#lists.isEmpty(items)}" class="text-gray-500">
+                            Your wishlist is empty.
+                        </div>
+
+                        <div th:unless="${#lists.isEmpty(items)}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div th:each="it : ${items}"
+                                 class="border rounded-xl overflow-hidden bg-white shadow-sm relative"
+                                 th:classappend="${param.pid != null and it['product'] != null and it['product'].id == #numbers.createLong(param.pid[0])} ? ' ring-2 ring-green-400' : ''">
+                                <!-- NEW badge when this card is the one just added -->
+                                <span th:if="${param.pid != null and it['product'] != null and it['product'].id == #numbers.createLong(param.pid[0])}"
+                                      class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded">New</span>
+
+                                <a th:with="p=${it['product']}" th:href="@{/products(id=${p.id})}">
+                                    <img th:src="${p.image != null ? p.image : '/images/default.jpg'}" alt="Product Image" class="w-full h-44 object-cover">
+                                </a>
+                                <div class="p-4">
+                                    <h3 class="font-semibold text-gray-900 truncate">
+                                        <a th:with="p=${it['product']}" th:text="${p.name}" th:href="@{/products(id=${p.id})}">Product</a>
+                                    </h3>
+                                    <div class="mt-2 flex items-center justify-between">
+                                        <!-- Remove button -->
+                                        <form th:action="@{/wishlist/remove}" method="post" style="display:inline;">
+                                            <input type="hidden" name="productId" th:value="${it['product'].id}">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                            <button type="submit" class="text-red-600 text-sm hover:underline">Remove</button>
+                                        </form>
+
+                                        <!-- Buy Now: disabled if out of stock (null-safe) -->
+                                        <form th:action="@{/products}" method="get" style="display:inline;margin-left:0.5rem;">
+                                            <input type="hidden" name="id" th:value="${it['product'].id}">
+                                            <button type="submit"
+                                                    class="text-sm text-green-600 hover:underline"
+                                                    th:disabled="${it['product'] != null and it['product'].stock != null and it['product'].stock <= 0}"
+                                                    th:classappend="${it['product'] != null and it['product'].stock != null and it['product'].stock <= 0} ? ' opacity-50 cursor-not-allowed' : ''"
+                                                    th:attr="aria-disabled=${it['product'] != null and it['product'].stock != null and it['product'].stock <= 0}">
+                                                Buy Now
+                                            </button>
+                                        </form>
+
+                                        <!-- View product detail -->
+                                        <a class="text-sm text-blue-600 hover:underline ml-3"
+                                           th:href="@{/products(id=${it['product'].id})}">View</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div th:if="${sellerRegistration != null && (registration == null || registration.id == null)}">
-                    <div th:replace="~{customer/register-seller :: content}"></div>
+
+                <!-- Hide seller-status and registration sections when wishlist is active -->
+                <div th:if="${activeTab == null or activeTab != 'wishlist'}">
+                    <!-- Hide seller-status if ACTIVE -->
+                    <div th:if="${registration != null && registration.id != null && !#strings.toUpperCase(registration.status).contains('ACTIVE')}">
+                        <div th:replace="~{customer/seller-status :: content}"></div>
+                    </div>
+                    <div th:if="${sellerRegistration != null && (registration == null || registration.id == null)}">
+                        <div th:replace="~{customer/register-seller :: content}"></div>
+                    </div>
+                    <div th:if="${registration == null && sellerRegistration == null}">
+                        <div th:replace="~{customer/register-seller :: content(sellerRegistration=${new com.mmo.dto.SellerRegistrationForm()})}"></div>
+                    </div>
                 </div>
-                <div th:if="${registration == null && sellerRegistration == null}">
-                    <div th:replace="~{customer/register-seller :: content(sellerRegistration=${new com.mmo.dto.SellerRegistrationForm()})}"></div>
-                </div>
+
             </div>
         </div>
     </div>
 </main>
 
 <div th:insert="~{fragments/footer :: footer}"></div>
+
+<script>
+    // Auto-hide toast after 2.2s
+    document.addEventListener('DOMContentLoaded', () => {
+        const wrapper = document.querySelector('.fixed.top-5.right-5.z-50');
+        if (wrapper) setTimeout(() => wrapper.remove(), 2200);
+    });
+</script>
 </body>
 </html>

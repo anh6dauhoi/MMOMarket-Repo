@@ -24,6 +24,15 @@ public class ProductDetailController {
         return "customer/productdetail";
     }
 
+    // New: key=value style /products?id=123
+    @GetMapping(value = "/products", params = "id")
+    public String productDetailByQuery(@RequestParam("id") Long id, Model model) {
+        var detail = productService.getProductDetail(id);
+        if (detail == null) return "redirect:/404";
+        model.addAllAttributes(detail);
+        return "customer/productdetail";
+    }
+
     @GetMapping("/products/{id}")
     public String productDetail(@PathVariable Long id, Model model) {
         var detail = productService.getProductDetail(id);

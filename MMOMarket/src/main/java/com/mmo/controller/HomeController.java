@@ -2,10 +2,10 @@ package com.mmo.controller;
 
 import com.mmo.entity.Product;
 import com.mmo.entity.User;
-import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.ShopInfo;
 import com.mmo.repository.ReviewRepository;
 import com.mmo.repository.UserRepository;
-import com.mmo.repository.SellerRegistrationRepository;
+import com.mmo.repository.ShopInfoRepository;
 import com.mmo.service.CategoryService;
 import com.mmo.service.ProductService;
 import com.mmo.service.ShopService;
@@ -35,7 +35,7 @@ public class HomeController {
     private ShopService shopService; // dùng service tập trung xử lý seller
 
     @Autowired
-    private SellerRegistrationRepository sellerRegistrationRepository; // <-- thêm repo
+    private ShopInfoRepository shopInfoRepository; // replaced SellerRegistrationRepository
 
     @GetMapping({"/", "/homepage"})
     public String home(Model model) {
@@ -45,6 +45,36 @@ public class HomeController {
 
         // --- Lấy top sản phẩm (Best Seller) ---
         List<Map<String, Object>> bestSellers = productService.getTopSellingProducts(4);
+        // Add shopId for each bestSeller if missing (resolve via product.seller.id)
+        if (bestSellers != null) {
+            for (Map<String, Object> it : bestSellers) {
+                if (it == null || it.get("shopId") != null) continue;
+                Object prodObj = it.get("product");
+                if (prodObj instanceof Product) {
+                    Product p = (Product) prodObj;
+                    User seller = p.getSeller();
+                    if (seller != null && seller.getId() != null) {
+                        try {
+                          Optional<ShopInfo> si = shopInfoRepository.findByUserIdAndIsDeleteFalse(seller.getId());
+                          if (si == null || si.isEmpty()) si = shopInfoRepository.findByUser_Id(seller.getId());
+                          if (si != null && si.isPresent()) {
+                            it.put("shopId", si.get().getId());
+                            // also backfill shopName if absent
+                            if (it.get("shopName") == null || String.valueOf(it.get("shopName")).isBlank()) {
+                              String fallbackName = si.get().getShopName();
+                              if (fallbackName == null || fallbackName.isBlank()) {
+                                fallbackName = seller.getFullName() != null && !seller.getFullName().isBlank()
+                                        ? seller.getFullName()
+                                        : seller.getEmail();
+                              }
+                              it.put("shopName", fallbackName != null ? fallbackName : "Shop");
+                            }
+                          }
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
         model.addAttribute("bestSellers", bestSellers);
 
         // --- Lấy danh sách Reputable Sellers từ SellerService ---
@@ -76,14 +106,21 @@ public class HomeController {
                 }
             }
 
-            // Unwrap Optional<SellerRegistration> safely
+            // Use ShopInfo instead of SellerRegistration to obtain shopName
             String shopName = null;
             if (userId != null) {
-                Optional<SellerRegistration> srOpt = sellerRegistrationRepository.findByUserId(userId);
-                SellerRegistration sr = srOpt != null ? srOpt.orElse(null) : null;
-                if (sr != null) {
-                    shopName = sr.getShopName();
-                }
+                try {
+                    Optional<ShopInfo> siOpt = shopInfoRepository.findByUserIdAndIsDeleteFalse(userId);
+                    if (siOpt == null || siOpt.isEmpty()) {
+                        siOpt = shopInfoRepository.findByUser_Id(userId);
+                    }
+                    if (siOpt != null && siOpt.isPresent()) {
+                        ShopInfo si = siOpt.get();
+                        if (si.getShopName() != null && !si.getShopName().isBlank()) {
+                            shopName = si.getShopName();
+                        }
+                    }
+                } catch (Exception ignored) {}
             }
 
             // Fallback: nếu không có shopName thì dùng fullName hoặc email
@@ -92,8 +129,12 @@ public class HomeController {
             }
             m.put("id", userId);
             m.put("fullName", fullName);
-            m.put("shopName", shopName); // <-- put shopName
-            m.put("email", email); // vẫn có nếu cần
+            m.put("shopName", shopName);
+            // Preserve shopId returned by service (used by Thymeleaf links)
+            if (s.containsKey("shopId")) {
+                m.put("shopId", s.get("shopId"));
+            }
+            m.put("email", email);
             m.put("avatar", s.getOrDefault("avatar", "/images/default-avatar.svg"));
             m.put("ratingAverage", s.getOrDefault("averageRating", s.getOrDefault("ratingAverage", 0)));
             m.put("totalSold", s.getOrDefault("totalSold", 0));

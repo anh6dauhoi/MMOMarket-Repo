@@ -1,13 +1,13 @@
 // java
 package com.mmo.controller;
 
-import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.ShopInfo;
 import com.mmo.entity.User;
 import com.mmo.service.ProductService;
 import com.mmo.service.ShopService;
 import com.mmo.repository.ProductRepository;
 import com.mmo.repository.ReviewRepository;
-import com.mmo.repository.SellerRegistrationRepository;
+import com.mmo.repository.ShopInfoRepository;
 import com.mmo.repository.UserRepository;
 import com.mmo.repository.CategoryRepository;
 import org.springframework.stereotype.Controller;
@@ -23,7 +23,7 @@ public class ShopController {
 
     private final ProductService productService;
     private final UserRepository userRepository;
-    private final SellerRegistrationRepository sellerRegistrationRepository;
+    private final ShopInfoRepository shopInfoRepository;
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
     private final CategoryRepository categoryRepository;
@@ -31,22 +31,52 @@ public class ShopController {
 
     public ShopController(ProductService productService,
                           UserRepository userRepository,
-                          SellerRegistrationRepository sellerRegistrationRepository,
+                          ShopInfoRepository shopInfoRepository,
                           ProductRepository productRepository,
                           ReviewRepository reviewRepository,
                           CategoryRepository categoryRepository,
                           ShopService shopService) {
         this.productService = productService;
         this.userRepository = userRepository;
-        this.sellerRegistrationRepository = sellerRegistrationRepository;
+        this.shopInfoRepository = shopInfoRepository;
         this.productRepository = productRepository;
         this.reviewRepository = reviewRepository;
         this.categoryRepository = categoryRepository;
         this.shopService = shopService;
     }
 
-    @GetMapping("/shop/{sellerId}")
-    public String shop(@PathVariable Long sellerId,
+    // Redirect helper: resolve ShopInfo by sellerId and redirect to /shop?id={shopId}
+    @GetMapping("/shop/by-seller/{sellerId}")
+    public String redirectBySeller(@PathVariable Long sellerId) {
+        if (sellerId == null) return "redirect:/";
+        try {
+            Optional<ShopInfo> active = shopInfoRepository.findByUserIdAndIsDeleteFalse(sellerId);
+            if (active != null && active.isPresent()) {
+                return "redirect:/shop?id=" + active.get().getId();
+            }
+            Optional<ShopInfo> any = shopInfoRepository.findByUser_Id(sellerId);
+            if (any != null && any.isPresent()) {
+                return "redirect:/shop?id=" + any.get().getId();
+            }
+        } catch (Exception ignored) {}
+        return "redirect:/";
+    }
+
+    // New: support key=value query: /shop?id=123
+    @GetMapping("/shop")
+    public String shopByQuery(@RequestParam("id") Long shopId,
+                             @RequestParam(value = "categoryId", required = false) Long categoryId,
+                             @RequestParam(value = "minPrice", required = false) Long minPrice,
+                             @RequestParam(value = "maxPrice", required = false) Long maxPrice,
+                             @RequestParam(value = "sort", required = false) String sort,
+                             @RequestParam(value = "minRating", required = false) Integer minRating,
+                             @RequestParam(value = "q", required = false) String q,
+                             Model model) {
+        return shop(shopId, categoryId, minPrice, maxPrice, sort, minRating, q, model);
+    }
+
+    @GetMapping("/shop/{shopId}")
+    public String shop(@PathVariable Long shopId,
                        @RequestParam(value = "categoryId", required = false) Long categoryId,
                        @RequestParam(value = "minPrice", required = false) Long minPrice,
                        @RequestParam(value = "maxPrice", required = false) Long maxPrice,
@@ -54,15 +84,14 @@ public class ShopController {
                        @RequestParam(value = "minRating", required = false) Integer minRating,
                        @RequestParam(value = "q", required = false) String q,
                        Model model) {
-        Optional<User> sellerOpt = userRepository.findById(sellerId);
-        if (sellerOpt.isEmpty()) {
+        // Resolve ShopInfo strictly by id; reject deleted or missing
+        Optional<ShopInfo> byId = shopInfoRepository.findById(shopId);
+        if (byId.isEmpty() || byId.get().isDelete() || byId.get().getUser() == null) {
             return "redirect:/";
         }
-        User seller = sellerOpt.get();
-
-        // Unwrap Optional<SellerRegistration> safely
-        Optional<SellerRegistration> shopOpt = sellerRegistrationRepository.findByUserId(sellerId);
-        SellerRegistration shop = shopOpt.orElse(null);
+        ShopInfo shop = byId.get();
+        User seller = shop.getUser();
+        Long sellerId = seller.getId();
 
         String shopName = (shop != null && shop.getShopName() != null && !shop.getShopName().isEmpty())
                 ? shop.getShopName()
@@ -92,8 +121,9 @@ public class ShopController {
         model.addAttribute("successRate", successRate);
         model.addAttribute("products", products);
 
+        // expose shop identifier for links/forms (use ShopInfo.id)
         model.addAttribute("sellerId", sellerId);
-        model.addAttribute("sellerIdentifier", sellerId); // Add this for form action
+        model.addAttribute("shopIdentifier", shop.getId());
 
         // Filters data
         model.addAttribute("categories", categoryRepository.findAll());

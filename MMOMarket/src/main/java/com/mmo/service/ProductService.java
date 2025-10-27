@@ -2,36 +2,25 @@ package com.mmo.service;
 
 import com.mmo.entity.Product;
 import com.mmo.entity.ProductVariant;
-import com.mmo.entity.SellerRegistration;
 import com.mmo.repository.ProductRepository;
 import com.mmo.repository.ProductVariantRepository;
 import com.mmo.repository.ReviewRepository;
-import com.mmo.repository.SellerRegistrationRepository;
+import com.mmo.repository.ProductVariantAccountRepository;
+import com.mmo.dto.ProductVariantDto;
+
+// NEW: import ShopService and ShopInfoRepository + ShopInfo
+import com.mmo.service.ShopService;
+import com.mmo.entity.ShopInfo;
+import com.mmo.repository.ShopInfoRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.springframework.data.domain.Pageable;
-import com.mmo.repository.ProductVariantAccountRepository;
-import com.mmo.dto.ProductVariantDto;
-
-// Added imports for similarity/deduping/scoring
-import java.util.Arrays;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.AbstractMap;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Comparator;
-import org.springframework.data.domain.PageRequest;
 
-// NEW: import ShopService
-import com.mmo.service.ShopService;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class ProductService {
@@ -45,8 +34,9 @@ public class ProductService {
     @Autowired
     private ProductVariantRepository productVariantRepository;
 
+    // new repository to access shop meta
     @Autowired
-    private SellerRegistrationRepository sellerRegistrationRepository;
+    private ShopInfoRepository shopInfoRepository;
 
     // new repository to count variant accounts (stock)
     @Autowired
@@ -56,14 +46,25 @@ public class ProductService {
     @Autowired
     private ShopService shopService;
 
-    // Resolve shop name: SellerRegistration.shopName -> seller.fullName -> seller.email -> "Shop"
+    // Resolve shop name: prefer ShopInfo.shopName -> seller.fullName -> seller.email -> "Shop"
     private String resolveShopName(Product p) {
         if (p == null || p.getSeller() == null) return "Shop";
-        Optional<SellerRegistration> srOpt = sellerRegistrationRepository.findByUserId(p.getSeller().getId());
-        SellerRegistration sr = srOpt != null && srOpt.isPresent() ? srOpt.get() : null;
-        if (sr != null && sr.getShopName() != null && !sr.getShopName().isBlank()) {
-            return sr.getShopName();
+        Long userId = p.getSeller().getId();
+        if (userId != null) {
+            try {
+                Optional<ShopInfo> siOpt = shopInfoRepository.findByUserIdAndIsDeleteFalse(userId);
+                if (siOpt == null || siOpt.isEmpty()) {
+                    siOpt = shopInfoRepository.findByUser_Id(userId);
+                }
+                if (siOpt != null && siOpt.isPresent()) {
+                    ShopInfo si = siOpt.get();
+                    if (si.getShopName() != null && !si.getShopName().isBlank()) {
+                        return si.getShopName();
+                    }
+                }
+            } catch (Exception ignored) {}
         }
+
         if (p.getSeller().getFullName() != null && !p.getSeller().getFullName().isBlank()) {
             return p.getSeller().getFullName();
         }
