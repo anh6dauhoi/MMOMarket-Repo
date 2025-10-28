@@ -12,16 +12,12 @@
         <!-- Header Section -->
         <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
             <h1 class="text-xl md:text-2xl font-bold text-gray-800">Shop Management</h1>
-            <a th:href="@{/admin/shops/deleted}" 
-               class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
-                View Banned Shops
-            </a>
         </div>
 
-        <!-- Search and Filter Bar -->
-        <div class="mb-6 flex flex-col md:flex-row gap-3">
+        <!-- Search Bar -->
+        <div class="mb-6">
             <!-- Search Form -->
-            <form method="get" th:action="@{/admin/shops}" class="relative flex-1">
+            <form method="get" th:action="@{/admin/shops}" class="relative">
                 <label for="shop-search" class="sr-only">Search shops</label>
                 <div class="relative">
                     <input id="shop-search" name="search" aria-label="Search shops"
@@ -34,20 +30,6 @@
                         </svg>
                     </button>
                 </div>
-                <input type="hidden" name="sort" th:value="${currentSort}">
-                <input type="hidden" name="status" th:value="${currentStatus}">
-            </form>
-            
-            <!-- Status Filter -->
-            <form method="get" th:action="@{/admin/shops}" class="relative">
-                <select name="status" 
-                        onchange="this.form.submit()"
-                        class="w-full md:w-40 py-2 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm bg-white">
-                    <option value="" th:selected="${currentStatus == null or currentStatus == ''}">All Status</option>
-                    <option value="Active" th:selected="${currentStatus == 'Active'}">Active</option>
-                    <option value="Inactive" th:selected="${currentStatus == 'Inactive'}">Inactive</option>
-                </select>
-                <input type="hidden" name="search" th:value="${currentSearch}">
                 <input type="hidden" name="sort" th:value="${currentSort}">
             </form>
         </div>
@@ -62,9 +44,10 @@
                         <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller ID</th>
                         <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller Name</th>
                         <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Level</th>
                         <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Products</th>
                         <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
-                            <a th:href="@{/admin/shops(sort=${currentSort == 'rating_asc' ? 'rating_desc' : 'rating_asc'}, search=${currentSearch}, status=${currentStatus})}" 
+                            <a th:href="@{/admin/shops(sort=${currentSort == 'rating_asc' ? 'rating_desc' : 'rating_asc'}, search=${currentSearch})}" 
                                class="flex items-center">
                                 Rating
                                 <span class="ml-1">
@@ -78,7 +61,7 @@
                             </a>
                         </th>
                         <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
-                            <a th:href="@{/admin/shops(sort=${currentSort == 'commission_asc' ? 'commission_desc' : 'commission_asc'}, search=${currentSearch}, status=${currentStatus})}" 
+                            <a th:href="@{/admin/shops(sort=${currentSort == 'commission_asc' ? 'commission_desc' : 'commission_asc'}, search=${currentSearch})}" 
                                class="flex items-center">
                                 Commission
                                 <span class="ml-1">
@@ -96,7 +79,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     <tr th:if="${shops == null or shops.isEmpty()}">
-                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="10" class="px-6 py-12 text-center text-gray-500">
                             <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -117,8 +100,23 @@
                             <div class="text-xs text-gray-500" th:text="${shop.sellerEmail}">email@example.com</div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
-                                th:text="${shop.status}">Active</span>
+                            <span th:if="${shop.status == 'Active'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            <span th:if="${shop.status == 'Inactive'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Inactive
+                            </span>
+                            <span th:if="${shop.status != 'Active' and shop.status != 'Inactive'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800"
+                                th:text="${shop.status}">
+                                Unknown
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                                  th:text="${shop.shopLevel != null ? shop.shopLevel : 0}">0</span>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900" th:text="${shop.productCount}">0</div>
@@ -148,8 +146,9 @@
                                 Detail
                             </button>
                             <button class="text-red-500 hover:underline ml-3" 
-                                    onclick="banShop(this)"
-                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}">
+                                    onclick="toggleShopStatus(this)"
+                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}"
+                                    th:text="${shop.status == 'Active' ? 'Ban' : 'Unban'}">
                                 Ban
                             </button>
                         </td>
@@ -167,13 +166,25 @@
                         <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
                         <h3 class="font-semibold text-gray-900" th:text="${shop.shopName}">Shop Name</h3>
                     </div>
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800"
-                        th:text="${shop.status}">Active</span>
+                    <span th:if="${shop.status == 'Active'}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        Active
+                    </span>
+                    <span th:if="${shop.status == 'Inactive'}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        Inactive
+                    </span>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-sm mb-3">
                     <div>
                         <p class="text-gray-500">Seller:</p>
                         <p class="font-medium" th:text="${shop.sellerName}">Seller</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Level:</p>
+                        <span class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            <span th:text="${shop.shopLevel != null ? shop.shopLevel : 0}">0</span>
+                        </span>
                     </div>
                     <div>
                         <p class="text-gray-500">Products:</p>
@@ -205,8 +216,9 @@
                         Detail
                     </button>
                     <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
-                            onclick="banShop(this)"
-                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}">
+                            onclick="toggleShopStatus(this)"
+                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}"
+                            th:text="${shop.status == 'Active' ? 'Ban' : 'Unban'}">
                         Ban
                     </button>
                 </div>
@@ -222,20 +234,20 @@
             </div>
             <div class="flex space-x-1 flex-wrap justify-center">
                 <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
-                   th:href="@{/admin/shops(page=${currentPage - 1}, search=${currentSearch}, sort=${currentSort}, status=${currentStatus})}"
+                   th:href="@{/admin/shops(page=${currentPage - 1}, search=${currentSearch}, sort=${currentSort})}"
                    th:if="${currentPage > 0}">Previous</a>
 
                 <a class="px-2 sm:px-3 py-1 border rounded-md"
                    th:classappend="${i == currentPage} ? 'bg-red-500 text-white' : 'hover:bg-gray-100'"
                    th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                   th:href="@{/admin/shops(page=${i}, search=${currentSearch}, sort=${currentSort}, status=${currentStatus})}"
+                   th:href="@{/admin/shops(page=${i}, search=${currentSearch}, sort=${currentSort})}"
                    th:if="${(i == 0) || (i == currentPage) || (i == currentPage-1) || (i == currentPage+1) || (i == totalPages-1)}"
                    th:text="${i + 1}">1</a>
 
                 <span class="px-2 sm:px-3 py-1" th:if="${currentPage > 2 && totalPages > 5}">...</span>
 
                 <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
-                   th:href="@{/admin/shops(page=${currentPage + 1}, search=${currentSearch}, sort=${currentSort}, status=${currentStatus})}"
+                   th:href="@{/admin/shops(page=${currentPage + 1}, search=${currentSearch}, sort=${currentSort})}"
                    th:if="${currentPage < totalPages - 1}">Next</a>
             </div>
         </div>
@@ -455,24 +467,28 @@
             document.getElementById('shopDetailModal').classList.add('hidden');
         }
 
-        async function banShop(button) {
+        async function toggleShopStatus(button) {
             const shopId = button.dataset.id;
             const shopName = button.dataset.name;
+            const currentStatus = button.dataset.status;
+            const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+            const action = currentStatus === 'Active' ? 'ban' : 'unban';
 
-            if (!confirm(`Are you sure you want to ban shop "${shopName}"? This will set the shop status to inactive.`)) {
+            if (!confirm(`Are you sure you want to ${action} shop "${shopName}"? This will set the shop status to ${newStatus}.`)) {
                 return;
             }
 
             try {
-                const response = await fetch(`/admin/shops/${shopId}`, {
-                    method: 'DELETE',
+                const response = await fetch(`/admin/shops/${shopId}/toggle-status`, {
+                    method: 'PUT',
                     headers: {
+                        'Content-Type': 'application/json',
                         [csrfHeader]: csrfToken
                     }
                 });
 
                 if (response.ok) {
-                    showToast('Shop banned successfully');
+                    showToast(`Shop ${action}ned successfully`);
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     const errorText = await response.text();
@@ -480,7 +496,7 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showToast('Failed to ban shop', true);
+                showToast(`Failed to ${action} shop`, true);
             }
         }
 

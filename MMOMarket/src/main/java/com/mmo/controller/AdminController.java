@@ -135,7 +135,7 @@ public class AdminController {
         
         Pageable pageable = PageRequest.of(page, 10, Sort.by(sortDirection, sortField));
         
-        StringBuilder query = new StringBuilder("SELECT u FROM User u WHERE 1=1");
+        StringBuilder query = new StringBuilder("SELECT u FROM User u WHERE u.isDelete = false");
         
         if (search != null && !search.isBlank()) {
             query.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
@@ -293,6 +293,201 @@ public class AdminController {
             logger.error("Error updating user with ID: {}", id, ex);
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
+    }
+
+    @PutMapping("/users/{id}/ban")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> banUser(@PathVariable Long id, Authentication auth) {
+        logger.info("=== START banUser - ID: {}", id);
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                logger.warn("Unauthorized access attempt");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                logger.warn("Forbidden access attempt by: {}", auth.getName());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            User user = userRepository.findById(id).orElse(null);
+            if (user == null) {
+                logger.warn("User not found with ID: {}", id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+
+            // Cannot ban admin users
+            if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+                logger.warn("Attempt to ban admin user: {}", id);
+                return ResponseEntity.badRequest().body("Cannot ban admin users");
+            }
+
+            // Set isDelete to true to ban user
+            user.setDelete(true);
+            
+            // Log user info before checking role
+            logger.info("User role before checking: {} for user ID: {}", user.getRole(), id);
+            
+            // If user is a seller, set their shop status to Inactive and soft delete all products
+            if ("SELLER".equalsIgnoreCase(user.getRole())) {
+                logger.info("User is a SELLER, setting shop status to Inactive");
+                // Set user's shop status to Inactive
+                user.setShopStatus("Inactive");
+                logger.info("Shop status set to Inactive in User object for user ID: {}", id);
+                
+                // Get user's shop
+                ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user.id = :userId", ShopInfo.class)
+                        .setParameter("userId", id)
+                        .getResultStream()
+                        .findFirst()
+                        .orElse(null);
+                
+                if (shop != null) {
+                    // Soft delete the shop
+                    shop.setDelete(true);
+                    entityManager.merge(shop);
+                    entityManager.flush();
+                    logger.info("Shop soft deleted for user - Shop ID: {}", shop.getId());
+                    
+                    // Soft delete all products of this shop
+                    int updatedProducts = entityManager.createQuery(
+                            "UPDATE Product p SET p.isDelete = true WHERE p.seller.id = :userId")
+                            .setParameter("userId", id)
+                            .executeUpdate();
+                    entityManager.flush();
+                    logger.info("Soft deleted {} products for user - ID: {}", updatedProducts, id);
+                } else {
+                    logger.warn("No shop found for seller user ID: {}", id);
+                }
+            } else {
+                logger.info("User is NOT a SELLER (role: {}), skipping shop status update", user.getRole());
+            }
+            
+            // Save user once with all changes
+            User savedUser = userRepository.save(user);
+            entityManager.flush();
+            logger.info("User banned successfully - ID: {}, isDelete: {}, Shop Status: {}", 
+                id, savedUser.isDelete(), savedUser.getShopStatus());
+            
+            return ResponseEntity.ok("User banned successfully");
+        } catch (Exception ex) {
+            logger.error("Error banning user with ID: {}", id, ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/users/{id}/unban")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> unbanUser(@PathVariable Long id, Authentication auth) {
+        logger.info("=== START unbanUser - ID: {}", id);
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                logger.warn("Unauthorized access attempt");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                logger.warn("Forbidden access attempt by: {}", auth.getName());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            User user = userRepository.findById(id).orElse(null);
+            if (user == null) {
+                logger.warn("User not found with ID: {}", id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+
+            // Set isDelete to false to unban user
+            user.setDelete(false);
+            
+            // If user is a seller, restore their shop status to Active and restore products
+            if ("SELLER".equalsIgnoreCase(user.getRole())) {
+                // Set user's shop status back to Active
+                user.setShopStatus("Active");
+                logger.info("Setting shop status to Active for user ID: {}", id);
+                
+                // Get user's shop
+                ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user.id = :userId", ShopInfo.class)
+                        .setParameter("userId", id)
+                        .getResultStream()
+                        .findFirst()
+                        .orElse(null);
+                
+                if (shop != null) {
+                    // Restore the shop
+                    shop.setDelete(false);
+                    entityManager.merge(shop);
+                    entityManager.flush();
+                    logger.info("Shop restored for user - Shop ID: {}", shop.getId());
+                    
+                    // Restore all products of this shop
+                    int restoredProducts = entityManager.createQuery(
+                            "UPDATE Product p SET p.isDelete = false WHERE p.seller.id = :userId")
+                            .setParameter("userId", id)
+                            .executeUpdate();
+                    entityManager.flush();
+                    logger.info("Restored {} products for user - ID: {}", restoredProducts, id);
+                } else {
+                    logger.warn("No shop found for seller user ID: {}", id);
+                }
+            }
+            
+            // Save user once with all changes
+            User savedUser = userRepository.save(user);
+            entityManager.flush();
+            logger.info("User unbanned successfully - ID: {}, isDelete: {}, Shop Status: {}", 
+                id, savedUser.isDelete(), savedUser.getShopStatus());
+            
+            return ResponseEntity.ok("User unbanned successfully");
+        } catch (Exception ex) {
+            logger.error("Error unbanning user with ID: {}", id, ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/users/banned")
+    public String bannedUsers(@RequestParam(name = "page", defaultValue = "0") int page,
+                              @RequestParam(name = "search", defaultValue = "") String search,
+                              Model model) {
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        
+        StringBuilder query = new StringBuilder("SELECT u FROM User u WHERE u.isDelete = true");
+        
+        if (search != null && !search.isBlank()) {
+            query.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
+        }
+        
+        query.append(" ORDER BY u.updatedAt DESC");
+        
+        var q = entityManager.createQuery(query.toString(), User.class);
+        
+        if (search != null && !search.isBlank()) {
+            q.setParameter("search", "%" + search + "%");
+        }
+        
+        List<User> allUsers = q.getResultList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), allUsers.size());
+        List<User> pageContent = allUsers.subList(start, end);
+        Page<User> userPage = new PageImpl<>(pageContent, pageable, allUsers.size());
+        
+        model.addAttribute("users", userPage.getContent());
+        model.addAttribute("totalPages", userPage.getTotalPages());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("pageTitle", "Banned Users");
+        model.addAttribute("body", "admin/banned-users");
+        return "admin/layout";
     }
 
     @GetMapping("/seller-registrations")
@@ -830,6 +1025,7 @@ public class AdminController {
     // ==================== CATEGORY MANAGEMENT ====================
 
     @GetMapping("/categories")
+    @Transactional(readOnly = true)
     public String categoriesManagement(@RequestParam(name = "page", defaultValue = "0") int page,
                                        @RequestParam(name = "search", defaultValue = "") String search,
                                        @RequestParam(name = "type", defaultValue = "") String type,
@@ -837,8 +1033,8 @@ public class AdminController {
                                        Model model) {
         Pageable pageable = PageRequest.of(page, 10);
         
-        // Build dynamic query with LEFT JOIN FETCH to eagerly load products
-        StringBuilder jpql = new StringBuilder("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.products WHERE c.isDelete = false");
+        // Build dynamic query WITHOUT JOIN FETCH for better performance
+        StringBuilder jpql = new StringBuilder("SELECT c FROM Category c WHERE c.isDelete = false");
         
         if (search != null && !search.trim().isEmpty()) {
             jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
@@ -876,6 +1072,28 @@ public class AdminController {
         int start = page * 10;
         int end = Math.min(start + 10, total);
         List<Category> categories = allResults.subList(start, end);
+        
+        // Efficiently load product counts for the current page only
+        if (!categories.isEmpty()) {
+            List<Long> categoryIds = categories.stream().map(Category::getId).toList();
+            List<Object[]> counts = entityManager.createQuery(
+                "SELECT p.category.id, COUNT(p) FROM Product p WHERE p.category.id IN :ids GROUP BY p.category.id",
+                Object[].class
+            ).setParameter("ids", categoryIds).getResultList();
+            
+            // Map counts to categories
+            java.util.Map<Long, Long> countMap = counts.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    row -> (Long) row[0],
+                    row -> (Long) row[1]
+                ));
+            
+            // Set cached counts
+            for (Category category : categories) {
+                Long count = countMap.getOrDefault(category.getId(), 0L);
+                category.setProductCountCache(count.intValue());
+            }
+        }
         
         Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
 
@@ -1141,6 +1359,7 @@ public class AdminController {
     // ==================== BLOG MANAGEMENT ====================
 
     @GetMapping("/blogs")
+    @Transactional(readOnly = true)
     public String blogsManagement(@RequestParam(name = "page", defaultValue = "0") int page,
                                   @RequestParam(name = "search", defaultValue = "") String search,
                                   @RequestParam(name = "status", defaultValue = "") String status,
@@ -1163,7 +1382,7 @@ public class AdminController {
             }
         }
         
-        // Add sorting
+        // Add sorting - avoid SIZE() for comments as it's slow
         if (sort != null && !sort.isEmpty()) {
             if (sort.equals("likes_asc")) {
                 jpql.append(" ORDER BY b.likes ASC");
@@ -1173,14 +1392,42 @@ public class AdminController {
                 jpql.append(" ORDER BY b.views ASC");
             } else if (sort.equals("views_desc")) {
                 jpql.append(" ORDER BY b.views DESC");
-            } else if (sort.equals("comments_asc")) {
-                jpql.append(" ORDER BY SIZE(b.comments) ASC");
-            } else if (sort.equals("comments_desc")) {
-                jpql.append(" ORDER BY SIZE(b.comments) DESC");
+            } else if (sort.equals("comments_asc") || sort.equals("comments_desc")) {
+                // For comment sort, use subquery (slower but necessary)
+                String direction = sort.equals("comments_asc") ? "ASC" : "DESC";
+                jpql.append(" ORDER BY (SELECT COUNT(c) FROM Comment c WHERE c.blog.id = b.id) ").append(direction);
+            } else {
+                jpql.append(" ORDER BY b.createdAt DESC");
+            }
+        } else {
+            jpql.append(" ORDER BY b.createdAt DESC");
+        }
+        
+        // Separate COUNT query for better performance
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(b) FROM Blog b WHERE b.isDelete = false");
+        if (search != null && !search.trim().isEmpty()) {
+            countJpql.append(" AND LOWER(b.title) LIKE LOWER(:search)");
+        }
+        if (status != null && !status.trim().isEmpty()) {
+            if (status.equals("popular")) {
+                countJpql.append(" AND b.likes >= 100");
+            } else if (status.equals("new")) {
+                countJpql.append(" AND b.createdAt >= :sevenDaysAgo");
             }
         }
         
-        // Create query
+        TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+        if (search != null && !search.trim().isEmpty()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        if (status != null && status.equals("new")) {
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.add(java.util.Calendar.DAY_OF_MONTH, -7);
+            countQuery.setParameter("sevenDaysAgo", cal.getTime());
+        }
+        long total = countQuery.getSingleResult();
+        
+        // Get paginated results
         TypedQuery<com.mmo.entity.Blog> query = entityManager.createQuery(jpql.toString(), com.mmo.entity.Blog.class);
         
         if (search != null && !search.trim().isEmpty()) {
@@ -1193,11 +1440,6 @@ public class AdminController {
             query.setParameter("sevenDaysAgo", cal.getTime());
         }
         
-        // Get total count
-        List<com.mmo.entity.Blog> allResults = query.getResultList();
-        int total = allResults.size();
-        
-        // Apply pagination
         query.setFirstResult(page * 10);
         query.setMaxResults(10);
         List<com.mmo.entity.Blog> blogs = query.getResultList();
@@ -1320,6 +1562,7 @@ public class AdminController {
     }
 
     @GetMapping("/blogs/deleted")
+    @Transactional(readOnly = true)
     public String deletedBlogs(@RequestParam(name = "page", defaultValue = "0") int page,
                                @RequestParam(name = "search", defaultValue = "") String search,
                                Model model) {
@@ -1381,75 +1624,167 @@ public class AdminController {
     // ==================== SHOP MANAGEMENT ====================
 
     @GetMapping("/shops")
+    @Transactional(readOnly = true)
     public String shops(@RequestParam(name = "page", defaultValue = "0") int page,
                        @RequestParam(name = "search", defaultValue = "") String search,
-                       @RequestParam(name = "status", defaultValue = "") String status,
                        @RequestParam(name = "sort", defaultValue = "") String sort,
                        Model model) {
         Pageable pageable = PageRequest.of(page, 10);
         
-        // Build dynamic query using ShopInfo entity
+        // For rating sort, we need a different approach with subquery
+        boolean isRatingSort = sort != null && (sort.equals("rating_asc") || sort.equals("rating_desc"));
+        
+        if (isRatingSort) {
+            // Use optimized rating sort with single query
+            String direction = sort.equals("rating_asc") ? "ASC" : "DESC";
+            String jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user " +
+                         "WHERE s.isDelete = false " +
+                         "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
+                         "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
+            
+            if (search != null && !search.trim().isEmpty()) {
+                jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user " +
+                      "WHERE s.isDelete = false " +
+                      "AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search)) " +
+                      "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
+                      "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
+            }
+            
+            // Get total count
+            StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s WHERE s.isDelete = false");
+            if (search != null && !search.trim().isEmpty()) {
+                countJpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+            }
+            
+            TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+            if (search != null && !search.trim().isEmpty()) {
+                countQuery.setParameter("search", "%" + search.trim() + "%");
+            }
+            long total = countQuery.getSingleResult();
+            
+            // Get paginated results
+            TypedQuery<ShopInfo> query = entityManager.createQuery(jpql, ShopInfo.class);
+            if (search != null && !search.trim().isEmpty()) {
+                query.setParameter("search", "%" + search.trim() + "%");
+            }
+            query.setFirstResult(page * 10);
+            query.setMaxResults(10);
+            List<ShopInfo> shopInfos = query.getResultList();
+            
+            // Build response with batch-loaded data
+            List<com.mmo.dto.ShopResponse> shops = buildShopResponses(shopInfos);
+            
+            Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
+            
+            model.addAttribute("shops", shopPage.getContent());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", shopPage.getTotalPages());
+            model.addAttribute("pageTitle", "Shop Management");
+            model.addAttribute("body", "admin/shops");
+            return "admin/layout";
+        }
+        
+        // Normal sort (commission, or default by ID)
         StringBuilder jpql = new StringBuilder(
-            "SELECT s FROM ShopInfo s WHERE s.isDelete = false"
+            "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user WHERE s.isDelete = false"
         );
         
         if (search != null && !search.trim().isEmpty()) {
             jpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
         }
         
-        if (status != null && !status.trim().isEmpty()) {
-            jpql.append(" AND s.user.shopStatus = :status");
-        }
-        
-        // Add sorting
+        // Add simple sorting
         if (sort != null && !sort.isEmpty()) {
-            if (sort.equals("rating_asc")) {
-                jpql.append(" ORDER BY (SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = s.user.id) ASC NULLS FIRST");
-            } else if (sort.equals("rating_desc")) {
-                jpql.append(" ORDER BY (SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = s.user.id) DESC NULLS LAST");
-            } else if (sort.equals("commission_asc")) {
+            if (sort.equals("commission_asc")) {
                 jpql.append(" ORDER BY s.commission ASC");
             } else if (sort.equals("commission_desc")) {
                 jpql.append(" ORDER BY s.commission DESC");
+            } else {
+                jpql.append(" ORDER BY s.id DESC");
             }
+        } else {
+            jpql.append(" ORDER BY s.id DESC");
         }
         
-        // Create query
-        TypedQuery<ShopInfo> query = entityManager.createQuery(jpql.toString(), ShopInfo.class);
+        // Get total count efficiently with separate COUNT query
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s WHERE s.isDelete = false");
+        if (search != null && !search.trim().isEmpty()) {
+            countJpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+        }
         
+        TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+        if (search != null && !search.trim().isEmpty()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        long total = countQuery.getSingleResult();
+        
+        // Get paginated results
+        TypedQuery<ShopInfo> query = entityManager.createQuery(jpql.toString(), ShopInfo.class);
         if (search != null && !search.trim().isEmpty()) {
             query.setParameter("search", "%" + search.trim() + "%");
         }
-        
-        if (status != null && !status.trim().isEmpty()) {
-            query.setParameter("status", status);
-        }
-        
-        // Get total count
-        List<ShopInfo> allResults = query.getResultList();
-        int total = allResults.size();
-        
-        // Apply pagination
         query.setFirstResult(page * 10);
         query.setMaxResults(10);
         List<ShopInfo> shopInfos = query.getResultList();
         
-        // Convert to ShopResponse
-        List<com.mmo.dto.ShopResponse> shops = shopInfos.stream()
-            .map(shop -> com.mmo.dto.ShopResponse.fromEntity(shop, 0L, 0.0))
-            .collect(java.util.stream.Collectors.toList());
+        // Build response with batch-loaded data
+        List<com.mmo.dto.ShopResponse> shops = buildShopResponses(shopInfos);
         
         Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
 
         model.addAttribute("shops", shopPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("currentSearch", search);
-        model.addAttribute("currentStatus", status);
         model.addAttribute("currentSort", sort);
         model.addAttribute("totalPages", shopPage.getTotalPages());
         model.addAttribute("pageTitle", "Shop Management");
         model.addAttribute("body", "admin/shops");
         return "admin/layout";
+    }
+    
+    // Helper method to build shop responses with batch-loaded data
+    private List<com.mmo.dto.ShopResponse> buildShopResponses(List<ShopInfo> shopInfos) {
+        List<com.mmo.dto.ShopResponse> shops = new java.util.ArrayList<>();
+        if (!shopInfos.isEmpty()) {
+            List<Long> sellerIds = shopInfos.stream()
+                .map(s -> s.getUser().getId())
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Batch query for product counts
+            List<Object[]> productCounts = entityManager.createQuery(
+                "SELECT p.seller.id, COUNT(p) FROM Product p WHERE p.seller.id IN :ids GROUP BY p.seller.id",
+                Object[].class
+            ).setParameter("ids", sellerIds).getResultList();
+            
+            java.util.Map<Long, Long> countMap = productCounts.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    row -> (Long) row[0],
+                    row -> (Long) row[1]
+                ));
+            
+            // Batch query for ratings
+            List<Object[]> ratings = entityManager.createQuery(
+                "SELECT r.product.seller.id, AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id IN :ids GROUP BY r.product.seller.id",
+                Object[].class
+            ).setParameter("ids", sellerIds).getResultList();
+            
+            java.util.Map<Long, Double> ratingMap = ratings.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    row -> (Long) row[0],
+                    row -> (Double) row[1]
+                ));
+            
+            // Build response with cached data
+            for (ShopInfo shop : shopInfos) {
+                Long sellerId = shop.getUser().getId();
+                Long productCount = countMap.getOrDefault(sellerId, 0L);
+                Double rating = ratingMap.getOrDefault(sellerId, 0.0);
+                shops.add(com.mmo.dto.ShopResponse.fromEntity(shop, productCount, rating));
+            }
+        }
+        return shops;
     }
 
     @PutMapping("/shops/{id}/commission")
@@ -1481,6 +1816,7 @@ public class AdminController {
 
     @GetMapping("/shops/{id}/detail")
     @ResponseBody
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getShopDetail(@PathVariable Long id) {
         try {
             // Find shop by ID
@@ -1540,6 +1876,42 @@ public class AdminController {
 
             shopService.deleteShop(id, admin.getId());
             return ResponseEntity.ok().body("Shop deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/shops/{id}/toggle-status")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> toggleShopStatus(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            // Find the user who owns this shop
+            User seller = entityManager.createQuery(
+                "SELECT u FROM User u WHERE u.id = :id", User.class)
+                .setParameter("id", id)
+                .getSingleResult();
+
+            // Toggle the shop status
+            String newStatus = "Active".equals(seller.getShopStatus()) ? "Inactive" : "Active";
+            seller.setShopStatus(newStatus);
+            entityManager.merge(seller);
+
+            return ResponseEntity.ok().body("Shop status updated to " + newStatus);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception ex) {

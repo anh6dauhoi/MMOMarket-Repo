@@ -12,6 +12,10 @@
         <!-- Header Section -->
         <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
             <h1 class="text-xl md:text-2xl font-bold text-gray-800">User Management</h1>
+            <a th:href="@{/admin/users/banned}" 
+               class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                View Banned Users
+            </a>
         </div>
 
         <!-- Search and Filter Bar -->
@@ -157,7 +161,7 @@
                                 Active
                             </span>
                             <span th:if="${user.shopStatus == 'Inactive'}"
-                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                 Inactive
                             </span>
                         </td>
@@ -184,6 +188,11 @@
                                     onclick="editUser(this)"
                                     th:attr="data-id=${user.id}">
                                 Edit
+                            </button>
+                            <button class="text-red-500 hover:underline ml-3" 
+                                    onclick="banUser(this)"
+                                    th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                                Ban
                             </button>
                         </td>
                     </tr>
@@ -230,7 +239,7 @@
                             Active
                         </span>
                         <span th:if="${user.shopStatus == 'Inactive'}"
-                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">
                             Inactive
                         </span>
                     </div>
@@ -260,6 +269,11 @@
                             onclick="editUser(this)"
                             th:attr="data-id=${user.id}">
                         Edit
+                    </button>
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="banUser(this)"
+                            th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                        Ban
                     </button>
                 </div>
             </div>
@@ -618,6 +632,35 @@
                 });
             }
         });
+
+        async function banUser(button) {
+            const userId = button.dataset.id;
+            const userName = button.dataset.name;
+
+            if (!confirm(`Are you sure you want to ban user "${userName}"? This will restrict their access to the system.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/users/${userId}/ban`, {
+                    method: 'PUT',
+                    headers: {
+                        [csrfHeader]: csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('User banned successfully');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to ban user', true);
+            }
+        }
         /*]]>*/
     </script>
 </div>

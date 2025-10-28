@@ -104,11 +104,11 @@
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
                             <span th:if="${category.type == 'Warning'}"
-                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                 Warning
                             </span>
                             <span th:if="${category.type != 'Warning'}"
-                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
                                 th:text="${category.type}">
                                 Common
                             </span>
@@ -143,8 +143,13 @@
                         <h3 class="font-semibold text-gray-900" th:text="${category.name}">Category</h3>
                     </div>
                     <span th:if="${category.type == 'Warning'}"
-                        class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                         Warning
+                    </span>
+                    <span th:if="${category.type != 'Warning'}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800"
+                        th:text="${category.type}">
+                        Common
                     </span>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-sm mb-3">

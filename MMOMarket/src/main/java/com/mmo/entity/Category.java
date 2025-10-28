@@ -53,17 +53,29 @@ public class Category {
     private List<Product> products;
     
     // Optional readonly audit relations
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
     
-    // Transient field for product count
+    // Transient field for product count (use productCountCache when available)
+    @Transient
+    private Integer productCountCache;
+    
     @Transient
     public Integer getProductCount() {
+        // Use cached count if available to avoid loading all products
+        if (productCountCache != null) {
+            return productCountCache;
+        }
         return products != null ? products.size() : 0;
+    }
+    
+    @Transient
+    public void setProductCountCache(Integer count) {
+        this.productCountCache = count;
     }
 
     /**
