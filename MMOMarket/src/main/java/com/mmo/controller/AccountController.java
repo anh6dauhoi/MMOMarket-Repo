@@ -1,11 +1,7 @@
 package com.mmo.controller;
 
-import com.mmo.entity.SellerRegistration;
-import com.mmo.entity.User;
-import com.mmo.repository.NotificationRepository;
-import com.mmo.repository.SellerRegistrationRepository;
-import com.mmo.repository.UserRepository;
-import com.mmo.service.NotificationService;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,10 +12,21 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.Optional;
+import com.mmo.dto.ChangePasswordRequest;
+import com.mmo.dto.UpdateProfileRequest;
+import com.mmo.entity.SellerRegistration;
+import com.mmo.entity.User;
+import com.mmo.repository.NotificationRepository;
+import com.mmo.repository.SellerRegistrationRepository;
+import com.mmo.repository.UserRepository;
+import com.mmo.service.AccountService;
+import com.mmo.service.NotificationService;
 
 @Controller
 public class AccountController {
@@ -35,9 +42,12 @@ public class AccountController {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private AccountService accountService;
+
     @GetMapping("/account/settings")
     public String accountSettings(Model model, Authentication authentication) {
-        // If already registered, show status. Else, show form with backing model
+        // Get current user info
         if (authentication != null && authentication.isAuthenticated()) {
             String email = authentication.getName();
             if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
@@ -47,12 +57,13 @@ public class AccountController {
             }
             Optional<User> userOpt = userRepository.findByEmail(email);
             if (userOpt.isPresent()) {
-                Optional<SellerRegistration> regOpt = sellerRegistrationRepository.findByUserId(userOpt.get().getId());
+                User user = userOpt.get();
+                model.addAttribute("user", user);
+
+                // Get seller registration if exists
+                Optional<SellerRegistration> regOpt = sellerRegistrationRepository.findByUserId(user.getId());
                 regOpt.ifPresent(reg -> model.addAttribute("registration", reg));
             }
-        }
-        if (!model.containsAttribute("sellerRegistration") && !model.containsAttribute("registration")) {
-            model.addAttribute("sellerRegistration", new SellerRegistration());
         }
         return "customer/account-setting";
     }
@@ -102,5 +113,65 @@ public class AccountController {
         }
         // Only count notifications that are not deleted
         return notificationRepository.countByUser_EmailAndStatusAndIsDelete(email, "Unread", false);
+    }
+
+    // Update user profile (Name, Phone)
+    @PostMapping("/account/update-profile")
+    public String updateProfile(@ModelAttribute UpdateProfileRequest request,
+                               Authentication authentication,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                redirectAttributes.addFlashAttribute("error", "You must be logged in to update profile");
+                return "redirect:/authen/login";
+            }
+
+            String email = authentication.getName();
+            if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
+                OAuth2User oauthUser = oauth2Token.getPrincipal();
+                String mail = oauthUser.getAttribute("email");
+                if (mail != null) email = mail;
+            }
+
+            accountService.updateProfile(email, request);
+            redirectAttributes.addFlashAttribute("successMessage", "Profile updated successfully!");
+            return "redirect:/account/settings?tab=profile";
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/account/settings?tab=profile";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to update profile. Please try again.");
+            return "redirect:/account/settings?tab=profile";
+        }
+    }
+
+    // Change password
+    @PostMapping("/account/change-password")
+    public String changePassword(@ModelAttribute ChangePasswordRequest request,
+                                Authentication authentication,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                redirectAttributes.addFlashAttribute("error", "You must be logged in to change password");
+                return "redirect:/authen/login";
+            }
+
+            String email = authentication.getName();
+            if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
+                OAuth2User oauthUser = oauth2Token.getPrincipal();
+                String mail = oauthUser.getAttribute("email");
+                if (mail != null) email = mail;
+            }
+
+            accountService.changePassword(email, request);
+            redirectAttributes.addFlashAttribute("successMessage", "Password changed successfully!");
+            return "redirect:/account/settings?tab=password";
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/account/settings?tab=password";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to change password. Please try again.");
+            return "redirect:/account/settings?tab=password";
+        }
     }
 }
