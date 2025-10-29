@@ -79,7 +79,7 @@
 
                                 <p class="text-2xl font-bold text-primary-900 mt-1">
 
-                                    <span id="availableBalance" th:text="${coins != null ? coins : 0}" th:data-coins="${coins != null ? coins : 0}">0</span>
+                                    <span id="availableBalance" th:text="${coins != null ? #numbers.formatDecimal(coins, 0, 'POINT', 0, 'COMMA') : 0}" th:data-coins="${coins != null ? coins : 0}">0</span>
 
                                     <span class="text-base font-normal">points</span>
 
@@ -728,7 +728,7 @@
                                     <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="' #' + ${w.id}"></td> -->
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="${iterStat.index + 1}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                                        th:text="${w.amount}"></td>
+                                        th:text="${w.amount != null ? #numbers.formatDecimal(w.amount, 0, 'POINT', 0, 'COMMA') : '0'}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span th:classappend="
                                             ${w.status} == 'Pending' ? 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200' :
@@ -866,6 +866,12 @@
 </div>
 
 <script>
+    // Helper to format VND-style numbers with dot thousands separators
+    function formatVnd(x) {
+        const n = Number(x);
+        if (!isFinite(n)) return x ?? '';
+        return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n);
+    }
 
     function onBankSelect() {
 
@@ -995,7 +1001,8 @@
             btn.addEventListener('click', function () {
                 sttSpan.textContent = btn.getAttribute('data-stt');
                 idSpan.textContent = btn.getAttribute('data-id');
-                amountSpan.textContent = btn.getAttribute('data-amount');
+                // format amount with dot thousands
+                amountSpan.textContent = formatVnd(btn.getAttribute('data-amount'));
                 statusSpan.textContent = btn.getAttribute('data-status');
                 dateSpan.textContent = btn.getAttribute('data-date');
                 bankNameSpan.textContent = btn.getAttribute('data-bankname');
@@ -1038,8 +1045,9 @@
 
             let aVal, bVal;
             if (columnIndex === 1) { // Amount
-                aVal = parseInt(aText.replace(/,/g, '')) || 0;
-                bVal = parseInt(bText.replace(/,/g, '')) || 0;
+                // remove dot or comma group separators
+                aVal = parseInt(aText.replace(/[\.\,\s]/g, '')) || 0;
+                bVal = parseInt(bText.replace(/[\.\,\s]/g, '')) || 0;
             } else if (columnIndex === 3) { // Date
                 aVal = new Date(aText);
                 bVal = new Date(bText);
@@ -1085,7 +1093,7 @@
             const amountInput = withdrawForm.querySelector('#amount');
             const availableSpan = document.getElementById('availableBalance');
             const amountError = document.getElementById('amountError');
-            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.trim() || 0) : 0;
+            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.replace(/[\.\,\s]/g, '') || 0) : 0;
 
             // Set max attribute in case JS runs on client-side rendering
             if (amountInput && !isNaN(available)) {
@@ -1110,7 +1118,7 @@
                     const val = Number(amountInput.value || 0);
                     if (!isFinite(val)) return;
                     if (val > available) {
-                        showError('Amount cannot exceed available balance (' + available.toLocaleString() + ').');
+                        showError('Amount cannot exceed available balance (' + formatVnd(available) + ').');
                     }
                 });
             }
@@ -1121,7 +1129,7 @@
                 if (!isFinite(val)) return;
                 if (val > available) {
                     ev.preventDefault();
-                    showError('Amount cannot exceed available balance (' + available.toLocaleString() + ').');
+                    showError('Amount cannot exceed available balance (' + formatVnd(available) + ').');
                     amountInput.focus();
                     return false;
                 }
