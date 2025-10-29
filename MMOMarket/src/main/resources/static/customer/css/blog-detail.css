@@ -1,0 +1,11 @@
+/* Heart */
+.heart { cursor: pointer; transition: transform .12s; }
+.heart.liked { color: #F53E32; transform: scale(1.05); }
+
+/* Comment polish */
+.comment-card { border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
+.comment-avatar {
+  width: 40px; height: 40px; border-radius: 9999px;
+  display: grid; place-items: center; background: #fff7f6; border: 1px solid #ffe2df; color: #F53E32;
+}
+

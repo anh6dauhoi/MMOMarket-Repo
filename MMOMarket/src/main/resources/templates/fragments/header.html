@@ -1,4 +1,6 @@
-<div th:fragment="header">
+<div th:fragment="header"
+     th:with="uri=${#httpServletRequest != null and #httpServletRequest.requestURI != null ? #httpServletRequest.requestURI : ''},
+               activePage=${active != null ? active : ''}">
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
@@ -30,13 +32,39 @@
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex space-x-4 lg:space-x-8">
                     <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/welcome' ? 'text-red-500 border-b-2 border-red-500' : ''}"
-                       th:href="@{/welcome}">Home</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="#">Category</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="#">Blog</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="#">Contact</a>
-                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1" href="/customer/topup"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/customer/topup' ? 'text-red-500 border-b-2 border-red-500' : ''}">Topup</a>
+                       th:classappend="${(activePage == 'home') or (uri == '/' or #strings.startsWith(uri,'/welcome') or #strings.startsWith(uri,'/homepage')) ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/homepage}"
+                       data-nav="home">Home</a>
+
+                    <!-- Category dropdown (hover) -->
+                    <div class="relative" id="category-menu">
+                        <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1 inline-flex items-center"
+                           th:classappend="${(activePage == 'category') or #strings.startsWith(uri,'/category') ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                           href="/category">
+                            Category
+                            <svg class="w-4 h-4 ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                            </svg>
+                        </a>
+
+                        <div id="category-dropdown" class="hidden absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border py-2 z-50">
+                            <div id="category-dropdown-list" class="divide-y"></div>
+                        </div>
+                    </div>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:classappend="${(activePage == 'blog') or #strings.startsWith(uri,'/blog') ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/blog}">Blog</a>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:classappend="${(activePage == 'contact') or #strings.startsWith(uri,'/contact') ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:href="@{/contact}">Contact</a>
+
+                    <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
+                       th:href="@{/customer/topup}"
+                       th:classappend="${(activePage == 'topup') or #strings.startsWith(uri,'/customer/topup') ? ' text-red-500 border-b-2 border-red-500' : ''}">
+                        Topup
+                    </a>
                 </nav>
 
                 <!-- Desktop search and user menu -->
@@ -156,9 +184,8 @@
                                             <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                                                   stroke-linecap="round" stroke-linejoin="round"
                                                   stroke-width="2"></path>
-                                        </svg>
-                                        My Profile
                                     </div>
+                                    My Profile
                                 </a>
                                 <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
                                    href="#">
@@ -238,15 +265,25 @@
                 <!-- Mobile Navigation -->
                 <nav class="pt-2 pb-3 space-y-1 border-t border-gray-200 mt-2">
                     <a class="block px-3 py-2 rounded-md font-medium"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/welcome' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}"
-                       th:href="@{/welcome}">Home</a>
+                       th:classappend="${(activePage == 'home') or (uri == '/' or #strings.startsWith(uri,'/welcome') or #strings.startsWith(uri,'/homepage')) ? ' bg-red-50 text-red-500' : ' text-gray-700 hover:bg-gray-50'}"
+                       th:href="@{/welcome}"
+                       data-nav="home">Home</a>
+
                     <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
-                       href="#">Category</a>
-                    <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium" href="#">Blog</a>
+                       th:href="@{/category}"
+                       th:classappend="${(activePage == 'category') or #strings.startsWith(uri,'/category') ? ' bg-red-50 text-red-500' : ''}">Category</a>
+
                     <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
-                       href="#">Contact</a>
-                    <a class="block px-3 py-2 rounded-md font-medium" href="/customer/topup"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI == '/customer/topup' ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-gray-50'}">Topup</a>
+                       th:href="@{/blog}"
+                       th:classappend="${(activePage == 'blog') or #strings.startsWith(uri,'/blog') ? ' bg-red-50 text-red-500' : ''}">Blog</a>
+
+                    <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
+                       th:href="@{/contact}"
+                       th:classappend="${(activePage == 'contact') or #strings.startsWith(uri,'/contact') ? ' bg-red-50 text-red-500' : ''}">Contact</a>
+
+                    <a class="block px-3 py-2 rounded-md font-medium"
+                       th:href="@{/customer/topup}"
+                       th:classappend="${(activePage == 'topup') or #strings.startsWith(uri,'/customer/topup') ? ' bg-red-50 text-red-500' : ' text-gray-700 hover:bg-gray-50'}">Topup</a>
                 </nav>
 
                 <!-- Mobile search -->
@@ -295,8 +332,6 @@
                                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                                       stroke-linecap="round" stroke-linejoin="round"
                                       stroke-width="2"></path>
-                            </svg>
-                            My Order
                         </a>
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
                            th:href="@{/account/notifications}">
@@ -341,8 +376,6 @@
                                     <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                                           stroke-linecap="round" stroke-linejoin="round"
                                           stroke-width="2"></path>
-                                </svg>
-                                Log out
                             </button>
                         </form>
                     </div>
@@ -367,9 +400,84 @@
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
             const mobileMenu = document.getElementById('mobileMenu');
 
-            mobileMenuBtn.addEventListener('click', function () {
-                mobileMenu.classList.toggle('hidden');
-            });
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener('click', function () {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+
+            // --- Category dropdown behavior & lazy load categories ---
+            const menu = document.getElementById('category-menu');
+            const dropdown = document.getElementById('category-dropdown');
+            const listContainer = document.getElementById('category-dropdown-list');
+            let categoriesLoaded = false;
+            let hideTimeout = null;
+
+            function showDropdown() {
+                if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+                if (dropdown) dropdown.classList.remove('hidden');
+                // load categories once
+                if (!categoriesLoaded && listContainer) {
+                    fetch('/api/categories')
+                        .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+                        .then(data => {
+                            if (!Array.isArray(data)) return;
+                            data.forEach(cat => {
+                                const a = document.createElement('a');
+                                a.className = 'block px-4 py-2 text-sm text-gray-700 hover:bg-red-50';
+                                a.href = '/category/' + encodeURIComponent(cat.id);
+                                a.textContent = cat.name;
+                                listContainer.appendChild(a);
+                            });
+                            categoriesLoaded = true;
+                        })
+                        .catch(err => {
+                            // silently ignore; fallback still shows "All Products"
+                            console.error('Failed to load categories', err);
+                        });
+                }
+            }
+
+            function hideDropdown() {
+                // short delay to allow moving pointer into dropdown
+                if (dropdown) {
+                    hideTimeout = setTimeout(() => {
+                        dropdown.classList.add('hidden');
+                    }, 150);
+                }
+            }
+
+            // desktop hover handlers
+            if (menu && dropdown) {
+                menu.addEventListener('mouseenter', showDropdown);
+                menu.addEventListener('mouseleave', hideDropdown);
+                dropdown.addEventListener('mouseenter', () => { if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }});
+                dropdown.addEventListener('mouseleave', hideDropdown);
+            }
+
+            // --- Make "Home" turn red immediately when clicked ---
+            try {
+                const homeAnchors = document.querySelectorAll('[data-nav="home"]');
+                if (homeAnchors && homeAnchors.length) {
+                    function activateHome() {
+                        // remove active classes from other nav links (desktop + mobile)
+                        const allNavAnchors = document.querySelectorAll('nav a, #mobileMenu a');
+                        allNavAnchors.forEach(a => {
+                            a.classList.remove('text-red-500', 'border-b-2', 'border-red-500', 'bg-red-50');
+                        });
+                        // add active classes to all Home anchors (desktop + mobile)
+                        homeAnchors.forEach(h => {
+                            h.classList.add('text-red-500', 'border-b-2', 'border-red-500');
+                        });
+                    }
+
+                    homeAnchors.forEach(h => {
+                        h.addEventListener('click', activateHome);
+                    });
+                }
+            } catch (e) {
+                console.error('Nav activation script error', e);
+            }
         });
     </script>
 </div>
