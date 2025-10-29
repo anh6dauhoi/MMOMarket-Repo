@@ -45,10 +45,14 @@ public class WishlistController {
     }
 
     @GetMapping("/account/wishlist")
-    public String view(Model model) {
+    public String view(Model model, @RequestParam(value = "page", required = false, defaultValue = "1") int page) {
         User user = currentUser();
         if (user == null) return "redirect:/authen/login";
-        model.addAttribute("items", wishlistService.getWishlistItems(user));
+
+        int size = 6; // fixed: 6 products per page
+        var paged = wishlistService.getWishlistItemsPaged(user, page, size);
+        model.addAllAttributes(paged);
+
         model.addAttribute("displayName", user.getFullName() != null ? user.getFullName() : user.getEmail());
         model.addAttribute("activeTab", "wishlist"); // activate wishlist tab in account-setting
         return "customer/account-setting";

@@ -8,22 +8,27 @@
 <body class="bg-gray-50 flex flex-col min-h-screen">
 <div th:insert="~{fragments/header :: header}"></div>
 
-<!-- Toast notification: render container unconditionally, inner items decide visibility (null-safe) -->
-<div class="fixed top-5 right-5 z-50 w-[320px]">
+<!-- Toasts: bottom-left with dynamic bottom offset (no CSS var to avoid red warning) -->
+<div id="toast-container"
+     class="fixed z-40 w-auto max-w-xs left-4 sm:left-8 pointer-events-none"
+     style="bottom: 2rem;">
     <div th:if="${param.added != null}"
-         class="flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
+         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg mb-2"
+         role="alert" aria-live="polite">
         <span class="flex-1">Added to wishlist successfully.</span>
-        <button type="button" onclick="this.closest('.fixed').remove()" aria-label="Close">✕</button>
+        <button type="button" onclick="(this.closest('[role=alert]')||this.parentElement)?.remove()" aria-label="Close">✕</button>
     </div>
     <div th:if="${param.exists != null}"
-         class="flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg">
+         class="pointer-events-auto flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg mb-2"
+         role="alert" aria-live="polite">
         <span class="flex-1">This item is already in your wishlist.</span>
-        <button type="button" onclick="this.closest('.fixed').remove()" aria-label="Close">✕</button>
+        <button type="button" onclick="(this.closest('[role=alert]')||this.parentElement)?.remove()" aria-label="Close">✕</button>
     </div>
     <div th:if="${param.removed != null}"
-         class="flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
+         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg"
+         role="alert" aria-live="polite">
         <span class="flex-1">Item removed.</span>
-        <button type="button" onclick="this.closest('.fixed').remove()" aria-label="Close">✕</button>
+        <button type="button" onclick="(this.closest('[role=alert]')||this.parentElement)?.remove()" aria-label="Close">✕</button>
     </div>
 </div>
 
@@ -120,17 +125,18 @@
                         <div th:unless="${#lists.isEmpty(items)}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div th:each="it : ${items}"
                                  class="border rounded-xl overflow-hidden bg-white shadow-sm relative"
-                                 th:classappend="${param.pid != null and it['product'] != null and it['product'].id == #numbers.createLong(param.pid[0])} ? ' ring-2 ring-green-400' : ''">
+                                 th:with="p=${it['product']}"
+                                 th:classappend="${param.pid != null && p != null && p.id == #numbers.createLong(param.pid[0])} ? ' ring-2 ring-green-400' : ''">
                                 <!-- NEW badge when this card is the one just added -->
-                                <span th:if="${param.pid != null and it['product'] != null and it['product'].id == #numbers.createLong(param.pid[0])}"
+                                <span th:if="${param.pid != null && p != null && p.id == #numbers.createLong(param.pid[0])}"
                                       class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded">New</span>
 
-                                <a th:with="p=${it['product']}" th:href="@{/products(id=${p.id})}">
-                                    <img th:src="${p.image != null ? p.image : '/images/default.jpg'}" alt="Product Image" class="w-full h-44 object-cover">
+                                <a th:href="@{/products(id=${p.id})}">
+                                    <img th:src="${p != null && p.image != null ? p.image : '/images/default.jpg'}" alt="Product Image" class="w-full h-44 object-cover">
                                 </a>
                                 <div class="p-4">
                                     <h3 class="font-semibold text-gray-900 truncate">
-                                        <a th:with="p=${it['product']}" th:text="${p.name}" th:href="@{/products(id=${p.id})}">Product</a>
+                                        <a th:text="${p != null ? p.name : ''}" th:href="@{/products(id=${p != null ? p.id : 0})}">Product</a>
                                     </h3>
                                     <div class="mt-2 flex items-center justify-between">
                                         <!-- Remove button: styled pill with icon + confirm + fade-out animation -->
@@ -151,24 +157,54 @@
                                                 <span class="hidden sm:inline">Remove</span>
                                             </button>
                                         </form>
-
-                                        <!-- Buy Now: disabled if out of stock (null-safe) -->
-                                        <form th:action="@{/products}" method="get" style="display:inline;margin-left:0.5rem;">
-                                            <input type="hidden" name="id" th:value="${it['product'].id}">
-                                            <button type="submit"
-                                                    class="text-sm text-green-600 hover:underline"
-                                                    th:disabled="${it['product'] != null and it['product'].stock != null and it['product'].stock <= 0}"
-                                                    th:classappend="${it['product'] != null and it['product'].stock != null and it['product'].stock <= 0} ? ' opacity-50 cursor-not-allowed' : ''"
-                                                    th:attr="aria-disabled=${it['product'] != null and it['product'].stock != null and it['product'].stock <= 0}">
-                                                Buy Now
-                                            </button>
-                                        </form>
-
-                                        <!-- View product detail -->
-                                        <a class="text-sm text-blue-600 hover:underline ml-3"
-                                           th:href="@{/products(id=${it['product'].id})}">View</a>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Pagination (category-like UI, 6 items per page) -->
+                        <div th:if="${totalPages != null and totalPages > 1}"
+                             th:with="
+                                window=3,
+                                start=${page - window > 1 ? page - window : 1},
+                                end=${page + window < totalPages ? page + window : totalPages}"
+                             class="mt-8">
+                            <div class="flex items-center justify-center gap-2" aria-label="Pagination">
+                                <!-- Prev -->
+                                <a th:href="@{/account/wishlist(page=${page - 1})}"
+                                   th:classappend="${page <= 1} ? ' opacity-40 pointer-events-none' : ''"
+                                   class="px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition"
+                                   aria-label="Previous page">Prev</a>
+
+                                <!-- First page -->
+                                <a th:if="${start > 1}"
+                                   th:href="@{/account/wishlist(page=1)}"
+                                   class="w-10 h-10 grid place-items-center rounded-full text-sm transition text-gray-700 hover:bg-red-50"
+                                   style="border:1px solid #e5e7eb">1</a>
+                                <span th:if="${start > 2}" class="px-2 text-gray-400">...</span>
+
+                                <!-- Windowed pages -->
+                                <span th:each="i : ${#numbers.sequence(start, end)}">
+                                    <a th:href="@{/account/wishlist(page=${i})}"
+                                       th:text="${i}"
+                                       class="w-10 h-10 grid place-items-center rounded-full text-sm transition"
+                                       style="border:1px solid #e5e7eb"
+                                       th:classappend="${i == page} ? ' bg-red-600 text-white shadow' : ' text-gray-700 hover:bg-red-50'"></a>
+                                </span>
+
+                                <!-- Last page -->
+                                <span th:if="${end < totalPages - 1}" class="px-2 text-gray-400">...</span>
+                                <a th:if="${end < totalPages}"
+                                   th:href="@{/account/wishlist(page=${totalPages})}"
+                                   th:text="${totalPages}"
+                                   class="w-10 h-10 grid place-items-center rounded-full text-sm transition text-gray-700 hover:bg-red-50"
+                                   style="border:1px solid #e5e7eb"></a>
+
+                                <!-- Next -->
+                                <a th:href="@{/account/wishlist(page=${page + 1})}"
+                                   th:classappend="${page >= totalPages} ? ' opacity-40 pointer-events-none' : ''"
+                                   class="px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition"
+                                   aria-label="Next page">Next</a>
                             </div>
                         </div>
                     </div>
@@ -184,7 +220,8 @@
                         <div th:replace="~{customer/register-seller :: content}"></div>
                     </div>
                     <div th:if="${registration == null && sellerRegistration == null}">
-                        <div th:replace="~{customer/register-seller :: content(sellerRegistration=${new com.mmo.dto.SellerRegistrationForm()})}"></div>
+                        <!-- Inline 'new' is not supported in Thymeleaf/SpEL; controller should add a 'sellerRegistration' model attribute when needed -->
+                        <div th:replace="~{customer/register-seller :: content}"></div>
                     </div>
                 </div>
 
@@ -196,11 +233,50 @@
 <div th:insert="~{fragments/footer :: footer}"></div>
 
 <script>
-    // Auto-hide toast after 2.2s
+    // Auto-hide each toast after 2.2s (do not remove the container)
     document.addEventListener('DOMContentLoaded', () => {
-        const wrapper = document.querySelector('.fixed.top-5.right-5.z-50');
-        if (wrapper) setTimeout(() => wrapper.remove(), 2200);
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        container.querySelectorAll('[role="alert"]').forEach(el => {
+            setTimeout(() => el.remove(), 2200);
+        });
     });
+
+    // Keep toast above footer and below header (no CSS var)
+    function adjustToastBottomOffset() {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const footer = document.querySelector('footer, [role="contentinfo"], #site-footer');
+        const header = document.querySelector('header, [role="banner"], #site-header');
+
+        let visibleFooter = 0;
+        if (footer) {
+            const rect = footer.getBoundingClientRect();
+            visibleFooter = Math.max(0, window.innerHeight - Math.max(rect.top, 0));
+        }
+
+        // Base: 16px + visible footer height
+        let bottom = 16 + visibleFooter;
+
+        // Ensure we also stay below the header if viewport is short
+        const toastHeight = container.offsetHeight || 0;
+        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+        const minGap = 12; // gap between toast and header/footer
+        const top = window.innerHeight - bottom - toastHeight;
+
+        if (headerBottom && top < headerBottom + minGap) {
+            bottom = Math.max(16, window.innerHeight - (headerBottom + minGap) - toastHeight);
+        }
+
+        container.style.bottom = bottom + 'px';
+    }
+
+    // Initial and reactive adjustments
+    ['load', 'scroll', 'resize'].forEach(evt => {
+        window.addEventListener(evt, adjustToastBottomOffset, { passive: true });
+    });
+    adjustToastBottomOffset();
 
     // Wishlist remove: confirm + animate card then submit (prevents accidental tap and gives premium feel)
     document.addEventListener('DOMContentLoaded', () => {
