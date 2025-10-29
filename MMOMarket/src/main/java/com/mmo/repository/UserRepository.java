@@ -22,19 +22,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // New: find users by role (case-insensitive) and not deleted — used to notify all admins
     List<User> findByRoleIgnoreCaseAndIsDelete(String role, boolean isDelete);
-
-    List<User> findByRoleAndShopStatus(String role, String shopStatus);
-    @Query(
-            value = "SELECT u.id AS userId, u.full_name AS fullName, " +
-                    "COUNT(t.id) AS totalProductsSold, " +
-                    "COALESCE(AVG(r.rating), 0) AS averageRating " +
-                    "FROM Users u " +
-                    "JOIN Transactions t ON u.id = t.seller_id " +
-                    "LEFT JOIN Products p ON u.id = p.seller_id " +
-                    "LEFT JOIN Reviews r ON p.id = r.product_id " +
-                    "WHERE u.role = 'customer' AND u.shop_status = 'active' AND u.isDelete = 0 " +
-                    "GROUP BY u.id, u.full_name " +
-                    "ORDER BY totalProductsSold DESC, averageRating DESC",
-            nativeQuery = true
-    )
-    List<Object[]> findReputableSellers();}
+}
