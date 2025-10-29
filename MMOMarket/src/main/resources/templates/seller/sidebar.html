@@ -37,6 +37,20 @@
                 <span>Dashboard</span>
             </a>
 
+            <!-- New: Shop Infor tab -->
+            <a class="group flex items-center px-3 py-2.5 rounded-xl font-medium text-sm transition-all"
+               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/seller/shop-info') ? 'bg-primary-50 text-primary-700 shadow' : 'text-primary-700 hover:bg-primary-50 hover:text-primary-600'}"
+               th:href="@{/seller/shop-info}">
+                <svg class="mr-3 h-5 w-5 flex-shrink-0 transition-colors"
+                     fill="none"
+                     stroke="currentColor"
+                     th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/seller/shop-info') ? 'text-primary-600' : 'text-primary-300 group-hover:text-primary-600'}"
+                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 7h18M3 12h18M3 17h18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                </svg>
+                <span>Shop Infor</span>
+            </a>
+
             <a class="group flex items-center px-3 py-2.5 rounded-xl font-medium text-sm transition-all"
                th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/seller/withdraw-money') ? 'bg-primary-50 text-primary-700 shadow' : 'text-primary-700 hover:bg-primary-50 hover:text-primary-600'}"
                th:href="@{/seller/withdraw-money}">

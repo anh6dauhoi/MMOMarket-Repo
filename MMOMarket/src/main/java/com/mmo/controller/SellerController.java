@@ -197,7 +197,57 @@ public class SellerController {
         );
 
         redirectAttributes.addFlashAttribute("successMessage", "Your seller account is now active. 200,000 coins have been deducted from your balance.");
-        return "redirect:/seller/register";
+        return "redirect:/seller/shop-info";
+    }
+
+    @GetMapping("/shop-info")
+    public String showShopInfo(Model model, RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+        boolean activeShop = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
+        ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                .setParameter("u", user)
+                .getResultStream().findFirst().orElse(null);
+
+        if (shop == null) {
+            // Fallback: create a lightweight view model when ShopInfo missing
+            ShopInfo fallback = new ShopInfo();
+            fallback.setShopName(user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop");
+            fallback.setDescription("");
+            model.addAttribute("shop", fallback);
+        } else {
+            model.addAttribute("shop", shop);
+        }
+        model.addAttribute("sellerEmail", user.getEmail());
+        model.addAttribute("shopStatus", user.getShopStatus());
+        return "seller/shop-info";
     }
 
     @GetMapping("/contract")

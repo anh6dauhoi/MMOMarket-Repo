@@ -58,7 +58,9 @@
                                 </svg>
                                 <span>My Complaints</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                            <!-- My Notifications: dynamic active highlight -->
+                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
+                               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/account/notifications') ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
                                th:href="@{/account/notifications}">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
@@ -67,8 +69,10 @@
                                 </svg>
                                 <span>My Notifications</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 text-red-500 bg-red-50 rounded-lg"
+                            <!-- Register Seller: only visible when not ACTIVE, with dynamic active highlight on /account/settings -->
+                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
                                th:if="${registration == null or registration.status == null or !#strings.toUpperCase(registration.status).contains('ACTIVE')}"
+                               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/account/settings') ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
                                th:href="@{/account/settings}">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
@@ -82,15 +86,17 @@
                 </div>
             </div>
             <div class="lg:col-span-3">
-                <!-- Hide seller-status if ACTIVE -->
-                <div th:if="${registration != null && registration.id != null && !#strings.toUpperCase(registration.status).contains('ACTIVE')}">
-                    <div th:replace="~{customer/seller-status :: content}"></div>
-                </div>
-                <div th:if="${sellerRegistration != null && (registration == null || registration.id == null)}">
+                <!-- Show Register Seller when not ACTIVE -->
+                <div th:if="${registration == null || registration.id == null || !#strings.toUpperCase(registration.status).contains('ACTIVE')}">
                     <div th:replace="~{customer/register-seller :: content}"></div>
                 </div>
-                <div th:if="${registration == null && sellerRegistration == null}">
-                    <div th:replace="~{customer/register-seller :: content(sellerRegistration=${new com.mmo.dto.SellerRegistrationForm()})}"></div>
+                <!-- If ACTIVE, show a simple message and link to Seller Dashboard -->
+                <div th:if="${registration != null && registration.id != null && #strings.toUpperCase(registration.status).contains('ACTIVE')}">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h2 class="text-2xl font-bold mb-2">Seller account is active</h2>
+                        <p class="text-gray-600">You can manage your shop in Seller Dashboard.</p>
+                        <a class="inline-block mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" th:href="@{/seller/my-shop}">Go to Seller Dashboard</a>
+                    </div>
                 </div>
             </div>
         </div>
