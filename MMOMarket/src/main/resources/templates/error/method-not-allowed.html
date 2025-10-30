@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Method Not Allowed</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>405 - Method Not Allowed</h1>
+    <p th:text="${errorMessage}">Method is not supported for this endpoint.</p>
+    <p>Requested URI: <span th:text="${requestURI}"></span></p>
+    <a href="/">Return to Home</a>
+</body>
+</html>
+

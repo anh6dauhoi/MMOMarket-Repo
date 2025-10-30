@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Top Up MMO Market</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <!-- Page CSS -->
-    <link th:href="@{/customer/css/topup.css}" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/customer/css/topup.css}">
     <style>
         body {
             background: url('/images/home1.jpg') no-repeat center center fixed;
@@ -20,11 +20,13 @@
             -o-background-size: cover;
             background-size: cover;
         }
+
         .topup-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
+
         @media (max-width: 640px) {
             body {
                 background-position: top center;
@@ -69,12 +71,12 @@
                     <div class="info-field">
                         <label><i class="fa-solid fa-file-invoice"></i> Transfer content</label>
                         <div class="field-value">
-                            <span id="depositCodeVal" class="copy-badge" th:text="${depositCode}">MMOXXXX123456</span>
+                            <span class="copy-badge" id="depositCodeVal" th:text="${depositCode}">MMOXXXX123456</span>
                         </div>
                     </div>
 
                     <div class="exchange-rate">
-                        <div class="main-rate">1,000 Coins = 1,000 VNĐ</div>
+                        <div class="main-rate">1.000 Coins = 1.000 VNĐ</div>
                         <div class="sub-text">Fixed exchange rate</div>
                     </div>
 
@@ -94,10 +96,12 @@
 
                 <div class="qr-card">
                     <h3 class="card-title"><i class="fa-solid fa-qrcode"></i> Scan QR code to top up</h3>
-                    <p class="scan-instruction">Use your banking app to scan the QR code and transfer money automatically</p>
+                    <p class="scan-instruction">Use your banking app to scan the QR code and transfer money
+                        automatically</p>
 
                     <div class="qr-image-wrapper">
-                        <img th:src="${vietQrUrl}" alt="QR Code for payment">
+                        <img alt="QR Code for payment"
+                             th:src="@{'https://qr.sepay.vn/img?acc=0813302283&bank=MBBank&des=' + ${depositCode}}"/>
                     </div>
 
                     <div class="quick-guide">

@@ -2,88 +2,89 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Sign Up - MMO Market</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            background: url('/images/home.jpg') no-repeat center center fixed;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover;
-        }
-        .form-container {
-            background: rgba(255, 255, 255, 0.95);
-        }
-        @media (max-width: 640px) {
-            body {
-                background-position: top center;
-            }
-            .form-container {
-                margin: 0 16px;
-                max-width: calc(100% - 32px);
-            }
-        }
+        body { background: url('/images/home.jpg') no-repeat center center fixed; background-size: cover; }
+        .form-container { background: rgba(255, 255, 255, 0.95); }
+        @media (max-width: 640px) { body { background-position: top center; } .form-container { margin: 0 16px; max-width: calc(100% - 32px); } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-<!-- Include Header -->
-<th:insert th:replace="~{fragments/header :: header}" />
-
-<!-- Main Content -->
+<th:insert th:replace="~{fragments/header :: header}"/>
 <main class="flex-1 flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 w-full">
     <div class="w-full max-w-md form-container rounded-lg shadow-lg p-5 sm:p-6 md:p-8">
         <div class="space-y-5 sm:space-y-6">
             <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center">Sign up</h2>
-            <form th:action="@{/authen/register}" method="post" class="space-y-5 sm:space-y-6">
+            <form id="registerForm" class="space-y-5 sm:space-y-6" method="post" th:action="@{/authen/register}">
+                <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Email Address*</label>
-                    <input type="email" name="email" placeholder="Enter your Email"
-                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
+                    <input id="regEmail" class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                           name="email" placeholder="Enter your email" type="email" required>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Password*</label>
-                    <input type="password" name="password" placeholder="Enter your password"
-                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
+                    <input id="regPassword" class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                           name="password" placeholder="Enter your password" type="password" required>
+                    <p id="regPwHint" class="text-xs text-gray-500 mt-1">At least 8 characters, including letters and numbers.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password*</label>
-                    <input type="password" name="confirm-password" placeholder="Enter your password"
-                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
+                    <input id="regConfirm" class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                           name="confirm-password" placeholder="Re-enter your password" type="password" required>
+                    <p id="regMatchHint" class="text-xs mt-1"></p>
                 </div>
                 <div class="text-right">
-                    <a href="/authen/login" class="text-red-500 hover:text-red-600 font-medium text-sm">Have an account?</a>
+                    <a class="text-red-500 hover:text-red-600 font-medium text-sm" href="/authen/login">Have an account?</a>
                 </div>
-                <button type="submit" class="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-md hover:bg-red-600 transition duration-200 font-medium text-base sm:text-lg">
+                <button id="regSubmit" class="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-md hover:bg-red-600 transition duration-200 font-medium text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed" type="submit" disabled>
                     Sign up
                 </button>
-                <div th:if="${message}" class="text-red-500 text-sm text-center" th:text="${message}"></div>
-                <div th:if="${message}" th:unless="${#strings.contains(message, 'không khớp') or #strings.contains(message, '��ã được sử dụng')}" class="text-green-500 text-sm text-center mt-2" th:text="${message}"></div>
+                <div class="text-red-500 text-sm text-center" th:if="${message}" th:text="${message}"></div>
+                <div class="text-green-500 text-sm text-center mt-2" th:if="${message}" th:text="${message}" th:unless="${#strings.containsIgnoreCase(message, 'does not match') or #strings.containsIgnoreCase(message, 'already in use')}"></div>
             </form>
             <div class="relative my-4 sm:my-6">
-                <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-gray-300"></div>
-                </div>
-                <div class="relative flex justify-center text-sm">
-                    <span class="px-4 bg-white text-gray-500">Or login with</span>
-                </div>
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
+                <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-gray-500">Or login with</span></div>
             </div>
-            <a th:href="@{/oauth2/authorization/google}"
-               class="w-full flex items-center justify-center px-4 py-2.5 sm:py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-200">
+            <a class="w-full flex items-center justify-center px-4 py-2.5 sm:py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-200" th:href="@{/oauth2/authorization/google}">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                 </svg>
                 <span class="text-gray-700 font-medium">Google</span>
             </a>
         </div>
     </div>
 </main>
-<!-- Include Footer -->
-<th:insert th:replace="~{fragments/footer :: footer}" />
+<th:insert th:replace="~{fragments/footer :: footer}"/>
+<script>
+    const email = document.getElementById('regEmail');
+    const pw = document.getElementById('regPassword');
+    const cpw = document.getElementById('regConfirm');
+    const submitBtn = document.getElementById('regSubmit');
+    const pwHint = document.getElementById('regPwHint');
+    const matchHint = document.getElementById('regMatchHint');
+
+    function validPw(v){ return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(v); }
+    function update(){
+        const emailOk = email.value && email.checkValidity();
+        const vp = validPw(pw.value);
+        pwHint.className = 'text-xs mt-1 ' + (vp ? 'text-green-600' : 'text-gray-500');
+        const match = pw.value && (pw.value === cpw.value);
+        matchHint.textContent = match || !cpw.value ? '' : 'Password confirmation does not match';
+        matchHint.className = 'text-xs mt-1 ' + (match ? 'text-green-600' : (cpw.value ? 'text-red-600' : ''));
+        submitBtn.disabled = !(emailOk && vp && match);
+    }
+    email.addEventListener('input', update);
+    pw.addEventListener('input', update);
+    cpw.addEventListener('input', update);
+    update();
+</script>
 </body>
 </html>

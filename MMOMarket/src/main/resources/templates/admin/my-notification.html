@@ -1,0 +1,154 @@
+<!-- admin/my-notification.html -->
+<div th:fragment="content">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">My Notifications</h2>
+
+        <!-- Search Bar -->
+        <div class="mb-4">
+            <form method="get" th:action="@{/admin/my-notification}" class="flex space-x-2">
+                <input type="hidden" name="status" th:value="${status}"/>
+                <input type="text" name="search" th:value="${search}" placeholder="Search notifications..."
+                       class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"/>
+                <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex space-x-2">
+                <a class="px-3 py-1 text-sm font-medium rounded-md"
+                   th:classappend="${status == null} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                   th:href="@{/admin/my-notification(search=${search})}">All</a>
+                <a class="px-3 py-1 text-sm font-medium rounded-md"
+                   th:classappend="${status == 'Unread'} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                   th:href="@{/admin/my-notification(status='Unread', search=${search})}">Unread</a>
+                <a class="px-3 py-1 text-sm font-medium rounded-md"
+                   th:classappend="${status == 'Read'} ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+                   th:href="@{/admin/my-notification(status='Read', search=${search})}">Read</a>
+            </div>
+            <div class="flex space-x-2">
+                <form class="inline" method="post" th:action="@{/notifications/mark-all-read}">
+                    <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+                    <button class="px-3 py-1 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600" type="submit">
+                        Mark all read
+                    </button>
+                </form>
+                <button class="px-3 py-1 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600" onclick="markSelectedAsRead()">
+                    Mark selected as read
+                </button>
+                <form class="hidden" id="markSelectedForm" method="post" th:action="@{/notifications/mark-as-read}"></form>
+            </div>
+        </div>
+
+        <div class="divide-y">
+            <div class="p-4 flex items-start space-x-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                 th:classappend="${notification.status == 'Unread'} ? 'bg-red-50' : ''"
+                 th:each="notification : ${pageNotifications}"
+                 onclick="this.querySelector('input[type=checkbox]').click()">
+                <input class="mt-1 w-5 h-5" name="notificationIds" th:value="${notification.id}" type="checkbox">
+                <div class="w-2 h-2 rounded-full mt-2" th:classappend="${notification.status == 'Unread'} ? 'bg-red-500' : 'bg-transparent'"></div>
+                <div class="flex-grow">
+                    <p class="font-semibold" th:text="${notification.title}">Payment success</p>
+                    <p class="text-sm text-gray-600" th:text="${notification.content}">You have successfully purchased the product "Product Name".</p>
+                    <p class="text-xs text-gray-400 mt-1" th:text="${#dates.format(notification.createdAt, 'dd/MM/yyyy HH:mm')}">10 minutes ago</p>
+                </div>
+                <form class="inline" method="post" th:action="@{/notifications/mark-as-read}" th:if="${notification.status == 'Unread'}">
+                    <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+                    <input name="ids" th:value="${notification.id}" type="hidden">
+                    <button class="text-xs text-gray-500 hover:text-gray-700" type="submit">Mark as read</button>
+                </form>
+            </div>
+            <div class="p-6 text-center text-sm text-gray-500" th:if="${pageNotifications == null or pageNotifications.isEmpty()}">
+                No notifications.
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-6 flex justify-center" th:if="${totalPages > 1}">
+            <nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                   th:classappend="${currentPage == 0} ? 'pointer-events-none text-gray-400' : ''"
+                   th:href="@{/admin/my-notification(page=${currentPage - 1}, status=${status}, search=${search})}">Previous</a>
+                <a class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                   th:classappend="${currentPage == i} ? 'z-10 bg-red-50 border-red-500 text-red-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'"
+                   th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                   th:href="@{/admin/my-notification(page=${i}, status=${status}, search=${search})}"
+                   th:text="${i + 1}">
+                </a>
+                <a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                   th:classappend="${currentPage == totalPages - 1} ? 'pointer-events-none text-gray-400' : ''"
+                   th:href="@{/admin/my-notification(page=${currentPage + 1}, status=${status}, search=${search})}">Next</a>
+            </nav>
+        </div>
+    </div>
+
+    <script>
+        function updateUnreadBadge(count) {
+            const badge = document.getElementById('admin-unread-count-badge') || document.getElementById('unread-count-badge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        async function fetchUnreadCount() {
+            try {
+                const response = await fetch('/api/notifications/unread-count');
+                if (response.ok) {
+                    const count = await response.json();
+                    updateUnreadBadge(count);
+                }
+            } catch (error) {
+                console.error('Error fetching unread count:', error);
+            }
+        }
+
+        function getSelectedNotificationIds() {
+            const selectedIds = [];
+            document.querySelectorAll('input[name="notificationIds"]:checked').forEach(checkbox => {
+                selectedIds.push(checkbox.value);
+            });
+            return selectedIds;
+        }
+
+        async function markSelectedAsRead() {
+            const ids = getSelectedNotificationIds();
+            if (ids.length === 0) {
+                alert('Please select at least one notification.');
+                return;
+            }
+            const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+            const csrfParameter = document.querySelector('meta[name="_csrf_parameter"]').content;
+
+            const formData = new FormData();
+            formData.append(csrfParameter, csrfToken);
+            ids.forEach(id => formData.append('ids', id));
+
+            try {
+                const response = await fetch('/notifications/mark-as-read', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    await fetchUnreadCount();
+                    window.location.reload();
+                } else {
+                    alert('Error marking notifications as read.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error marking notifications as read.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            fetchUnreadCount();
+        });
+    </script>
+</div>

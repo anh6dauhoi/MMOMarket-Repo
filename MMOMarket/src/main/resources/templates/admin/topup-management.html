@@ -1,0 +1,355 @@
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null and totalPages > 0 ? totalPages : 1},
+              depositCount=${coinDeposits != null ? #lists.size(coinDeposits) : 0}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+
+        <!-- Title & Search -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Top-up Management</h1>
+            <div class="relative w-full md:w-1/3">
+                <form id="searchForm" class="relative flex" method="get" action="/admin/topup-management" th:attr="data-status=${currentStatus}">
+                    <input id="topup-search" name="search" class="w-full py-2 pl-4 pr-4 border border-gray-300 rounded-lg" placeholder="Search top-ups (user, ref, id)" type="text" th:value="${currentSearch != null ? currentSearch : ''}">
+                    <button type="submit" class="ml-2 px-4 py-2 bg-green-500 text-white rounded-lg">Search</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <!-- Header: use same red styling as sidebar headers -->
+                <thead class="bg-red-50">
+                <tr>
+                    <th class="py-3 px-4 w-12 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">User</th>
+                    <!-- Amount with sort icon (keeps existing sort behavior) -->
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
+                        <span class="inline-flex items-center space-x-2">
+                            <span>Amount</span>
+                            <a th:with="
+                                   sortParam=${currentSort == 'amount_desc'} ? 'amount_asc' : 'amount_desc',
+                                   urlSort='/admin/topup-management?sort=' + ${sortParam}
+                                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                                           + '&page=' + ${page}
+                                   "
+                               th:href="${urlSort}"
+                               title="Sort by amount"
+                               class="text-red-700/80 hover:text-red-800">
+                                <!-- simple sort SVG in currentColor -->
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h6M3 12h10M3 17h14" />
+                                </svg>
+                            </a>
+                        </span>
+                    </th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Content</th>
+                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Action</th>
+                </tr>
+                </thead>
+
+                <tbody class="divide-y divide-gray-200">
+                <tr class="hover:bg-gray-50" th:each="dep,iter : ${coinDeposits}">
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                        <div class="font-medium" th:text="${dep.user != null ? dep.user.fullName : 'Unknown'}">User Name</div>
+                        <div class="text-sm text-gray-500" th:text="${dep.user != null ? dep.user.email : ''}">user@example.com</div>
+                    </td>
+                    <!-- Format amount with dot thousands separator -->
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${dep.amount != null ? #numbers.formatDecimal(dep.amount, 0, 'POINT', 0, 'COMMA') : '0'}">100000</td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                          th:with="
+                                raw=${dep.status != null ? dep.status : ''},
+                                up=${#strings.toUpperCase(raw)},
+                                isCompleted=${#strings.contains(up,'APPROVED') or #strings.contains(up,'COMPLETED')},
+                                isPending=${#strings.contains(up,'PENDING')},
+                                isRejected=${#strings.contains(up,'REJECTED')},
+                                disp=${isCompleted ? 'Completed' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(raw))))}"
+                          th:classappend="${isCompleted} ? 'bg-green-100 text-green-800' : (isPending ? 'bg-yellow-100 text-yellow-800' : (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
+                          th:text="${disp}">Status</span>
+                    </td>
+                    <td class="py-4 px-4 text-sm text-gray-700" th:text="${dep.content != null ? dep.content : ''}">Note or content</td>
+                    <td class="py-4 px-4 whitespace-nowrap">
+                        <button type="button" class="text-sm text-blue-600 hover:text-blue-800"
+                                th:attr="data-id=${dep.id}" onclick="openTopupModal(this)">View Detail</button>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(coinDeposits)}">
+                    <td class="text-center py-10 text-gray-500" colspan="6">No top-up records found.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination (reuse pattern) -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Showing <span th:text="${depositCount > 0 ? (page * size + 1) : 0}">0</span>
+                to <span th:text="${page * size + depositCount}">0</span>
+                of <span th:text="${total * size}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:with="url='/admin/topup-management?status=' + ${currentStatus} + '&page=' + ${page - 1} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}" th:if="${page > 0}">Previous</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md"
+                   th:classappend="${i == page} ? 'bg-green-500 text-white' : 'hover:bg-gray-100'"
+                   th:each="i : ${#numbers.sequence(0, total - 1)}"
+                   th:with="url='/admin/topup-management?status=' + ${currentStatus} + '&page=' + ${i} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}"
+                   th:if="${i == 0 or i == page or i == page - 1 or i == page + 1 or i == total - 1}"
+                   th:text="${i + 1}">1</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:with="url='/admin/topup-management?status=' + ${currentStatus} + '&page=' + ${page + 1} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}" th:if="${page < total - 1}">Next</a>
+            </div>
+        </div>
+
+        <!-- Modal: Top-up Detail (reworked to match withdraw-management style and layout) -->
+        <div id="topupModal" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+            <div id="topupModalContent" class="bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-200 rounded-3xl shadow-2xl w-full max-w-2xl p-0 m-4 relative transform transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto scale-95 opacity-0">
+                <button id="closeTopupModal" class="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-3xl font-bold transition-colors duration-200 z-10">&times;</button>
+
+                <div class="px-8 pt-8 pb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center mb-8">
+                        <div id="t-status-icon" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-0 sm:mr-6 bg-gray-500 shadow-lg border-4 border-white">
+                            <i class="fas fa-question text-white text-2xl sm:text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-800 tracking-tight mb-1">Top-up Detail</h3>
+                            <p id="t-status-text" class="text-lg sm:text-xl font-semibold text-gray-600"></p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-gray-700 mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 text-gray-500 shadow">
+                                <i class="fas fa-hashtag"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">ID</p>
+                                <p id="t-transactionId" class="text-base sm:text-lg break-words font-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-100 text-green-500 shadow">
+                                <i class="fas fa-user"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">User</p>
+                                <p id="t-user-name" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-100 text-blue-500 shadow">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Email</p>
+                                <p id="t-user-email" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-pink-100 text-pink-500 shadow">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Amount</p>
+                                <p id="t-amount" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 text-indigo-500 shadow">
+                                <i class="fas fa-coins"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Coins Added</p>
+                                <p id="t-coins" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-200 text-gray-600 shadow">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Status</p>
+                                <p id="t-status" class="text-base sm:text-lg font-medium"></p>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <p class="text-xs text-gray-500">Content</p>
+                            <p id="t-content" class="font-medium whitespace-pre-wrap"></p>
+                        </div>
+
+                        <div>
+                            <p class="text-xs text-gray-500">Gateway</p>
+                            <p id="t-gateway" class="font-medium"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Sepay Transaction ID</p>
+                            <p id="t-sepay-tx" class="font-medium"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Sepay Reference</p>
+                            <p id="t-sepay-ref" class="font-medium"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Transaction Date</p>
+                            <p id="t-transaction-date" class="font-medium"></p>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <p class="text-xs text-gray-500">Created At</p>
+                            <p id="t-created" class="font-medium"></p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs text-gray-500">Updated At</p>
+                            <p id="t-updated" class="font-medium"></p>
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-gray-200">
+
+                    <!-- Dynamic area: reserved for future actions or image / additional info -->
+                    <div id="t-dynamic-area" class="mt-4">
+                        <!-- filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Helper to format VND-style numbers with dot thousands separators
+            function formatVnd(x) {
+                const n = Number(x);
+                if (!isFinite(n)) return x ?? '';
+                return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n);
+            }
+
+            // Open modal, fetch detail and render with nice UI transitions
+            window.openTopupModal = function(btn) {
+                const modal = document.getElementById('topupModal');
+                const modalContent = document.getElementById('topupModalContent');
+                if (!modal) { console.error('Topup modal not found'); return; }
+                const id = btn?.dataset?.id;
+                if (!id) { console.error('Topup id not found on button'); return; }
+
+                fetch('/admin/coin-deposits/' + id, { headers: { 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Failed to get topup detail: ' + res.status);
+                        return res.json();
+                    })
+                    .then(data => renderTopupModal(data, id))
+                    .catch(err => {
+                        console.error(err);
+                        alert('Failed to load top-up details.');
+                    });
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.add('flex');
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            };
+
+            function renderTopupModal(data, id) {
+                const $ = (el) => document.getElementById(el);
+                const tx = $('t-transactionId'), un = $('t-user-name'), ue = $('t-user-email'), amt = $('t-amount'),
+                    coins = $('t-coins'), st = $('t-status'), stx = $('t-status-text'), icoWrap = $('t-status-icon'), dyn = $('t-dynamic-area'),
+                    gateway = $('t-gateway'), sepayTx = $('t-sepay-tx'), sepayRef = $('t-sepay-ref'),
+                    tdate = $('t-transaction-date'), tcreated = $('t-created'), tupd = $('t-updated'), content = $('t-content');
+
+                tx.textContent = id ? '#' + id : (data.id || '');
+                un.textContent = data.userName || '';
+                ue.textContent = data.userEmail || '';
+                // format amount with dot thousands
+                amt.textContent = formatVnd(data.amount);
+                // format coins added with dot thousands
+                coins.textContent = formatVnd(data.coinsAdded);
+                st.textContent = data.status || '';
+                stx.textContent = data.status || '';
+                content.textContent = data.content || '';
+                gateway.textContent = data.gateway || '';
+                sepayTx.textContent = data.sepayTransactionId || '';
+                sepayRef.textContent = data.sepayReferenceCode || '';
+                tdate.textContent = data.transactionDate || '';
+                tcreated.textContent = data.createdAt || '';
+                tupd.textContent = data.updatedAt || '';
+
+                // Status icon / color (treat APPROVED same as COMPLETED)
+                icoWrap.className = 'w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mb-2 sm:mb-0 sm:mr-4';
+                const icon = icoWrap.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas text-white text-xl';
+                }
+                stx.className = 'text-base sm:text-lg font-semibold';
+
+                const S = (data.status || '').toUpperCase();
+                if (S.includes('APPROVED') || S.includes('COMPLETED')) {
+                    icoWrap.classList.add('bg-green-500'); icon?.classList.add('fa-check'); stx.classList.add('text-green-600');
+                } else if (S.includes('PENDING')) {
+                    icoWrap.classList.add('bg-yellow-500'); icon?.classList.add('fa-clock'); stx.classList.add('text-yellow-600');
+                } else if (S.includes('REJECTED')) {
+                    icoWrap.classList.add('bg-red-500'); icon?.classList.add('fa-times'); stx.classList.add('text-red-600');
+                } else {
+                    icoWrap.classList.add('bg-gray-500'); icon?.classList.add('fa-question'); stx.classList.add('text-gray-600');
+                }
+
+                // Dynamic area: show gateway-specific info or additional content
+                dyn.innerHTML = '';
+                if (data.gateway && data.gateway.toLowerCase().includes('sepay')) {
+                    const div = document.createElement('div');
+                    div.className = 'space-y-3';
+                    const p = document.createElement('p');
+                    p.className = 'text-sm text-gray-500';
+                    p.textContent = 'This top-up was made via Sepay. Reference / transaction details shown above.';
+                    div.appendChild(p);
+                    dyn.appendChild(div);
+                }
+            }
+
+            // Close modal handlers (with transitions)
+            (function(){
+                const modal = document.getElementById('topupModal');
+                const modalContent = document.getElementById('topupModalContent');
+                const closeBtn = document.getElementById('closeTopupModal');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        modalContent.classList.remove('scale-100', 'opacity-100');
+                        modalContent.classList.add('scale-95', 'opacity-0');
+                        setTimeout(() => {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                        }, 200);
+                    });
+                }
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            modalContent.classList.remove('scale-100', 'opacity-100');
+                            modalContent.classList.add('scale-95', 'opacity-0');
+                            setTimeout(() => {
+                                modal.classList.add('hidden');
+                                modal.classList.remove('flex');
+                            }, 200);
+                        }
+                    });
+                }
+            })();
+        </script>
+
+    </div>
+</div>

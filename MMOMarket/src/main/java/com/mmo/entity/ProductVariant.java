@@ -3,6 +3,8 @@ package com.mmo.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.Date;
 
@@ -21,6 +23,7 @@ public class ProductVariant {
     // FK: product_id -> Products(id)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Product product;
 
     @Column(name = "variant_name", nullable = false, length = 255)
@@ -29,8 +32,6 @@ public class ProductVariant {
     @Column(name = "price", nullable = false)
     private Long price;
 
-    @Column(name = "stock")
-    private Integer stock = 0;
 
     @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
     private String status = "Pending";

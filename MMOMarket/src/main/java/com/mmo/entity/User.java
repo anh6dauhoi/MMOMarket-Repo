@@ -34,9 +34,6 @@ public class User {
     @Column(name = "shop_status", length = 50, columnDefinition = "VARCHAR(50) DEFAULT 'Inactive'")
     private String shopStatus = "Inactive";
 
-    @Column(name = "shop_level", columnDefinition = "TINYINT UNSIGNED DEFAULT 0")
-    private Integer shopLevel = 0;
-
     @Column(name = "coins", columnDefinition = "BIGINT DEFAULT 0")
     private Long coins = 0L;
 

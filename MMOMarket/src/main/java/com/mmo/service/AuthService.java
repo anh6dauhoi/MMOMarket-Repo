@@ -4,6 +4,7 @@ import com.mmo.entity.User;
 import com.mmo.repository.UserRepository;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
@@ -16,6 +17,9 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public User findByEmail(String email) {
         return userRepository.findByEmailAndIsDelete(email, false);
     }
@@ -27,7 +31,8 @@ public class AuthService {
     public User register(String email, String password, String fullName) throws MessagingException {
         User user = new User();
         user.setEmail(email);
-        user.setPassword(password); // Lưu plaintext
+        // Hash password using configured encoder
+        user.setPassword(passwordEncoder.encode(password));
         user.setFullName(fullName); // Có thể null
         user.setRole("CUSTOMER");
         user.setVerified(false); // Đúng với cột isVerified (camelCase)
@@ -36,6 +41,12 @@ public class AuthService {
     }
 
     public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+
+    // Encode and update password safely
+    public User updatePassword(User user, String rawPassword) {
+        user.setPassword(passwordEncoder.encode(rawPassword));
         return userRepository.save(user);
     }
 

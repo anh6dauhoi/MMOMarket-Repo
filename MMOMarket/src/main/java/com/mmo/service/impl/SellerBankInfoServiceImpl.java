@@ -8,6 +8,8 @@ import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class SellerBankInfoServiceImpl implements SellerBankInfoService {
     @PersistenceContext
@@ -17,10 +19,7 @@ public class SellerBankInfoServiceImpl implements SellerBankInfoService {
     @Transactional
     public SellerBankInfo saveOrUpdateBankInfo(User user, String bankName, String accountNumber, String accountHolder, String branch) throws Exception {
         // Find or create SellerBankInfo for user
-        SellerBankInfo bankInfo = entityManager.createQuery(
-                "SELECT s FROM SellerBankInfo s WHERE s.user = :user", SellerBankInfo.class)
-                .setParameter("user", user)
-                .getResultStream().findFirst().orElse(null);
+        SellerBankInfo bankInfo = entityManager.createQuery("SELECT s FROM SellerBankInfo s WHERE s.user = :user", SellerBankInfo.class).setParameter("user", user).getResultStream().findFirst().orElse(null);
         boolean isNew = (bankInfo == null);
         if (isNew) {
             bankInfo = new SellerBankInfo();
@@ -40,5 +39,10 @@ public class SellerBankInfoServiceImpl implements SellerBankInfoService {
             entityManager.merge(bankInfo);
         }
         return bankInfo;
+    }
+
+    @Override
+    public List<SellerBankInfo> findAllByUser(User user) {
+        return entityManager.createQuery("SELECT s FROM SellerBankInfo s WHERE s.user = :user AND (s.isDelete = false OR s.isDelete IS NULL)", SellerBankInfo.class).setParameter("user", user).getResultList();
     }
 }

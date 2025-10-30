@@ -39,6 +39,10 @@ public class Transaction {
     @JoinColumn(name = "variant_id", nullable = false)
     private ProductVariant variant;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivered_account_id", nullable = true)
+    private ProductVariantAccount deliveredAccount;
+
     // Amount fields
     @Column(name = "amount", nullable = false)
     private Long amount;

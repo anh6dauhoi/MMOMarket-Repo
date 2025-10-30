@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MMO Market - Shop Infor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: url('/images/home3.jpg') no-repeat center center fixed; background-size: cover; }
+        @media (max-width: 640px) { body { background-position: top center; } }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen font-sans text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="flex-grow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Flash Messages -->
+        <div class="mb-4 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-green-800" th:if="${successMessage}" th:text="${successMessage}"></div>
+        <div class="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-red-800" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Sidebar -->
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3 space-y-8">
+                <!-- Header -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">Shop Infor</h1>
+                        <p class="text-gray-500 mt-1">View your shop details</p>
+                    </div>
+                </div>
+
+                <!-- Shop Details Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">General Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-sm text-gray-500">Shop Name</p>
+                            <p class="text-base font-semibold text-gray-900" th:text="${shop != null ? shop.shopName : 'My Shop'}">My Shop</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Owner Email</p>
+                            <p class="text-base font-semibold text-gray-900" th:text="${sellerEmail}">owner@example.com</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Status</p>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                  th:classappend="${shopStatus != null and #strings.equalsIgnoreCase(shopStatus,'Active') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}"
+                                  th:text="${shopStatus}">Active</span>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Shop Level</p>
+                            <p class="text-base font-semibold text-gray-900" th:text="${shop != null && shop.shopLevel != null ? shop.shopLevel : 0}">0</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Commission (%)</p>
+                            <p class="text-base font-semibold text-gray-900" th:text="${shop != null && shop.commission != null ? shop.commission : 5.00}">5.00</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Created At</p>
+                            <p class="text-base font-semibold text-gray-900" th:text="${shop != null && shop.createdAt != null ? #dates.format(shop.createdAt,'dd/MM/yyyy HH:mm') : '—'}">—</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Updated At</p>
+                            <p class="text-base font-semibold text-gray-900" th:text="${shop != null && shop.updatedAt != null ? #dates.format(shop.updatedAt,'dd/MM/yyyy HH:mm') : '—'}">—</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <p class="text-sm text-gray-500 mb-1">Description</p>
+                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[80px]">
+                            <p class="text-gray-800 whitespace-pre-wrap" th:text="${shop != null ? shop.description : ''}"></p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>
+
