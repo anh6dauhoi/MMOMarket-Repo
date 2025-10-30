@@ -8,6 +8,8 @@ public class CreateWithdrawalRequest {
     private String accountNumber;
     private String accountHolder;
     private String branch;
+    // OTP code for verifying withdrawal
+    private String otp;
 
     public Long getAmount() {
         return amount;
@@ -55,5 +57,13 @@ public class CreateWithdrawalRequest {
 
     public void setBranch(String branch) {
         this.branch = branch;
+    }
+
+    public String getOtp() {
+        return otp;
+    }
+
+    public void setOtp(String otp) {
+        this.otp = otp;
     }
 }

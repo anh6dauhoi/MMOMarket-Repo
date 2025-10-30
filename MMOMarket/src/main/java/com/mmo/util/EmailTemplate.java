@@ -142,4 +142,60 @@ public class EmailTemplate {
                 "</div>" +
                 "</div>";
     }
+
+    public static String withdrawalOtpEmail(String code) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#ef4444 0,#f59e42 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">Xác minh rút tiền - MMOMarket</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">Bạn vừa yêu cầu <b>xác nhận rút tiền</b> trên MMOMarket.</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 18px;\">Hãy nhập mã OTP bên dưới trong <b>5 phút</b> để hoàn tất xác minh:</p>" +
+                "<div style=\"text-align:center;margin:20px 0 16px;\">" +
+                "<span style=\"display:inline-block;background:#ef4444;color:#fff;font-size:34px;font-weight:800;letter-spacing:8px;padding:16px 36px;border-radius:10px;box-shadow:0 3px 10px rgba(239,68,68,0.15);\">" + code + "</span>" +
+                "</div>" +
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:13px;color:#92400e;margin:0;\"><b>Lưu ý bảo mật:</b> MMOMarket <u>không</u> bao giờ yêu cầu bạn nhập OTP ngoài website/app chính thức. Nếu bạn <u>không</u> yêu cầu rút tiền, hãy <b>không chia sẻ mã</b> và đổi mật khẩu ngay.</p>" +
+                "</div>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/withdraw-money' style='display:inline-block;background:#ef4444;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(239,68,68,0.15);'>Mở trang rút tiền</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. Mọi quyền được bảo lưu.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    public static String withdrawalBankInfoUpdatedEmail(String userName, String oldBankInfo, String newBankInfo, String updatedDate) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#3b82f6 0,#22c55e 100%);padding:22px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">Cập nhật thông tin ngân hàng rút tiền</h2>" +
+                "</div>" +
+                "<div style=\"padding:24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">Xin chào <b>" + escape(userName) + "</b>,</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 16px;\">Bạn vừa cập nhật <b>thông tin ngân hàng</b> cho yêu cầu rút tiền đang chờ xử lý.</p>" +
+                "<div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:14px;color:#334155;margin:0 0 8px;\"><b>Trước:</b> " + escape(oldBankInfo) + "</p>" +
+                "<p style=\"font-size:14px;color:#334155;margin:0;\"><b>Sau:</b> " + escape(newBankInfo) + "</p>" +
+                "</div>" +
+                "<p style=\"font-size:13px;color:#475569;margin:0 0 14px;\">Thời gian cập nhật: <b>" + escape(updatedDate) + "</b></p>" +
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin:10px 0 0;\">" +
+                "<p style=\"font-size:13px;color:#92400e;margin:0;\"><b>Lưu ý bảo mật:</b> Nếu bạn <u>không</u> thực hiện thay đổi này, vui lòng đổi mật khẩu và liên hệ hỗ trợ ngay.</p>" +
+                "</div>" +
+                "<div style=\"text-align:center;margin:16px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/withdraw-money' style='display:inline-block;background:#3b82f6;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(59,130,246,0.15);'>Xem lịch sử rút tiền</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. Mọi quyền được bảo lưu.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    // Minimal HTML escape for template parameters
+    private static String escape(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+    }
 }

@@ -140,29 +140,39 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
+            Withdrawal wd = entityManager.find(Withdrawal.class, id);
+            if (wd == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
+            }
+            String current = wd.getStatus() == null ? "" : wd.getStatus().trim();
+            if (!"Pending".equalsIgnoreCase(current)) {
+                return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
+            }
+
             String action = req.getStatus() == null ? "" : req.getStatus().trim();
             boolean approve = "Approved".equalsIgnoreCase(action);
             boolean reject = "Rejected".equalsIgnoreCase(action);
             if (!approve && !reject) {
                 return ResponseEntity.badRequest().body("Status must be 'Approved' or 'Rejected'.");
             }
-            boolean refund = reject; // chỉ refund khi bị từ chối
-            Withdrawal wd = withdrawalService.processWithdrawal(
-                id,
-                req.getStatus(),
-                req.getProofFile(),
-                req.getReason(),
-                refund
+
+            // Process via service (handles emails and refund logic)
+            Withdrawal processed = withdrawalService.processWithdrawal(
+                    id,
+                    action,
+                    req.getProofFile(),
+                    req.getReason(),
+                    reject // refund only when rejected
             );
-            // Gửi notification cho Seller
-            User seller = wd.getSeller();
-            Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
+
+            User seller = processed.getSeller();
+            Long amount = processed.getAmount() == null ? 0L : processed.getAmount();
             if (approve) {
-                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + req.getProofFile());
+                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved.");
             } else {
                 notificationService.createNotificationForUser(seller.getId(), "Withdrawal Rejected", "Your withdrawal request of " + amount + " VND has been rejected. Reason: " + req.getReason() + ". 95% of the amount has been refunded to your account.");
             }
-            return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
+            return ResponseEntity.ok(AdminWithdrawalResponse.from(processed));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
@@ -196,42 +206,27 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
             }
 
-            String action = status == null ? "" : status.trim();
-            boolean approve = "Approved".equalsIgnoreCase(action);
-            if (!approve) {
+            if (status == null || !"Approved".equalsIgnoreCase(status)) {
                 return ResponseEntity.badRequest().body("This endpoint only supports Approved via multipart (file upload).");
             }
 
-            if (proof == null || proof.isEmpty()) {
-                return ResponseEntity.badRequest().body("Proof file is required for Approved.");
-            }
-
-            // Save uploaded file under uploads/withdrawals
+            String proofFile = null;
             try {
-                // Use absolute path for uploads directory (project root)
-                String rootDir = System.getProperty("user.dir"); // Project root
-                Path storage = Paths.get(rootDir, "uploads", "withdrawals");
-                Files.createDirectories(storage);
-                String original = proof.getOriginalFilename() == null ? "file" : proof.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_");
-                String filename = "withdrawal-" + id + "-" + System.currentTimeMillis() + "-" + original;
-                Path dest = storage.resolve(filename);
-                proof.transferTo(dest.toFile());
-                // File URL for static serving (assumes /uploads/** is mapped in WebMvcConfigurer)
-                String fileUrl = "/uploads/withdrawals/" + filename;
+                if (proof != null && !proof.isEmpty()) {
+                    Path dir = Paths.get("uploads", "withdrawals");
+                    Files.createDirectories(dir);
+                    String filename = "proof-" + id + "-" + System.currentTimeMillis() + "-" + proof.getOriginalFilename();
+                    Path target = dir.resolve(filename);
+                    Files.copy(proof.getInputStream(), target);
+                    proofFile = target.toString().replace('\\', '/');
+                }
+            } catch (Exception ignored) {}
 
-                wd.setStatus("Approved");
-                wd.setProofFile(fileUrl);
-                wd.setUpdatedAt(new java.util.Date());
-                entityManager.merge(wd);
-
-                User seller = wd.getSeller();
-                Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
-                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + fileUrl);
-
-                return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
-            } catch (Exception ex) {
-                return ResponseEntity.status(500).body("Failed to save proof file: " + ex.getMessage());
-            }
+            Withdrawal processed = withdrawalService.processWithdrawal(id, "Approved", proofFile, null, false);
+            User seller = processed.getSeller();
+            Long amount = processed.getAmount() == null ? 0L : processed.getAmount();
+            notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved.");
+            return ResponseEntity.ok(AdminWithdrawalResponse.from(processed));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
