@@ -23,4 +23,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdAndIsDeleteFalse(Long id);
 
     long countBySellerIdAndIsDeleteFalse(Long sellerId);
+
+    List<Product> findByNameContainingIgnoreCaseAndIsDeleteFalse(String keyword);
+
 }

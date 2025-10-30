@@ -48,4 +48,15 @@ public class Category {
     public enum CategoryType {
         Common, Warning
     }
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
+    }
 }

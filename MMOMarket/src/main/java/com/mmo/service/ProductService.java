@@ -41,6 +41,14 @@ public class ProductService {
         return productRepository.findBySellerIdAndNameContainingIgnoreCaseAndIsDeleteFalse(sellerId, keyword);
     }
 
+    public List<Product> searchProducts(String keyword) {
+        return productRepository.findByNameContainingIgnoreCaseAndIsDeleteFalse(keyword);
+    }
+
+    public List<Product> findByCategory(Long categoryId) {
+        return productRepository.findByCategoryIdAndIsDeleteFalse(categoryId);
+    }
+
     public Product findById(Long id) {
         return productRepository.findByIdAndIsDeleteFalse(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -93,5 +101,16 @@ public class ProductService {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public long calculateCommission(Long sellerId, long totalPrice) {
+        // TODO: Lấy commission từ ShopInfo khi implement
+        // ShopInfo shopInfo = shopInfoRepository.findByUserIdAndIsDeleteFalse(sellerId)
+        //         .orElseThrow(() -> new RuntimeException("Shop info not found"));
+        // double commissionRate = shopInfo.getCommission() / 100.0;
+        // return (long) (totalPrice * commissionRate);
+
+        // Fallback: 5% commission
+        return (long) (totalPrice * 0.05);
     }
 }

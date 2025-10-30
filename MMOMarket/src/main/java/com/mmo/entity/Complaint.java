@@ -72,4 +72,19 @@ public class Complaint {
     @ManyToOne
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
+
+    // ← THÊM lifecycle callbacks để tự động set timestamps
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+        if (status == null) {
+            status = "Open";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
+    }
 }

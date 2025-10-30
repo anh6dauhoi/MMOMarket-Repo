@@ -96,7 +96,7 @@ public class ReviewService {
         Review existingReview = findById(id);
 
         // Kiểm tra quyền sở hữu
-        if (!existingReview.getUserId().equals(userId)) {
+        if (!existingReview.getUser().getId().equals(userId)) {
             throw new RuntimeException("You can only update your own review");
         }
 
@@ -121,5 +121,3 @@ public class ReviewService {
         reviewRepository.deleteById(id);
     }
 }
-
-///c
