@@ -83,7 +83,7 @@ public class CheckoutController {
             }
 
             // 6. TẠO ORDER QUEUE thay vì xử lý ngay
-            OrderQueue order = orderQueueService.createOrderQueue(
+            Orders order = orderQueueService.createOrderQueue(
                     customer.getId(),
                     productId,
                     variantId,
@@ -106,7 +106,7 @@ public class CheckoutController {
     public Map<String, Object> checkOrderStatus(@PathVariable Long orderId,
                                                 Authentication authentication) {
         User customer = userService.findByEmail(authentication.getName());
-        OrderQueue order = orderQueueService.getOrderByCustomer(orderId, customer.getId());
+        Orders order = orderQueueService.getOrderByCustomer(orderId, customer.getId());
 
         if (order == null) {
             return Map.of("error", "Order not found");
@@ -116,9 +116,9 @@ public class CheckoutController {
         response.put("status", order.getStatus().toString());
         response.put("orderId", order.getId());
 
-        if (order.getStatus() == OrderQueue.QueueStatus.COMPLETED) {
+        if (order.getStatus() == Orders.QueueStatus.COMPLETED) {
             response.put("transactionId", order.getTransactionId());
-        } else if (order.getStatus() == OrderQueue.QueueStatus.FAILED) {
+        } else if (order.getStatus() == Orders.QueueStatus.FAILED) {
             response.put("error", order.getErrorMessage());
         }
 
@@ -132,7 +132,7 @@ public class CheckoutController {
         User customer = userService.findByEmail(authentication.getName());
 
         // Kiểm tra order có thuộc về customer không
-        OrderQueue order = orderQueueService.getOrderByCustomer(orderId, customer.getId());
+        Orders order = orderQueueService.getOrderByCustomer(orderId, customer.getId());
         if (order == null) {
             return "redirect:/customer/checkout";
         }
