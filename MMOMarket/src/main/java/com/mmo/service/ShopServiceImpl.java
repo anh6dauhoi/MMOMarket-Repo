@@ -74,10 +74,6 @@ public class ShopServiceImpl implements ShopService {
 
         shop.setCommission(commission);
 
-        User updatedBy = userRepository.findById(userId).orElse(null);
-        if (updatedBy != null) {
-            shop.setCreatedBy(updatedBy);
-        }
 
         shopRepository.save(shop);
     }
