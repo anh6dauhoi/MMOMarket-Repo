@@ -1212,7 +1212,11 @@
                         setUpdateOtpMsg(txt || 'Failed to update bank information.', false);
                     }
                 } else if (res.status === 401) {
-                    setUpdateOtpMsg('You are not logged in. Please sign in first.', false);
+                    try {
+                        sessionStorage.setItem('redirectMessage', 'You have been logged out due to entering the wrong OTP more than the allowed number of times.');
+                    } catch (e) {}
+                    window.location.href = '/authen/login';
+                    return;
                 } else if (res.status === 403) {
                     setUpdateOtpMsg('You do not have permission to perform this action.', false);
                 } else {
@@ -1510,7 +1514,11 @@
                         setOtpMsg(txt || 'Failed to create withdrawal. Please try again.', false);
                     }
                 } else if (res.status === 401) {
-                    setOtpMsg('You are not logged in. Please sign in first.', false);
+                    try {
+                        sessionStorage.setItem('redirectMessage', 'Logged out: too many wrong OTPs.');
+                    } catch (e) {}
+                    window.location.href = '/authen/login';
+                    return;
                 } else if (res.status === 403) {
                     setOtpMsg('You do not have permission to perform this action.', false);
                 } else {

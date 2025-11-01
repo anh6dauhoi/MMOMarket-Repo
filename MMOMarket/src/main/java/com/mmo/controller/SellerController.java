@@ -14,8 +14,11 @@ import com.mmo.service.SellerBankInfoService;
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -32,8 +36,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.*;
 import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.Executor;
 
 @Controller
 @RequestMapping("/seller")
@@ -61,6 +66,10 @@ public class SellerController {
     private com.mmo.service.AuthService authService;
     @Autowired
     private com.mmo.repository.EmailVerificationRepository emailVerificationRepository;
+
+    @Autowired
+    @Qualifier("emailExecutor")
+    private Executor emailExecutor;
 
     private static final long REGISTRATION_FEE = 200_000L;
 
@@ -389,17 +398,25 @@ public class SellerController {
             }
         } catch (Exception ignored) {}
 
-        String code = authService.generateVerificationCode();
-        com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
-        verification.setUser(user);
-        verification.setVerificationCode(code);
-        verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
-        verification.setUsed(false);
-        emailVerificationRepository.save(verification);
-        // Send async email with withdrawal-specific subject & template
-        String subject = "[MMOMarket] OTP Xác minh rút tiền";
-        String html = EmailTemplate.withdrawalOtpEmail(code);
-        emailService.sendEmailAsync(user.getEmail(), subject, html);
+        // Offload OTP creation + persistence + email to executor; return immediately
+        try {
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String html = EmailTemplate.withdrawalOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
 
@@ -408,7 +425,9 @@ public class SellerController {
     @ResponseBody
     @Transactional
     public ResponseEntity<?> createWithdrawal(@RequestBody CreateWithdrawalRequest req,
-                                              Authentication authentication) {
+                                              Authentication authentication,
+                                              HttpSession session,
+                                              HttpServletRequest request) {
         try {
             if (authentication == null || !authentication.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -440,8 +459,21 @@ public class SellerController {
                 return ResponseEntity.badRequest().body("MSG17: Bank information not found.");
             }
             if (req.getOtp() == null || !req.getOtp().matches("\\d{6}")) {
-                return ResponseEntity.badRequest().body("MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
+                return handleOtpFailForWithdraw(session, request, authentication, seller, seller.getId(), "withdraw_create", "MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
             }
+
+            // Pre-validate OTP to enforce attempts policy before enqueue
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(seller, req.getOtp());
+            if (optVerification.isEmpty()) {
+                return handleOtpFailForWithdraw(session, request, authentication, seller, seller.getId(), "withdraw_create", "MSG_OTP_INVALID: Code not found or already used.");
+            }
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                return handleOtpFailForWithdraw(session, request, authentication, seller, seller.getId(), "withdraw_create", "MSG_OTP_EXPIRED: The code has expired.");
+            }
+
+            // Success so far: clear attempts for this action
+            clearSellerOtpAttempts(session, seller.getId(), "withdraw_create");
 
             // Enqueue creation message; worker will validate OTP, balance, and persist
             String dedupeKey = seller.getId() + ":" + req.getBankInfoId() + ":" + req.getAmount() + ":" + req.getOtp();
@@ -470,7 +502,9 @@ public class SellerController {
     @Transactional
     public String createWithdrawalForm(CreateWithdrawalRequest req,
                                        Authentication authentication,
-                                       RedirectAttributes redirectAttributes) {
+                                       RedirectAttributes redirectAttributes,
+                                       HttpSession session,
+                                       HttpServletRequest request) {
         try {
             if (authentication == null || !authentication.isAuthenticated()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Unauthorized");
@@ -495,7 +529,18 @@ public class SellerController {
             }
 
             if (req == null || req.getOtp() == null || !req.getOtp().matches("\\d{6}")) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP sent to your email.");
+                int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
+                if (attempts >= 5) {
+                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                    try { session.invalidate(); } catch (Exception ignored) {}
+                    redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                    return "redirect:/authen/login";
+                } else if (attempts >= 3) {
+                    sendWithdrawalOtpForUser(seller);
+                    redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP. A new OTP has been sent to your email.");
+                } else {
+                    redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP sent to your email.");
+                }
                 return "redirect:/seller/withdraw-money";
             }
             if (req.getAmount() == null || req.getAmount() < 50_000L) {
@@ -506,6 +551,43 @@ public class SellerController {
                 redirectAttributes.addFlashAttribute("errorMessage", "MSG17: Bank information not found.");
                 return "redirect:/seller/withdraw-money";
             }
+
+            // Pre-validate OTP
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(seller, req.getOtp());
+            if (optVerification.isEmpty()) {
+                int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
+                if (attempts >= 5) {
+                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                    try { session.invalidate(); } catch (Exception ignored) {}
+                    redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                    return "redirect:/authen/login";
+                } else if (attempts >= 3) {
+                    sendWithdrawalOtpForUser(seller);
+                    redirectAttributes.addFlashAttribute("errorMessage", "Incorrect OTP. A new OTP has been sent to your email.");
+                } else {
+                    redirectAttributes.addFlashAttribute("errorMessage", "Incorrect or used OTP.");
+                }
+                return "redirect:/seller/withdraw-money";
+            }
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
+                if (attempts >= 5) {
+                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                    try { session.invalidate(); } catch (Exception ignored) {}
+                    redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                    return "redirect:/authen/login";
+                } else if (attempts >= 3) {
+                    sendWithdrawalOtpForUser(seller);
+                    redirectAttributes.addFlashAttribute("errorMessage", "OTP expired. A new OTP has been sent to your email.");
+                } else {
+                    redirectAttributes.addFlashAttribute("errorMessage", "OTP has expired. Please request a new OTP.");
+                }
+                return "redirect:/seller/withdraw-money";
+            }
+
+            // Success: clear attempts
+            clearSellerOtpAttempts(session, seller.getId(), "withdraw_create");
 
             String dedupeKey = seller.getId() + ":" + req.getBankInfoId() + ":" + req.getAmount() + ":" + req.getOtp();
             com.mmo.mq.dto.WithdrawalCreateMessage msg = new com.mmo.mq.dto.WithdrawalCreateMessage(
@@ -929,7 +1011,9 @@ public class SellerController {
     @Transactional
     public ResponseEntity<?> updateWithdrawalBankInfoJson(@PathVariable Long id,
                                                           @RequestBody Map<String, Object> body,
-                                                          Authentication authentication) {
+                                                          Authentication authentication,
+                                                          HttpSession session,
+                                                          HttpServletRequest request) {
         try {
             if (authentication == null || !authentication.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -967,16 +1051,16 @@ public class SellerController {
             }
             // Require and verify OTP (6 digits)
             if (otp == null || !otp.matches("\\d{6}")) {
-                return ResponseEntity.badRequest().body("MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "withdraw_update", "MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
             }
             // Lookup latest unused OTP for this user/code
             var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, otp);
             if (optVerification.isEmpty()) {
-                return ResponseEntity.badRequest().body("MSG_OTP_INVALID: Code not found or already used.");
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "withdraw_update", "MSG_OTP_INVALID: Code not found or already used.");
             }
             var verification = optVerification.get();
             if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
-                return ResponseEntity.badRequest().body("MSG_OTP_EXPIRED: The code has expired.");
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "withdraw_update", "MSG_OTP_EXPIRED: The code has expired.");
             }
 
             // Build old/new info for email
@@ -1004,6 +1088,9 @@ public class SellerController {
             verification.setUsed(true);
             emailVerificationRepository.save(verification);
 
+            // Clear attempts on success
+            clearSellerOtpAttempts(session, user.getId(), "withdraw_update");
+
             // Send async email notify
             try {
                 String userName = user.getFullName() != null ? user.getFullName() : (user.getEmail() != null ? user.getEmail() : "User");
@@ -1030,5 +1117,57 @@ public class SellerController {
 
     private static String safeString(Object s) {
         return s == null ? "" : s.toString();
+    }
+
+    // Helpers for OTP attempt tracking per action
+    private String sellerOtpAttemptsKey(Long uid, String action) {
+        return "sellerOtpAttempts:" + uid + ":" + action;
+    }
+    private int incSellerOtpAttempts(HttpSession session, Long uid, String action) {
+        String key = sellerOtpAttemptsKey(uid, action);
+        Integer cur = (Integer) session.getAttribute(key);
+        int next = (cur == null ? 0 : cur) + 1;
+        session.setAttribute(key, next);
+        return next;
+    }
+    private void clearSellerOtpAttempts(HttpSession session, Long uid, String action) {
+        session.removeAttribute(sellerOtpAttemptsKey(uid, action));
+    }
+    private void sendWithdrawalOtpForUser(User user) {
+        try {
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String html = EmailTemplate.withdrawalOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+    }
+    private ResponseEntity<String> handleOtpFailForWithdraw(HttpSession session, HttpServletRequest request, Authentication authentication, User user, Long uid, String action, String baseMessage) {
+        int attempts = incSellerOtpAttempts(session, uid, action);
+        if (attempts >= 5) {
+            // Logout + invalidate session immediately (no blocking)
+            try {
+                new SecurityContextLogoutHandler().logout(request, null, authentication);
+            } catch (Exception ignored) { }
+            try { session.invalidate(); } catch (Exception ignored) { }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Too many OTP failures. You have been logged out. Please sign in again.");
+        } else if (attempts >= 3) {
+            // Warn and send new OTP asynchronously
+            sendWithdrawalOtpForUser(user);
+            return ResponseEntity.badRequest().body(baseMessage + " A new OTP has been sent to your email. Please use the latest OTP.");
+        } else {
+            return ResponseEntity.badRequest().body(baseMessage);
+        }
     }
 }
