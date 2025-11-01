@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMO Market - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/customer/css/homepage.css}">
+</head>
+
+<body>
+<!-- Header -->
+<div th:replace="~{fragments/header :: header(active='home')}"></div>
+
+<!-- Main Banner -->
+<div class="main-container">
+    <img th:src="@{/images/banner1.jpg}" alt="Infinite Knowledge Infinite Learners" class="main-image">
+    <div class="main-text">INFINITE KNOWLEDGE<br>INFINITE LEARNERS</div>
+    <a th:href="@{/about}" class="main-button">EXPLORE NOW</a>
+</div>
+
+<!-- Popular Categories -->
+<section class="py-20 px-6 bg-white">
+    <div class="max-w-7xl mx-auto text-center">
+        <h2 class="section-title mb-14 text-3xl font-bold text-gray-800">Popular Categories</h2>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 justify-items-center">
+            <!-- Category Loop -->
+            <a th:each="category : ${categories}" th:href="@{/category(id=${category.id})}"
+               class="group relative flex flex-col items-center justify-center w-full max-w-[220px] h-56
+                      category-card rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-2 transition-all duration-300 ease-out">
+                <div class="w-16 h-16 flex items-center justify-center rounded-full bg-white shadow-md mb-4
+                            group-hover:scale-110 transition-transform duration-300">
+                    <i data-lucide="layers" class="w-8 h-8 text-[#F53E32]"></i>
+                </div>
+
+                <h3 th:text="${category.name}"
+                    class="text-lg font-semibold text-gray-800 text-center leading-snug
+                           group-hover:text-[#F53E32] transition-colors duration-300">
+                    Category Name
+                </h3>
+
+                <div class="absolute inset-0 rounded-2xl hover-glow opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </a>
+
+            <!-- Others -->
+            <a th:href="@{/category}"
+               class="group relative flex flex-col items-center justify-center w-full max-w-[220px] h-56
+                      category-card rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-2 transition-all duration-300 ease-out">
+                <div class="w-16 h-16 flex items-center justify-center rounded-full bg-white shadow-md mb-4
+                            group-hover:scale-110 transition-transform duration-300">
+                    <i data-lucide="more-horizontal" class="w-8 h-8 text-[#F53E32]"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 text-center leading-snug
+                           group-hover:text-[#F53E32] transition-colors duration-300">Others</h3>
+                <div class="absolute inset-0 rounded-2xl hover-glow opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Best Seller -->
+<section class="py-20 px-6 bg-gray-50">
+    <div class="max-w-7xl mx-auto">
+        <h2 class="section-title">Best Seller</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+            <div th:each="item : ${bestSellers}" class="hover-card bg-white rounded-2xl overflow-hidden border border-gray-100">
+                <div class="block group">
+                    <a th:href="@{/products(id=${item.product.id})}">
+                        <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
+                             class="w-full h-52 object-cover transition-transform duration-300 group-hover:scale-105" alt="Product Image">
+                    </a>
+                    <div class="p-4 text-center">
+                        <h3 class="font-semibold text-lg text-gray-900 truncate group-hover:text-[#F53E32]">
+                            <a th:href="@{/products(id=${item.product.id})}" th:text="${item.product.name}">Product</a>
+                        </h3>
+                        <p class="text-[#F53E32] font-bold mt-1">
+                           <span class="format-price" th:attr="data-price=${item.price}">0</span> coins
+                        </p>
+                        <p class="text-gray-500 text-sm" th:text="|Sold: ${item.totalSold}|"></p>
+                        <a th:if="${item['shopId'] != null}" th:href="@{/shop(id=${item['shopId']})}"
+                           class="text-gray-600 text-sm hover:text-[#F53E32]"
+                           th:text="|Shop: ${item.shopName}|"></a>
+                        <a th:unless="${item['shopId'] != null}"
+                           th:href="@{/shop/by-seller/{sellerId}(sellerId=${item.product.seller.id})}"
+                           class="text-gray-600 text-sm hover:text-[#F53E32]"
+                           th:text="|Shop: ${item.shopName}|"></a>
+                        <p class="text-yellow-500 text-sm mt-1"
+                           th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Reputable Seller -->
+<section class="py-20 px-6 bg-white">
+    <h2 class="section-title">Reputable Seller</h2>
+    <div class="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
+        <div th:each="seller : ${reputableSellers}" class="hover-card bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+            <img th:src="${seller.avatar != null and seller.avatar != '' ? seller.avatar : '/images/default-avatar.svg'}" alt="Avatar"
+                 class="w-24 h-24 rounded-full mx-auto mb-4 object-cover border border-gray-200 shadow">
+            <h3 class="font-semibold text-xl text-gray-800" th:text="${seller.shopName}">Shop Name</h3>
+            <p class="text-yellow-600 font-medium">
+                ⭐ <span th:text="${#numbers.formatDecimal(seller.ratingAverage, 1, 1,'POINT')}">4.9</span>/5
+            </p>
+            <p class="text-gray-700 text-sm mt-1">Sold: <span th:text="${seller.totalSold}">10000</span></p>
+            <p class="text-gray-700 text-sm mb-4"
+               th:text="|Success rating: ${seller.successRate}%|">Success rating: 90%</p>
+            <a th:if="${seller['shopId'] != null}" th:href="@{/shop(id=${seller['shopId']})}"
+               class="inline-block btn-primary px-5 py-2 rounded-full font-medium shadow-md">View Shop</a>
+            <a th:unless="${seller['shopId'] != null}"
+               th:href="@{/shop/by-seller/{sellerId}(sellerId=${seller['id']})}"
+               class="inline-block btn-primary px-5 py-2 rounded-full font-medium shadow-md">View Shop</a>
+        </div>
+    </div>
+</section>
+
+<!-- Why Choose Us -->
+<section class="py-20 px-6 lg:px-20 bg-gray-50">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div class="flex justify-center">
+            <img th:src="@{/images/banner2.jpg}" alt="Technology Concept"
+                 class="rounded-3xl shadow-xl w-full max-w-2xl">
+        </div>
+        <div>
+            <h2 class="text-3xl lg:text-4xl font-bold mb-10 text-gray-900">Why People Choose Us?</h2>
+
+            <div class="hover-card flex items-start mb-6 bg-white p-6 rounded-2xl border border-gray-100">
+                <div class="bg-accent-light p-4 rounded-full mr-4 flex items-center justify-center">
+                    <i data-lucide="settings" class="w-7 h-7 stroke-[2.5] text-[#F53E32]"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-1 text-gray-900">High-Quality Resources</h3>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        All resources are carefully selected and regularly updated to ensure the best performance and user experience.
+                    </p>
+                </div>
+            </div>
+
+            <div class="hover-card flex items-start mb-6 bg-white p-6 rounded-2xl border border-gray-100">
+                <div class="bg-accent-light p-4 rounded-full mr-4 flex items-center justify-center">
+                    <i data-lucide="clock" class="w-7 h-7 stroke-[2.5] text-[#F53E32]"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-1 text-gray-900">Convenient and Reliable</h3>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        Designed for both beginners and professionals with quick, reliable and secure access.
+                    </p>
+                </div>
+            </div>
+
+            <div class="hover-card flex items-start bg-white p-6 rounded-2xl border border-gray-100">
+                <div class="bg-accent-light p-4 rounded-full mr-4 flex items-center justify-center">
+                    <i data-lucide="layers" class="w-7 h-7 stroke-[2.5] text-[#F53E32]"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-1 text-gray-900">Variety of Options</h3>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        From tools and guides to plugins and templates — everything you need in one platform.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script>lucide.createIcons();</script>
+
+<!-- Price formatter: format numbers like 50.000 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function formatWithDots(n){
+            // round if not integer, show as integer grouping
+            const num = Math.round(Number(n) || 0);
+            return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+    });
+</script>
+</body>
+</html>

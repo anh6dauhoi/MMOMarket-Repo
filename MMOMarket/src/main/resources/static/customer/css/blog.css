@@ -1,0 +1,77 @@
+:root {
+  --primary:#F53E32;
+  --primary-2:#d7342a;
+  --border:#ececec;
+  --shadow: 0 8px 28px rgba(245,62,50,0.10);
+}
+
+/* Page background */
+body {
+  background: radial-gradient(1200px 800px at 10% -10%, #fff 0%, #fff8f7 40%, #fff2f1 75%, #ffffff 100%);
+}
+
+/* Buttons */
+.btn-primary{
+  background: linear-gradient(90deg, var(--primary) 0%, #ff6a5b 100%);
+  color:#fff; transition: transform .2s, box-shadow .2s, opacity .2s;
+  box-shadow: 0 6px 18px rgba(245,62,50,.18);
+}
+.btn-primary:hover{ opacity:.96; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(245,62,50,.22); }
+
+/* Search input */
+.search-focus{
+  border-radius: 12px; background:#fff;
+  box-shadow: 0 6px 18px rgba(245,62,50,.06);
+  transition: box-shadow .2s, border-color .2s;
+}
+.search-focus:focus{
+  outline:none;
+  box-shadow:0 0 0 4px rgba(245,62,50,.15), 0 8px 24px rgba(245,62,50,.10);
+  border-color:var(--primary);
+}
+
+/* Cards */
+.card-hover{
+  border:1px solid var(--border);
+  border-radius:14px;
+  transition:transform .22s, box-shadow .22s, border-color .22s;
+  box-shadow: 0 2px 10px rgba(245,62,50,.05);
+}
+.card-hover:hover{
+  transform:translateY(-4px);
+  box-shadow: var(--shadow);
+  border-color:#ffd7d2;
+}
+
+/* Hearts */
+.heart { cursor: pointer; transition: transform .12s, color .2s; color: #9ca3af; }
+.heart:hover { transform: scale(1.06); }
+.heart.liked { color: var(--primary); transform: scale(1.05); }
+
+/* Filter dropdown */
+#filterDropdownMenu {
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+#filterDropdownMenu a { transition: background .15s; }
+
+/* Skeleton loader used by JS (showSkeletons) */
+.skeleton-card { position: relative; overflow: hidden; }
+.skeleton { background: #f3f4f6; border-radius: 8px; }
+.skeleton.shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -150px; height: 100%; width: 150px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+  animation: shimmer 1.25s infinite;
+}
+@keyframes shimmer {
+    0% {
+        left: -150px;
+    }
+    100% {
+        left: 100%;
+    }
+}
