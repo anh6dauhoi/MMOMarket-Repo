@@ -44,7 +44,7 @@ public class NotificationController {
             }
         }
         String referer = request.getHeader("Referer");
-        return "redirect:" + (referer != null ? referer : "/welcome");
+        return "redirect:" + (referer != null ? referer : "/homepage");
     }
 
     @PostMapping("/notifications/mark-as-read")

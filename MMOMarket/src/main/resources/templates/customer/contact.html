@@ -9,8 +9,18 @@
     <!-- add Inter font for consistent form typography -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/customer/css/contact.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) { body { background-position: top center; } }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="text-gray-900">
 
 <!-- Header outside container -->
 <div th:replace="~{fragments/header :: header(active='contact')}"></div>

@@ -86,11 +86,26 @@ public class SecurityConfig {
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers(HttpMethod.POST, "/api/webhook/sepay").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/webhook/sepay").permitAll()
+                        // Public pages for guests (view only)
+                        .requestMatchers(HttpMethod.GET,
+                                "/", "/homepage",
+                                "/category", "/category/**",
+                                "/productdetail", "/products", "/products/**",
+                                "/blog", /* list only */
+                                "/blog/infinite", /* list API */
+                                "/contact",
+                                "/api/categories"
+                        ).permitAll()
+                        // allow guests to submit contact form
+                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
+                        // admin area
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")
+                        // existing allowed posts
                         .requestMatchers(HttpMethod.POST, "/customer/topup").permitAll()
+                        // static assets
                         .requestMatchers(
                                 "/authen/**", "/welcome", "/error", "/oauth2/**", "/login/**",
-                                "/images/**", "/css/**", "/contracts/**",
+                                "/images/**", "/css/**", "/contracts/**", "/js/**",
                                 "/customer/css/**", "/authen/css/**", "/admin/css/**"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -104,7 +119,7 @@ public class SecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             boolean isAdmin = authentication.getAuthorities().stream()
                                     .anyMatch(a -> "ADMIN".equals(a.getAuthority()));
-                            response.sendRedirect(isAdmin ? "/admin" : "/welcome");
+                            response.sendRedirect(isAdmin ? "/admin" : "/homepage");
                         })
                         .failureHandler((request, response, exception) -> {
                             String errorMessage = "Incorrect email or password.";
@@ -129,7 +144,7 @@ public class SecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             boolean isAdmin = authentication.getAuthorities().stream()
                                     .anyMatch(a -> "ADMIN".equals(a.getAuthority()));
-                            response.sendRedirect(isAdmin ? "/admin" : "/welcome");
+                            response.sendRedirect(isAdmin ? "/admin" : "/homepage");
                         })
                 )
                 .logout((logout) -> logout

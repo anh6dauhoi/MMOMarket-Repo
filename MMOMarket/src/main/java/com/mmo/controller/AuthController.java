@@ -404,7 +404,7 @@ public class AuthController {
         if (displayName != null) {
             model.addAttribute("message", "Welcome " + displayName + " to MMOMarket!");
         }
-        return "customer/welcome";
+        return "redirect:/homepage";
     }
 
     @GetMapping("/customer/topup")
