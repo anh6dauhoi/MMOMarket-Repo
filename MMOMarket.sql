@@ -377,93 +377,21 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
-DELIMITER //
-
-CREATE TRIGGER trg_CleanOldVerificationCodes
-BEFORE INSERT ON EmailVerifications
-FOR EACH ROW
-BEGIN
-    -- Xóa tất cả các mã xác minh (OTP) cũ, chưa được sử dụng,
-    -- và có thể đã hết hạn của cùng một người dùng (NEW.user_id)
-    -- trước khi lưu mã mới.
-    DELETE FROM EmailVerifications
-    WHERE user_id = NEW.user_id 
-      AND is_used = 0;
-END//
-
-DELIMITER ;
-
-DELIMITER //
-
-CREATE TRIGGER trg_ManageNotificationLimit
-BEFORE INSERT ON Notifications
-FOR EACH ROW
-BEGIN
-    DECLARE notification_count INT;
-    DECLARE excess_count INT;
-
-    -- 1. Đếm tổng số thông báo hiện tại của người dùng
-    SELECT COUNT(id) INTO notification_count
-    FROM Notifications
-    WHERE user_id = NEW.user_id AND isDelete = 0;
-
-    -- 2. Kiểm tra nếu vượt quá giới hạn 50
-    IF notification_count >= 50 THEN
-        -- Số lượng cần xóa (ví dụ: 50 + 1 = 51, cần xóa 1 bản ghi cũ nhất)
-        SET excess_count = notification_count - 50 + 1; 
-
-        -- 3. Xóa các bản ghi cũ nhất (sắp xếp theo created_at tăng dần)
-        DELETE FROM Notifications
-        WHERE user_id = NEW.user_id 
-          AND isDelete = 0
-          AND id IN (
-            SELECT id FROM (
-                SELECT id 
-                FROM Notifications
-                WHERE user_id = NEW.user_id AND isDelete = 0
-                ORDER BY created_at ASC
-                LIMIT excess_count
-            ) AS TmpTable -- Cần bảng tạm khi DELETE FROM cùng bảng trong MySQL
-          );
-    END IF;
-END//
-
-DELIMITER ;
-
-DELIMITER //
-
-CREATE TRIGGER trg_LimitSearchHistory
-AFTER INSERT ON SearchHistory
-FOR EACH ROW
-BEGIN
-    DECLARE history_count INT;
-    DECLARE history_limit INT DEFAULT 10;
-    DECLARE oldest_id BIGINT;
-
-    -- 1. Đếm tổng số bản ghi hiện tại của user (sau khi đã INSERT)
-    SELECT COUNT(id) INTO history_count
-    FROM SearchHistory
-    WHERE user_id = NEW.user_id;
-
-    -- 2. Nếu số lượng vượt quá giới hạn (ví dụ: > 10)
-    --    Lặp lại việc xóa bản ghi cũ nhất cho đến khi đạt giới hạn
-    WHILE history_count > history_limit DO
-
-        -- Tìm ID của bản ghi cũ nhất
-        SELECT id INTO oldest_id
-        FROM SearchHistory
-        WHERE user_id = NEW.user_id
-        ORDER BY created_at ASC
-        LIMIT 1;
-
-        -- Xóa bản ghi cũ nhất dựa trên ID đã tìm được
-        DELETE FROM SearchHistory
-        WHERE id = oldest_id;
-
-        -- Giảm bộ đếm sau khi xóa
-        SET history_count = history_count - 1;
-
-    END WHILE;
-END//
-
-DELIMITER ;
+CREATE TABLE IF NOT EXISTS Orders (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    variant_id BIGINT NOT NULL,
+    quantity INT NOT NULL,
+    total_price BIGINT NOT NULL,
+    status ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED') NOT NULL DEFAULT 'PENDING',
+    error_message TEXT,
+    transaction_id BIGINT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME,
+    INDEX idx_status (status),
+    INDEX idx_customer (customer_id),
+    FOREIGN KEY (customer_id) REFERENCES Users(id),
+    FOREIGN KEY (product_id) REFERENCES Products(id),
+    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

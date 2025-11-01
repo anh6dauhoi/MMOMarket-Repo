@@ -175,7 +175,7 @@
                                     <div class="flex justify-between items-center">
                                         <span class="font-semibold">Balance:</span>
                                         <span class="font-semibold text-red-500"
-                                              th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT') + ' coins' : '0 coins'}"></span>
+                                              th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'POINT', 0, 'COMMA') + ' coins' : '0 coins'}"></span>
                                     </div>
                                 </div>
                                 <div class="border-t my-2"></div>
@@ -323,7 +323,7 @@
                         <div>
                             <div class="font-medium text-gray-800" th:text="${displayName}">User Name</div>
                             <div class="text-xs text-red-500 font-semibold"
-                                 th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT') + ' coins' : '0 coins'}">
+                                 th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'POINT', 0, 'COMMA') + ' coins' : '0 coins'}">
                                 0 coins
                             </div>
                         </div>

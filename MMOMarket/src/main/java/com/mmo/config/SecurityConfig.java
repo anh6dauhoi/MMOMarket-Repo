@@ -90,7 +90,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/customer/topup").permitAll()
                         .requestMatchers(
                                 "/authen/**", "/welcome", "/error", "/oauth2/**", "/login/**",
-                                "/images/**", "/css/**",
+                                "/images/**", "/css/**", "/contracts/**",
                                 "/customer/css/**", "/authen/css/**", "/admin/css/**"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -143,6 +143,12 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.sendRedirect("/authen/login?error=unauthenticated");
                         })
+                )
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin()) // Cho phép iframe từ cùng domain
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("frame-src 'self'")
+                        )
                 );
         return http.build();
     }
