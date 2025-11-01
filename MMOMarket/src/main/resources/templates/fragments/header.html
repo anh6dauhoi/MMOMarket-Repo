@@ -12,7 +12,6 @@
                                 <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round"
                                       stroke-linejoin="round"
                                       stroke-width="2"></path>
-                            </svg>
                         </div>
                         <span class="text-xl font-bold text-gray-900">MMO Market</span>
                     </a>
@@ -70,17 +69,21 @@
                 <!-- Desktop search and user menu -->
                 <div class="hidden md:flex items-center space-x-4">
                     <div class="relative">
-                        <input class="w-48 lg:w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                               placeholder="Search product/seller"
-                               type="text">
-                        <button
-                                class="absolute right-0 top-0 h-full px-4 bg-red-500 text-white rounded-r-lg hover:bg-red-600">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"></path>
-                            </svg>
-                        </button>
+                        <form th:action="@{/search}" method="get" class="flex items-center">
+                            <input name="q"
+                                   th:value="${param.q}"
+                                   class="w-48 lg:w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-l-lg rounded-r-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                   placeholder="Search product / shop"
+                                   type="search" aria-label="Search">
+                            <button type="submit"
+                                    class="absolute right-0 top-0 h-full px-4 bg-red-500 text-white rounded-r-lg hover:bg-red-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"></path>
+                                </svg>
+                            </button>
+                        </form>
                     </div>
 
                     <!-- User is authenticated -->
@@ -176,27 +179,36 @@
                                     </div>
                                 </div>
                                 <div class="border-t my-2"></div>
-                                <a class="flex justify-between items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
-                                   href="#">
-                                    <div class="flex items-center">
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                             xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                                  stroke-linecap="round" stroke-linejoin="round"
-                                                  stroke-width="2"></path>
-                                    </div>
-                                    My Profile
-                                </a>
-                                <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
-                                   href="#">
+                                <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white" href="#">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                          xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                              stroke-linecap="round" stroke-linejoin="round"
+                                              stroke-width="2"></path>
+                                    </svg>
+                                    My Profile
+                                </a>
+                                <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white" href="#">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                         xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                                               stroke-linecap="round" stroke-linejoin="round"
                                               stroke-width="2"></path>
                                     </svg>
                                     My Order
                                 </a>
+
+                                <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
+                                   th:href="@{/account/wishlist}">
+                                    <!-- Heart icon (matches account-setting) -->
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                              stroke-linecap="round" stroke-linejoin="round"
+                                              stroke-width="2"></path>
+                                    </svg>
+                                    My wishlist
+                                </a>
+
                                 <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
                                    th:href="@{/account/notifications}">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -324,15 +336,26 @@
                                       stroke-linecap="round" stroke-linejoin="round"
                                       stroke-width="2"></path>
                             </svg>
-                            My Profile
                         </a>
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm" href="#">
                             <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor"
                                  viewBox="0 0 24 24">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                                       stroke-linecap="round" stroke-linejoin="round"
                                       stroke-width="2"></path>
+                            </svg>
                         </a>
+
+                        <!-- Mobile: Added Wishlist after My Order -->
+                        <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
+                           th:href="@{/account/wishlist}">
+                            <!-- filled heart (matches account-setting.html) -->
+                            <svg class="w-5 h-5 inline-block mr-1 text-red-500" viewBox="0 0 24 24" fill="currentColor"
+                                 xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M12.001 4.529c1.664-1.76 4.632-1.76 6.297 0 1.688 1.786 1.688 4.687 0 6.473L12 20.08l-6.298-8.079c-1.688-1.786-1.688-4.687 0-6.473 1.665-1.76 4.633-1.76 6.299 0z"/>
+                            </svg>
+                        </a>
+
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
                            th:href="@{/account/notifications}">
                             <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor"
@@ -346,38 +369,19 @@
                                   th:if="${unreadCount != null and unreadCount > 0}"
                                   th:text="${unreadCount > 99 ? '99+' : unreadCount}">1</span>
                         </a>
+
+                        <!-- Account actions -->
+                        <div class="border-t my-2"></div>
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
-                           th:href="@{/seller/my-shop}"
-                           th:if="${currentUser != null and currentUser.shopStatus != null and #strings.equalsIgnoreCase(currentUser.shopStatus, 'Active')}">
+                           th:href="@{/authen/logout}"
+                           @click="() => { $store.auth.logout(); $store.cart.clear(); }">
                             <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor"
                                  viewBox="0 0 24 24">
-                                <path d="M3 3h18M3 7h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2zm3-7h4v4H8v-4z"
+                                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                                       stroke-linecap="round" stroke-linejoin="round"
                                       stroke-width="2"></path>
                             </svg>
-                            My Shop
                         </a>
-                        <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
-                           th:href="@{/account/settings}"
-                           th:if="${currentUser == null or currentUser.shopStatus == null or !#strings.equalsIgnoreCase(currentUser.shopStatus, 'Active')}">
-                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor"
-                                 viewBox="0 0 24 24">
-                                <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                                      stroke-linecap="round" stroke-linejoin="round"
-                                      stroke-width="2"></path>
-                            </svg>
-                            Register seller
-                        </a>
-                        <form method="post" th:action="@{/logout}">
-                            <button class="w-full text-left px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
-                                    type="submit">
-                                <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24">
-                                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                            </button>
-                        </form>
                     </div>
                 </div>
                 <!-- Mobile auth buttons -->
@@ -416,10 +420,8 @@
             function showDropdown() {
                 if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
                 if (dropdown) dropdown.classList.remove('hidden');
-                // load categories once
                 if (!categoriesLoaded && listContainer) {
-                    fetch('/api/categories')
-                        .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+                    fetch('/api/categories').then(res => res.ok ? res.json() : Promise.reject('Failed'))
                         .then(data => {
                             if (!Array.isArray(data)) return;
                             data.forEach(cat => {

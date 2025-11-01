@@ -6,6 +6,8 @@ import com.mmo.entity.Wishlist;
 import com.mmo.repository.ProductRepository;
 import com.mmo.repository.WishlistRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,6 +75,40 @@ public class WishlistService {
             items.add(m);
         }
         return items;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getWishlistItemsPaged(User user, int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        if (user == null) {
+            result.put("items", Collections.emptyList());
+            result.put("page", 1);
+            result.put("size", size);
+            result.put("totalPages", 0);
+            result.put("totalElements", 0L);
+            return result;
+        }
+        int p = Math.max(1, page);
+        PageRequest pr = PageRequest.of(p - 1, size);
+        Page<Wishlist> pageData = wishlistRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId(), pr);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Wishlist w : pageData.getContent()) {
+            Product prod = w.getProduct();
+            if (prod == null) continue;
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", w.getId());
+            m.put("product", prod);
+            m.put("createdAt", w.getCreatedAt());
+            items.add(m);
+        }
+
+        result.put("items", items);
+        result.put("page", p);
+        result.put("size", size);
+        result.put("totalPages", pageData.getTotalPages());
+        result.put("totalElements", pageData.getTotalElements());
+        return result;
     }
 
     @Transactional

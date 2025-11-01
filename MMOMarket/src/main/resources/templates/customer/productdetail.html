@@ -12,18 +12,18 @@
 <body>
 <div th:replace="~{fragments/header :: header}"></div>
 
-<!-- Success toast (compat) -->
+<!-- Success toast (compat) - bottom-left with safe spacing -->
 <div th:if="${param.wishlistSuccess != null}"
      id="wishlist-toast"
-     class="fixed top-5 right-5 z-50 max-w-xs"
+     class="fixed z-50 w-auto max-w-xs bottom-8 sm:bottom-10 left-4 sm:left-8 pointer-events-none"
      role="alert" aria-live="polite" aria-atomic="true">
     <div th:if="${param.wishlistSuccess[0] == '1'}"
-         class="flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
+         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
         <span class="flex-1">Added to wishlist successfully.</span>
         <button type="button" onclick="document.getElementById('wishlist-toast')?.remove()" aria-label="Close">✕</button>
     </div>
     <div th:unless="${param.wishlistSuccess[0] == '1'}"
-         class="flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg">
+         class="pointer-events-auto flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg">
         <span class="flex-1">This item is already in your wishlist.</span>
         <button type="button" onclick="document.getElementById('wishlist-toast')?.remove()" aria-label="Close">✕</button>
     </div>

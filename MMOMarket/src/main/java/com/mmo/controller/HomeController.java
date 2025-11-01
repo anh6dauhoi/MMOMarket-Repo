@@ -106,7 +106,7 @@ public class HomeController {
                 }
             }
 
-            // Use ShopInfo instead of SellerRegistration to obtain shopName
+
             String shopName = null;
             if (userId != null) {
                 try {
@@ -122,8 +122,7 @@ public class HomeController {
                     }
                 } catch (Exception ignored) {}
             }
-
-            // Fallback: nếu không có shopName thì dùng fullName hoặc email
+            
             if (shopName == null || shopName.isBlank()) {
                 shopName = fullName != null && !fullName.isBlank() ? fullName : email;
             }
