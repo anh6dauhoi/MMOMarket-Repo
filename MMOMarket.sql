@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS ProductVariants (
     product_id BIGINT NOT NULL, -- Mã sản phẩm
     variant_name VARCHAR(255) NOT NULL, -- Tên biến thể
     price BIGINT NOT NULL, -- Giá
-     status VARCHAR(20) DEFAULT 'Pending', 
+	status VARCHAR(20) DEFAULT 'Pending', 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -396,7 +396,7 @@ FOR EACH ROW
 BEGIN
     IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
         UPDATE ShopInfo
-        SET points = points + NEW.coins_used
+        SET points = points + NEW.coinSeller
         WHERE user_id = NEW.seller_id AND isDelete = 0;
         
     END IF;
