@@ -1,6 +1,7 @@
 package com.mmo.controller;
 
 import com.mmo.entity.User;
+import com.mmo.entity.ShopInfo;
 import com.mmo.repository.UserRepository;
 import com.mmo.service.WishlistService;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.persistence.EntityManager;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import com.mmo.service.AuthService;
 
@@ -21,11 +25,13 @@ public class WishlistController {
     private final WishlistService wishlistService;
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final EntityManager entityManager;
 
-    public WishlistController(WishlistService wishlistService, UserRepository userRepository, AuthService authService) {
+    public WishlistController(WishlistService wishlistService, UserRepository userRepository, AuthService authService, EntityManager entityManager) {
         this.wishlistService = wishlistService;
         this.userRepository = userRepository;
         this.authService = authService;
+        this.entityManager = entityManager;
     }
 
     @PostMapping("/wishlist/add")
@@ -55,6 +61,23 @@ public class WishlistController {
 
         model.addAttribute("displayName", user.getFullName() != null ? user.getFullName() : user.getEmail());
         model.addAttribute("activeTab", "wishlist"); // activate wishlist tab in account-setting
+
+        // Add registration info to hide "Register Seller" when shop status is Active
+        boolean active = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+        if (active) {
+            ShopInfo shop = entityManager.createQuery(
+                            "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false",
+                            ShopInfo.class)
+                    .setParameter("u", user)
+                    .getResultStream().findFirst().orElse(null);
+            Map<String, Object> registration = new HashMap<>();
+            registration.put("id", 0L);
+            registration.put("status", "Active");
+            registration.put("shopName", shop != null ? shop.getShopName() : (user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop"));
+            registration.put("description", shop != null ? shop.getDescription() : "");
+            model.addAttribute("registration", registration);
+        }
+
         return "customer/account-setting";
     }
 

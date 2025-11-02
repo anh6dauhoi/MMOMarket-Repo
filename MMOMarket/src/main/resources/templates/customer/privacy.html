@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Privacy Policy - MMO Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+        :root { --primary:#F53E32; }
+        .primary-text { color: var(--primary); }
+    </style>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+<div th:replace="fragments/header :: header"></div>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 lg:p-12 shadow-lg">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-4">Privacy Policy</h1>
+        <p class="text-center text-gray-500 mb-8">Last Updated: November 2, 2025</p>
+
+        <div class="prose prose-gray max-w-none space-y-6">
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">1. Introduction</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    We are committed to protecting your privacy and ensuring the security of your personal information. This policy explains how
+                    MMO Market collects, uses, discloses, and safeguards your data when you use our Services.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">2. Information We Collect</h2>
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">2.1 Information You Provide</h3>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>Account and profile details (email, username, name, phone, address)</li>
+                    <li>Transaction and order history</li>
+                    <li>Messages, reviews, ratings, and support requests</li>
+                </ul>
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">2.2 Information Collected Automatically</h3>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>Device and log data (IP, browser, OS, timestamps)</li>
+                    <li>Usage analytics (pages viewed, actions taken)</li>
+                    <li>Cookies and similar tracking technologies</li>
+                </ul>
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">2.3 Third-Party Sources</h3>
+                <p class="text-gray-700 leading-relaxed">Basic profile data if you sign in with Google or other providers.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">3. How We Use Your Information</h2>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>Provide and operate the marketplace, process transactions</li>
+                    <li>Protect security, detect and prevent fraud</li>
+                    <li>Improve our Services and user experience</li>
+                    <li>Send service-related communications; marketing with consent</li>
+                    <li>Resolve disputes and provide customer support</li>
+                    <li>Comply with legal obligations</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">4. Sharing and Disclosure</h2>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>With sellers to fulfill your orders</li>
+                    <li>With service providers (payments, hosting, analytics, support)</li>
+                    <li>When required by law or to protect rights and safety</li>
+                    <li>In a merger, acquisition, or asset transfer</li>
+                </ul>
+                <p class="text-gray-700 leading-relaxed mt-2 font-semibold">We do not sell your personal information.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">5. Data Security</h2>
+                <p class="text-gray-700 leading-relaxed">We use industry-standard safeguards (encryption in transit, access controls, secure password hashing, backups). No method is 100% secure.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">6. Your Rights</h2>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>Access, correct, or delete your data (subject to legal retention)</li>
+                    <li>Opt out of marketing communications</li>
+                    <li>Request data portability and restrict processing</li>
+                </ul>
+                <p class="text-gray-700 leading-relaxed mt-2">Contact: <a href="mailto:privacy@mmomarket.com" class="primary-text underline">privacy@mmomarket.com</a></p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">7. Cookies</h2>
+                <p class="text-gray-700 leading-relaxed">We use essential, performance, functional, and analytics cookies. You can control cookies in your browser settings.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">8. Children's Privacy</h2>
+                <p class="text-gray-700 leading-relaxed">Our Services are not intended for individuals under 18. If a child has provided data, contact us to remove it.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">9. International Transfers</h2>
+                <p class="text-gray-700 leading-relaxed">Data may be processed in other countries with appropriate safeguards.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">10. Data Retention</h2>
+                <p class="text-gray-700 leading-relaxed">We retain data as needed to provide Services, meet legal obligations, and resolve disputes.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">11. Changes to This Policy</h2>
+                <p class="text-gray-700 leading-relaxed">We may update this policy and will post the updated date above. Continued use means acceptance.</p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">12. Contact Us</h2>
+                <div class="bg-gray-50 p-4 rounded-lg mt-3 space-y-1">
+                    <p class="text-gray-700"><strong>MMO Market</strong></p>
+                    <p class="text-gray-700">Email: <a href="mailto:privacy@mmomarket.com" class="primary-text underline">privacy@mmomarket.com</a></p>
+                    <p class="text-gray-700">Support: <a href="mailto:support@mmomarket.com" class="primary-text underline">support@mmomarket.com</a></p>
+                    <p class="text-gray-700">Address: Ha Noi, Vietnam</p>
+                </div>
+            </section>
+
+            <section class="bg-blue-50 p-4 rounded-lg mt-6">
+                <p class="text-gray-700 leading-relaxed">By using MMO Market, you acknowledge that you have read and agree to this Privacy Policy.</p>
+            </section>
+        </div>
+    </div>
+</main>
+
+<div th:replace="fragments/footer :: footer"></div>
+</body>
+</html>
+

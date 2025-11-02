@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Terms of Service - MMO Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+        :root { --primary:#F53E32; }
+        .primary-text { color: var(--primary); }
+    </style>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+<div th:replace="fragments/header :: header"></div>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 lg:p-12 shadow-lg">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-4">Terms of Service</h1>
+        <p class="text-center text-gray-500 mb-8">Last Updated: November 2, 2025</p>
+
+        <div class="prose prose-gray max-w-none space-y-6">
+            <!-- Introduction -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">1. Agreement to Terms</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    Welcome to MMO Market. These Terms of Service ("Terms") govern your access to and use of our platform,
+                    including our website, services, and applications (collectively, the "Services").
+                </p>
+                <p class="text-gray-700 leading-relaxed mt-2">
+                    By accessing or using MMO Market, you agree to be bound by these Terms and our Privacy Policy.
+                    If you do not agree to these Terms, you may not use our Services.
+                </p>
+                <p class="text-gray-700 leading-relaxed mt-2">
+                    We reserve the right to modify these Terms at any time. Your continued use of the Services after changes
+                    constitutes acceptance of the updated Terms.
+                </p>
+            </section>
+
+            <!-- Eligibility -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">2. Eligibility</h2>
+                <p class="text-gray-700 leading-relaxed">To use MMO Market, you must:</p>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4 mt-2">
+                    <li>Be at least 18 years of age</li>
+                    <li>Have the legal capacity to enter into binding contracts</li>
+                    <li>Not be prohibited from using the Services under applicable law</li>
+                    <li>Provide accurate, current, and complete information during registration</li>
+                    <li>Maintain the security of your account credentials</li>
+                </ul>
+                <p class="text-gray-700 leading-relaxed mt-3">
+                    You are responsible for all activities that occur under your account.
+                </p>
+            </section>
+
+            <!-- Account Registration -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">3. Account Registration and Security</h2>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">3.1 Account Creation</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    To access certain features, you must create an account. You agree to provide accurate information and
+                    keep it updated. You may not use another person's account without permission.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">3.2 Account Security</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    You are responsible for maintaining the confidentiality of your password and account. You must immediately
+                    notify us of any unauthorized access or security breach.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">3.3 Account Termination</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    We reserve the right to suspend or terminate your account if you violate these Terms or engage in
+                    fraudulent, illegal, or harmful activities.
+                </p>
+            </section>
+
+            <!-- User Roles -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">4. User Roles and Responsibilities</h2>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">4.1 Buyers</h3>
+                <p class="text-gray-700 leading-relaxed">As a buyer, you agree to:</p>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4 mt-2">
+                    <li>Make purchases in good faith</li>
+                    <li>Pay for products using valid payment methods</li>
+                    <li>Provide accurate delivery and contact information</li>
+                    <li>Review and accept products within the specified timeframe</li>
+                    <li>Communicate respectfully with sellers</li>
+                    <li>Submit complaints only for legitimate issues within 3 days of order completion</li>
+                </ul>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">4.2 Sellers</h3>
+                <p class="text-gray-700 leading-relaxed">As a seller, you agree to:</p>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4 mt-2">
+                    <li>Provide accurate product descriptions and pricing</li>
+                    <li>Deliver products as described and in a timely manner</li>
+                    <li>Maintain adequate stock levels for listed products</li>
+                    <li>Respond promptly to buyer inquiries and complaints</li>
+                    <li>Comply with all applicable laws and regulations</li>
+                    <li>Not sell prohibited, illegal, or counterfeit products</li>
+                    <li>Honor the platform's dispute resolution process</li>
+                    <li>Sign and adhere to the Seller Agreement Contract</li>
+                </ul>
+            </section>
+
+            <!-- Transactions and Payments -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">5. Transactions and Payments</h2>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">5.1 MMO Market Coins</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    All transactions on the platform are conducted using MMO Market Coins. You can top up Coins through
+                    supported payment methods. Coins are non-refundable except as required by law or our policies.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">5.2 Purchase Process</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    When you make a purchase, Coins are deducted from your account and held in escrow. Upon successful
+                    completion and acceptance of the order, Coins are released to the seller minus platform fees.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">5.3 Fees and Commissions</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    MMO Market charges sellers a commission fee on each successful transaction. Fee structures are subject
+                    to change with reasonable notice. Current fees are displayed in the seller dashboard.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">5.4 Withdrawals</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    Sellers may withdraw their earnings according to the platform's withdrawal policies. Withdrawal requests
+                    are subject to verification and may take several business days to process.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">5.5 Taxes</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    Users are responsible for determining and paying any applicable taxes on their transactions.
+                </p>
+            </section>
+
+            <!-- Prohibited Activities -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">6. Prohibited Activities</h2>
+                <p class="text-gray-700 leading-relaxed">You may not:</p>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4 mt-2">
+                    <li>Engage in fraudulent, deceptive, or misleading practices</li>
+                    <li>List or sell prohibited, illegal, or counterfeit products</li>
+                    <li>Manipulate prices, reviews, or ratings</li>
+                    <li>Create multiple accounts to circumvent restrictions</li>
+                    <li>Harass, threaten, or abuse other users</li>
+                    <li>Attempt to bypass security measures or gain unauthorized access</li>
+                    <li>Use automated tools to scrape or extract data from the platform</li>
+                    <li>Violate intellectual property rights of others</li>
+                    <li>Conduct transactions outside the platform to avoid fees</li>
+                    <li>Post spam, malware, or harmful content</li>
+                    <li>Impersonate other users or entities</li>
+                </ul>
+            </section>
+
+            <!-- Content and Intellectual Property -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">7. Content and Intellectual Property</h2>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">7.1 User Content</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    You retain ownership of content you post (product listings, reviews, comments). By posting content,
+                    you grant MMO Market a worldwide, non-exclusive license to use, display, and distribute your content
+                    in connection with the Services.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">7.2 Platform Content</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    All content on the platform, including text, graphics, logos, icons, and software, is owned by
+                    MMO Market or its licensors and is protected by copyright and trademark laws.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">7.3 Copyright Infringement</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    If you believe content on our platform infringes your copyright, please contact us at
+                    <a href="mailto:legal@mmomarket.com" class="primary-text underline">legal@mmomarket.com</a> with details.
+                </p>
+            </section>
+
+            <!-- Disputes and Resolution -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">8. Disputes and Resolution</h2>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">8.1 Complaint Process</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    Buyers may file a complaint within 3 days of order completion if there is an issue with the product.
+                    During the complaint period, Coins remain in escrow.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">8.2 Negotiation</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    Parties are encouraged to resolve disputes through direct communication and negotiation.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">8.3 Platform Mediation</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    If negotiation fails, MMO Market Administration will review the case and make a final decision.
+                    The platform's decision is binding and final.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">8.4 Refunds</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    Refunds are only issued when a complaint is verified and substantiated according to our policies.
+                </p>
+            </section>
+
+            <!-- Disclaimers -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">9. Disclaimers and Limitation of Liability</h2>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">9.1 Service "As Is"</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    The Services are provided "as is" and "as available" without warranties of any kind, either express or implied.
+                    We do not guarantee uninterrupted, secure, or error-free operation.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">9.2 Third-Party Content</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    MMO Market is a marketplace platform. We do not guarantee the quality, safety, or legality of products
+                    listed by sellers. Sellers are solely responsible for their products and services.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">9.3 Limitation of Liability</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    To the maximum extent permitted by law, MMO Market and its affiliates shall not be liable for any
+                    indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-4 mb-2">9.4 Indemnification</h3>
+                <p class="text-gray-700 leading-relaxed">
+                    You agree to indemnify and hold harmless MMO Market from any claims, damages, losses, or expenses
+                    arising from your violation of these Terms or your use of the Services.
+                </p>
+            </section>
+
+            <!-- Privacy -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">10. Privacy and Data Protection</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    Your use of the Services is also governed by our Privacy Policy. Please review our
+                    <a th:href="@{/privacy}" class="primary-text underline">Privacy Policy</a> to understand how we collect,
+                    use, and protect your information.
+                </p>
+            </section>
+
+            <!-- Termination -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">11. Termination</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    We reserve the right to suspend or terminate your access to the Services at any time, with or without
+                    cause, with or without notice. Upon termination:
+                </p>
+                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4 mt-2">
+                    <li>Your right to use the Services immediately ceases</li>
+                    <li>Outstanding transactions will be processed according to our policies</li>
+                    <li>Your Coin balance may be subject to withdrawal fees or restrictions</li>
+                    <li>We may retain certain information as required by law or for legitimate business purposes</li>
+                </ul>
+            </section>
+
+            <!-- Governing Law -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">12. Governing Law and Jurisdiction</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    These Terms are governed by the laws of Vietnam. Any disputes arising from these Terms or your use
+                    of the Services shall be subject to the exclusive jurisdiction of the courts in Ha Noi, Vietnam.
+                </p>
+            </section>
+
+            <!-- Modifications -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">13. Modifications to Services</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    We reserve the right to modify, suspend, or discontinue any part of the Services at any time.
+                    We will provide reasonable notice of material changes when possible.
+                </p>
+            </section>
+
+            <!-- Severability -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">14. Severability</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    If any provision of these Terms is found to be invalid or unenforceable, the remaining provisions
+                    will continue in full force and effect.
+                </p>
+            </section>
+
+            <!-- Entire Agreement -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">15. Entire Agreement</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    These Terms, together with our Privacy Policy and any additional terms specific to certain features,
+                    constitute the entire agreement between you and MMO Market.
+                </p>
+            </section>
+
+            <!-- Contact -->
+            <section>
+                <h2 class="text-2xl font-semibold primary-text mb-3">16. Contact Information</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    If you have questions about these Terms or our Services, please contact us:
+                </p>
+                <div class="bg-gray-50 p-4 rounded-lg mt-3 space-y-1">
+                    <p class="text-gray-700"><strong>MMO Market</strong></p>
+                    <p class="text-gray-700">Email: <a href="mailto:legal@mmomarket.com" class="primary-text underline">legal@mmomarket.com</a></p>
+                    <p class="text-gray-700">Support: <a href="mailto:support@mmomarket.com" class="primary-text underline">support@mmomarket.com</a></p>
+                    <p class="text-gray-700">Address: Ha Noi, Vietnam</p>
+                </div>
+            </section>
+
+            <!-- Acknowledgment -->
+            <section class="bg-blue-50 p-4 rounded-lg mt-6">
+                <p class="text-gray-700 leading-relaxed font-semibold">
+                    By using MMO Market, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
+                </p>
+            </section>
+        </div>
+    </div>
+</main>
+
+<div th:replace="fragments/footer :: footer"></div>
+</body>
+</html>

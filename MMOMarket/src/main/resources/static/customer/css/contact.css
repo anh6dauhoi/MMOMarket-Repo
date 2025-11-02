@@ -238,7 +238,7 @@ textarea {
 
 .info-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 14px;
     padding: 14px;
     border-radius: 12px;
@@ -255,6 +255,7 @@ textarea {
 .icon {
     width: 44px;
     height: 44px;
+    min-width: 44px;
     border-radius: 50%;
     background: #fff;
     border: 1px solid #ffe0de;
@@ -263,17 +264,22 @@ textarea {
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 10px rgba(245,62,50,0.08);
+    flex-shrink: 0;
 }
 
 .info-text {
     display: flex;
     flex-direction: column;
     line-height: 1.4;
+    gap: 4px;
+    flex: 1;
+    text-align: left;
 }
 
 .info-text strong {
     font-weight: 700;
     color: #1f2937;
+    font-size: 15px;
 }
 
 .info-text span {

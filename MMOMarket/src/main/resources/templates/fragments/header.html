@@ -61,7 +61,7 @@
                     <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
                        th:href="@{/customer/topup}"
                        th:classappend="${(activePage == 'topup') or #strings.startsWith(uri,'/customer/topup') ? ' text-red-500 border-b-2 border-red-500' : ''}">
-                        Topup
+                        Top-up
                     </a>
                 </nav>
 
@@ -352,7 +352,6 @@
                             <svg class="w-5 h-5 inline-block mr-1 text-red-500" viewBox="0 0 24 24" fill="currentColor"
                                  xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M12.001 4.529c1.664-1.76 4.632-1.76 6.297 0 1.688 1.786 1.688 4.687 0 6.473L12 20.08l-6.298-8.079c-1.688-1.786-1.688-4.687 0-6.473 1.665-1.76 4.633-1.76 6.299 0z"/>
-                            </svg>
                         </a>
 
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
@@ -398,6 +397,8 @@
         </div>
     </header>
     <script defer src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js"></script>
+    <!-- Anti-DevTools Protection - Chặn F12 và Developer Tools -->
+    <script defer th:src="@{/js/anti-devtools.js}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
@@ -421,7 +422,7 @@
                 if (dropdown) dropdown.classList.remove('hidden');
                 if (!categoriesLoaded && listContainer) {
                     fetch('/api/categories').then(res => res.ok ? res.json() : Promise.reject('Failed'))
-                        .then(data => {
+                        .then data => {
                             if (!Array.isArray(data)) return;
                             data.forEach(cat => {
                                 const a = document.createElement('a');
