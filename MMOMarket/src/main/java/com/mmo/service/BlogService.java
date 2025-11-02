@@ -15,14 +15,29 @@ public interface BlogService {
     Page<Blog> getAllBlogs(Pageable pageable);
 
     /**
+     * Get all visible (status = true) and non-deleted blogs with pagination
+     */
+    Page<Blog> getVisibleBlogs(Pageable pageable);
+
+    /**
      * Search blogs by title
      */
     Page<Blog> searchBlogs(String search, Pageable pageable);
 
     /**
+     * Search visible blogs by title
+     */
+    Page<Blog> searchVisibleBlogs(String search, Pageable pageable);
+
+    /**
      * Get blog by ID
      */
     Blog getBlogById(Long id);
+
+    /**
+     * Get visible blog by ID
+     */
+    Blog getVisibleBlogById(Long id);
 
     /**
      * Create new blog
@@ -33,6 +48,16 @@ public interface BlogService {
      * Update existing blog
      */
     Blog updateBlog(Long id, UpdateBlogRequest request);
+
+    /**
+     * Toggle blog status (show/hide)
+     */
+    Blog toggleBlogStatus(Long id);
+
+    /**
+     * Set blog status
+     */
+    Blog setBlogStatus(Long id, boolean status);
 
     /**
      * Soft delete blog

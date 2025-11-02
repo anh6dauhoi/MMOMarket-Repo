@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -117,19 +118,19 @@ public class AdminController {
                 sortDirection = Sort.Direction.ASC;
             } else if (sort.equals("role_desc")) {
                 sortField = "role";
-                sortDirection = Sort.Direction.DESC;
+                // sortDirection already DESC by default
             } else if (sort.equals("shopStatus_asc")) {
                 sortField = "shopStatus";
                 sortDirection = Sort.Direction.ASC;
             } else if (sort.equals("shopStatus_desc")) {
                 sortField = "shopStatus";
-                sortDirection = Sort.Direction.DESC;
+                // sortDirection already DESC by default
             } else if (sort.equals("coins_asc")) {
                 sortField = "coins";
                 sortDirection = Sort.Direction.ASC;
             } else if (sort.equals("coins_desc")) {
                 sortField = "coins";
-                sortDirection = Sort.Direction.DESC;
+                // sortDirection already DESC by default
             }
         }
         
@@ -701,17 +702,16 @@ public class AdminController {
             if (!approve && !reject) {
                 return ResponseEntity.badRequest().body("Status must be 'Approved' or 'Rejected'.");
             }
-            boolean refund = reject; // chỉ refund khi bị từ chối
             Withdrawal wd = withdrawalService.processWithdrawal(
                 id,
                 req.getStatus(),
                 req.getProofFile(),
                 req.getReason(),
-                refund
+                reject // chỉ refund khi bị từ chối
             );
             // Gửi notification cho Seller
             User seller = wd.getSeller();
-            Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
+            long amount = wd.getAmount() == null ? 0L : wd.getAmount();
             if (approve) {
                 notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + req.getProofFile());
             } else {
@@ -780,7 +780,7 @@ public class AdminController {
                 entityManager.merge(wd);
 
                 User seller = wd.getSeller();
-                Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
+                long amount = wd.getAmount() == null ? 0L : wd.getAmount();
                 notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + fileUrl);
 
                 return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
@@ -1226,8 +1226,8 @@ public class AdminController {
             
             jpql.append(" ORDER BY c.updatedAt DESC");
             
-            logger.info("Step 3: Query built: {}", jpql.toString());
-            
+            logger.info("Step 3: Query built: {}", jpql);
+
             // Create query
             TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
             
@@ -1536,9 +1536,9 @@ public class AdminController {
         }
     }
 
-    @DeleteMapping("/blogs/{id}")
+    @PutMapping("/blogs/{id}/toggle-status")
     @ResponseBody
-    public ResponseEntity<?> deleteBlog(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<?> toggleBlogStatus(@PathVariable Long id, Authentication auth) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -1552,68 +1552,9 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
-            blogService.deleteBlog(id, admin.getId());
-            return ResponseEntity.ok().body("Blog deleted successfully");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    @GetMapping("/blogs/deleted")
-    @Transactional(readOnly = true)
-    public String deletedBlogs(@RequestParam(name = "page", defaultValue = "0") int page,
-                               @RequestParam(name = "search", defaultValue = "") String search,
-                               Model model) {
-        Pageable pageable = PageRequest.of(page, 10);
-        Page<com.mmo.entity.Blog> blogPage;
-
-        if (search == null || search.trim().isEmpty()) {
-            blogPage = blogService.getDeletedBlogs(pageable);
-        } else {
-            blogPage = blogService.searchDeletedBlogs(search.trim(), pageable);
-        }
-
-        model.addAttribute("blogs", blogPage.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("totalPages", blogPage.getTotalPages());
-        model.addAttribute("pageTitle", "Deleted Blogs");
-        model.addAttribute("body", "admin/deleted-blogs");
-        return "admin/layout";
-    }
-
-    @GetMapping("/blogs/deleted/list")
-    @ResponseBody
-    public ResponseEntity<?> getDeletedBlogsList() {
-        try {
-            Pageable pageable = PageRequest.of(0, 100);
-            Page<com.mmo.entity.Blog> blogPage = blogService.getDeletedBlogs(pageable);
-            return ResponseEntity.ok(blogPage.getContent());
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    @PostMapping("/blogs/{id}/restore")
-    @ResponseBody
-    public ResponseEntity<?> restoreBlog(@PathVariable Long id, Authentication auth) {
-        try {
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-
-            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
-                    .setParameter("e", auth.getName())
-                    .getResultStream().findFirst().orElse(null);
-
-            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-            }
-
-            com.mmo.entity.Blog blog = blogService.restoreBlog(id);
-            return ResponseEntity.ok(blog);
+            com.mmo.entity.Blog blog = blogService.toggleBlogStatus(id);
+            String message = blog.isStatus() ? "Blog activated successfully" : "Blog deactivated successfully";
+            return ResponseEntity.ok().body(Map.of("message", message, "status", blog.isStatus()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception ex) {

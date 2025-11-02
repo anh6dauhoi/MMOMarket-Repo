@@ -30,6 +30,11 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
+    public Page<Blog> getVisibleBlogs(Pageable pageable) {
+        return blogRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(true, false, pageable);
+    }
+
+    @Override
     public Page<Blog> searchBlogs(String search, Pageable pageable) {
         if (search == null || search.trim().isEmpty()) {
             return getAllBlogs(pageable);
@@ -38,9 +43,23 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
+    public Page<Blog> searchVisibleBlogs(String search, Pageable pageable) {
+        if (search == null || search.trim().isEmpty()) {
+            return getVisibleBlogs(pageable);
+        }
+        return blogRepository.searchVisibleBlogsByTitle(search.trim(), true, false, pageable);
+    }
+
+    @Override
     public Blog getBlogById(Long id) {
         return blogRepository.findByIdAndIsDelete(id, false)
                 .orElseThrow(() -> new IllegalArgumentException("Blog not found with id: " + id));
+    }
+
+    @Override
+    public Blog getVisibleBlogById(Long id) {
+        return blogRepository.findByIdAndStatusAndIsDelete(id, true, false)
+                .orElseThrow(() -> new IllegalArgumentException("Visible blog not found with id: " + id));
     }
 
     @Override
@@ -110,6 +129,24 @@ public class BlogServiceImpl implements BlogService {
             blog.setImage(request.getImage());
         }
 
+        blog.setUpdatedAt(new Date());
+        return blogRepository.save(blog);
+    }
+
+    @Override
+    @Transactional
+    public Blog toggleBlogStatus(Long id) {
+        Blog blog = getBlogById(id);
+        blog.setStatus(!blog.isStatus());
+        blog.setUpdatedAt(new Date());
+        return blogRepository.save(blog);
+    }
+
+    @Override
+    @Transactional
+    public Blog setBlogStatus(Long id, boolean status) {
+        Blog blog = getBlogById(id);
+        blog.setStatus(status);
         blog.setUpdatedAt(new Date());
         return blogRepository.save(blog);
     }

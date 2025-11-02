@@ -53,6 +53,9 @@ public class Blog {
     @Column(name = "likes", columnDefinition = "BIGINT DEFAULT 0")
     private Long likes = 0L;
 
+    @Column(name = "status", columnDefinition = "TINYINT(1) DEFAULT 1")
+    private boolean status = true;
+
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private Date createdAt;
@@ -96,5 +99,15 @@ public class Blog {
     @Transient
     public Integer getCommentCount() {
         return comments != null ? comments.size() : 0;
+    }
+
+    @Transient
+    public boolean isVisible() {
+        return status;
+    }
+
+    @Transient
+    public boolean isHidden() {
+        return !status;
     }
 }
