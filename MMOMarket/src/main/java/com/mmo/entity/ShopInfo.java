@@ -33,6 +33,9 @@ public class ShopInfo {
     @Column(name = "commission", precision = 5, scale = 2, nullable = false)
     private BigDecimal commission;
 
+    @Column(name = "points", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long points = 0L;
+
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;

@@ -36,16 +36,6 @@ CREATE TABLE IF NOT EXISTS SystemConfigurations (
     FOREIGN KEY (updated_by) REFERENCES Users(id) ON DELETE SET NULL
 );
 
--- Bảng SearchHistory - Lưu lịch sử tìm kiếm
-CREATE TABLE IF NOT EXISTS SearchHistory (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,                          
-    search_query VARCHAR(255) NOT NULL,               
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,    
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE, 
-    INDEX idx_user_query (user_id, created_at DESC)   
-);
-
 -- Bảng EmailVerifications - Quản lý mã xác minh email
 CREATE TABLE IF NOT EXISTS EmailVerifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -65,6 +55,7 @@ CREATE TABLE IF NOT EXISTS ShopInfo (
     description TEXT, -- Mô tả
 	shop_level TINYINT UNSIGNED DEFAULT 0,
 	commission DECIMAL(5,2) NOT NULL, -- Tỷ lệ hoa hồng
+    points BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -395,3 +386,62 @@ CREATE TABLE IF NOT EXISTS Orders (
     FOREIGN KEY (product_id) REFERENCES Products(id),
     FOREIGN KEY (variant_id) REFERENCES ProductVariants(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Trigger update points with transaction completed
+DELIMITER $$
+
+CREATE TRIGGER trg_update_shop_points_after_transaction
+AFTER UPDATE ON Transactions
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
+        UPDATE ShopInfo
+        SET points = points + NEW.coins_used
+        WHERE user_id = NEW.seller_id AND isDelete = 0;
+        
+    END IF;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_update_shop_level_before_update
+BEFORE UPDATE ON ShopInfo
+FOR EACH ROW
+BEGIN
+    DECLARE new_level TINYINT;
+    DECLARE new_commission DECIMAL(5,2);
+    IF NEW.points <> OLD.points THEN
+        
+        IF NEW.points >= 50000000 THEN
+            SET new_level = 7;
+            SET new_commission = 3.50; 
+        ELSEIF NEW.points >= 40000000 THEN
+            SET new_level = 6;
+            SET new_commission = 3.70;
+        ELSEIF NEW.points >= 20000000 THEN
+            SET new_level = 5;
+            SET new_commission = 4.00;
+        ELSEIF NEW.points >= 10000000 THEN
+            SET new_level = 4;
+            SET new_commission = 4.30;
+        ELSEIF NEW.points >= 5000000 THEN
+            SET new_level = 3;
+            SET new_commission = 4.50;
+        ELSEIF NEW.points >= 3000000 THEN
+            SET new_level = 2;
+            SET new_commission = 4.70;
+        ELSEIF NEW.points >= 1000000 THEN
+            SET new_level = 1;
+            SET new_commission = 5.00;
+        ELSE
+            SET new_level = 0;
+            SET new_commission = 0.00;
+        END IF;
+        SET NEW.shop_level = new_level;
+        SET NEW.commission = new_commission;
+    END IF;
+END $$
+
+DELIMITER ;

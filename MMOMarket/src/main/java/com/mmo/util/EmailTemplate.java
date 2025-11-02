@@ -246,4 +246,103 @@ public class EmailTemplate {
                 "  </table>" +
                 "</body></html>";
     }
+
+    // New: OTP email for shop deletion (English)
+    public static String deleteShopOtpEmail(String code) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#ef4444 0,#f59e42 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">Confirm Shop Cancellation - MMOMarket</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">You have requested to <b>cancel your shop</b> on MMOMarket.</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 18px;\">Please enter the OTP code below within <b>5 minutes</b> to confirm this irreversible action:</p>" +
+                "<div style=\"text-align:center;margin:20px 0 16px;\">" +
+                "<span style=\"display:inline-block;background:#ef4444;color:#fff;font-size:34px;font-weight:800;letter-spacing:8px;padding:16px 36px;border-radius:10px;box-shadow:0 3px 10px rgba(239,68,68,0.15);\">" + code + "</span>" +
+                "</div>" +
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:13px;color:#92400e;margin:0;\"><b>Security note:</b> MMOMarket will <u>never</u> ask you to enter OTP outside the official website/app. If you did <u>not</u> request this action, <b>do not share this code</b> and change your password immediately.</p>" +
+                "</div>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/shop-info' style='display:inline-block;background:#ef4444;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(239,68,68,0.15);'>Open shop info</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    // New: Success email for shop cancellation (English)
+    public static String deleteShopSuccessEmail(String userName, String shopName, String cancelDate) {
+        String safeUser = escape(userName);
+        String safeShop = escape(shopName);
+        String safeDate = escape(cancelDate);
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#22c55e 0,#38bdf8 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">Shop Cancellation Successful</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">Hello <b>" + safeUser + "</b>,</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 16px;\">Your shop <b>" + safeShop + "</b> has been cancelled successfully on <b>" + safeDate + "</b>.</p>" +
+                "<p style=\"font-size:14px;color:#475569;margin:0 0 16px;\">All related data has been soft-deleted and your shop status is now <b>Inactive</b>. You can register a new shop at any time.</p>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/' style='display:inline-block;background:#22c55e;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(34,197,94,0.15);'>Return to homepage</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    public static String buyPointsOtpEmail(String code) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#f59e0b 0,#ef4444 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">Confirm Points Purchase - MMOMarket</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">You are requesting to <b>buy points</b> to upgrade your seller level.</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 18px;\">Enter the OTP below within <b>5 minutes</b> to confirm:</p>" +
+                "<div style=\"text-align:center;margin:20px 0 16px;\">" +
+                "<span style=\"display:inline-block;background:#f59e0b;color:#fff;font-size:34px;font-weight:800;letter-spacing:8px;padding:16px 36px;border-radius:10px;box-shadow:0 3px 10px rgba(245,158,11,0.15);\">" + code + "</span>" +
+                "</div>" +
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:13px;color:#92400e;margin:0;\"><b>Security note:</b> MMOMarket will <u>never</u> ask for your OTP outside the official website/app.</p>" +
+                "</div>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/shop-info' style='display:inline-block;background:#f59e0b;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(245,158,11,0.15);'>Open shop info</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    public static String buyPointsSuccessEmail(String userName, String points, String newLevel, String totalPoints, String newCommission) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#ef4444 0,#f59e42 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:24px;font-weight:700;margin:0;letter-spacing:1px;\">Points Purchase Successful</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:17px;color:#222;margin:0 0 16px;\">Hello <b>" + escape(userName) + "</b>,</p>" +
+                "<p style=\"font-size:16px;color:#444;margin:0 0 20px;\">You have successfully purchased <b style=\"color:#ef4444;\">" + escape(points) + " points</b>.</p>" +
+                "<div style=\"background:#fef2f2;border-left:4px solid #ef4444;padding:16px;border-radius:8px;margin:0 0 20px;\">" +
+                "<ul style=\"font-size:15px;color:#334155;margin:0;list-style:none;padding:0;\">" +
+                "<li style=\"margin-bottom:10px;\"><b>New Level:</b> <span style=\"color:#ef4444;font-weight:600;\">" + escape(newLevel) + "</span></li>" +
+                "<li style=\"margin-bottom:10px;\"><b>Total Points:</b> <span style=\"color:#ef4444;font-weight:600;\">" + escape(totalPoints) + "</span></li>" +
+                "<li><b>Commission Rate:</b> <span style=\"color:#ef4444;font-weight:600;\">" + escape(newCommission) + "%</span></li>" +
+                "</ul>" +
+                "</div>" +
+                "<p style=\"font-size:14px;color:#64748b;margin:0 0 20px;line-height:1.6;\">Your shop level has been upgraded! Enjoy lower commission rates and higher selling limits.</p>" +
+                "<p style=\"font-size:13px;color:#94a3b8;margin:0 0 20px;\">If this was not you, please change your password and contact support immediately.</p>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/shop-info' style='display:inline-block;background:#ef4444;color:#fff;font-weight:600;padding:12px 32px;border-radius:8px;text-decoration:none;font-size:16px;box-shadow:0 2px 8px rgba(239,68,68,0.15);transition:background 0.2s;'>View Shop Info</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:13px;text-align:center;padding:16px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
 }

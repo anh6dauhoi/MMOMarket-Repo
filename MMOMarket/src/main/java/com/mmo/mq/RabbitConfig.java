@@ -17,6 +17,16 @@ public class RabbitConfig {
     public static final String ROUTING_KEY = "withdrawal.requested";
     public static final String QUEUE = "withdrawal.requests";
 
+    // New: dedicated exchange/queue for seller registration to avoid clashing with withdrawal flows
+    public static final String SELLER_REGISTRATION_EXCHANGE = "seller.registration.exchange";
+    public static final String SELLER_REGISTRATION_ROUTING_KEY = "seller.registration.requested";
+    public static final String SELLER_REGISTRATION_QUEUE = "seller.registration.requests";
+
+    // New: dedicated exchange/queue for buy-points flow
+    public static final String BUY_POINTS_EXCHANGE = "buy.points.exchange";
+    public static final String BUY_POINTS_ROUTING_KEY = "buy.points.requested";
+    public static final String BUY_POINTS_QUEUE = "buy.points.requests";
+
     @Bean
     public DirectExchange withdrawalExchange() {
         return new DirectExchange(EXCHANGE, true, false);
@@ -30,6 +40,38 @@ public class RabbitConfig {
     @Bean
     public Binding withdrawalBinding(Queue withdrawalQueue, DirectExchange withdrawalExchange) {
         return BindingBuilder.bind(withdrawalQueue).to(withdrawalExchange).with(ROUTING_KEY);
+    }
+
+    // New beans for seller registration messaging
+    @Bean
+    public DirectExchange sellerRegistrationExchange() {
+        return new DirectExchange(SELLER_REGISTRATION_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue sellerRegistrationQueue() {
+        return QueueBuilder.durable(SELLER_REGISTRATION_QUEUE).build();
+    }
+
+    @Bean
+    public Binding sellerRegistrationBinding(Queue sellerRegistrationQueue, DirectExchange sellerRegistrationExchange) {
+        return BindingBuilder.bind(sellerRegistrationQueue).to(sellerRegistrationExchange).with(SELLER_REGISTRATION_ROUTING_KEY);
+    }
+
+    // New beans for buy points messaging
+    @Bean
+    public DirectExchange buyPointsExchange() {
+        return new DirectExchange(BUY_POINTS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue buyPointsQueue() {
+        return QueueBuilder.durable(BUY_POINTS_QUEUE).build();
+    }
+
+    @Bean
+    public Binding buyPointsBinding(Queue buyPointsQueue, DirectExchange buyPointsExchange) {
+        return BindingBuilder.bind(buyPointsQueue).to(buyPointsExchange).with(BUY_POINTS_ROUTING_KEY);
     }
 
     @Bean

@@ -490,7 +490,9 @@ public class AdminController {
 
         // Handle file uploads for policies
         try {
-            java.nio.file.Path dir = java.nio.file.Paths.get("uploads", "policies");
+            // Use absolute path under application root to match WebMvcConfig's /uploads/** mapping
+            String rootDir = System.getProperty("user.dir");
+            java.nio.file.Path dir = java.nio.file.Paths.get(rootDir, "uploads", "policies");
             java.nio.file.Files.createDirectories(dir);
 
             if (policyComplaint != null && !policyComplaint.isEmpty()) {
@@ -499,7 +501,7 @@ public class AdminController {
                 if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
                     errors.put("system_complaint", "Only PDF, DOC, or DOCX files are allowed.");
                 } else {
-                    String filename = "complaint-" + System.currentTimeMillis() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    String filename = "complaint-" + System.currentTimeMillis() + "-" + (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
                     java.nio.file.Path target = dir.resolve(filename);
                     policyComplaint.transferTo(target.toFile());
                     String publicUrl = "/uploads/policies/" + filename;
@@ -513,7 +515,7 @@ public class AdminController {
                 if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
                     errors.put("system_contract", "Only PDF, DOC, or DOCX files are allowed.");
                 } else {
-                    String filename = "seller-agreement-" + System.currentTimeMillis() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    String filename = "seller-agreement-" + System.currentTimeMillis() + "-" + (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
                     java.nio.file.Path target = dir.resolve(filename);
                     policySellerAgreement.transferTo(target.toFile());
                     String publicUrl = "/uploads/policies/" + filename;
