@@ -35,11 +35,31 @@ public class ProductVariantService {
         return variants;
     }
 
+    public List<ProductVariant> findAllVariantsByProductId(Long productId) {
+        List<ProductVariant> variants = productVariantRepository.findByProductId(productId);
+        // Set stock chỉ cho active variants
+        for (ProductVariant variant : variants) {
+            variant.setStock(productVariantAccountService.countAvailableAccounts(variant.getId()));
+        }
+        return variants;
+    }
+
     public ProductVariant findById(Long id) {
         ProductVariant variant = productVariantRepository.findByIdAndIsDeleteFalse(id)
                 .orElseThrow(() -> new RuntimeException("Product variant not found"));
         // Set stock
         variant.setStock(productVariantAccountService.countAvailableAccounts(id));
+        return variant;
+    }
+
+    public ProductVariant findByIdIncludeDeleted(Long id) {
+        ProductVariant variant = productVariantRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product variant not found"));
+
+        // Chỉ set stock cho variant chưa bị xóa
+        if (!variant.isDelete()) {
+            variant.setStock(productVariantAccountService.countAvailableAccounts(id));
+        }
         return variant;
     }
 

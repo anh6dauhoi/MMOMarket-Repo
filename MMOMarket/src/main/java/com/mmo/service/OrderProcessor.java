@@ -10,7 +10,7 @@ import java.util.List;
 public class OrderProcessor {
 
     @Autowired
-    private OrderQueueService orderQueueService;
+    private OrdersService orderQueueService;
 
     /**
      * Worker chạy mỗi 3 giây để xử lý pending orders

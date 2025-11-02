@@ -338,13 +338,6 @@
                 return {};
             }
 
-            // Helper to format VND-style numbers with dot thousands separators
-            function formatVnd(x) {
-                const n = Number(x);
-                if (!isFinite(n)) return x ?? '';
-                return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n);
-            }
-
             // Global để onclick gọi được
             window.openWithdrawModal = function (btn) {
                 const modal = document.getElementById('withdrawModal');
@@ -385,8 +378,7 @@
                 bk.textContent  = data.bankName || '';
                 acc.textContent = data.accountNumber || '';
                 br.textContent  = data.branch || '';
-                // format amount with dot thousands
-                amt.textContent = formatVnd(data.amount);
+                amt.textContent = data.amount || '';
                 dt.textContent  = data.createdAt || data.date || '';
                 const S = (data.status || '').trim();
                 st.textContent  = S;

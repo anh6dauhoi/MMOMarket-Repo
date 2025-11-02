@@ -80,10 +80,12 @@
             </div>
         </div>
 
-        <button onclick="window.location.href='/'"
+        <button th:onclick="'window.location.href=\'/customer/products/' + ${product.id} + '\''"
                 class="w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 font-semibold">
             Close
         </button>
+
+
     </div>
 </div>
 
@@ -94,7 +96,7 @@
     // Hiển thị modal khi có transaction
     window.onload = function() {
         document.getElementById('successModal').classList.remove('hidden');
-    }
+    }//t
 </script>
 </body>
 </html>

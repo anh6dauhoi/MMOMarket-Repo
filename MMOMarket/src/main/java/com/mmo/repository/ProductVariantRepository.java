@@ -14,6 +14,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     List<ProductVariant> findByProductIdAndIsDeleteFalse(Long productId);
 
+    List<ProductVariant> findByProductId(Long productId);
+
     List<ProductVariant> findByProductIdAndStatusAndIsDeleteFalse(Long productId, String status);
 
     Optional<ProductVariant> findByIdAndIsDeleteFalse(Long id);

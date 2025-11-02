@@ -365,7 +365,8 @@ public class SellerProductController {
         User currentUser = userService.findByEmail(email);
 
         Product product = productService.findById(id);
-        List<ProductVariant> variants = productVariantService.findByProductId(id);
+
+        List<ProductVariant> variants = productVariantService.findAllVariantsByProductId(id);
 
         // Lấy thông tin seller
         User seller = product.getSeller();
@@ -444,7 +445,7 @@ public class SellerProductController {
             String email = authentication.getName();
             User seller = userService.findByEmail(email);
 
-            ProductVariant variant = productVariantService.findById(variantId);
+            ProductVariant variant = productVariantService.findByIdIncludeDeleted(variantId);
             Product product = productService.findById(variant.getProduct().getId());
 
             if (!product.getSeller().getId().equals(seller.getId())) {
@@ -464,8 +465,8 @@ public class SellerProductController {
             redirectAttributes.addFlashAttribute("error", "Error: " + e.getMessage());
         }
 
-        return "redirect:/seller/products/details/" +
-                productVariantService.findById(variantId).getProduct().getId();
+        ProductVariant restoredVariant = productVariantService.findByIdIncludeDeleted(variantId);
+        return "redirect:/seller/products/details/" + restoredVariant.getProduct().getId();
     }
 
     // Xem danh sách accounts của variant
@@ -487,7 +488,7 @@ public class SellerProductController {
         // Lấy danh sách accounts
         List<ProductVariantAccount> accounts = accountService.getAccountsByVariantId(variantId);
 
-// Đếm available và sold
+        // Đếm available và sold
         long availableCount = accounts.stream()
                 .filter(acc -> acc.getStatus() == ProductVariantAccount.AccountStatus.Available)
                 .count();

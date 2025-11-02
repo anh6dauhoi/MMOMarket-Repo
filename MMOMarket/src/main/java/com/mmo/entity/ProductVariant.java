@@ -3,8 +3,6 @@ package com.mmo.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.Date;
 
@@ -20,28 +18,28 @@ public class ProductVariant {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // FK: product_id -> Products(id)
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
     private Product product;
 
     @Column(name = "variant_name", nullable = false, length = 255)
     private String variantName;
 
-    @Column(name = "price", nullable = false)
+    @Column(nullable = false)
     private Long price;
 
+    // ĐÃ XÓA: trường stock - không còn lưu trực tiếp
+    // Stock giờ được tính từ bảng ProductVariantAccounts
 
-    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
-    private String status = "Pending";
+    @Column(length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
+    private String status;
 
+    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;
 
+    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
 
     @Column(name = "created_by")
@@ -53,14 +51,20 @@ public class ProductVariant {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 
-    // Optional readonly audit relations
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+        if (status == null) status = "Pending";
+    }
 
     @PreUpdate
     protected void onUpdate() {

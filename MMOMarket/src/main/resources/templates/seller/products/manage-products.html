@@ -1,260 +1,260 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Products - Seller Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Products - Seller Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50">
 <div class="flex min-h-screen flex-col">
-    <!-- Header -->
-    <th:insert th:replace="~{fragments/header :: header}" />
+  <!-- Header -->
+  <th:insert th:replace="~{fragments/header :: header}" />
 
-    <div class="flex flex-1">
-        <!-- Sidebar -->
-        <th:insert th:replace="~{fragments/seller/sidebar :: sidebar('products')}" />
+  <div class="flex flex-1">
+    <!-- Sidebar -->
+    <th:insert th:replace="~{fragments/seller/sidebar :: sidebar('products')}" />
 
-        <!-- Main Content -->
-        <main class="flex-1">
-            <!-- Products Section -->
-            <div class="p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-3xl font-bold">Products</h1>
-                    <button onclick="openAddModal()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
-                        New product
-                    </button>
-                </div>
+    <!-- Main Content -->
+    <main class="flex-1">
+      <!-- Products Section -->
+      <div class="p-8">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-3xl font-bold">Products</h1>
+          <button onclick="openAddModal()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+            New product
+          </button>
+        </div>
 
-                <!-- Messages -->
-                <div th:if="${message}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                    <span th:text="${message}"></span>
-                </div>
-                <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    <span th:text="${error}"></span>
-                </div>
+        <!-- Messages -->
+        <div th:if="${message}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          <span th:text="${message}"></span>
+        </div>
+        <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <span th:text="${error}"></span>
+        </div>
 
-                <!-- Search Bar -->
-                <div class="bg-white rounded-lg mb-6">
-                    <form method="get" action="/seller/products">
-                        <input type="text" name="search" th:value="${param.search}"
-                               placeholder="Search products"
-                               class="w-full px-4 py-2 border rounded-lg">
-                    </form>
-                </div>
+        <!-- Search Bar -->
+        <div class="bg-white rounded-lg mb-6">
+          <form method="get" action="/seller/products">
+            <input type="text" name="search" th:value="${param.search}"
+                   placeholder="Search products"
+                   class="w-full px-4 py-2 border rounded-lg">
+          </form>
+        </div>
 
-                <!-- Products Table -->
-                <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <table class="w-full">
-                        <thead class="bg-gray-50 border-b">
-                        <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No. Variant</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                        <tr th:each="product, iterStat : ${products}" class="hover:bg-gray-50 transition">              <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="text-sm font-medium text-gray-900" th:text="${iterStat.count}">1</span>
-                        </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm text-gray-900" th:text="${product.name}">Quizlet Account</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm text-gray-600" th:text="${product.category.name}">Education</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+        <!-- Products Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No. Variant</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+            </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+            <tr th:each="product, iterStat : ${products}" class="hover:bg-gray-50 transition">              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm font-medium text-gray-900" th:text="${iterStat.count}">1</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900" th:text="${product.name}">Quizlet Account</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-600" th:text="${product.category.name}">Education</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
               th:text="${#lists.size(product.variants)}">3</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <button th:onclick="'openEditModal(' + ${product.id} + ')'"
-                                        class="text-blue-600 hover:text-blue-800 font-medium mr-4">Update</button>
-                                <button th:onclick="'confirmDelete(' + ${product.id} + ')'"
-                                        class="text-red-600 hover:text-red-800 font-medium mr-4">Delete</button>
-                                <a th:href="@{/seller/products/details/{id}(id=${product.id})}"
-                                   class="text-green-600 hover:text-green-800 font-medium">View detail</a>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <button th:onclick="'openEditModal(' + ${product.id} + ')'"
+                        class="text-blue-600 hover:text-blue-800 font-medium mr-4">Update</button>
+                <button th:onclick="'confirmDelete(' + ${product.id} + ')'"
+                        class="text-red-600 hover:text-red-800 font-medium mr-4">Delete</button>
+                <a th:href="@{/seller/products/details/{id}(id=${product.id})}"
+                   class="text-green-600 hover:text-green-800 font-medium">View detail</a>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
 
-                <!-- Pagination -->
-                <div class="flex justify-center gap-2 mt-6">
-                    <button class="px-3 py-1 border rounded">&lt;</button>
-                    <button class="px-3 py-1 bg-gray-800 text-white rounded">1</button>
-                    <button class="px-3 py-1 border rounded">2</button>
-                    <button class="px-3 py-1 border rounded">3</button>
-                    <button class="px-3 py-1 border rounded">...</button>
-                    <button class="px-3 py-1 border rounded">10</button>
-                    <button class="px-3 py-1 border rounded">&gt;</button>
-                </div>
-            </div>
-        </main>
-    </div>
+        <!-- Pagination -->
+        <div class="flex justify-center gap-2 mt-6">
+          <button class="px-3 py-1 border rounded">&lt;</button>
+          <button class="px-3 py-1 bg-gray-800 text-white rounded">1</button>
+          <button class="px-3 py-1 border rounded">2</button>
+          <button class="px-3 py-1 border rounded">3</button>
+          <button class="px-3 py-1 border rounded">...</button>
+          <button class="px-3 py-1 border rounded">10</button>
+          <button class="px-3 py-1 border rounded">&gt;</button>
+        </div>
+      </div>
+    </main>
+  </div>
 
-    <!-- Footer -->
-    <th:insert th:replace="~{fragments/footer :: footer}" />
+  <!-- Footer -->
+  <th:insert th:replace="~{fragments/footer :: footer}" />
 </div>
 
 <!-- Add Product Modal - 2 COLUMNS -->
 <div id="addModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <h2 class="text-xl font-bold mb-6 text-center">Create new product</h2>
-        <form th:action="@{/seller/products/add}" method="post" enctype="multipart/form-data">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+  <div class="bg-white rounded-lg p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <h2 class="text-xl font-bold mb-6 text-center">Create new product</h2>
+    <form th:action="@{/seller/products/add}" method="post" enctype="multipart/form-data">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
-            <div class="grid grid-cols-2 gap-6">
-                <!-- LEFT COLUMN -->
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Product Name</label>
-                        <input type="text" name="name" class="w-full px-4 py-2 border rounded-lg" required>
-                    </div>
+      <div class="grid grid-cols-2 gap-6">
+        <!-- LEFT COLUMN -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Product Name</label>
+            <input type="text" name="name" class="w-full px-4 py-2 border rounded-lg" required>
+          </div>
 
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Category</label>
-                        <select name="category.id" class="w-full px-4 py-2 border rounded-lg" required>
-                            <option value="">Select category</option>
-                            <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"></option>
-                        </select>
-                    </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Category</label>
+            <select name="category.id" class="w-full px-4 py-2 border rounded-lg" required>
+              <option value="">Select category</option>
+              <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"></option>
+            </select>
+          </div>
 
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Image</label>
-                        <input type="file" name="imageFile" class="w-full px-4 py-2 border rounded-lg">
-                    </div>
-                </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Image</label>
+            <input type="file" name="imageFile" class="w-full px-4 py-2 border rounded-lg">
+          </div>
+        </div>
 
-                <!-- RIGHT COLUMN -->
-                <div>
-                    <label class="block text-sm font-medium mb-2">Description</label>
-                    <textarea name="description" rows="10" class="w-full px-4 py-2 border rounded-lg resize-none"></textarea>
-                </div>
-            </div>
+        <!-- RIGHT COLUMN -->
+        <div>
+          <label class="block text-sm font-medium mb-2">Description</label>
+          <textarea name="description" rows="10" class="w-full px-4 py-2 border rounded-lg resize-none"></textarea>
+        </div>
+      </div>
 
-            <div class="flex gap-4 mt-6">
-                <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
-                <button type="button" onclick="closeAddModal()" class="flex-1 border py-2 rounded-lg">Cancel</button>
-            </div>
-        </form>
-    </div>
+      <div class="flex gap-4 mt-6">
+        <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
+        <button type="button" onclick="closeAddModal()" class="flex-1 border py-2 rounded-lg">Cancel</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Edit Product Modal - 2 COLUMNS -->
 <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <h2 class="text-xl font-bold mb-4 text-center">Edit product</h2>
-        <p class="text-center text-sm text-gray-600 mb-6">Please edit your product below</p>
-        <form id="editForm" method="post" enctype="multipart/form-data">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-            <input type="hidden" id="editProductId" name="id">
+  <div class="bg-white rounded-lg p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <h2 class="text-xl font-bold mb-4 text-center">Edit product</h2>
+    <p class="text-center text-sm text-gray-600 mb-6">Please edit your product below</p>
+    <form id="editForm" method="post" enctype="multipart/form-data">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" id="editProductId" name="id">
 
-            <div class="grid grid-cols-2 gap-6">
-                <!-- LEFT COLUMN -->
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Product Name</label>
-                        <input type="text" id="editName" name="name" class="w-full px-4 py-2 border rounded-lg" required>
-                    </div>
+      <div class="grid grid-cols-2 gap-6">
+        <!-- LEFT COLUMN -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Product Name</label>
+            <input type="text" id="editName" name="name" class="w-full px-4 py-2 border rounded-lg" required>
+          </div>
 
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Category</label>
-                        <select id="editCategory" name="category.id" class="w-full px-4 py-2 border rounded-lg" required>
-                            <option value="">Select category</option>
-                            <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"></option>
-                        </select>
-                    </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Category</label>
+            <select id="editCategory" name="category.id" class="w-full px-4 py-2 border rounded-lg" required>
+              <option value="">Select category</option>
+              <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"></option>
+            </select>
+          </div>
 
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Current Image</label>
-                        <img id="currentImage" src="" alt="Current product image"
-                             class="w-full h-32 object-cover rounded border mb-2" style="display: none;">
-                        <p id="noImageText" class="text-sm text-gray-500">No image</p>
-                    </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Current Image</label>
+            <img id="currentImage" src="" alt="Current product image"
+                 class="w-full h-32 object-cover rounded border mb-2" style="display: none;">
+            <p id="noImageText" class="text-sm text-gray-500">No image</p>
+          </div>
 
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Change Image</label>
-                        <input type="file" name="imageFile" class="w-full px-4 py-2 border rounded-lg">
-                    </div>
-                </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Change Image</label>
+            <input type="file" name="imageFile" class="w-full px-4 py-2 border rounded-lg">
+          </div>
+        </div>
 
-                <!-- RIGHT COLUMN -->
-                <div>
-                    <label class="block text-sm font-medium mb-2">Description</label>
-                    <textarea id="editDescription" name="description" rows="16"
-                              class="w-full px-4 py-2 border rounded-lg resize-none"></textarea>
-                </div>
-            </div>
+        <!-- RIGHT COLUMN -->
+        <div>
+          <label class="block text-sm font-medium mb-2">Description</label>
+          <textarea id="editDescription" name="description" rows="16"
+                    class="w-full px-4 py-2 border rounded-lg resize-none"></textarea>
+        </div>
+      </div>
 
-            <div class="flex gap-4 mt-6">
-                <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
-                <button type="button" onclick="closeEditModal()" class="flex-1 border py-2 rounded-lg">Cancel</button>
-            </div>
-        </form>
-    </div>
+      <div class="flex gap-4 mt-6">
+        <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
+        <button type="button" onclick="closeEditModal()" class="flex-1 border py-2 rounded-lg">Cancel</button>
+      </div>
+    </form>
+  </div>
 </div>
 <script>
-    function openAddModal() {
-        document.getElementById('addModal').classList.remove('hidden');
-    }
-    function closeAddModal() {
-        document.getElementById('addModal').classList.add('hidden');
-    }
+  function openAddModal() {
+    document.getElementById('addModal').classList.remove('hidden');
+  }
+  function closeAddModal() {
+    document.getElementById('addModal').classList.add('hidden');
+  }
 
-    function openEditModal(id) {
-        fetch('/seller/products/get/' + id)
+  function openEditModal(id) {
+    fetch('/seller/products/get/' + id)
             .then(res => res.json())
             .then(product => {
-                document.getElementById('editProductId').value = product.id;
-                document.getElementById('editName').value = product.name;
-                document.getElementById('editDescription').value = product.description || '';
-                document.getElementById('editCategory').value = product.category.id;
+              document.getElementById('editProductId').value = product.id;
+              document.getElementById('editName').value = product.name;
+              document.getElementById('editDescription').value = product.description || '';
+              document.getElementById('editCategory').value = product.category.id;
 
-                // Hiển thị ảnh hiện tại
-                const currentImage = document.getElementById('currentImage');
-                const noImageText = document.getElementById('noImageText');
-                if (product.image) {
-                    currentImage.src = product.image;
-                    currentImage.style.display = 'block';
-                    noImageText.style.display = 'none';
-                } else {
-                    currentImage.style.display = 'none';
-                    noImageText.style.display = 'block';
-                }
+              // Hiển thị ảnh hiện tại
+              const currentImage = document.getElementById('currentImage');
+              const noImageText = document.getElementById('noImageText');
+              if (product.image) {
+                currentImage.src = product.image;
+                currentImage.style.display = 'block';
+                noImageText.style.display = 'none';
+              } else {
+                currentImage.style.display = 'none';
+                noImageText.style.display = 'block';
+              }
 
-                document.getElementById('editForm').action = '/seller/products/update/' + id;
-                document.getElementById('editModal').classList.remove('hidden');
+              document.getElementById('editForm').action = '/seller/products/update/' + id;
+              document.getElementById('editModal').classList.remove('hidden');
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Cannot load product data');
+              console.error('Error:', error);
+              alert('Cannot load product data');
             });
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').classList.add('hidden');
+  }
+
+  function confirmDelete(id) {
+    if(confirm('Are you sure you want to delete this product?')) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/seller/products/delete/' + id;
+
+      const csrf = document.createElement('input');
+      csrf.type = 'hidden';
+      csrf.name = '[[${_csrf.parameterName}]]';
+      csrf.value = '[[${_csrf.token}]]';
+      form.appendChild(csrf);
+
+      document.body.appendChild(form);
+      form.submit();
     }
-
-    function closeEditModal() {
-        document.getElementById('editModal').classList.add('hidden');
-    }
-
-    function confirmDelete(id) {
-        if(confirm('Are you sure you want to delete this product?')) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/seller/products/delete/' + id;
-
-            const csrf = document.createElement('input');
-            csrf.type = 'hidden';
-            csrf.name = '[[${_csrf.parameterName}]]';
-            csrf.value = '[[${_csrf.token}]]';
-            form.appendChild(csrf);
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-    }
+  }
 </script>
 </body>
 </html>

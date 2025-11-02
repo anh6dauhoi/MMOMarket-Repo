@@ -59,4 +59,9 @@ public class AuthService {
         // Delegate to async email service with retry; keep signature for controller compatibility
         emailService.sendVerificationCodeEmailAsync(email, code);
     }
+
+    // Thêm vào AuthService nếu chưa có
+    public User findById(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
 }

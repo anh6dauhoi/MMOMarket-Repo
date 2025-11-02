@@ -1,7 +1,7 @@
 package com.mmo.service;
 
 import com.mmo.entity.*;
-import com.mmo.repository.OrderQueueRepository;
+import com.mmo.repository.OrdersRepository;
 import com.mmo.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -9,10 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 @Service
-public class OrderQueueService {
+public class OrdersService {
 
     @Autowired
-    private OrderQueueRepository orderQueueRepository;
+    private OrdersRepository orderQueueRepository;
 
     @Autowired
     private UserService userService;

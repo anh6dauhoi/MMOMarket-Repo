@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface OrderQueueRepository extends JpaRepository<Orders, Long> {
+public interface OrdersRepository extends JpaRepository<Orders, Long> {
 
     // Lấy orders đang pending (để worker xử lý)
     List<Orders> findByStatusOrderByCreatedAtAsc(QueueStatus status);

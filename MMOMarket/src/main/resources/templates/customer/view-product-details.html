@@ -1,363 +1,363 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${product.name} + ' - Product Details'">Product Details</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: #ffffff;
-        }
-        .star-filled {
-            color: #fbbf24;
-        }
-        .star-empty {
-            color: #d1d5db;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${product.name} + ' - Product Details'">Product Details</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #ffffff;
+    }
+    .star-filled {
+      color: #fbbf24;
+    }
+    .star-empty {
+      color: #d1d5db;
+    }
 
-        /* Rating Star Input Styles */
-        input[type="radio"]:checked ~ label,
-        label:hover,
-        label:hover ~ label {
-            color: #fbbf24 !important;
-        }
+    /* Rating Star Input Styles */
+    input[type="radio"]:checked ~ label,
+    label:hover,
+    label:hover ~ label {
+      color: #fbbf24 !important;
+    }
 
-        /* Reverse star order for proper rating */
-        .rating-stars {
-            display: flex;
-            flex-direction: row-reverse;
-            justify-content: flex-end;
-        }
+    /* Reverse star order for proper rating */
+    .rating-stars {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+    }
 
-        .rating-stars input[type="radio"] {
-            display: none;
-        }
+    .rating-stars input[type="radio"] {
+      display: none;
+    }
 
-        .rating-stars label {
-            cursor: pointer;
-            font-size: 2rem;
-            color: #d1d5db;
-            transition: color 0.2s;
-        }
+    .rating-stars label {
+      cursor: pointer;
+      font-size: 2rem;
+      color: #d1d5db;
+      transition: color 0.2s;
+    }
 
-        .rating-stars label:hover,
-        .rating-stars label:hover ~ label,
-        .rating-stars input[type="radio"]:checked ~ label {
-            color: #fbbf24;
-        }
-    </style>
+    .rating-stars label:hover,
+    .rating-stars label:hover ~ label,
+    .rating-stars input[type="radio"]:checked ~ label {
+      color: #fbbf24;
+    }
+  </style>
 </head>
 <body class="min-h-screen flex flex-col">
 <!-- Header -->
 <th:insert th:replace="~{fragments/header :: header}" />
 
 <main class="flex-1 container mx-auto px-4 py-8">
-    <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm text-gray-600 mb-6">
-        <a href="/static" class="hover:text-red-500">Home</a>
-        <span>/</span>
-        <a href="/customer/products" class="hover:text-red-500">Resources</a>
-        <span>/</span>
-        <span class="text-gray-800" th:text="${product.category.name}">Category</span>
-    </div>
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-gray-600 mb-6">
+    <a href="/static" class="hover:text-red-500">Home</a>
+    <span>/</span>
+    <a href="/customer/products" class="hover:text-red-500">Resources</a>
+    <span>/</span>
+    <span class="text-gray-800" th:text="${product.category.name}">Category</span>
+  </div>
 
-    <!-- Success/Error Messages -->
-    <div th:if="${message}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 flex items-center justify-between">
-        <span th:text="${message}"></span>
-        <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 flex items-center justify-between">
-        <span th:text="${error}"></span>
-        <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
+  <!-- Success/Error Messages -->
+  <div th:if="${message}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 flex items-center justify-between">
+    <span th:text="${message}"></span>
+    <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+  <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 flex items-center justify-between">
+    <span th:text="${error}"></span>
+    <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Left Column - Product Image & Details -->
-        <div class="lg:col-span-1">
-            <!-- Product Image -->
-            <div class="rounded-lg shadow-sm overflow-hidden mb-6">
-                <img th:src="${product.image != null ? product.image : '/images/default-product.jpg'}"
-                     th:alt="${product.name}"
-                     class="w-full h-full object-cover">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left Column - Product Image & Details -->
+      <div class="lg:col-span-1">
+          <!-- Product Image -->
+          <div class="rounded-lg shadow-sm overflow-hidden mb-6">
+              <img th:src="${product.image != null ? product.image : '/images/default-product.jpg'}"
+                   th:alt="${product.name}"
+                   class="w-full h-full object-cover">
+          </div>
+
+          <!-- Product Details Card -->
+          <div class="rounded-lg p-6">
+              <h3 class="text-lg font-bold text-gray-800 mb-4">Product Details</h3>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                  <div class="flex flex-col">
+                      <span class="text-gray-600">Category</span>
+                      <span class="font-semibold text-gray-800" th:text="${product.category.name}">Educational Resources</span>
+                  </div>
+                  <div class="flex flex-col">
+                      <span class="text-gray-600">Seller</span>
+                      <span class="font-semibold text-gray-800" th:text="${seller.fullName}">EduResourcePro</span>
+                  </div>
+                  <div class="flex flex-col">
+                      <span class="text-gray-600">Rating</span>
+                      <div class="flex items-center gap-1">
+                          <span class="text-yellow-500 font-semibold" th:text="${avgRating}">4.8</span>
+                          <span class="text-gray-500" th:text="'(' + ${totalReviews} + ' reviews)'">(152 reviews)</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+    <!-- Right Column - Product Info & Variants -->
+    <div class="lg:col-span-1">
+      <!-- Product Header -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2" th:text="${product.name}">Quizlet</h1>
+            <div class="flex items-center gap-3 text-sm">
+              <span class="text-gray-600">Category: </span>
+              <span class="font-semibold text-gray-800" th:text="${product.category.name}">MMO</span>
+              <div class="flex items-center gap-1">
+                <i class="fas fa-star star-filled"></i>
+                <span class="font-semibold" th:text="${avgRating}">4.6</span>
+              </div>
             </div>
-
-            <!-- Product Details Card -->
-            <div class="rounded-lg p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Product Details</h3>
-                <div class="grid grid-cols-3 gap-4 text-sm">
-                    <div class="flex flex-col">
-                        <span class="text-gray-600">Category</span>
-                        <span class="font-semibold text-gray-800" th:text="${product.category.name}">Educational Resources</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-gray-600">Seller</span>
-                        <span class="font-semibold text-gray-800" th:text="${seller.fullName}">EduResourcePro</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-gray-600">Rating</span>
-                        <div class="flex items-center gap-1">
-                            <span class="text-yellow-500 font-semibold" th:text="${avgRating}">4.8</span>
-                            <span class="text-gray-500" th:text="'(' + ${totalReviews} + ' reviews)'">(152 reviews)</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
 
-        <!-- Right Column - Product Info & Variants -->
-        <div class="lg:col-span-1">
-            <!-- Product Header -->
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="flex-1">
-                        <h1 class="text-3xl font-bold text-gray-800 mb-2" th:text="${product.name}">Quizlet</h1>
-                        <div class="flex items-center gap-3 text-sm">
-                            <span class="text-gray-600">Category: </span>
-                            <span class="font-semibold text-gray-800" th:text="${product.category.name}">MMO</span>
-                            <div class="flex items-center gap-1">
-                                <i class="fas fa-star star-filled"></i>
-                                <span class="font-semibold" th:text="${avgRating}">4.6</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <p class="text-gray-600 leading-relaxed" th:text="${product.description}">
+          Unlock all premium features with a Quizlet Plus account. Study smarter with ad-free learning,
+          custom study paths, and advanced content creation tools. Perfect for students looking to boost
+          their grades and efficiency.
+        </p>
+          <!-- Variants Selection -->
+          <div class="bg-white rounded-lg shadow-sm pt-3 pb-3 mb-6 mt-3">
+              <!-- Dropdown select variant -->
+              <div class="mb-4">
+                  <select id="variantSelect" class="w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                      <option value="">-- Select a variant --</option>
+                      <option th:each="variant : ${variants}"
+                              th:value="${variant.id}"
+                              th:data-price="${variant.price}"
+                              th:data-stock="${variant.stock}"
+                              th:data-status="${variant.status}"
+                              th:text="${variant.variantName}">
+                      </option>
+                  </select>
+              </div>
 
-                <p class="text-gray-600 leading-relaxed" th:text="${product.description}">
-                    Unlock all premium features with a Quizlet Plus account. Study smarter with ad-free learning,
-                    custom study paths, and advanced content creation tools. Perfect for students looking to boost
-                    their grades and efficiency.
-                </p>
-                <!-- Variants Selection -->
-                <div class="bg-white rounded-lg shadow-sm pt-3 pb-3 mb-6 mt-3">
-                    <!-- Dropdown select variant -->
-                    <div class="mb-4">
-                        <select id="variantSelect" class="w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
-                            <option value="">-- Select a variant --</option>
-                            <option th:each="variant : ${variants}"
-                                    th:value="${variant.id}"
-                                    th:data-price="${variant.price}"
-                                    th:data-stock="${variant.stock}"
-                                    th:data-status="${variant.status}"
-                                    th:text="${variant.variantName}">
-                            </option>
-                        </select>
-                    </div>
+              <!-- Display selected variant info -->
+              <div id="variantInfo" class="hidden rounded-lg mb-4">
+                  <!-- Quantity -->
+                  <div class="flex items-center border border-gray-300 rounded-full overflow-hidden max-w-32">
+                      <button onclick="decreaseQty()" class="w-10 h-10 hover:bg-gray-50 transition-colors">
+                          <i class="fas fa-minus text-sm text-gray-600"></i>
+                      </button>
+                      <input type="number" id="quantity" value="1" min="1" max="999"
+                             class="w-16 text-center border-x border-gray-300 py-2 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                      <button onclick="increaseQty()" class="w-10 h-10 hover:bg-gray-50 transition-colors">
+                          <i class="fas fa-plus text-sm text-gray-600"></i>
+                      </button>
+                  </div>
+                  <div class="flex justify-between items-center mt-3">
+                      <div>
+                          <p class="bg-gray-100 p-3 rounded-2xl text-gray-600 font-bold text-xl" id="variantPrice">0 coins</p>
+                      </div>
+                  </div>
+              </div>
 
-                    <!-- Display selected variant info -->
-                    <div id="variantInfo" class="hidden rounded-lg mb-4">
-                        <!-- Quantity -->
-                        <div class="flex items-center border border-gray-300 rounded-full overflow-hidden max-w-32">
-                            <button onclick="decreaseQty()" class="w-10 h-10 hover:bg-gray-50 transition-colors">
-                                <i class="fas fa-minus text-sm text-gray-600"></i>
-                            </button>
-                            <input type="number" id="quantity" value="1" min="1" max="999"
-                                   class="w-16 text-center border-x border-gray-300 py-2 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                            <button onclick="increaseQty()" class="w-10 h-10 hover:bg-gray-50 transition-colors">
-                                <i class="fas fa-plus text-sm text-gray-600"></i>
-                            </button>
-                        </div>
-                        <div class="flex justify-between items-center mt-3">
-                            <div>
-                                <p class="bg-gray-100 p-3 rounded-2xl text-gray-600 font-bold text-xl" id="variantPrice">0 coins</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="flex gap-4">
-                        <button onclick="buyNow()" id="buyBtn"
-                                class="bg-red-500 text-white px-6 py-3 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed">
-                            <i class="fas fa-shopping-cart mr-2"></i>Buy Now
-                        </button>
-                        <button id="wishlistBtn" onclick="addToWishlist()"
-                                class="w-auto bg-gray-100 text-gray-800 p-4 rounded-lg hover:bg-gray-200 transition font-semibold">
-                            <i class="far fa-heart mr-2"></i>Add to Wishlist
-                        </button>
-                    </div>
-                    <a th:href="@{/chat(sellerId=${seller.id})}"
-                       class="w-64 px-6 mt-3 bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-semibold block text-center">
-                        <i class="fas fa-comment-dots mr-2"></i>Chat with seller
-                    </a>
-                </div>
-            </div>
+              <!-- Action Buttons -->
+              <div class="flex gap-4">
+                  <button onclick="buyNow()" id="buyBtn"
+                          class="bg-red-500 text-white px-6 py-3 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed">
+                      <i class="fas fa-shopping-cart mr-2"></i>Buy Now
+                  </button>
+                  <button id="wishlistBtn" onclick="addToWishlist()"
+                          class="w-auto bg-gray-100 text-gray-800 p-4 rounded-lg hover:bg-gray-200 transition font-semibold">
+                      <i class="far fa-heart mr-2"></i>Add to Wishlist
+                  </button>
+              </div>
+              <a th:href="@{/chat(sellerId=${seller.id})}"
+                 class="w-64 px-6 mt-3 bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-semibold block text-center">
+                  <i class="fas fa-comment-dots mr-2"></i>Chat with seller
+              </a>
+          </div>
+      </div>
 
 
-        </div>
     </div>
+  </div>
 
-    <!-- Seller Information -->
-    <div class="bg-white rounded-lg shadow-sm p-6 mb-6 mt-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Seller Information</h2>
-        <div class="flex items-center gap-4">
-            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-200 to-orange-300 flex items-center justify-center flex-shrink-0">
-                <svg class="w-8 h-8 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 10a2 2 0 114 0 2 2 0 01-4 0zm2 6a6 6 0 01-4.472-2h8.944A6 6 0 0110 16z"/>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h3 class="font-bold text-gray-800 text-lg" th:text="${seller.fullName}">EduResourcePro</h3>
-                <div class="flex gap-4 text-sm text-gray-600 mt-1">
+  <!-- Seller Information -->
+  <div class="bg-white rounded-lg shadow-sm p-6 mb-6 mt-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Seller Information</h2>
+    <div class="flex items-center gap-4">
+      <div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-200 to-orange-300 flex items-center justify-center flex-shrink-0">
+        <svg class="w-8 h-8 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 10a2 2 0 114 0 2 2 0 01-4 0zm2 6a6 6 0 01-4.472-2h8.944A6 6 0 0110 16z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="font-bold text-gray-800 text-lg" th:text="${seller.fullName}">EduResourcePro</h3>
+        <div class="flex gap-4 text-sm text-gray-600 mt-1">
                             <span>
                                 <span class="font-semibold" th:text="${totalSold} + '+'">1500+</span> Transactions
                             </span>
-                    <span class="text-green-600 font-semibold">98% Positive Feedback</span>
-                </div>
-            </div>
+          <span class="text-green-600 font-semibold">98% Positive Feedback</span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer Reviews Section -->
+  <div class="bg-white rounded-lg shadow-sm p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-bold text-gray-800">Customer Reviews</h2>
+
+      <!-- Rating Summary -->
+      <div class="flex items-center gap-4">
+        <div class="text-center">
+          <div class="text-3xl font-bold text-gray-800" th:text="${#numbers.formatDecimal(avgRating, 1, 1)}">4.8</div>
+          <div class="flex items-center gap-1 justify-center mt-1">
+            <i th:each="star : ${#numbers.sequence(1, 5)}"
+               th:class="${star <= avgRating} ? 'fas fa-star star-filled text-sm' : 'fas fa-star star-empty text-sm'"></i>
+          </div>
+          <div class="text-sm text-gray-500 mt-1" th:text="${totalReviews} + ' reviews'">152 reviews</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Customer Reviews Section -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold text-gray-800">Customer Reviews</h2>
+    <!-- Rating Breakdown -->
+    <div class="mb-6 pb-6 border-b border-gray-200">
+      <div th:each="i : ${#numbers.sequence(5, 1, -1)}" class="flex items-center gap-3 mb-2">
+        <span class="text-sm text-gray-600 w-12" th:text="${i} + ' star'">5 star</span>
+        <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-yellow-400"
+               th:with="ratingCount=${reviewStats.get(i) != null ? reviewStats.get(i) : 0}"
+               th:style="'width: ' + ${totalReviews > 0 ? (ratingCount * 100.0 / totalReviews) : 0} + '%'"></div>
+        </div>
+        <span class="text-sm text-gray-600 w-12" th:text="${reviewStats.get(i) != null ? reviewStats.get(i) : 0}">45</span>
+      </div>
+    </div>
 
-            <!-- Rating Summary -->
-            <div class="flex items-center gap-4">
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-gray-800" th:text="${#numbers.formatDecimal(avgRating, 1, 1)}">4.8</div>
-                    <div class="flex items-center gap-1 justify-center mt-1">
-                        <i th:each="star : ${#numbers.sequence(1, 5)}"
-                           th:class="${star <= avgRating} ? 'fas fa-star star-filled text-sm' : 'fas fa-star star-empty text-sm'"></i>
-                    </div>
-                    <div class="text-sm text-gray-500 mt-1" th:text="${totalReviews} + ' reviews'">152 reviews</div>
-                </div>
-            </div>
+    <!-- Add Review Form (nếu chưa review) -->
+    <div th:if="${!hasReviewed}" class="mb-6 p-4 bg-gray-50 rounded-lg">
+      <h3 class="font-semibold text-gray-800 mb-3">Write a Review</h3>
+      <form th:action="@{/reviews/add}" method="post">
+        <input type="hidden" name="productId" th:value="${product.id}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+        <!-- Rating Stars -->
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
+          <div class="rating-stars flex gap-1">
+            <input type="radio" name="rating" value="5" id="star5" required>
+            <label for="star5" title="5 stars">★</label>
+
+            <input type="radio" name="rating" value="4" id="star4">
+            <label for="star4" title="4 stars">★</label>
+
+            <input type="radio" name="rating" value="3" id="star3">
+            <label for="star3" title="3 stars">★</label>
+
+            <input type="radio" name="rating" value="2" id="star2">
+            <label for="star2" title="2 stars">★</label>
+
+            <input type="radio" name="rating" value="1" id="star1">
+            <label for="star1" title="1 star">★</label>
+          </div>
         </div>
 
-        <!-- Rating Breakdown -->
-        <div class="mb-6 pb-6 border-b border-gray-200">
-            <div th:each="i : ${#numbers.sequence(5, 1, -1)}" class="flex items-center gap-3 mb-2">
-                <span class="text-sm text-gray-600 w-12" th:text="${i} + ' star'">5 star</span>
-                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div class="h-full bg-yellow-400"
-                         th:with="ratingCount=${reviewStats.get(i) != null ? reviewStats.get(i) : 0}"
-                         th:style="'width: ' + ${totalReviews > 0 ? (ratingCount * 100.0 / totalReviews) : 0} + '%'"></div>
-                </div>
-                <span class="text-sm text-gray-600 w-12" th:text="${reviewStats.get(i) != null ? reviewStats.get(i) : 0}">45</span>
-            </div>
+        <!-- Comment -->
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
+          <textarea name="comment" rows="4" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Share your experience with this product..."></textarea>
         </div>
 
-        <!-- Add Review Form (nếu chưa review) -->
-        <div th:if="${!hasReviewed}" class="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 class="font-semibold text-gray-800 mb-3">Write a Review</h3>
-            <form th:action="@{/reviews/add}" method="post">
-                <input type="hidden" name="productId" th:value="${product.id}">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition">
+          Submit Review
+        </button>
+      </form>
+    </div>
 
-                <!-- Rating Stars -->
-                <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
-                    <div class="rating-stars flex gap-1">
-                        <input type="radio" name="rating" value="5" id="star5" required>
-                        <label for="star5" title="5 stars">★</label>
+    <!-- User's Review (nếu đã review) -->
+    <div th:if="${hasReviewed && userReview != null}" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div class="flex justify-between items-start mb-2">
+        <h3 class="font-semibold text-gray-800">Your Review</h3>
+        <form th:action="@{/reviews/delete/{id}(id=${userReview.id})}" method="post"
+              onsubmit="return confirm('Delete your review?');" class="inline">
+          <input type="hidden" name="productId" th:value="${product.id}">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="text-red-500 hover:text-red-700 text-sm">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </div>
+      <div class="flex items-center gap-1 mb-2">
+        <i th:each="star : ${#numbers.sequence(1, 5)}"
+           th:class="${star <= userReview.rating} ? 'fas fa-star star-filled text-sm' : 'fas fa-star star-empty text-sm'"></i>
+      </div>
+      <p class="text-gray-600 text-sm" th:text="${userReview.comment}"></p>
+    </div>
 
-                        <input type="radio" name="rating" value="4" id="star4">
-                        <label for="star4" title="4 stars">★</label>
+    <!-- Review List -->
+    <div class="space-y-4">
+      <div th:if="${#lists.isEmpty(reviews)}" class="text-center py-8 text-gray-500">
+        <i class="far fa-comment-dots text-4xl mb-2"></i>
+        <p>No reviews yet. Be the first to review!</p>
+      </div>
 
-                        <input type="radio" name="rating" value="3" id="star3">
-                        <label for="star3" title="3 stars">★</label>
-
-                        <input type="radio" name="rating" value="2" id="star2">
-                        <label for="star2" title="2 stars">★</label>
-
-                        <input type="radio" name="rating" value="1" id="star1">
-                        <label for="star1" title="1 star">★</label>
-                    </div>
-                </div>
-
-                <!-- Comment -->
-                <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
-                    <textarea name="comment" rows="4" required
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                              placeholder="Share your experience with this product..."></textarea>
-                </div>
-
-                <button type="submit" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition">
-                    Submit Review
-                </button>
-            </form>
-        </div>
-
-        <!-- User's Review (nếu đã review) -->
-        <div th:if="${hasReviewed && userReview != null}" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-gray-800">Your Review</h3>
-                <form th:action="@{/reviews/delete/{id}(id=${userReview.id})}" method="post"
-                      onsubmit="return confirm('Delete your review?');" class="inline">
-                    <input type="hidden" name="productId" th:value="${product.id}">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </form>
-            </div>
-            <div class="flex items-center gap-1 mb-2">
-                <i th:each="star : ${#numbers.sequence(1, 5)}"
-                   th:class="${star <= userReview.rating} ? 'fas fa-star star-filled text-sm' : 'fas fa-star star-empty text-sm'"></i>
-            </div>
-            <p class="text-gray-600 text-sm" th:text="${userReview.comment}"></p>
-        </div>
-
-        <!-- Review List -->
-        <div class="space-y-4">
-            <div th:if="${#lists.isEmpty(reviews)}" class="text-center py-8 text-gray-500">
-                <i class="far fa-comment-dots text-4xl mb-2"></i>
-                <p>No reviews yet. Be the first to review!</p>
-            </div>
-
-            <div th:each="review : ${reviews}" class="border-b border-gray-200 pb-4">
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+      <div th:each="review : ${reviews}" class="border-b border-gray-200 pb-4">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                                 <span class="text-blue-600 font-semibold"
                                       th:text="${#strings.substring(review.user.fullName != null ? review.user.fullName : review.user.email, 0, 2).toUpperCase()}">
                                     SC
                                 </span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex flex-col mb-1">
-                            <h4 class="font-semibold text-gray-800"
-                                th:text="${review.user.fullName != null ? review.user.fullName : review.user.email}">
-                                Sophia Clark
-                            </h4>
-                            <span class="text-sm text-gray-500"
-                                  th:text="${#dates.format(review.createdAt, 'yyyy-MM-dd')}">
+          </div>
+          <div class="flex-1">
+              <div class="flex flex-col mb-1">
+                  <h4 class="font-semibold text-gray-800"
+                      th:text="${review.user.fullName != null ? review.user.fullName : review.user.email}">
+                      Sophia Clark
+                  </h4>
+                  <span class="text-sm text-gray-500"
+                        th:text="${#dates.format(review.createdAt, 'yyyy-MM-dd')}">
                     2023-11-05
                   </span>
-                        </div>
-                        <div class="flex items-center gap-1 mb-2">
-                            <i th:each="star : ${#numbers.sequence(1, 5)}"
-                               th:class="${star <= review.rating} ? 'fas fa-star star-filled text-sm' : 'fas fa-star star-empty text-sm'"></i>
-                        </div>
-                        <p class="text-gray-600 text-sm leading-relaxed" th:text="${review.comment}">
-                            This Quizlet Plus account has been a game-changer for my studies.
-                        </p>
-                    </div>
-                </div>
+              </div>
+            <div class="flex items-center gap-1 mb-2">
+              <i th:each="star : ${#numbers.sequence(1, 5)}"
+                 th:class="${star <= review.rating} ? 'fas fa-star star-filled text-sm' : 'fas fa-star star-empty text-sm'"></i>
             </div>
+            <p class="text-gray-600 text-sm leading-relaxed" th:text="${review.comment}">
+              This Quizlet Plus account has been a game-changer for my studies.
+            </p>
+          </div>
         </div>
-
-        <!-- Pagination for reviews -->
-        <div th:if="${totalReviews > 10}" class="text-center mt-6">
-            <button class="text-red-500 hover:text-red-600 font-semibold">
-                View All Reviews <i class="fas fa-arrow-right ml-1"></i>
-            </button>
-        </div>
+      </div>
     </div>
 
-    <!-- Related Products (Optional) -->
-    <div class="mt-12">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Related Products</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Related product cards -->
-        </div>
+    <!-- Pagination for reviews -->
+    <div th:if="${totalReviews > 10}" class="text-center mt-6">
+      <button class="text-red-500 hover:text-red-600 font-semibold">
+        View All Reviews <i class="fas fa-arrow-right ml-1"></i>
+      </button>
     </div>
+  </div>
+
+  <!-- Related Products (Optional) -->
+  <div class="mt-12">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Related Products</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Related product cards -->
+    </div>
+  </div>
 </main>
 
 <!-- Checkout Modal -->

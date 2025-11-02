@@ -67,6 +67,4 @@ public class Blog {
 
     @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
     private Set<BlogComment> comments;
-
-    // test
 }
