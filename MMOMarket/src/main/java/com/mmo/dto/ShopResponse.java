@@ -26,6 +26,7 @@ public class ShopResponse {
     private String signedContract;
     private Date createdAt;
     private String deletedBy;
+    private boolean isDelete;
 
     public static ShopResponse fromEntity(ShopInfo shop, Long productCount, Double rating) {
         ShopResponse response = new ShopResponse();
@@ -44,6 +45,7 @@ public class ShopResponse {
         response.setCommission(shop.getCommission());
         response.setShopLevel(shop.getShopLevel());
         response.setCreatedAt(shop.getCreatedAt());
+        response.setDelete(shop.isDelete());
 
         if (shop.getDeletedBy() != null) {
             response.setDeletedBy(shop.getDeletedBy().getEmail());

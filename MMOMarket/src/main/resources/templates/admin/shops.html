@@ -100,18 +100,13 @@
                             <div class="text-xs text-gray-500" th:text="${shop.sellerEmail}">email@example.com</div>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
-                            <span th:if="${shop.status == 'Active'}"
+                            <span th:if="${shop.isDelete == false}"
                                 class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                 Active
                             </span>
-                            <span th:if="${shop.status == 'Inactive'}"
+                            <span th:if="${shop.isDelete == true}"
                                 class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                 Inactive
-                            </span>
-                            <span th:if="${shop.status != 'Active' and shop.status != 'Inactive'}"
-                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800"
-                                th:text="${shop.status}">
-                                Unknown
                             </span>
                         </td>
                         <td class="py-4 px-4 whitespace-nowrap">
@@ -147,9 +142,9 @@
                             </button>
                             <button class="text-red-500 hover:underline ml-3" 
                                     onclick="toggleShopStatus(this)"
-                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}"
-                                    th:text="${shop.status == 'Active' ? 'Ban' : 'Unban'}">
-                                Ban
+                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}, data-isdelete=${shop.isDelete}"
+                                    th:text="${shop.isDelete == true ? 'Active' : 'Inactive'}">
+                                Active
                             </button>
                         </td>
                     </tr>
@@ -166,11 +161,11 @@
                         <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
                         <h3 class="font-semibold text-gray-900" th:text="${shop.shopName}">Shop Name</h3>
                     </div>
-                    <span th:if="${shop.status == 'Active'}"
+                    <span th:if="${shop.isDelete == false}"
                         class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                         Active
                     </span>
-                    <span th:if="${shop.status == 'Inactive'}"
+                    <span th:if="${shop.isDelete == true}"
                         class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                         Inactive
                     </span>
@@ -217,9 +212,9 @@
                     </button>
                     <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
                             onclick="toggleShopStatus(this)"
-                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}"
-                            th:text="${shop.status == 'Active' ? 'Ban' : 'Unban'}">
-                        Ban
+                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}, data-isdelete=${shop.isDelete}"
+                            th:text="${shop.isDelete == true ? 'Active' : 'Inactive'}">
+                        Active
                     </button>
                 </div>
             </div>
@@ -241,7 +236,7 @@
                    th:classappend="${i == currentPage} ? 'bg-red-500 text-white' : 'hover:bg-gray-100'"
                    th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
                    th:href="@{/admin/shops(page=${i}, search=${currentSearch}, sort=${currentSort})}"
-                   th:if="${(i == 0) || (i == currentPage) || (i == currentPage-1) || (i == currentPage+1) || (i == totalPages-1)}"
+                   th:if="${(i == 0) || (i == currentPage) || (i == currentPage - 1) || (i == currentPage + 1) || (i == totalPages - 1)}"
                    th:text="${i + 1}">1</a>
 
                 <span class="px-2 sm:px-3 py-1" th:if="${currentPage > 2 && totalPages > 5}">...</span>
@@ -448,9 +443,9 @@
                     document.getElementById('detail-sellerEmail').textContent = shop.sellerEmail || '-';
                     
                     const statusElement = document.getElementById('detail-status');
-                    const statusBadge = shop.status === 'Active' 
-                        ? `<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">${shop.status}</span>`
-                        : `<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">${shop.status}</span>`;
+                    const statusBadge = shop.isDelete === false
+                        ? `<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>`
+                        : `<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inactive</span>`;
                     statusElement.innerHTML = statusBadge;
                     
                     document.getElementById('shopDetailModal').classList.remove('hidden');
@@ -470,9 +465,9 @@
         async function toggleShopStatus(button) {
             const shopId = button.dataset.id;
             const shopName = button.dataset.name;
-            const currentStatus = button.dataset.status;
-            const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-            const action = currentStatus === 'Active' ? 'ban' : 'unban';
+            const isDelete = button.dataset.isdelete === 'true';
+            const newStatus = isDelete ? 'Active' : 'Inactive';
+            const action = isDelete ? 'activate' : 'deactivate';
 
             if (!confirm(`Are you sure you want to ${action} shop "${shopName}"? This will set the shop status to ${newStatus}.`)) {
                 return;
@@ -488,7 +483,7 @@
                 });
 
                 if (response.ok) {
-                    showToast(`Shop ${action}ned successfully`);
+                    showToast(`Shop ${action}d successfully`);
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     const errorText = await response.text();

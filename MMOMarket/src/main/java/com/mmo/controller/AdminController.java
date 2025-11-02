@@ -1604,22 +1604,20 @@ public class AdminController {
             // Use optimized rating sort with single query
             String direction = sort.equals("rating_asc") ? "ASC" : "DESC";
             String jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user " +
-                         "WHERE s.isDelete = false " +
                          "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
                          "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
             
             if (search != null && !search.trim().isEmpty()) {
                 jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user " +
-                      "WHERE s.isDelete = false " +
-                      "AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search)) " +
+                      "WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search)) " +
                       "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
                       "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
             }
             
             // Get total count
-            StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s WHERE s.isDelete = false");
+            StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s");
             if (search != null && !search.trim().isEmpty()) {
-                countJpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+                countJpql.append(" WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
             }
             
             TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
@@ -1654,11 +1652,11 @@ public class AdminController {
         
         // Normal sort (commission, or default by ID)
         StringBuilder jpql = new StringBuilder(
-            "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user WHERE s.isDelete = false"
+            "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user"
         );
         
         if (search != null && !search.trim().isEmpty()) {
-            jpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+            jpql.append(" WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
         }
         
         // Add simple sorting
@@ -1675,9 +1673,8 @@ public class AdminController {
         }
         
         // Get total count efficiently with separate COUNT query
-        StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s WHERE s.isDelete = false");
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s");
         if (search != null && !search.trim().isEmpty()) {
-            countJpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
         }
         
         TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
@@ -1866,18 +1863,28 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
-            // Find the user who owns this shop
-            User seller = entityManager.createQuery(
-                "SELECT u FROM User u WHERE u.id = :id", User.class)
+            // Find the shop by id
+            ShopInfo shop = entityManager.createQuery(
+                "SELECT s FROM ShopInfo s WHERE s.id = :id", ShopInfo.class)
                 .setParameter("id", id)
                 .getSingleResult();
 
-            // Toggle the shop status
-            String newStatus = "Active".equals(seller.getShopStatus()) ? "Inactive" : "Active";
-            seller.setShopStatus(newStatus);
-            entityManager.merge(seller);
+            // Toggle the isDelete status
+            boolean currentIsDelete = shop.isDelete();
+            shop.setDelete(!currentIsDelete);
 
-            return ResponseEntity.ok().body("Shop status updated to " + newStatus);
+            if (!currentIsDelete) {
+                // If we're setting isDelete to true (deactivating), set deletedBy
+                shop.setDeletedBy(admin);
+            } else {
+                // If we're setting isDelete to false (activating), clear deletedBy
+                shop.setDeletedBy(null);
+            }
+
+            entityManager.merge(shop);
+
+            String action = currentIsDelete ? "activated" : "deactivated";
+            return ResponseEntity.ok().body("Shop " + action + " successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception ex) {
