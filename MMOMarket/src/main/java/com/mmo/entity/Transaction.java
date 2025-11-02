@@ -50,8 +50,11 @@ public class Transaction {
     @Column(name = "commission", nullable = false)
     private Long commission;
 
-    @Column(name = "coins_used", nullable = false)
-    private Long coinsUsed;
+    @Column(name = "coinAdmin", nullable = false)
+    private Long coinAdmin;
+
+    @Column(name = "coinSeller", nullable = false)
+    private Long coinSeller;
 
     // Status
     @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
