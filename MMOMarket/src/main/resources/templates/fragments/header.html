@@ -1,5 +1,4 @@
-<div xmlns:th="http://www.thymeleaf.org"
-     th:fragment="header"
+<div th:fragment="header"
      th:with="uri=${#httpServletRequest != null and #httpServletRequest.requestURI != null ? #httpServletRequest.requestURI : ''},
                activePage=${active != null ? active : ''}">
     <header class="bg-white border-b border-gray-200">
@@ -71,12 +70,12 @@
                 <!-- Desktop search and user menu -->
                 <div class="hidden md:flex items-center space-x-4">
                     <div class="relative">
-                        <form action="/search" method="get" class="flex items-center">
-                            <input id="header-search-q" name="q"
+                        <form th:action="@{/search}" method="get" class="flex items-center">
+                            <input name="q"
                                    th:value="${param.q}"
                                    class="w-48 lg:w-64 pl-4 pr-14 py-2 border border-gray-300 rounded-l-lg rounded-r-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                                    placeholder="Search product / shop"
-                                   type="search" aria-label="Search" autocomplete="off">
+                                   type="search" aria-label="Search">
                             <button type="submit"
                                     class="absolute right-0 top-0 h-full px-4 bg-red-500 text-white rounded-r-lg hover:bg-red-600">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,12 +85,6 @@
                                 </svg>
                             </button>
                         </form>
-                        <!-- Recent searches dropdown (header) -->
-                        <div id="header-recent-dropdown"
-                             class="hidden absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Recent searches</div>
-                            <ul id="header-recent-list" class="max-h-64 overflow-auto divide-y"></ul>
-                        </div>
                     </div>
 
                     <!-- User is authenticated -->
@@ -488,64 +481,7 @@
             } catch (e) {
                 console.error('Nav activation script error', e);
             }
-
-            // Header recent searches dropdown (safe JS-only; no Thymeleaf dependency)
-            (function () {
-                var input = document.getElementById('header-search-q');
-                var dropdown = document.getElementById('header-recent-dropdown');
-                var list = document.getElementById('header-recent-list');
-                if (!input || !dropdown || !list) return;
-
-                var hideTimer = null;
-                var loadedOnce = false;
-
-                function renderItems(items) {
-                    if (!Array.isArray(items)) items = [];
-                    list.innerHTML = '';
-                    items.slice(0, 10).forEach(function (q) {
-                        var li = document.createElement('li');
-                        li.className = 'divide-y-0';
-                        var btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-red-50 flex items-center';
-                        btn.setAttribute('data-q', q);
-                        btn.innerHTML = '<svg class="w-4 h-4 text-gray-400 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
-                            '<span>' + q + '</span>';
-                        btn.addEventListener('mousedown', function (e) {
-                            e.preventDefault();
-                            input.value = q;
-                            input.closest('form').submit();
-                        });
-                        li.appendChild(btn);
-                        list.appendChild(li);
-                    });
-                    if (list.children.length) dropdown.classList.remove('hidden');
-                }
-
-                function openDropdown() {
-                    clearTimeout(hideTimer);
-                    if (!loadedOnce) {
-                        fetch('/api/search/recent', { credentials: 'same-origin' })
-                            .then(function (r) { return r.ok ? r.json() : []; })
-                            .then(function (arr) { loadedOnce = true; renderItems(arr || []); })
-                            .catch(function () { /* ignore */ });
-                    } else if (list.children.length) {
-                        dropdown.classList.remove('hidden');
-                    }
-                }
-
-                function closeDropdown() {
-                    hideTimer = setTimeout(function () {
-                        dropdown.classList.add('hidden');
-                    }, 150);
-                }
-
-                input.addEventListener('focus', openDropdown);
-                input.addEventListener('input', openDropdown);
-                input.addEventListener('blur', closeDropdown);
-                dropdown.addEventListener('mouseenter', function () { clearTimeout(hideTimer); });
-                dropdown.addEventListener('mouseleave', closeDropdown);
-            })();
         });
     </script>
 </div>
+

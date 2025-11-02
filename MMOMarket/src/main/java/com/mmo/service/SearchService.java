@@ -1,17 +1,14 @@
 package com.mmo.service;
 
-import com.mmo.entity.SearchHistory;
 import com.mmo.entity.User;
 import com.mmo.entity.Product;
 import com.mmo.entity.ShopInfo;
-import com.mmo.repository.SearchHistoryRepository;
 import com.mmo.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,53 +17,22 @@ public class SearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SearchService.class);
 
-    private final SearchHistoryRepository searchHistoryRepository;
     private final UserRepository userRepository;
     private final EntityManager em;
 
-    public SearchService(SearchHistoryRepository searchHistoryRepository,
-                         UserRepository userRepository,
-                         EntityManager em) {
-        this.searchHistoryRepository = searchHistoryRepository;
+    public SearchService(UserRepository userRepository, EntityManager em) {
         this.userRepository = userRepository;
         this.em = em;
     }
 
-    @Transactional
+    // search history persistence disabled — keep method as no-op so callers (if any) don't fail
     public void saveSearch(User user, String query) {
-        if (user == null || query == null || query.trim().isEmpty()) return;
-
-        String q = query.trim();
-
-        // if identical query already exists for this user, delete it so the new insert becomes the latest
-        try {
-            Optional<SearchHistory> existing = searchHistoryRepository.findTopByUserAndSearchQueryIgnoreCase(user, q);
-            existing.ifPresent(searchHistoryRepository::delete);
-        } catch (Throwable ex) {
-            log.debug("Failed to check/delete existing search history entry: {}", ex.toString());
-        }
-
-        SearchHistory sh = new SearchHistory();
-        sh.setUser(user);
-        sh.setSearchQuery(q);
-        // save immediately (DB will set created_at default)
-        searchHistoryRepository.saveAndFlush(sh);
-
-        // keep only 10 most recent
-        List<SearchHistory> all = searchHistoryRepository.findByUserOrderByCreatedAtDesc(user);
-        if (all.size() > 10) {
-            List<Long> toDelete = all.subList(10, all.size()).stream()
-                    .map(SearchHistory::getId).collect(Collectors.toList());
-            searchHistoryRepository.deleteAllById(toDelete);
-        }
+        // intentionally left blank
     }
 
-    @Transactional(readOnly = true)
-    public List<SearchHistory> recentSearches(User user) {
-        if (user == null) return Collections.emptyList();
-        List<SearchHistory> list = searchHistoryRepository.findByUserOrderByCreatedAtDesc(user);
-        if (list.size() > 10) return list.subList(0, 10);
-        return list;
+    // return empty list as search history isn't kept
+    public List<?> recentSearches(User user) {
+        return Collections.emptyList();
     }
 
     // Removed @Transactional: run search without opening a Spring transaction to avoid rollback-only issues

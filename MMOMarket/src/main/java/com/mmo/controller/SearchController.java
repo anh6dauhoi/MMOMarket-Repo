@@ -1,6 +1,5 @@
 package com.mmo.controller;
 
-import com.mmo.entity.SearchHistory;
 import com.mmo.entity.User;
 import com.mmo.repository.UserRepository;
 import com.mmo.service.SearchService;
@@ -11,14 +10,12 @@ import com.mmo.repository.ProductVariantRepository; // NEW
 import com.mmo.entity.ProductVariant; // NEW
 import com.mmo.repository.ShopInfoRepository; // NEW
 import com.mmo.entity.ShopInfo; // NEW
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.lang.reflect.Method;
 import java.security.Principal;
@@ -57,13 +54,19 @@ public class SearchController {
                          @RequestParam(name = "productSort", required = false) String productSort, // NEW
                          Model model,
                          Principal principal) {
-        // try to resolve current user (prefer numeric userId over email/username)
-        User user = resolveCurrentUser(principal);
-
-        // Save search history for authenticated users
-        if (user != null && q != null && !q.trim().isEmpty()) {
-            searchService.saveSearch(user, q);
+        // try to resolve current user (if any)
+        User user = null;
+        if (principal != null) {
+            user = userRepository.findByEmail(principal.getName()).orElse(null);
+        } else {
+            // fallback: attempt from security context (covers some oauth principal types)
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                user = userRepository.findByEmail(auth.getName()).orElse(null);
+            }
         }
+
+        // NOTE: search history persistence removed — no-op
 
         // run search (products + shops)
         Map<String, List<?>> results = searchService.searchProductsAndShops(q, 30);
@@ -292,12 +295,7 @@ public class SearchController {
         model.addAttribute("ratingSort", ratingSort);
         model.addAttribute("productSort", productSort); // NEW
 
-        // recent searches for dropdown (limit to 10)
-        List<SearchHistory> recent = (user != null) ? searchService.recentSearches(user) : Collections.emptyList();
-        if (recent != null && recent.size() > 10) {
-            recent = recent.subList(0, 10);
-        }
-        model.addAttribute("recentSearches", recent);
+        // NOTE: recentSearches removed from model (UI no longer shows server-side history)
 
         return "customer/search";
     }
@@ -320,81 +318,6 @@ public class SearchController {
         return null;
     }
 
-    // NEW: resolve current user prioritizing numeric ID over email
-    private User resolveCurrentUser(Principal principal) {
-        try {
-            // 1) Principal name as numeric userId
-            if (principal != null && principal.getName() != null) {
-                Long id = toLong(principal.getName());
-                if (id != null) {
-                    return userRepository.findById(id).orElse(null);
-                }
-                // fallback: treat as email/username
-                User byEmail = userRepository.findByEmail(principal.getName()).orElse(null);
-                if (byEmail != null) return byEmail;
-            }
-
-            // 2) From SecurityContext principal
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
-                Object p = auth.getPrincipal();
-
-                if (p instanceof String) {
-                    Long id = toLong((String) p);
-                    if (id != null) return userRepository.findById(id).orElse(null);
-                    return userRepository.findByEmail((String) p).orElse(null);
-                }
-
-                if (p instanceof org.springframework.security.core.userdetails.User) {
-                    String username = ((org.springframework.security.core.userdetails.User) p).getUsername();
-                    Long id = toLong(username);
-                    if (id != null) return userRepository.findById(id).orElse(null);
-                    return userRepository.findByEmail(username).orElse(null);
-                }
-
-                // try getId()/getUserId() via reflection
-                try {
-                    Object idObj = null;
-                    try { idObj = p.getClass().getMethod("getId").invoke(p); } catch (Exception ignored) {}
-                    if (idObj == null) { try { idObj = p.getClass().getMethod("getUserId").invoke(p); } catch (Exception ignored) {} }
-                    Long id = toLong(idObj);
-                    if (id != null) return userRepository.findById(id).orElse(null);
-
-                    // final fallback: getEmail()
-                    try {
-                        Object emailObj = p.getClass().getMethod("getEmail").invoke(p);
-                        if (emailObj != null) {
-                            return userRepository.findByEmail(String.valueOf(emailObj)).orElse(null);
-                        }
-                    } catch (Exception ignored) {}
-                } catch (Exception ignored) {}
-            }
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    // NEW: API to fetch last 10 recent searches for current user
-    @GetMapping("/api/search/recent")
-    @ResponseBody
-    public ResponseEntity<List<String>> getRecent(Principal principal) {
-        try {
-            User user = resolveCurrentUser(principal);
-            if (user == null) return ResponseEntity.ok(Collections.emptyList());
-            List<SearchHistory> recent = searchService.recentSearches(user);
-            List<String> out = new ArrayList<>();
-            if (recent != null) {
-                for (SearchHistory sh : recent) {
-                    if (sh != null && sh.getSearchQuery() != null && !sh.getSearchQuery().isBlank()) {
-                        out.add(sh.getSearchQuery());
-                        if (out.size() >= 10) break;
-                    }
-                }
-            }
-            return ResponseEntity.ok(out);
-        } catch (Exception e) {
-            return ResponseEntity.ok(Collections.emptyList());
-        }
-    }
 
     // Parse any numeric object to Long safely
     private Long toLong(Object v) {

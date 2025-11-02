@@ -4,9 +4,11 @@ import com.mmo.dto.ProcessWithdrawalRequest;
 import com.mmo.dto.AdminWithdrawalResponse;
 import com.mmo.dto.WithdrawalDetailResponse;
 import com.mmo.dto.CoinDepositDetailResponse;
+import com.mmo.dto.TransactionDetailResponse;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
 import com.mmo.entity.CoinDeposit;
+import com.mmo.entity.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -461,6 +463,170 @@ public class AdminController {
                     cd.getCreatedAt() != null ? cd.getCreatedAt().toString() : "",
                     cd.getUpdatedAt() != null ? cd.getUpdatedAt().toString() : ""
             );
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/transactions")
+    public String transactionManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                        @RequestParam(name = "search", defaultValue = "") String search,
+                                        @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
+                                        Model model) {
+        try {
+            final int pageSize = 10;
+
+            // Build WHERE clause and parameters once
+            String where = " WHERE t.isDelete = false" +
+                    (search != null && !search.isBlank()
+                            ? " AND (LOWER(c.fullName) LIKE LOWER(:search) OR LOWER(s.fullName) LIKE LOWER(:search) OR LOWER(p.title) LIKE LOWER(:search) OR CAST(t.id AS string) LIKE :search)"
+                            : "");
+
+            // Determine ORDER BY clause based on sort parameter
+            String orderBy;
+            if (sort != null && sort.startsWith("amount_")) {
+                orderBy = sort.endsWith("asc") ? " ORDER BY t.amount ASC" : " ORDER BY t.amount DESC";
+            } else {
+                orderBy = " ORDER BY t.createdAt DESC";
+            }
+
+            // 1) Count query (no FETCH joins)
+            StringBuilder countSb = new StringBuilder(
+                    "SELECT COUNT(t) FROM Transaction t " +
+                    "LEFT JOIN t.customer c " +
+                    "LEFT JOIN t.seller s " +
+                    "LEFT JOIN t.product p " +
+                    "LEFT JOIN t.variant v"
+            );
+            countSb.append(where);
+            jakarta.persistence.Query countQuery = entityManager.createQuery(countSb.toString());
+            if (search != null && !search.isBlank()) {
+                countQuery.setParameter("search", "%" + search + "%");
+            }
+            long total = (long) countQuery.getSingleResult();
+
+            // Compute total pages and clamp current page
+            int totalPages = (int) Math.ceil(total / (double) pageSize);
+            if (page < 0) page = 0;
+            if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+
+            // 2) Paged select query with FETCH joins for view rendering
+            StringBuilder listSb = new StringBuilder(
+                    "SELECT t FROM Transaction t " +
+                    "LEFT JOIN FETCH t.customer c " +
+                    "LEFT JOIN FETCH t.seller s " +
+                    "LEFT JOIN FETCH t.product p " +
+                    "LEFT JOIN FETCH t.variant v"
+            );
+            listSb.append(where);
+            listSb.append(orderBy);
+
+            jakarta.persistence.TypedQuery<Transaction> listQuery = entityManager.createQuery(listSb.toString(), Transaction.class);
+            if (search != null && !search.isBlank()) {
+                listQuery.setParameter("search", "%" + search + "%");
+            }
+            listQuery.setFirstResult(page * pageSize);
+            listQuery.setMaxResults(pageSize);
+            List<Transaction> pageList = listQuery.getResultList();
+
+            model.addAttribute("transactions", pageList);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("pageSize", pageSize);
+            model.addAttribute("pageTitle", "Transaction Management");
+            model.addAttribute("body", "admin/transaction-management");
+            return "admin/layout";
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            model.addAttribute("transactions", new java.util.ArrayList<>());
+            model.addAttribute("currentPage", 0);
+            model.addAttribute("currentSearch", "");
+            model.addAttribute("totalPages", 1);
+            model.addAttribute("pageTitle", "Transaction Management");
+            model.addAttribute("body", "admin/transaction-management");
+            return "admin/layout";
+        }
+    }
+
+    @GetMapping(value = "/transactions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTransactionDetail(@PathVariable Long id, Authentication auth) {
+        try {
+            Authentication authentication = auth;
+            if (authentication == null || !authentication.isAuthenticated()) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            boolean hasAdminAuthority = false;
+            try {
+                if (authentication.getAuthorities() != null) {
+                    for (GrantedAuthority ga : authentication.getAuthorities()) {
+                        String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
+                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
+                            hasAdminAuthority = true;
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            User admin = null;
+            try {
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", authentication.getName())
+                        .getResultStream().findFirst().orElse(null);
+            } catch (Exception ignored) {}
+
+            boolean okAdmin = hasAdminAuthority;
+            if (!okAdmin && admin != null && admin.getRole() != null) {
+                String role = admin.getRole().trim();
+                if (role.toUpperCase().startsWith("ROLE_")) role = role.substring(5);
+                okAdmin = "ADMIN".equalsIgnoreCase(role);
+            }
+            if (!okAdmin) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+
+            Transaction tx = entityManager.createQuery("SELECT t FROM Transaction t " +
+                    "LEFT JOIN FETCH t.customer LEFT JOIN FETCH t.seller LEFT JOIN FETCH t.product LEFT JOIN FETCH t.variant " +
+                    "WHERE t.id = :id", Transaction.class)
+                    .setParameter("id", id)
+                    .getResultStream().findFirst().orElse(null);
+            if (tx == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Transaction not found");
+
+            String customerName = tx.getCustomer() != null ? tx.getCustomer().getFullName() : "";
+            String customerEmail = tx.getCustomer() != null ? tx.getCustomer().getEmail() : "";
+            String sellerName = tx.getSeller() != null ? tx.getSeller().getFullName() : "";
+            String sellerEmail = tx.getSeller() != null ? tx.getSeller().getEmail() : "";
+            String productTitle = tx.getProduct() != null ? tx.getProduct().getName() : "";
+            String variantName = tx.getVariant() != null ? tx.getVariant().getVariantName() : "";
+
+            TransactionDetailResponse resp = new TransactionDetailResponse(
+                    tx.getId(),
+                    tx.getCustomer() != null ? tx.getCustomer().getId() : null,
+                    customerName,
+                    customerEmail,
+                    tx.getSeller() != null ? tx.getSeller().getId() : null,
+                    sellerName,
+                    sellerEmail,
+                    tx.getProduct() != null ? tx.getProduct().getId() : null,
+                    productTitle,
+                    tx.getVariant() != null ? tx.getVariant().getId() : null,
+                    variantName,
+                    tx.getAmount(),
+                    tx.getCommission(),
+                    tx.getCoinsUsed(),
+                    tx.getStatus(),
+                    tx.getEscrowReleaseDate() != null ? tx.getEscrowReleaseDate().toString() : "",
+                    tx.getDeliveredAccount() != null ? tx.getDeliveredAccount().getId() : null,
+                    tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "",
+                    tx.getUpdatedAt() != null ? tx.getUpdatedAt().toString() : ""
+            );
+
             return ResponseEntity.ok(resp);
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());

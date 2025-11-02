@@ -11,7 +11,4 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
 
     // new: find existing identical query for a user
     Optional<SearchHistory> findByUserAndSearchQuery(User user, String searchQuery);
-
-    // NEW: case-insensitive variant for more robust deduplication
-    Optional<SearchHistory> findTopByUserAndSearchQueryIgnoreCase(User user, String searchQuery);
 }

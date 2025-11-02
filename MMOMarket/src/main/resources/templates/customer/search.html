@@ -4,7 +4,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>MMO Market - Search</title>
+    <title th:if="${q != null and q != ''}" th:text="'Search: ' + q">Search</title>
+    <title th:unless="${q != null and q != ''}">Search</title>
     <!-- Replace with your CSS pipeline if needed -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 
@@ -30,25 +31,8 @@
                             Search
                         </button>
                     </form>
-                    <!-- Recent searches dropdown -->
-                    <div id="recent-dropdown"
-                         class="hidden absolute left-0 top-full mt-1 w-full md:w-3/4 lg:w-2/3 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Recent searches</div>
-                        <ul id="recent-list" class="max-h-64 overflow-auto divide-y">
-                            <li th:each="r, stat : ${recentSearches}"
-                                th:if="${recentSearches != null and !#lists.isEmpty(recentSearches) and stat.index < 10}">
-                                <button type="button"
-                                        class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-red-50 flex items-center"
-                                        th:attr="data-q=${r.searchQuery}">
-                                    <svg class="w-4 h-4 text-gray-400 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                    </svg>
-                                    <span th:text="${r.searchQuery}">example</span>
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+
+                    <!-- Recent searches removed: feature disabled -->
                 </div>
 
                 <header class="mb-6">
@@ -218,77 +202,7 @@
             } catch (e) { /* ignore */ }
         })();
 
-        // Recent search dropdown logic (max 10 items)
-        (function () {
-            var input = document.getElementById('search-q');
-            var dropdown = document.getElementById('recent-dropdown');
-            var list = document.getElementById('recent-list');
-            if (!input || !dropdown || !list) return;
-
-            var hideTimer = null;
-
-            function openDropdown() {
-                clearTimeout(hideTimer);
-                if (!list.children.length) {
-                    // Fallback to API if server did not render recentSearches
-                    try {
-                        fetch('/api/search/recent', { credentials: 'same-origin' })
-                            .then(function (r) { return r.ok ? r.json() : []; })
-                            .then(function (arr) {
-                                if (!Array.isArray(arr)) arr = [];
-                                renderItems(arr.slice(0, 10));
-                            })
-                            .catch(function () { /* ignore */ });
-                    } catch (e) { /* ignore */ }
-                }
-                if (list.children.length) dropdown.classList.remove('hidden');
-            }
-
-            function closeDropdown() {
-                hideTimer = setTimeout(function () {
-                    dropdown.classList.add('hidden');
-                }, 150);
-            }
-
-            function renderItems(items) {
-                if (!items || !items.length) return;
-                list.innerHTML = '';
-                items.slice(0, 10).forEach(function (q) {
-                    var li = document.createElement('li');
-                    li.className = 'divide-y-0';
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-red-50 flex items-center';
-                    btn.setAttribute('data-q', q);
-                    btn.innerHTML = '<svg class="w-4 h-4 text-gray-400 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
-                        '<span>' + q + '</span>';
-                    btn.addEventListener('mousedown', function (e) {
-                        e.preventDefault();
-                        input.value = q;
-                        input.closest('form').submit();
-                    });
-                    li.appendChild(btn);
-                    list.appendChild(li);
-                });
-                dropdown.classList.remove('hidden');
-            }
-
-            // Attach handlers for pre-rendered items
-            Array.prototype.forEach.call(list.querySelectorAll('button[data-q]'), function (btn) {
-                btn.addEventListener('mousedown', function (e) {
-                    e.preventDefault();
-                    var q = btn.getAttribute('data-q') || '';
-                    input.value = q;
-                    input.closest('form').submit();
-                });
-            });
-
-            input.addEventListener('focus', openDropdown);
-            input.addEventListener('input', openDropdown);
-            input.addEventListener('blur', closeDropdown);
-            dropdown.addEventListener('mouseenter', function () { clearTimeout(hideTimer); });
-            dropdown.addEventListener('mouseleave', closeDropdown);
-        })();
+        // Recent search functionality removed (server-side history disabled)
 
         // Format prices like category.html
         document.addEventListener('DOMContentLoaded', function () {
