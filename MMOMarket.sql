@@ -162,7 +162,8 @@ CREATE TABLE IF NOT EXISTS Transactions (
     delivered_account_id BIGINT NULL, -- Sẽ thêm FK sau
     amount BIGINT NOT NULL,
     commission BIGINT NOT NULL,
-    coins_used BIGINT NOT NULL,
+    coinAdmin BIGINT NOT NULL,
+    coinSeller BIGINT NOT NULL,
     status VARCHAR(20) DEFAULT 'Pending',
     escrow_release_date DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -373,7 +374,6 @@ CREATE TABLE IF NOT EXISTS Orders (
     customer_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     variant_id BIGINT NOT NULL,
-    quantity INT NOT NULL,
     total_price BIGINT NOT NULL,
     status ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED') NOT NULL DEFAULT 'PENDING',
     error_message TEXT,
