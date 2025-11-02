@@ -44,6 +44,11 @@ public interface CategoryService {
     Category restoreCategory(Long id);
 
     /**
+     * Toggle category status (Active/Inactive)
+     */
+    Category toggleCategoryStatus(Long id);
+
+    /**
      * Get all deleted categories with pagination
      */
     Page<Category> getDeletedCategories(Pageable pageable);

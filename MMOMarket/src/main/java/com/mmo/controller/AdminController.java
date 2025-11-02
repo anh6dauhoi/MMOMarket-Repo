@@ -1198,6 +1198,31 @@ public class AdminController {
         }
     }
 
+    @PutMapping("/categories/{id}/toggle-status")
+    @ResponseBody
+    public ResponseEntity<?> toggleCategoryStatus(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.toggleCategoryStatus(id);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
     @GetMapping("/categories/deleted")
     @Transactional(readOnly = true)
     public String deletedCategories(@RequestParam(name = "page", defaultValue = "0") int page,

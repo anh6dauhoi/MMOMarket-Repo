@@ -79,6 +79,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setType(type);
         category.setCreatedBy(createdBy);
         category.setDelete(false);
+        category.setStatus(true); // Set default status to Active (true)
 
         return categoryRepository.save(category);
     }
@@ -153,6 +154,15 @@ public class CategoryServiceImpl implements CategoryService {
 
         category.setDelete(false);
         category.setDeletedBy(null);
+        return categoryRepository.save(category);
+    }
+
+    @Override
+    @Transactional
+    public Category toggleCategoryStatus(Long id) {
+        Category category = getCategoryById(id);
+        // Toggle status: true (Active) -> false (Inactive) or false (Inactive) -> true (Active)
+        category.setStatus(!category.isStatus());
         return categoryRepository.save(category);
     }
 

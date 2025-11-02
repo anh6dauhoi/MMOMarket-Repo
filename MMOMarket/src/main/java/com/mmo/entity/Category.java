@@ -47,7 +47,9 @@ public class Category {
     private Long deletedBy;
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
-    
+    @Column(name = "status", columnDefinition = "TINYINT(1) DEFAULT 1")
+    private boolean status = true; // true = Active (1), false = Inactive (0)
+
     // Products relationship
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     private List<Product> products;
