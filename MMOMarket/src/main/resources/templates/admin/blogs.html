@@ -135,10 +135,10 @@
                     </td>
                     <td class="py-4 px-4 whitespace-nowrap">
                         <span th:if="${blog.status}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
+                            Show
                         </span>
                         <span th:unless="${blog.status}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Inactive
+                            Hidden
                         </span>
                     </td>
                     <td class="py-4 px-4 whitespace-nowrap">
@@ -181,13 +181,13 @@
                                 class="text-red-500 hover:underline ml-3"
                                 onclick="toggleBlogStatus(this)"
                                 th:attr="data-id=${blog.id}, data-title=${blog.title}, data-status=${blog.status}">
-                            Deactivate
+                            Hide
                         </button>
                         <button th:unless="${blog.status}"
                                 class="text-green-500 hover:underline ml-3"
                                 onclick="toggleBlogStatus(this)"
                                 th:attr="data-id=${blog.id}, data-title=${blog.title}, data-status=${blog.status}">
-                            Activate
+                            Show
                         </button>
                     </td>
                 </tr>
@@ -206,10 +206,10 @@
                         <h3 class="font-semibold text-gray-900" th:text="${blog.title}">Title</h3>
                     </div>
                     <span th:if="${blog.status}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Active
+                        Show
                     </span>
                     <span th:unless="${blog.status}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        Inactive
+                        Hidden
                     </span>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-sm mb-3">
@@ -253,13 +253,13 @@
                             class="flex-1 py-2 bg-orange-50 text-red-500 hover:bg-orange-100 rounded font-medium text-sm"
                             onclick="toggleBlogStatus(this)"
                             th:attr="data-id=${blog.id}, data-title=${blog.title}, data-status=${blog.status}">
-                        Deactivate
+                        Hide
                     </button>
                     <button th:unless="${blog.status}"
                             class="flex-1 py-2 bg-green-50 text-green-500 hover:bg-green-100 rounded font-medium text-sm"
                             onclick="toggleBlogStatus(this)"
                             th:attr="data-id=${blog.id}, data-title=${blog.title}, data-status=${blog.status}">
-                        Activate
+                        Show
                     </button>
                 </div>
             </div>
