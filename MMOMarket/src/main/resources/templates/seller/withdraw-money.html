@@ -166,7 +166,7 @@
 
                                                 th:each="b : ${bankInfos}"
 
-                                                th:text="${b.bankName + ' - ' + #strings.substring(b.accountNumber, b.accountNumber.length() - 4)}"
+                                                th:text="${b.bankName + ' - ' + (b.accountNumber != null and #strings.length(b.accountNumber) >= 4 ? #strings.substring(b.accountNumber, #strings.length(b.accountNumber) - 4, #strings.length(b.accountNumber)) : (b.accountNumber != null ? b.accountNumber : ''))}"
 
                                                 th:value="${b.id}">
 
@@ -731,11 +731,11 @@
                                         " th:text="${w.status}"></span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                                        th:text="${#dates.format(w.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                        th:text="${w.createdAt != null ? #dates.format(w.createdAt, 'yyyy-MM-dd HH:mm') : ''}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap space-x-2">
                                         <button type="button"
                                                 class="inline-block px-3 py-1 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 view-detail-btn"
-                                                th:attr="data-id=${w.id},data-amount=${w.amount},data-status=${w.status},data-date=${#dates.format(w.createdAt, 'yyyy-MM-dd HH:mm')},data-createdms=${w.createdAt != null ? w.createdAt.time : 0},data-bankname=${w.bankName},data-accountnumber=${w.accountNumber},data-accountname=${w.accountName},data-branch=${w.branch},data-stt=${iterStat.index + 1}">
+                                                th:attr="data-id=${w.id},data-amount=${w.amount},data-status=${w.status},data-date=${w.createdAt != null ? #dates.format(w.createdAt, 'yyyy-MM-dd HH:mm') : ''},data-createdms=${w.createdAt != null ? w.createdAt.time : 0},data-bankname=${w.bankName},data-accountnumber=${w.accountNumber},data-accountname=${w.accountName},data-branch=${w.branch},data-stt=${iterStat.index + 1}">
                                             View Detail
                                         </button>
                                     </td>
@@ -830,8 +830,8 @@
             <div class="flex items-center gap-3">
                 <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
                     <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span class="font-semibold text-gray-700">Amount:</span>
                 <span id="modalWithdrawAmount" class="ml-2 text-gray-900 font-bold"></span>
@@ -922,31 +922,50 @@
         const addBankForm = document.getElementById('addBankForm');
 
         if (selectedOption.value) {
-            const bankName = selectedOption.getAttribute('data-bank-name');
-            const accountNumber = selectedOption.getAttribute('data-account-number');
-            const accountHolder = selectedOption.getAttribute('data-account-holder');
-            const branch = selectedOption.getAttribute('data-branch');
+            // Sanitize selected id to numeric only (prevent malformed values like '1/23')
+            let selectedId = (selectedOption.value || '').toString().replace(/\D/g, '');
+            if (!selectedId) {
+                bankInfoDetail.classList.add('hidden');
+                addBankForm.classList.remove('hidden');
+                // Clear hidden fields
+                document.getElementById('hiddenBankName').value = '';
+                document.getElementById('hiddenAccountNumber').value = '';
+                document.getElementById('hiddenAccountHolder').value = '';
+                document.getElementById('hiddenBranch').value = '';
+                // Reset actions
+                const deleteFormReset = document.getElementById('deleteBankForm');
+                deleteFormReset && deleteFormReset.setAttribute('action', '/seller/bank-info/0/delete');
+                const editFormReset = document.getElementById('editBankForm');
+                editFormReset && editFormReset.setAttribute('action', '/seller/bank-info/0/edit');
+                return;
+            }
+             const bankName = selectedOption.getAttribute('data-bank-name');
+             const accountNumber = selectedOption.getAttribute('data-account-number');
+             const accountHolder = selectedOption.getAttribute('data-account-holder');
+             const branch = selectedOption.getAttribute('data-branch');
 
-            // Update hidden fields for form submission
-            document.getElementById('hiddenBankName').value = bankName;
-            document.getElementById('hiddenAccountNumber').value = accountNumber;
-            document.getElementById('hiddenAccountHolder').value = accountHolder;
-            document.getElementById('hiddenBranch').value = branch;
+             // Update hidden fields for form submission
+             document.getElementById('hiddenBankName').value = bankName;
+             document.getElementById('hiddenAccountNumber').value = accountNumber;
+             document.getElementById('hiddenAccountHolder').value = accountHolder;
+             document.getElementById('hiddenBranch').value = branch;
 
-            // Update detail view
-            document.getElementById('bankNameDetail').textContent = bankName;
-            document.getElementById('accountNumberDetail').textContent = accountNumber;
-            document.getElementById('accountHolderDetail').textContent = accountHolder;
-            document.getElementById('branchDetail').textContent = branch || 'N/A';
+             // Update detail view
+             document.getElementById('bankNameDetail').textContent = bankName;
+             document.getElementById('accountNumberDetail').textContent = accountNumber;
+             document.getElementById('accountHolderDetail').textContent = accountHolder;
+             document.getElementById('branchDetail').textContent = branch || 'N/A';
 
-            // Update delete form action
+            // Update delete form action with clean base
             const deleteForm = document.getElementById('deleteBankForm');
-            const currentAction = deleteForm.getAttribute('action');
-            const newAction = currentAction.substring(0, currentAction.lastIndexOf('/') + 1) + selectedOption.value + '/delete';
-            deleteForm.setAttribute('action', newAction);
+            deleteForm && deleteForm.setAttribute('action', '/seller/bank-info/' + selectedId + '/delete');
 
-            bankInfoDetail.classList.remove('hidden');
-            addBankForm.classList.add('hidden');
+            // Update edit form action with clean base
+             const editForm = document.getElementById('editBankForm');
+             editForm && editForm.setAttribute('action', '/seller/bank-info/' + selectedId + '/edit');
+
+             bankInfoDetail.classList.remove('hidden');
+             addBankForm.classList.add('hidden');
         } else {
             bankInfoDetail.classList.add('hidden');
             addBankForm.classList.remove('hidden');
@@ -956,6 +975,12 @@
             document.getElementById('hiddenAccountNumber').value = '';
             document.getElementById('hiddenAccountHolder').value = '';
             document.getElementById('hiddenBranch').value = '';
+
+            // Reset actions
+            const deleteFormReset = document.getElementById('deleteBankForm');
+            deleteFormReset && deleteFormReset.setAttribute('action', '/seller/bank-info/0/delete');
+            const editFormReset = document.getElementById('editBankForm');
+            editFormReset && editFormReset.setAttribute('action', '/seller/bank-info/0/edit');
         }
     }
 
@@ -970,13 +995,10 @@
         const accountHolder = document.getElementById('accountHolderDetail').textContent;
         const branch = document.getElementById('branchDetail').textContent;
 
-        document.getElementById('editBankId').value = document.getElementById('bankInfoId').value;
         document.getElementById('editBankName').value = bankName;
         document.getElementById('editAccountNumber').value = accountNumber;
         document.getElementById('editAccountHolder').value = accountHolder;
         document.getElementById('editBranch').value = (branch === 'N/A' ? '' : branch);
-
-        document.getElementById('editBankModal').classList.remove('hidden');
     }
 
     function cancelEditBank() {
@@ -1256,8 +1278,8 @@
             let aVal, bVal;
             if (columnIndex === 1) { // Amount
                 // remove dot or comma group separators
-                aVal = parseInt(aText.replace(/[\.\,\s]/g, '')) || 0;
-                bVal = parseInt(bText.replace(/[\.\,\s]/g, '')) || 0;
+                aVal = parseInt(aText.replace(/[\.,\s]/g, '')) || 0;
+                bVal = parseInt(bText.replace(/[\.,\s]/g, '')) || 0;
             } else if (columnIndex === 3) { // Date
                 aVal = new Date(aText);
                 bVal = new Date(bText);
@@ -1303,7 +1325,7 @@
             const amountInput = withdrawForm.querySelector('#amount');
             const availableSpan = document.getElementById('availableBalance');
             const amountError = document.getElementById('amountError');
-            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.replace(/[\.\,\s]/g, '') || 0) : 0;
+            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.replace(/[\.,\s]/g, '') || 0) : 0;
 
             // Set max attribute in case JS runs on client-side rendering
             if (amountInput && !isNaN(available)) {

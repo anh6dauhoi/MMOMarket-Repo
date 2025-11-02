@@ -11,6 +11,7 @@ import com.mmo.repository.UserRepository;
 import com.mmo.service.EmailService;
 import com.mmo.service.NotificationService;
 import com.mmo.service.SellerBankInfoService;
+import com.mmo.service.SystemConfigurationService;
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -70,6 +72,10 @@ public class SellerController {
     @Autowired
     @Qualifier("emailExecutor")
     private Executor emailExecutor;
+
+    // Inject system configuration service
+    @Autowired
+    private SystemConfigurationService systemConfigurationService;
 
     private static final long REGISTRATION_FEE = 200_000L;
 
@@ -202,6 +208,11 @@ public class SellerController {
             shop.setUser(user);
             shop.setShopName(sellerRegistration.getShopName());
             shop.setDescription(sellerRegistration.getDescription());
+            // Set default commission from system configuration
+            try {
+                BigDecimal defCommission = systemConfigurationService != null ? systemConfigurationService.getDefaultCommissionPercentage() : new BigDecimal("5.00");
+                if (defCommission != null) shop.setCommission(defCommission);
+            } catch (Exception ignored) { }
             entityManager.persist(shop);
         } else {
             shop.setShopName(sellerRegistration.getShopName());

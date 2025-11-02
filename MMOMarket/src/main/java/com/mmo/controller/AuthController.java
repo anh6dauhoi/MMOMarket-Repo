@@ -8,6 +8,8 @@ import com.mmo.entity.User;
 import com.mmo.repository.CoinDepositRepository;
 import com.mmo.repository.EmailVerificationRepository;
 import com.mmo.service.AuthService;
+import com.mmo.service.SystemConfigurationService;
+import com.mmo.util.Bank;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +47,9 @@ public class AuthController {
     @Autowired
     @Qualifier("emailExecutor")
     private Executor emailExecutor;
+
+    @Autowired
+    private SystemConfigurationService systemConfigurationService;
 
     @GetMapping("/authen/register")
     public String showRegisterForm() {
@@ -423,10 +428,39 @@ public class AuthController {
                 ensureDepositCode(user);
                 model.addAttribute("user", user);
                 model.addAttribute("depositCode", user.getDepositCode());
-                String accountName = URLEncoder.encode("TRAN VAN TUAN ANH", StandardCharsets.UTF_8);
-                String addInfo = URLEncoder.encode(user.getDepositCode(), StandardCharsets.UTF_8);
-                String qr = "https://api.vietqr.io/image/970422-0813302283-jYp8Yod.jpg?accountName=" + accountName + "&addInfo=" + addInfo;
-                model.addAttribute("vietQrUrl", qr);
+
+                // Load system bank/contact info
+                String sysBankName = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_NAME, "MB Bank");
+                String sysAccountNumber = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_ACCOUNT_NUMBER, "0813302283");
+                String sysAccountName = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_ACCOUNT_NAME, "Tran Tuan Anh");
+                String supportEmail = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_EMAIL_CONTACT, "contact@mmomarket.xyz");
+
+                model.addAttribute("sysBankName", sysBankName);
+                model.addAttribute("sysAccountNumber", sysAccountNumber);
+                model.addAttribute("sysAccountName", sysAccountName);
+                model.addAttribute("supportEmail", supportEmail);
+
+                // Build VietQR URL (fallback to SePay QR if bank code not mapped)
+                String vietQrUrl = null;
+                try {
+                    String bankCode = Bank.findCodeForBankName(sysBankName);
+                    String token = "jYp8Yod"; // placeholder token per VietQR api pattern
+                    if (bankCode != null && sysAccountNumber != null && !sysAccountNumber.isBlank()) {
+                        String filename = bankCode + "-" + sysAccountNumber.trim() + "-" + token + ".jpg";
+                        String accountName = URLEncoder.encode(sysAccountName == null ? "" : sysAccountName, StandardCharsets.UTF_8);
+                        String addInfo = URLEncoder.encode(user.getDepositCode(), StandardCharsets.UTF_8);
+                        vietQrUrl = "https://api.vietqr.io/image/" + filename + "?accountName=" + accountName + "&addInfo=" + addInfo;
+                    }
+                } catch (Exception ignored) {}
+                if (vietQrUrl == null) {
+                    // Fallback to SePay QR format
+                    String des = user.getDepositCode() == null ? "" : user.getDepositCode();
+                    vietQrUrl =
+                        "https://qr.sepay.vn/img?acc=" + (sysAccountNumber == null ? "" : sysAccountNumber) +
+                        "&bank=" + (sysBankName == null ? "" : sysBankName) +
+                        "&des=" + des;
+                }
+                model.addAttribute("vietQrUrl", vietQrUrl);
             }
         }
         return "customer/topup";

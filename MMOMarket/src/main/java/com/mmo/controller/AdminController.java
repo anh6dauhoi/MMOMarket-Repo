@@ -58,6 +58,9 @@ public class AdminController {
     @Autowired
     private com.mmo.service.EmailService emailService;
 
+    @Autowired
+    private com.mmo.service.SystemConfigurationService systemConfigurationService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -393,6 +396,151 @@ public class AdminController {
         return "admin/layout";
     }
 
+    // NEW: System configuration management
+
+    @GetMapping("/system-config")
+    public String systemConfig(Model model, Authentication authentication,
+                               @RequestParam(name = "success", required = false) String success) {
+        // Ensure default keys exist
+        systemConfigurationService.ensureDefaults();
+        // Load all
+        model.addAttribute("configMap", systemConfigurationService.getAllAsMap());
+        model.addAttribute("defaults", com.mmo.service.SystemConfigurationService.DEFAULTS);
+        // Provide bank options from util.Bank
+        model.addAttribute("bankOptions", Bank.listAll());
+        if (success != null) {
+            model.addAttribute("successMessage", "System configuration updated successfully.");
+        }
+        // Build SePay QR preview from current config values
+        try {
+            String bankName = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_NAME, "MBBank");
+            String accountNumber = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_ACCOUNT_NUMBER, "0813302283");
+            String sampleDes = "MMOPREVIEW123456";
+            String url = "https://qr.sepay.vn/img?acc=" + URLEncoder.encode(accountNumber, StandardCharsets.UTF_8) +
+                    "&bank=" + URLEncoder.encode(bankName, StandardCharsets.UTF_8) +
+                    "&des=" + URLEncoder.encode(sampleDes, StandardCharsets.UTF_8);
+            model.addAttribute("sepayQrPreview", url);
+        } catch (Exception ignored) { }
+        model.addAttribute("pageTitle", "System Configuration");
+        model.addAttribute("body", "admin/system-config");
+        return "admin/layout";
+    }
+
+    @PostMapping(value = "/system-config", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public String updateSystemConfig(@RequestParam java.util.Map<String, String> params,
+                                     Model model,
+                                     Authentication authentication) {
+        // Find admin user for updatedBy
+        User admin = null;
+        try {
+            Authentication auth = authentication;
+            if (auth == null || !auth.isAuthenticated()) auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                String email = auth.getName();
+                if (auth instanceof OAuth2AuthenticationToken oauth2Token) {
+                    OAuth2User oauthUser = oauth2Token.getPrincipal();
+                    String mail = oauthUser.getAttribute("email");
+                    if (mail != null) email = mail;
+                }
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", email)
+                        .getResultStream().findFirst().orElse(null);
+            }
+        } catch (Exception ignored) { }
+
+        java.util.Map<String, String> errors = systemConfigurationService.updateConfigs(params, admin);
+        if (errors.isEmpty()) {
+            return "redirect:/admin/system-config?success=1";
+        }
+        // On errors, re-render with messages and bank options
+        model.addAttribute("errors", errors);
+        model.addAttribute("configMap", systemConfigurationService.getAllAsMap());
+        model.addAttribute("defaults", com.mmo.service.SystemConfigurationService.DEFAULTS);
+        model.addAttribute("bankOptions", Bank.listAll());
+        model.addAttribute("pageTitle", "System Configuration");
+        model.addAttribute("body", "admin/system-config");
+        return "admin/layout";
+    }
+
+    @PostMapping(path = "/system-config", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String updateSystemConfigMultipart(@RequestParam java.util.Map<String, String> params,
+                                              @RequestParam(name = "policy_complaint", required = false) MultipartFile policyComplaint,
+                                              @RequestParam(name = "policy_seller_agreement", required = false) MultipartFile policySellerAgreement,
+                                              Model model,
+                                              Authentication authentication) {
+        // Find admin user for updatedBy
+        User admin = null;
+        try {
+            Authentication auth = authentication;
+            if (auth == null || !auth.isAuthenticated()) auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                String email = auth.getName();
+                if (auth instanceof OAuth2AuthenticationToken oauth2Token) {
+                    OAuth2User oauthUser = oauth2Token.getPrincipal();
+                    String mail = oauthUser.getAttribute("email");
+                    if (mail != null) email = mail;
+                }
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", email)
+                        .getResultStream().findFirst().orElse(null);
+            }
+        } catch (Exception ignored) { }
+
+        java.util.Map<String, String> errors = new java.util.LinkedHashMap<>();
+
+        // Handle file uploads for policies
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("uploads", "policies");
+            java.nio.file.Files.createDirectories(dir);
+
+            if (policyComplaint != null && !policyComplaint.isEmpty()) {
+                String original = policyComplaint.getOriginalFilename();
+                String lower = original != null ? original.toLowerCase() : "";
+                if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
+                    errors.put("policy.complaint.url", "Only PDF, DOC, or DOCX files are allowed.");
+                } else {
+                    String filename = "complaint-" + System.currentTimeMillis() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    java.nio.file.Path target = dir.resolve(filename);
+                    policyComplaint.transferTo(target.toFile());
+                    String publicUrl = "/uploads/policies/" + filename;
+                    params.put("policy.complaint.url", publicUrl);
+                }
+            }
+
+            if (policySellerAgreement != null && !policySellerAgreement.isEmpty()) {
+                String original = policySellerAgreement.getOriginalFilename();
+                String lower = original != null ? original.toLowerCase() : "";
+                if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
+                    errors.put("policy.seller_agreement.url", "Only PDF, DOC, or DOCX files are allowed.");
+                } else {
+                    String filename = "seller-agreement-" + System.currentTimeMillis() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    java.nio.file.Path target = dir.resolve(filename);
+                    policySellerAgreement.transferTo(target.toFile());
+                    String publicUrl = "/uploads/policies/" + filename;
+                    params.put("policy.seller_agreement.url", publicUrl);
+                }
+            }
+        } catch (Exception ex) {
+            errors.put("_global", "Failed to upload policy files: " + ex.getMessage());
+        }
+
+        // Merge validation from service
+        java.util.Map<String, String> svcErrors = systemConfigurationService.updateConfigs(params, admin);
+        if (!svcErrors.isEmpty()) errors.putAll(svcErrors);
+
+        if (errors.isEmpty()) {
+            return "redirect:/admin/system-config?success=1";
+        }
+        // On errors, re-render with messages and bank options
+        model.addAttribute("errors", errors);
+        model.addAttribute("configMap", systemConfigurationService.getAllAsMap());
+        model.addAttribute("defaults", com.mmo.service.SystemConfigurationService.DEFAULTS);
+        model.addAttribute("bankOptions", Bank.listAll());
+        model.addAttribute("pageTitle", "System Configuration");
+        model.addAttribute("body", "admin/system-config");
+        return "admin/layout";
+    }
+
     @GetMapping(value = "/coin-deposits/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<?> getCoinDepositDetail(@PathVariable Long id, Authentication auth) {
@@ -462,3 +610,4 @@ public class AdminController {
         }
     }
 }
+
