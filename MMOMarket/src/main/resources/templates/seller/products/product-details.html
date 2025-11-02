@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Product Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+<div class="flex min-h-screen flex-col">
+    <!-- Header -->
+    <th:insert th:replace="~{fragments/header :: header}" />
+
+    <div class="flex flex-1">
+        <!-- Sidebar -->
+        <th:insert th:replace="~{fragments/seller/sidebar :: sidebar('products')}" />
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <h1 class="text-2xl font-bold mb-6">Product detail</h1>
+
+            <!-- Messages -->
+            <div th:if="${message}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span th:text="${message}"></span>
+            </div>
+            <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span th:text="${error}"></span>
+            </div>
+
+            <!-- Product Info + Image (2 cột) -->
+            <div class="bg-white p-6 rounded-lg border mb-6 grid grid-cols-2 gap-8">
+                <!-- Left: Thông tin -->
+                <div class="space-y-4">
+                    <div>
+                        <p class="font-semibold">Product ID: <span th:text="${product.id}">A1</span></p>
+                    </div>
+                    <div>
+                        <p class="font-semibold">Product Name:</p>
+                        <p th:text="${product.name}">Quizlet account</p>
+                    </div>
+                    <div>
+                        <p class="font-semibold">Category:</p>
+                        <p th:text="${product.category.name}">Learning account</p>
+                    </div>
+                    <div>
+                        <p class="font-semibold">Description:</p>
+                        <p th:text="${product.description}" class="text-gray-700 text-sm leading-relaxed">
+                            Premium Quizlet account with access to all features.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right: Ảnh -->
+                <div class="flex justify-center items-center">
+                    <img th:src="${product.image}" alt="Product" class="w-60 h-60 object-cover border rounded-lg shadow-sm">
+                </div>
+            </div>
+
+
+            <!-- Product Variants Section -->
+            <div class="bg-white rounded-lg border p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Product Variants</h2>
+                    <div class="flex gap-2">
+                        <button onclick="openAddVariantModal()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                            New variant
+                        </button>
+                        <button onclick="toggleDeletedVariants()" id="deletedBtn" class="border px-4 py-2 rounded hover:bg-gray-50">
+                            <i class="fas fa-trash-restore mr-2"></i>Deleted
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Variants Table -->
+                <div id="activeVariants">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Variant</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Price</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Stock</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                        <tr th:each="variant : ${variants}" th:if="${!variant.isDelete}" class="hover:bg-gray-50">
+                            <td class="px-4 py-3" th:text="${variant.variantName}">Basic</td>
+                            <td class="px-4 py-3" th:text="${#numbers.formatInteger(variant.price, 0, 'COMMA')}">10,000</td>
+                            <!-- THAY ĐỔI: Stock giờ là số account Available, không phải trường trong DB -->
+                            <td class="px-4 py-3">
+                                <span th:text="${variant.stock}" class="font-semibold">0</span>
+                                <span class="text-xs text-gray-500 ml-1">accounts</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span th:if="${variant.status == 'Active'}" class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Active</span>
+                                <span th:if="${variant.status == 'Inactive'}" class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">Inactive</span>
+                                <span th:if="${variant.status == 'Pending'}" class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Pending</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <!-- Nút View Accounts - XEM danh sách accounts -->
+                                <button th:onclick="'viewAccounts(' + ${variant.id} + ')'"
+                                        class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200 mr-2">
+                                    <i class="fas fa-list mr-1"></i>View
+                                </button>
+                                <!-- Nút Add Accounts -->
+                                <button th:onclick="'openAddAccountModal(' + ${variant.id} + ')'"
+                                        class="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-200 mr-2">
+                                    <i class="fas fa-plus mr-1"></i>Add
+                                </button>
+                                <button th:onclick="'openUpdateVariantModal(' + ${variant.id} + ')'"
+                                        class="text-blue-600 hover:underline text-sm mr-2">
+                                    Update
+                                </button>
+                                <button th:onclick="'confirmDeleteVariant(' + ${product.id} + ',' + ${variant.id} + ')'"
+                                        class="text-red-600 hover:underline text-sm">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Deleted Variants Table -->
+                <div id="deletedVariants" class="hidden">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <p class="text-red-800 font-medium">Deleted Variants</p>
+                    </div>
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Variant</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Price</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Stock</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y bg-red-50">
+                        <tr th:each="variant : ${variants}" th:if="${variant.isDelete}" class="opacity-60">
+                            <td class="px-4 py-3 line-through" th:text="${variant.variantName}">Premium</td>
+                            <td class="px-4 py-3" th:text="${#numbers.formatInteger(variant.price, 0, 'COMMA')}">20,000</td>
+                            <td class="px-4 py-3" th:text="${variant.stock}">0</td>
+                            <td class="px-4 py-3">
+                                <button th:onclick="'restoreVariant(' + ${variant.id} + ')'"
+                                        class="text-green-600 hover:underline text-sm">
+                                    Restore
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <th:insert th:replace="~{fragments/footer :: footer}" />
+</div>
+
+<!-- Add Variant Modal -->
+<div id="addVariantModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-8 w-96">
+        <h2 class="text-xl font-bold mb-6 text-center text-red-500">Create new variant</h2>
+        <form th:action="@{/seller/products/{id}/variants/add(id=${product.id})}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Name</label>
+                <input type="text" name="variantName" placeholder="Account 1 month" class="w-full px-4 py-2 border rounded-lg" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Price (coins)</label>
+                <input type="number"
+                       name="price"
+                       placeholder="Enter price"
+                       min="1"
+                       max="999999999"
+                       step="1"
+                       class="w-full px-4 py-2 border rounded-lg"
+                       required>
+                <p class="text-xs text-gray-500 mt-1">Minimum: 1 coin, Maximum: 999,999,999 coins</p>
+            </div>
+
+            <div class="flex gap-4">
+                <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
+                <button type="button" onclick="closeAddVariantModal()" class="flex-1 border py-2 rounded-lg hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update Variant Modal -->
+<div id="updateVariantModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-8 w-96">
+        <h2 class="text-xl font-bold mb-6 text-center text-red-500">Update variant</h2>
+        <form id="updateVariantForm" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" id="updateVariantId" name="variantId">
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Name</label>
+                <input type="text" id="updateVariantName" name="variantName" placeholder="Acount 1 month" class="w-full px-4 py-2 border rounded-lg" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Price (coins)</label>
+                <input type="number"
+                       id="updateVariantPrice"
+                       name="price"
+                       placeholder="Enter price"
+                       min="1"
+                       max="999999999"
+                       step="1"
+                       class="w-full px-4 py-2 border rounded-lg"
+                       required>
+                <p class="text-xs text-gray-500 mt-1">Minimum: 1 coin, Maximum: 999,999,999 coins</p>
+            </div>
+
+            <div class="flex gap-4">
+                <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
+                <button type="button" onclick="closeUpdateVariantModal()" class="flex-1 border py-2 rounded-lg hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Account Modal -->
+<div id="addAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-8 w-96">
+        <h2 class="text-2xl font-bold mb-4 text-center text-red-500">Add account</h2>
+        <p class="text-center text-sm text-gray-600 mb-4">
+            Please download template:
+            <a href="/account_template.xlsx"
+               download="account_template.xlsx"
+               class="text-red-500 underline hover:text-red-700">
+                <i class="fas fa-download mr-1"></i>Download here
+            </a>
+        </p>
+        <form id="addAccountForm" method="post" enctype="multipart/form-data">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Upload account list</label>
+                <div class="flex gap-2">
+                    <input type="text" id="fileName" readonly class="flex-1 px-4 py-2 border rounded-lg bg-gray-50" placeholder="No file chosen">
+                    <label class="bg-gray-200 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-300">
+                        Upload file
+                        <input type="file" name="accountFile" class="hidden" onchange="updateFileName(this)" accept=".xlsx,.xls,.csv">
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex gap-4 mt-6">
+                <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Save</button>
+                <button type="button" onclick="closeAddAccountModal()" class="flex-1 border py-2 rounded-lg hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Validate price input khi submit form
+    document.querySelector('#addVariantModal form').addEventListener('submit', function(e) {
+        const price = parseInt(this.querySelector('[name="price"]').value);
+        if (price < 1 || price > 999999999 || isNaN(price)) {
+            e.preventDefault();
+            alert('Price must be between 1 and 999,999,999 coins!');
+            return false;
+        }
+    });
+
+    document.getElementById('updateVariantForm').addEventListener('submit', function(e) {
+        const price = parseInt(document.getElementById('updateVariantPrice').value);
+        if (price < 1 || price > 999999999 || isNaN(price)) {
+            e.preventDefault();
+            alert('Price must be between 1 and 999,999,999 coins!');
+            return false;
+        }
+    });
+    function openAddVariantModal() {
+        document.getElementById('addVariantModal').classList.remove('hidden');
+    }
+    function closeAddVariantModal() {
+        document.getElementById('addVariantModal').classList.add('hidden');
+    }
+
+    function openUpdateVariantModal(variantId) {
+        fetch('/seller/products/variants/get/' + variantId)
+            .then(response => response.json())
+            .then(variant => {
+                document.getElementById('updateVariantId').value = variant.id;
+                document.getElementById('updateVariantName').value = variant.variantName;
+                document.getElementById('updateVariantPrice').value = variant.price;
+                document.getElementById('updateVariantForm').action = '/seller/products/variants/update/' + variantId;
+                document.getElementById('updateVariantModal').classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error fetching variant:', error);
+                alert('Error loading variant data');
+            });
+    }
+
+    function closeUpdateVariantModal() {
+        document.getElementById('updateVariantModal').classList.add('hidden');
+    }
+
+    function openAddAccountModal(variantId) {
+        document.getElementById('addAccountForm').action = '/seller/products/variants/' + variantId + '/accounts/add';
+        document.getElementById('addAccountModal').classList.remove('hidden');
+    }
+
+    function closeAddAccountModal() {
+        document.getElementById('addAccountModal').classList.add('hidden');
+    }
+
+    function updateFileName(input) {
+        const fileName = input.files[0]?.name || 'No file chosen';
+        document.getElementById('fileName').value = fileName;
+    }
+
+    // MỚI: Xem danh sách accounts của variant
+    function viewAccounts(variantId) {
+        window.location.href = '/seller/products/variants/' + variantId + '/accounts';
+    }
+
+    function toggleDeletedVariants() {
+        const active = document.getElementById('activeVariants');
+        const deleted = document.getElementById('deletedVariants');
+        const btn = document.getElementById('deletedBtn');
+
+        if (deleted.classList.contains('hidden')) {
+            active.classList.add('hidden');
+            deleted.classList.remove('hidden');
+            btn.innerHTML = '<i class="fas fa-list mr-2"></i>Active';
+        } else {
+            active.classList.remove('hidden');
+            deleted.classList.add('hidden');
+            btn.innerHTML = '<i class="fas fa-trash-restore mr-2"></i>Deleted';
+        }
+    }
+
+    function confirmDeleteVariant(productId, variantId) {
+        if(confirm('Delete this variant?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/seller/products/' + productId + '/variants/delete/' + variantId;
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '[[${_csrf.parameterName}]]';
+            csrf.value = '[[${_csrf.token}]]';
+            form.appendChild(csrf);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function restoreVariant(variantId) {
+        if(confirm('Restore this variant?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/seller/products/variants/restore/' + variantId;
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '[[${_csrf.parameterName}]]';
+            csrf.value = '[[${_csrf.token}]]';
+            form.appendChild(csrf);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+</body>
+</html>

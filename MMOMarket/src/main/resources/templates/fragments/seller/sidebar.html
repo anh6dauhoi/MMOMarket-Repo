@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="sidebar(activePage)">
+    <aside class="w-64 bg-white border-r min-h-screen">
+        <nav class="px-4">
+            <a href="/seller/dashboard"
+               th:class="${activePage == 'dashboard' ? 'flex items-center gap-3 px-4 py-3 bg-gray-100 text-gray-900 rounded-lg mb-2' : 'flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg mb-2'}">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="/seller/products"
+               th:class="${activePage == 'products' ? 'flex items-center gap-3 px-4 py-3 bg-gray-100 text-gray-900 rounded-lg mb-2' : 'flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg mb-2'}">
+                <i class="fas fa-box"></i> Products
+            </a>
+            <a href="/seller/transactions"
+               th:class="${activePage == 'transactions' ? 'flex items-center gap-3 px-4 py-3 bg-gray-100 text-gray-900 rounded-lg mb-2' : 'flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg mb-2'}">
+                <i class="fas fa-exchange-alt"></i> Transaction
+            </a>
+            <a href="/seller/complaints"
+               th:class="${activePage == 'complaints' ? 'flex items-center gap-3 px-4 py-3 bg-gray-100 text-gray-900 rounded-lg mb-2' : 'flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg mb-2'}">
+                <i class="fas fa-exclamation-circle"></i> Complain Management
+            </a>
+            <a href="/seller/reviews"
+               th:class="${activePage == 'reviews' ? 'flex items-center gap-3 px-4 py-3 bg-gray-100 text-gray-900 rounded-lg mb-2' : 'flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg mb-2'}">
+                <i class="fas fa-star"></i> Review Management
+            </a>
+            <a href="/seller/withdraw"
+               th:class="${activePage == 'withdraw' ? 'flex items-center gap-3 px-4 py-3 bg-gray-100 text-gray-900 rounded-lg' : 'flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg'}">
+                <i class="fas fa-wallet"></i> Withdraw money
+            </a>
+        </nav>
+    </aside>
+</div>
+</body>
+</html>

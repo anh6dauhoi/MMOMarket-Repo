@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Checkout - MMO Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+<th:insert th:replace="~{fragments/header :: header}" />
+
+<main class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Checkout</h1>
+
+    <!-- Messages -->
+    <div th:if="${message}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+        <span th:text="${message}"></span>
+    </div>
+    <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+        <span th:text="${error}"></span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Order Summary -->
+        <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Order Summary</h2>
+            <div id="orderSummary"></div>
+        </div>
+
+        <!-- Payment Info -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Payment</h2>
+            <div class="mb-4">
+                <p class="text-gray-600">Your Balance:</p>
+                <p class="text-2xl font-bold text-red-600" th:text="${#numbers.formatInteger(customer.coins, 0, 'COMMA')} + ' coins'">100,000 coins</p>
+            </div>
+
+            <form th:action="@{/customer/checkout/process}" method="post" id="checkoutForm">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" name="productId" id="productId">
+                <input type="hidden" name="variantId" id="variantId">
+                <input type="hidden" name="quantity" id="quantityInput">
+
+                <div class="border-t pt-4 mt-4">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-600">Subtotal:</span>
+                        <span class="font-semibold" id="subtotal">0 coins</span>
+                    </div>
+                    <div class="flex justify-between mb-4">
+                        <span class="text-gray-600">Total:</span>
+                        <span class="text-xl font-bold text-red-600" id="total">0 coins</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 font-semibold">
+                    <i class="fas fa-lock mr-2"></i>Complete Purchase
+                </button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Load order data from sessionStorage
+    const orderData = JSON.parse(sessionStorage.getItem('orderData'));
+
+    if (orderData) {
+        // Display order summary
+        document.getElementById('orderSummary').innerHTML = `
+        <div class="flex gap-4 border-b pb-4">
+            <img src="${orderData.productImage}" alt="${orderData.productName}" class="w-24 h-24 object-cover rounded">
+            <div class="flex-1">
+                <h3 class="font-semibold text-lg">${orderData.productName}</h3>
+                <p class="text-gray-600">${orderData.variantName}</p>
+                <p class="text-sm text-gray-500">Seller: ${orderData.sellerName}</p>
+                <div class="flex justify-between mt-2">
+                    <span>Quantity: ${orderData.quantity}</span>
+                    <span class="font-semibold">${parseInt(orderData.price).toLocaleString()} coins</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+        // Set form values
+        document.getElementById('productId').value = orderData.productId;
+        document.getElementById('variantId').value = orderData.variantId;
+        document.getElementById('quantityInput').value = orderData.quantity;
+
+        // Display totals
+        document.getElementById('subtotal').textContent = parseInt(orderData.totalPrice).toLocaleString() + ' coins';
+        document.getElementById('total').textContent = parseInt(orderData.totalPrice).toLocaleString() + ' coins';
+    } else {
+        document.getElementById('orderSummary').innerHTML = '<p class="text-gray-500">No order data found.</p>';
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Processing Order - MMO Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<th:insert th:replace="~{fragments/header :: header}" />
+
+<main class="flex-1 flex items-center justify-center">
+    <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Processing Your Order...</h1>
+        <p class="text-gray-600">Please wait while we process your payment</p>
+        <p id="statusText" class="text-sm text-gray-500 mt-4">Status: Pending</p>
+    </div>
+</main>
+
+<th:insert th:replace="~{fragments/footer :: footer}" />
+
+<script th:inline="javascript">
+    const orderId = new URLSearchParams(window.location.search).get('orderId');
+
+    if (!orderId) {
+        alert('Invalid order');
+        window.location.href = '/';
+    }
+
+    // Polling để check status
+    const checkStatus = async () => {
+        try {
+            const response = await fetch(`/customer/api/order-status/${orderId}`);
+            const data = await response.json();
+
+            document.getElementById('statusText').textContent = 'Status: ' + data.status;
+
+            if (data.status === 'COMPLETED') {
+                // Thành công → redirect sang success page
+                window.location.href = `/customer/order-success?transactionId=${data.transactionId}`;
+            } else if (data.status === 'FAILED') {
+                // Thất bại → hiển thị lỗi
+                alert('Order failed: ' + data.error);
+                window.location.href = '/customer/checkout';
+            }
+            // Nếu PENDING hoặc PROCESSING → tiếp tục polling
+
+        } catch (error) {
+            console.error('Error checking order status:', error);
+        }
+    };
+
+    // Check ngay lập tức
+    checkStatus();
+
+    // Sau đó check mỗi 2 giây
+    const interval = setInterval(checkStatus, 2000);
+
+    // Stop polling sau 2 phút (timeout)
+    setTimeout(() => {
+        clearInterval(interval);
+        alert('Order processing timeout. Please check your orders.');
+        window.location.href = '/customer/orders';
+    }, 120000); // 2 phút
+</script>
+</body>
+</html>

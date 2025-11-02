@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Success - MMO Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<!-- Header -->
+<th:insert th:replace="~{fragments/header :: header}" />
+
+<main class="flex-1 container mx-auto px-4 py-8"></main>
+
+<!-- Modal chứa thông tin transaction -->
+<div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
+         style="scrollbar-width:none; -ms-overflow-style:none;">
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="text-center">
+                <h3 class="font-bold mb-4">Transaction Details</h3>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Transaction ID</span>
+                    <span class="font-semibold" th:text="${transactionId}">TXN12345</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Seller Name</span>
+                    <span class="font-semibold" th:text="${seller.fullName}">anhdtt</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Product ID</span>
+                    <span class="font-semibold" th:text="${product.id}">PROD001</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Product Name</span>
+                    <span class="font-semibold" th:text="${product.name}">Quizlet premium</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Variant</span>
+                    <span class="font-semibold" th:text="${variant.variantName}">Basic</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Amount</span>
+                    <span class="font-semibold" th:text="${#numbers.formatInteger(variant.price, 0, 'COMMA')} + ' coins'">10,000 coins</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Quantity</span>
+                    <span class="font-semibold" th:text="${quantity}">1</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total</span>
+                    <span class="font-bold text-red-600" th:text="${#numbers.formatInteger(totalAmount, 0, 'COMMA')} + ' coins'">10,000 coins</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Purchase Date</span>
+                    <span class="font-semibold" th:text="${#dates.format(purchaseDate, 'yyyy-MM-dd')}">2024-07-20</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Status</span>
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-semibold">Held (Escrow)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Table -->
+        <div class="mb-6" th:if="${accountsToBuy != null and not #lists.isEmpty(accountsToBuy)}">
+            <div class="grid grid-cols-3 gap-2 bg-gray-100 p-2 rounded-t text-sm font-semibold text-center">
+                <div>STT</div>
+                <div>Account</div>
+                <div>Password</div>
+            </div>
+            <div th:each="account, stat : ${accountsToBuy}"
+                 class="grid grid-cols-3 gap-2 p-2 border-b text-sm text-center">
+                <div th:text="${stat.count}">01</div>
+                <div class="font-mono text-xs" th:text="${#strings.substringBefore(account.accountData, '|')}">abc@gmail.com</div>
+                <div class="font-mono text-xs" th:text="${#strings.substringAfter(account.accountData, '|')}">123456789</div>
+            </div>
+        </div>
+
+        <button onclick="window.location.href='/'"
+                class="w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 font-semibold">
+            Close
+        </button>
+    </div>
+</div>
+
+<!-- Footer -->
+<th:insert th:replace="~{fragments/footer :: footer}" />
+
+<script>
+    // Hiển thị modal khi có transaction
+    window.onload = function() {
+        document.getElementById('successModal').classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
