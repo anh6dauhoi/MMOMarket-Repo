@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS ShopInfo (
     shop_name VARCHAR(255) NOT NULL, -- Tên cửa hàng
     description TEXT, -- Mô tả
 	shop_level TINYINT UNSIGNED DEFAULT 0,
-	commission DECIMAL(5,2) NOT NULL, -- Tỷ lệ hoa hồng, mặc định 5%
+	commission DECIMAL(5,2) NOT NULL, -- Tỷ lệ hoa hồng
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo

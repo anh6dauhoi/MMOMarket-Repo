@@ -38,8 +38,9 @@ public class SystemConfigurationService {
             new DefaultDef(SYSTEM_BANK_NAME, "MBBank", "Bank name of the system's receiving account.", "string"),
             new DefaultDef(SYSTEM_BANK_ACCOUNT_NUMBER, "0813302283", "Account number used to receive funds for the system.", "string"),
             new DefaultDef(SYSTEM_BANK_ACCOUNT_NAME, "Tran Tuan Anh", "Account holder name of the system's receiving account.", "string"),
-            new DefaultDef(POLICY_COMPLAINT_URL, "/policy/complaint-resolution", "URL path to the complaint resolution policy page.", "string"),
-            new DefaultDef(POLICY_SELLER_AGREEMENT_URL, "/policy/seller-agreement", "URL path to the seller agreement/contract page.", "string")
+            // Updated descriptions to Vietnamese per requirement
+            new DefaultDef(POLICY_COMPLAINT_URL, "/policy/complaint-resolution", "Quy chế giải quyết khiếu nại.", "string"),
+            new DefaultDef(POLICY_SELLER_AGREEMENT_URL, "/policy/seller-agreement", "Hợp đồng/thỏa thuận người bán.", "string")
     );
 
     public Map<String, SystemConfiguration> getAllAsMap() {

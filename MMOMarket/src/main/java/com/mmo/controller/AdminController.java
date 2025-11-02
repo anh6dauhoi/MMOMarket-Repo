@@ -497,13 +497,13 @@ public class AdminController {
                 String original = policyComplaint.getOriginalFilename();
                 String lower = original != null ? original.toLowerCase() : "";
                 if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
-                    errors.put("policy.complaint.url", "Only PDF, DOC, or DOCX files are allowed.");
+                    errors.put("system_complaint", "Only PDF, DOC, or DOCX files are allowed.");
                 } else {
                     String filename = "complaint-" + System.currentTimeMillis() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
                     java.nio.file.Path target = dir.resolve(filename);
                     policyComplaint.transferTo(target.toFile());
                     String publicUrl = "/uploads/policies/" + filename;
-                    params.put("policy.complaint.url", publicUrl);
+                    params.put("system_complaint", publicUrl);
                 }
             }
 
@@ -511,13 +511,13 @@ public class AdminController {
                 String original = policySellerAgreement.getOriginalFilename();
                 String lower = original != null ? original.toLowerCase() : "";
                 if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
-                    errors.put("policy.seller_agreement.url", "Only PDF, DOC, or DOCX files are allowed.");
+                    errors.put("system_contract", "Only PDF, DOC, or DOCX files are allowed.");
                 } else {
                     String filename = "seller-agreement-" + System.currentTimeMillis() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
                     java.nio.file.Path target = dir.resolve(filename);
                     policySellerAgreement.transferTo(target.toFile());
                     String publicUrl = "/uploads/policies/" + filename;
-                    params.put("policy.seller_agreement.url", publicUrl);
+                    params.put("system_contract", publicUrl);
                 }
             }
         } catch (Exception ex) {

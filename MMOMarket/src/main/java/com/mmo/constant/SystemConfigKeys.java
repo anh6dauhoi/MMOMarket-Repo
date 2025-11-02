@@ -18,7 +18,6 @@ public final class SystemConfigKeys {
     public static final String SYSTEM_BANK_ACCOUNT_NAME = "system.bank.account_name";
 
     // Policy URLs
-    public static final String POLICY_COMPLAINT_URL = "policy.complaint.url";
-    public static final String POLICY_SELLER_AGREEMENT_URL = "policy.seller_agreement.url";
+    public static final String POLICY_COMPLAINT_URL = "system_complaint";
+    public static final String POLICY_SELLER_AGREEMENT_URL = "system_contract";
 }
-
