@@ -1,27 +1,60 @@
 package com.mmo.service;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import com.mmo.dto.CreateCategoryRequest;
+import com.mmo.dto.UpdateCategoryRequest;
 import com.mmo.entity.Category;
-import com.mmo.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+public interface CategoryService {
+    /**
+     * Get all categories (not deleted) with pagination
+     */
+    Page<Category> getAllCategories(Pageable pageable);
 
-@Service
-public class CategoryService {
+    /**
+     * Search categories by name with pagination
+     */
+    Page<Category> searchCategories(String search, Pageable pageable);
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    /**
+     * Get category by ID
+     */
+    Category getCategoryById(Long id);
 
-    public List<Category> getPopularCategories() {
-        return categoryRepository.findPopularCategories();
-    }
+    /**
+     * Create new category
+     */
+    Category createCategory(CreateCategoryRequest request, Long createdBy);
 
-    public List<Category> findAll(){
-        return categoryRepository.findAll();
-    }
+    /**
+     * Update existing category
+     */
+    Category updateCategory(Long id, UpdateCategoryRequest request);
 
-    public Optional<Category> findById(Long id){
-        return  categoryRepository.findById(id);
-    }
+    /**
+     * Soft delete category
+     */
+    void deleteCategory(Long id, Long deletedBy);
+
+    /**
+     * Restore deleted category
+     */
+    Category restoreCategory(Long id);
+
+    /**
+     * Toggle category status (Active/Inactive)
+     */
+    Category toggleCategoryStatus(Long id);
+
+    /**
+     * Get all deleted categories with pagination
+     */
+    Page<Category> getDeletedCategories(Pageable pageable);
+
+    /**
+     * Search deleted categories
+     */
+    Page<Category> searchDeletedCategories(String search, Pageable pageable);
 }

@@ -1,321 +1,514 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta charset="UTF-8">
-    <title>Account Settings</title>
-    <!-- Favicon - Multiple sizes for crisp display -->
-    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/images/logo.png}">
-    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/images/logo.png}">
-    <link rel="icon" type="image/png" sizes="48x48" th:href="@{/images/logo.png}">
-    <link rel="icon" type="image/png" sizes="64x64" th:href="@{/images/logo.png}">
-    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
-    <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings - MMOMarket</title>
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            background: url('/images/home1.jpg') no-repeat center center fixed;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover;
+        .tab-content {
+            display: none;
         }
-        @media (max-width: 640px) {
-            body {
-                background-position: top center;
-            }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-button.active {
+            color: #ef4444;
+            border-bottom: 2px solid #ef4444;
         }
     </style>
 </head>
+
 <body class="bg-gray-50 flex flex-col min-h-screen">
-<div th:insert="~{fragments/header :: header}"></div>
+    <div th:insert="~{fragments/header :: header}"></div>
 
-<!-- Toasts: bottom-left with dynamic bottom offset (no CSS var to avoid red warning) -->
-<div id="toast-container"
-     class="fixed z-40 w-auto max-w-xs left-4 sm:left-8 pointer-events-none"
-     style="bottom: 2rem;">
-    <div th:if="${param.added != null}"
-         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg mb-2"
-         role="alert" aria-live="polite">
-        <span class="flex-1">Added to wishlist successfully.</span>
-        <button type="button" onclick="(this.closest('[role=alert]')||this.parentElement)?.remove()" aria-label="Close">✕</button>
-    </div>
-    <div th:if="${param.exists != null}"
-         class="pointer-events-auto flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg mb-2"
-         role="alert" aria-live="polite">
-        <span class="flex-1">This item is already in your wishlist.</span>
-        <button type="button" onclick="(this.closest('[role=alert]')||this.parentElement)?.remove()" aria-label="Close">✕</button>
-    </div>
-    <div th:if="${param.removed != null}"
-         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg"
-         role="alert" aria-live="polite">
-        <span class="flex-1">Item removed.</span>
-        <button type="button" onclick="(this.closest('[role=alert]')||this.parentElement)?.remove()" aria-label="Close">✕</button>
-    </div>
-</div>
-
-<main class="flex-grow">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div class="lg:col-span-1">
-                <div th:fragment="sidebar">
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h2 class="text-2xl font-bold mb-6">Account Setting</h2>
-                        <div class="flex items-center space-x-4 mb-6">
-                            <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-xl font-bold text-gray-600"
-                                 th:text="${displayName != null and #strings.length(displayName) > 0 ? #strings.toUpperCase(#strings.substring(displayName,0,1)) : 'C'}">
-                            </div>
-                            <span class="font-semibold text-lg" th:text="${displayName}">customer</span>
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Sidebar -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="p-6 border-b border-gray-200">
+                            <h2 class="text-xl font-bold text-gray-800">Account Setting</h2>
                         </div>
-                        <nav class="space-y-2">
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                               href="#">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                                </svg>
-                                <span>My Profile</span>
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center text-white text-lg font-bold"
+                                    th:text="${user != null and user.fullName != null and #strings.length(user.fullName) > 0 ? #strings.toUpperCase(#strings.substring(user.fullName,0,1)) : 'U'}">
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-800"
+                                        th:text="${user != null ? user.fullName : 'User'}">User</div>
+                                    <div class="text-sm text-gray-500" th:text="${user != null ? user.email : ''}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <nav class="p-4 space-y-1">
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-red-600 bg-red-50 rounded-lg font-medium"
+                                th:href="@{/account/settings}">
+                                <i class="fas fa-user-circle w-5"></i>
+                                <span>My Account</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                               href="#">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                                </svg>
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                                href="#">
+                                <i class="fas fa-shopping-bag w-5"></i>
                                 <span>My Order</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg"
-                               th:href="@{/account/wishlist}"
-                               th:classappend="${activeTab != null and activeTab == 'wishlist'} ? ' text-white bg-red-500' : ' text-gray-700 hover:bg-gray-100'">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                                </svg>
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                                href="#">
+                                <i class="fas fa-heart w-5"></i>
                                 <span>My Wishlist</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                               href="#">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                                </svg>
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                                href="#">
+                                <i class="fas fa-exclamation-circle w-5"></i>
                                 <span>My Complaints</span>
                             </a>
-                            <!-- My Notifications: dynamic active highlight -->
-                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
-                               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/account/notifications') ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
-                               th:href="@{/account/notifications}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                                </svg>
-                                <span>My Notifications</span>
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                                th:if="${registration != null and registration.status != null and (#strings.toUpperCase(registration.status) == 'ACTIVE' or #strings.contains(#strings.toUpperCase(registration.status), 'ACTIVE'))}"
+                                th:href="@{/seller/my-contract}">
+                                <i class="fas fa-file-contract w-5"></i>
+                                <span>My Contract</span>
                             </a>
-                            <!-- Register Seller: only visible when not ACTIVE, with dynamic active highlight on /account/settings -->
-                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
-                               th:if="${registration == null or registration.status == null or !#strings.toUpperCase(registration.status).contains('ACTIVE')}"
-                               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/account/settings') ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
-                               th:href="@{/account/settings}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"></path>
-                                </svg>
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                                th:if="${registration == null or registration.status == null or !(#strings.toUpperCase(registration.status) == 'ACTIVE' or #strings.contains(#strings.toUpperCase(registration.status), 'ACTIVE'))}"
+                                th:href="@{/seller/register}">
+                                <i class="fas fa-store w-5"></i>
                                 <span>Register Seller</span>
+                            </a>
+                            <a class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                                th:href="@{/account/notifications}">
+                                <i class="fas fa-bell w-5"></i>
+                                <span>My Notifications</span>
                             </a>
                         </nav>
                     </div>
                 </div>
-            </div>
-            <div class="lg:col-span-3">
-<div th:if="${activeTab != null and activeTab == 'wishlist'}">
-    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-            <h1 class="text-2xl font-bold">My Wishlist</h1>
-            <div class="space-y-1 text-sm">
-                <div th:if="${param.added != null}" class="text-green-600 font-medium">Added to wishlist successfully.</div>
-                <div th:if="${param.exists != null}" class="text-yellow-600 font-medium">This item is already in your wishlist.</div>
-            </div>
-        </div>
 
-        <div th:if="${#lists.isEmpty(items)}" class="text-gray-500">
-            Your wishlist is empty.
-        </div>
+                <!-- Main Content -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <!-- Success/Error Messages -->
+                        <div th:if="${successMessage}"
+                            class="mx-6 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                                <span class="text-green-800" th:text="${successMessage}"></span>
+                            </div>
+                        </div>
+                        <div th:if="${errorMessage}" class="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
+                                <span class="text-red-800" th:text="${errorMessage}"></span>
+                            </div>
+                        </div>
 
-        <div th:unless="${#lists.isEmpty(items)}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div th:each="it : ${items}"
-                 class="border rounded-xl overflow-hidden bg-white shadow-sm relative"
-                 th:with="p=${it['product']}"
-                 th:classappend="${param.pid != null && p != null && p.id == #numbers.createLong(param.pid[0])} ? ' ring-2 ring-green-400' : ''">
-                <span th:if="${param.pid != null && p != null && p.id == #numbers.createLong(param.pid[0])}"
-                      class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded">New</span>
+                        <!-- Tabs Header -->
+                        <div class="border-b border-gray-200">
+                            <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                                <button type="button"
+                                    class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 transition"
+                                    data-tab="profile">
+                                    Profile
+                                </button>
+                                <button type="button"
+                                    class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 transition"
+                                    data-tab="password">
+                                    Change password
+                                </button>
+                            </nav>
+                        </div>
 
-                <a th:href="@{/products(id=${p.id})}">
-                    <img th:src="${p != null && p.image != null ? p.image : '/images/default.jpg'}" alt="Product Image" class="w-full h-44 object-cover">
-                </a>
-                <div class="p-4">
-                    <h3 class="font-semibold text-gray-900 truncate">
-                        <a th:text="${p != null ? p.name : ''}" th:href="@{/products(id=${p != null ? p.id : 0})}">Product</a>
-                    </h3>
-                    <div class="mt-2 flex items-center justify-between">
-                        <form th:action="@{/wishlist/remove}" method="post" class="wishlist-remove-form inline-block" style="display:inline;">
-                            <input type="hidden" name="productId" th:value="${p.id}"> <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit"
-                                    class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-full shadow-sm transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-300 active:scale-95"
-                                    data-confirm="Are you sure you want to remove this item from your wishlist?">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-                                    <path d="M10 11v6"></path>
-                                    <path d="M14 11v6"></path>
-                                    <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                                <span class="hidden sm:inline">Remove</span>
-                            </button>
-                        </form>
+                        <!-- Profile Tab -->
+                        <div id="profile-tab" class="tab-content p-6">
+                            <div class="mb-6 flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-1">My profile</h3>
+                                    <p class="text-sm text-gray-500">Manage profile information to keep your account secure
+                                    </p>
+                                </div>
+                                <button type="button" id="editProfileBtn"
+                                    class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm">
+                                    Edit
+                                </button>
+                            </div>
+
+                            <form id="profileForm" th:action="@{/account/update-profile}" method="post" class="space-y-6">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-4">Personal Information</h4>
+
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2" for="emailInput">Email</label>
+                                            <input type="text" id="emailInput" th:value="${user != null ? user.email : ''}" readonly
+                                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2" for="fullNameInput">Name</label>
+                                            <input type="text" name="fullName" id="fullNameInput"
+                                                th:value="${user != null ? user.fullName : ''}"
+                                                placeholder="Enter your full name" readonly
+                                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
+                                            <p id="fullNameError" class="text-xs text-red-600 mt-1 hidden"></p>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2" for="phoneInput">Phone</label>
+                                            <input type="text" name="phone" id="phoneInput" 
+                                                th:value="${user != null ? user.phone : ''}"
+                                                placeholder="Enter 10 digits (e.g., 0912345678)" readonly
+                                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
+                                            <p id="phoneError" class="text-xs text-red-600 mt-1 hidden"></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="profileButtons" class="flex space-x-3 pt-4 hidden">
+                                    <button type="submit" id="saveProfileBtn" disabled
+                                        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-gray-300">
+                                        Save
+                                    </button>
+                                    <button type="button" id="cancelProfileBtn"
+                                        class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Change Password Tab -->
+                        <div id="password-tab" class="tab-content p-6">
+                            <div class="mb-6">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-1">Change password</h3>
+                                <p class="text-sm text-gray-500">Manage profile information to keep your account secure
+                                </p>
+                            </div>
+
+                            <form id="passwordForm" th:action="@{/account/change-password}" method="post" class="space-y-6 max-w-md">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+                                <div th:if="${user != null and user.password != null and user.password != ''}">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="currentPassword">Current password *</label>
+                                    <div class="relative">
+                                        <input type="password" name="currentPassword" id="currentPassword"
+                                            placeholder="Enter current password" required
+                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition pr-10">
+                                        <button type="button" onclick="togglePassword('currentPassword')"
+                                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-eye" id="currentPassword-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="newPassword">New password *</label>
+                                    <div class="relative">
+                                        <input type="password" name="newPassword" id="newPassword"
+                                            placeholder="Enter new password" required
+                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition pr-10">
+                                        <button type="button" onclick="togglePassword('newPassword')"
+                                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-eye" id="newPassword-icon"></i>
+                                        </button>
+                                    </div>
+                                    <p id="passwordHint" class="text-xs text-gray-500 mt-1">At least 8 characters with letters and numbers</p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="confirmPassword">Confirm password *</label>
+                                    <div class="relative">
+                                        <input type="password" name="confirmPassword" id="confirmPassword"
+                                            placeholder="Re-enter new password" required
+                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition pr-10">
+                                        <button type="button" onclick="togglePassword('confirmPassword')"
+                                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-eye" id="confirmPassword-icon"></i>
+                                        </button>
+                                    </div>
+                                    <p id="passwordMatchHint" class="text-xs mt-1"></p>
+                                </div>
+
+                                <div class="flex space-x-3 pt-4">
+                                    <button type="submit" id="savePasswordBtn" disabled
+                                        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition shadow-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-gray-300">
+                                        Save
+                                    </button>
+                                    <button type="button" onclick="resetPasswordForm()"
+                                        class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </main>
 
-        <div th:if="${totalPages != null and totalPages > 1}"
-             th:with="
-               window=3,
-               start=${page - window > 1 ? page - window : 1},
-               end=${page + window < totalPages ? page + window : totalPages}"
-             class="mt-8">
-            <div class="flex items-center justify-center gap-2" aria-label="Pagination">
-                <a th:href="@{/account/wishlist(page=${page - 1})}"
-                   th:classappend="${page <= 1} ? ' opacity-40 pointer-events-none' : ''"
-                   class="px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition"
-                   aria-label="Previous page">Prev</a>
+    <div th:insert="~{fragments/footer :: footer}"></div>
 
-                <a th:if="${start > 1}"
-                   th:href="@{/account/wishlist(page=1)}"
-                   class="w-10 h-10 grid place-items-center rounded-full text-sm transition text-gray-700 hover:bg-red-50"
-                   style="border:1px solid #e5e7eb">1</a>
-                <span th:if="${start > 2}" class="px-2 text-gray-400">...</span>
+    <script>
+        // Tab switching
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activeTab = urlParams.get('tab') || 'profile';
 
-                <span th:each="i : ${#numbers.sequence(start, end)}">
-                    <a th:href="@{/account/wishlist(page=${i})}"
-                       th:text="${i}"
-                       class="w-10 h-10 grid place-items-center rounded-full text-sm transition"
-                       style="border:1px solid #e5e7eb"
-                       th:classappend="${i == page} ? ' bg-red-600 text-white shadow' : ' text-gray-700 hover:bg-red-50'"></a>
-                </span>
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
 
-                <span th:if="${end < totalPages - 1}" class="px-2 text-gray-400">...</span>
-                <a th:if="${end < totalPages}"
-                   th:href="@{/account/wishlist(page=${totalPages})}"
-                   th:text="${totalPages}"
-                   class="w-10 h-10 grid place-items-center rounded-full text-sm transition text-gray-700 hover:bg-red-50"
-                   style="border:1px solid #e5e7eb"></a>
+            function switchTab(tabName) {
+                // Remove active class from all
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
 
-                <a th:href="@{/account/wishlist(page=${page + 1})}"
-                   th:classappend="${page >= totalPages} ? ' opacity-40 pointer-events-none' : ''"
-                   class="px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition"
-                   aria-label="Next page">Next</a>
-            </div>
-        </div>
-    </div>
-</div>
+                // Add active class to selected
+                const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+                const selectedContent = document.getElementById(`${tabName}-tab`);
 
-<div th:if="${activeTab == null or activeTab != 'wishlist'}">
-    <div th:if="${registration == null || registration.id == null || !#strings.toUpperCase(registration.status).contains('ACTIVE')}">
-        <div th:replace="~{customer/register-seller :: content}"></div>
-    </div>
-    <div th:if="${registration != null && registration.id != null && #strings.toUpperCase(registration.status).contains('ACTIVE')}">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-2xl font-bold mb-2">Seller account is active</h2>
-            <p class="text-gray-600">You can manage your shop in Seller Dashboard.</p>
-            <a class="inline-block mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" th:href="@{/seller/my-shop}">Go to Seller Dashboard</a>
-        </div>
-    </div>
-</div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-</main>
-
-<div th:insert="~{fragments/footer :: footer}"></div>
-
-<script>
-    // Auto-hide each toast after 2.2s (do not remove the container)
-    document.addEventListener('DOMContentLoaded', () => {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-        container.querySelectorAll('[role="alert"]').forEach(el => {
-            setTimeout(() => el.remove(), 2200);
-        });
-    });
-
-    // Keep toast above footer and below header (no CSS var)
-    function adjustToastBottomOffset() {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-
-        const footer = document.querySelector('footer, [role="contentinfo"], #site-footer');
-        const header = document.querySelector('header, [role="banner"], #site-header');
-
-        let visibleFooter = 0;
-        if (footer) {
-            const rect = footer.getBoundingClientRect();
-            visibleFooter = Math.max(0, window.innerHeight - Math.max(rect.top, 0));
-        }
-
-        // Base: 16px + visible footer height
-        let bottom = 16 + visibleFooter;
-
-        // Ensure we also stay below the header if viewport is short
-        const toastHeight = container.offsetHeight || 0;
-        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
-        const minGap = 12; // gap between toast and header/footer
-        const top = window.innerHeight - bottom - toastHeight;
-
-        if (headerBottom && top < headerBottom + minGap) {
-            bottom = Math.max(16, window.innerHeight - (headerBottom + minGap) - toastHeight);
-        }
-
-        container.style.bottom = bottom + 'px';
-    }
-
-    // Initial and reactive adjustments
-    ['load', 'scroll', 'resize'].forEach(evt => {
-        window.addEventListener(evt, adjustToastBottomOffset, { passive: true });
-    });
-    adjustToastBottomOffset();
-
-    // Wishlist remove: confirm + animate card then submit (prevents accidental tap and gives premium feel)
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.wishlist-remove-form').forEach(form => {
-            form.addEventListener('submit', function (e) {
-                // Avoid double handling if already submitting
-                if (this.dataset.submitting === '1') return;
-                e.preventDefault();
-                const confirmText = this.querySelector('button')?.getAttribute('data-confirm') || 'Remove item?';
-                if (!window.confirm(confirmText)) return;
-                this.dataset.submitting = '1';
-                const card = this.closest('.border.rounded-xl.overflow-hidden') || this.closest('.border.rounded-xl');
-                if (card) {
-                    card.style.transition = 'transform 220ms ease, opacity 220ms ease';
-                    card.style.transform = 'translateY(-8px) scale(0.985)';
-                    card.style.opacity = '0.0';
+                if (selectedButton && selectedContent) {
+                    selectedButton.classList.add('active');
+                    selectedContent.classList.add('active');
                 }
-                // Slight delay to show animation then submit
-                setTimeout(() => {
-                    // remove data-submitting to allow normal submit or just call submit()
-                    this.submit();
-                }, 220);
-            }, {passive: false});
+            }
+
+            // Set initial tab
+            switchTab(activeTab);
+
+            // Add click listeners
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const tabName = this.getAttribute('data-tab');
+                    switchTab(tabName);
+                    // Update URL without reload
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('tab', tabName);
+                    window.history.pushState({}, '', newUrl);
+                });
+            });
+
+            // Initialize profile edit mode
+            initProfileEditMode();
+            
+            // Initialize password validation
+            initPasswordValidation();
         });
-    });
-</script>
+
+        // Profile Edit Mode
+        function initProfileEditMode() {
+            const editBtn = document.getElementById('editProfileBtn');
+            const cancelBtn = document.getElementById('cancelProfileBtn');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            const profileButtons = document.getElementById('profileButtons');
+            const fullNameInput = document.getElementById('fullNameInput');
+            const phoneInput = document.getElementById('phoneInput');
+            const fullNameError = document.getElementById('fullNameError');
+            const phoneError = document.getElementById('phoneError');
+            
+            // Store original values
+            let originalFullName = fullNameInput.value;
+            let originalPhone = phoneInput.value;
+
+            // Edit button click
+            editBtn.addEventListener('click', function() {
+                // Enable inputs
+                fullNameInput.readOnly = false;
+                phoneInput.readOnly = false;
+                fullNameInput.classList.remove('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                phoneInput.classList.remove('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                fullNameInput.classList.add('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+                phoneInput.classList.add('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+                
+                // Show/hide buttons
+                editBtn.classList.add('hidden');
+                profileButtons.classList.remove('hidden');
+                
+                // Focus on first input
+                fullNameInput.focus();
+                
+                // Store current values
+                originalFullName = fullNameInput.value;
+                originalPhone = phoneInput.value;
+            });
+
+            // Cancel button click
+            cancelBtn.addEventListener('click', function() {
+                // Restore original values
+                fullNameInput.value = originalFullName;
+                phoneInput.value = originalPhone;
+                
+                // Disable inputs
+                disableProfileInputs();
+                
+                // Clear errors
+                clearProfileErrors();
+                
+                // Show/hide buttons
+                editBtn.classList.remove('hidden');
+                profileButtons.classList.add('hidden');
+            });
+
+            // Real-time validation
+            fullNameInput.addEventListener('input', validateProfile);
+            phoneInput.addEventListener('input', validateProfile);
+
+            function validateProfile() {
+                let isValid = true;
+                
+                // Validate full name
+                const fullName = fullNameInput.value.trim();
+                if (fullName.length === 0) {
+                    fullNameError.textContent = '';
+                    fullNameError.classList.add('hidden');
+                } else if (fullName.length < 2) {
+                    fullNameError.textContent = 'Full name must be at least 2 characters';
+                    fullNameError.classList.remove('hidden');
+                    isValid = false;
+                } else if (fullName.length > 255) {
+                    fullNameError.textContent = 'Full name is too long (max 255 characters)';
+                    fullNameError.classList.remove('hidden');
+                    isValid = false;
+                } else {
+                    fullNameError.textContent = '';
+                    fullNameError.classList.add('hidden');
+                }
+                
+                // Validate phone
+                const phone = phoneInput.value.trim();
+                if (phone.length > 0) {
+                    if (!phone.match(/^0\d{9}$/)) {
+                        phoneError.textContent = 'Phone number must be exactly 10 digits and start with 0';
+                        phoneError.classList.remove('hidden');
+                        isValid = false;
+                    } else {
+                        phoneError.textContent = '';
+                        phoneError.classList.add('hidden');
+                    }
+                } else {
+                    phoneError.textContent = '';
+                    phoneError.classList.add('hidden');
+                }
+                
+                // Check if values changed
+                const hasChanges = (fullName !== originalFullName.trim()) || (phone !== originalPhone.trim());
+                
+                // Enable save button only if valid and has changes
+                saveBtn.disabled = !isValid || !hasChanges;
+            }
+
+            function disableProfileInputs() {
+                fullNameInput.readOnly = true;
+                phoneInput.readOnly = true;
+                fullNameInput.classList.add('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                phoneInput.classList.add('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+                fullNameInput.classList.remove('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+                phoneInput.classList.remove('focus:ring-2', 'focus:ring-red-500', 'focus:border-transparent');
+            }
+
+            function clearProfileErrors() {
+                fullNameError.textContent = '';
+                fullNameError.classList.add('hidden');
+                phoneError.textContent = '';
+                phoneError.classList.add('hidden');
+            }
+        }
+
+        // Password Validation (similar to register page)
+        function initPasswordValidation() {
+            const currentPassword = document.getElementById('currentPassword');
+            const newPassword = document.getElementById('newPassword');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const savePasswordBtn = document.getElementById('savePasswordBtn');
+            const passwordHint = document.getElementById('passwordHint');
+            const passwordMatchHint = document.getElementById('passwordMatchHint');
+
+            function isValidPassword(value) {
+                return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(value);
+            }
+
+            function validatePasswordForm() {
+                // Check if current password field exists and has value
+                const currentPasswordOk = !currentPassword || currentPassword.value.length > 0;
+                
+                // Validate new password
+                const newPw = newPassword.value;
+                const isNewPwValid = isValidPassword(newPw);
+                passwordHint.className = 'text-xs mt-1 ' + (isNewPwValid ? 'text-green-600' : 'text-gray-500');
+                
+                // Check if passwords match
+                const confirmPw = confirmPassword.value;
+                const doPasswordsMatch = newPw && (newPw === confirmPw);
+                
+                if (confirmPw) {
+                    if (doPasswordsMatch) {
+                        passwordMatchHint.textContent = 'Passwords match';
+                        passwordMatchHint.className = 'text-xs mt-1 text-green-600';
+                    } else {
+                        passwordMatchHint.textContent = 'Password confirmation does not match';
+                        passwordMatchHint.className = 'text-xs mt-1 text-red-600';
+                    }
+                } else {
+                    passwordMatchHint.textContent = '';
+                    passwordMatchHint.className = 'text-xs mt-1';
+                }
+                
+                // Enable save button only if all validations pass
+                savePasswordBtn.disabled = !(currentPasswordOk && isNewPwValid && doPasswordsMatch);
+            }
+
+            // Add event listeners
+            if (currentPassword) {
+                currentPassword.addEventListener('input', validatePasswordForm);
+            }
+            newPassword.addEventListener('input', validatePasswordForm);
+            confirmPassword.addEventListener('input', validatePasswordForm);
+            
+            // Initial validation
+            validatePasswordForm();
+        }
+
+        // Reset password form
+        function resetPasswordForm() {
+            const form = document.getElementById('passwordForm');
+            form.reset();
+            
+            // Clear hints
+            const passwordHint = document.getElementById('passwordHint');
+            const passwordMatchHint = document.getElementById('passwordMatchHint');
+            passwordHint.className = 'text-xs mt-1 text-gray-500';
+            passwordMatchHint.textContent = '';
+            passwordMatchHint.className = 'text-xs mt-1';
+            
+            // Disable save button
+            document.getElementById('savePasswordBtn').disabled = true;
+        }
+
+        // Toggle password visibility
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const icon = document.getElementById(fieldId + '-icon');
+
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
 </body>
+
 </html>
