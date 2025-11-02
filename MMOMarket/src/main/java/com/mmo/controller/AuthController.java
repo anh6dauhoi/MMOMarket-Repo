@@ -9,6 +9,7 @@ import com.mmo.repository.CoinDepositRepository;
 import com.mmo.repository.EmailVerificationRepository;
 import com.mmo.service.AuthService;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
@@ -120,7 +121,18 @@ public class AuthController {
 
     @PostMapping("/authen/verify")
     public String verify(@RequestParam String email, @RequestParam String code, Model model,
-                         @RequestParam(required = false) Boolean reset) {
+                         @RequestParam(required = false) Boolean reset, HttpSession session) {
+        // Basic lockout check
+        Long lockUntil = (Long) session.getAttribute(lockKey(email, reset));
+        long now = System.currentTimeMillis();
+        if (lockUntil != null && lockUntil > now) {
+            long remain = (lockUntil - now) / 1000L;
+            model.addAttribute("message", "Too many attempts. Please wait " + remain + "s then enter the new OTP sent to your email.");
+            model.addAttribute("email", email);
+            if (Boolean.TRUE.equals(reset)) model.addAttribute("reset", true);
+            return "authen/verify";
+        }
+
         User user = authService.findByEmail(email);
         if (user == null) {
             model.addAttribute("message", "Verification code is incorrect or already used.");
@@ -129,36 +141,75 @@ public class AuthController {
             return "authen/verify";
         }
 
-        // Validate OTP định dạng numeric 6 ký tự để chống sửa F12
+        // Validate OTP numeric 6 digits
         if (code == null || !code.matches("^\\d{6}$")) {
-            model.addAttribute("message", "Invalid OTP code.");
+            // Count attempt and maybe escalate
+            int attempts = incAttempts(session, email, reset);
+            if (attempts >= 5) {
+                // Reset OTP and lock for 120s
+                sendNewOtpAsync(user);
+                session.setAttribute(lockKey(email, reset), now + TimeUnit.SECONDS.toMillis(120));
+                model.addAttribute("message", "You've entered the wrong code too many times. We've sent a new OTP. Please try again after 2 minutes.");
+            } else if (attempts >= 3) {
+                // Warn and send a new OTP to continue
+                sendNewOtpAsync(user);
+                model.addAttribute("message", "You have entered the wrong OTP 3 times. A new OTP has been sent to your email. Please try again.");
+            } else {
+                model.addAttribute("message", "Invalid OTP code.");
+            }
             model.addAttribute("email", email);
+            if (Boolean.TRUE.equals(reset)) model.addAttribute("reset", true);
             return "authen/verify";
         }
 
-        // Lấy bản ghi OTP mới nhất, chưa dùng
+        // Latest unused OTP record
         Optional<EmailVerification> optionalVerification = emailVerificationRepository
                 .findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, code);
         EmailVerification verification = optionalVerification.orElse(null);
         if (verification == null) {
-            model.addAttribute("message", "Verification code is incorrect or already used.");
+            int attempts = incAttempts(session, email, reset);
+            if (attempts >= 5) {
+                sendNewOtpAsync(user);
+                session.setAttribute(lockKey(email, reset), now + TimeUnit.SECONDS.toMillis(120));
+                model.addAttribute("message", "Too many failed attempts. New OTP sent. Please try again after 2 minutes.");
+            } else if (attempts >= 3) {
+                sendNewOtpAsync(user);
+                model.addAttribute("message", "Incorrect OTP. A new OTP has been sent to your email. Please try again.");
+            } else {
+                model.addAttribute("message", "Verification code is incorrect or already used.");
+            }
             model.addAttribute("email", email);
+            if (Boolean.TRUE.equals(reset)) model.addAttribute("reset", true);
             return "authen/verify";
         }
 
         if (verification.getExpiryDate().before(new Date())) {
-            model.addAttribute("message", "Verification code has expired. Please request a new code.");
+            int attempts = incAttempts(session, email, reset);
+            if (attempts >= 5) {
+                sendNewOtpAsync(user);
+                session.setAttribute(lockKey(email, reset), now + TimeUnit.SECONDS.toMillis(120));
+                model.addAttribute("message", "OTP expired and too many attempts. New OTP sent. Please try again after 2 minutes.");
+            } else if (attempts >= 3) {
+                sendNewOtpAsync(user);
+                model.addAttribute("message", "OTP expired. A new OTP has been sent. Please try again.");
+            } else {
+                model.addAttribute("message", "Verification code has expired. Please request a new code.");
+            }
             model.addAttribute("email", email);
+            if (Boolean.TRUE.equals(reset)) model.addAttribute("reset", true);
             return "authen/verify";
         }
 
+        // Success: clear attempts and lock
+        clearAttempts(session, email, reset);
+
         if (Boolean.TRUE.equals(reset)) {
-            // Flow reset mật khẩu: KHÔNG đánh dấu used tại đây để dùng lại ở bước đặt mật khẩu mới
+            // Reset password flow: forward to new-password without marking used yet
             model.addAttribute("email", email);
             model.addAttribute("code", code);
             return "authen/new-password";
         } else {
-            // Flow đăng ký: đánh dấu used và xác thực tài khoản
+            // Registration flow: mark used and verify account
             verification.setUsed(true);
             emailVerificationRepository.save(verification);
 
@@ -203,7 +254,18 @@ public class AuthController {
     }
 
     @PostMapping("/authen/new-password")
-    public String newPassword(@RequestParam String email, @RequestParam String password, @RequestParam String confirmPassword, @RequestParam String code, Model model) {
+    public String newPassword(@RequestParam String email, @RequestParam String password, @RequestParam String confirmPassword, @RequestParam String code, Model model, HttpSession session) {
+        // Optional: Check lock
+        Long lockUntil = (Long) session.getAttribute(lockKey(email, true));
+        long now = System.currentTimeMillis();
+        if (lockUntil != null && lockUntil > now) {
+            long remain = (lockUntil - now) / 1000L;
+            model.addAttribute("error", "Too many attempts. Please wait " + remain + "s and use the new OTP sent to your email.");
+            model.addAttribute("email", email);
+            model.addAttribute("code", "");
+            return "authen/new-password";
+        }
+
         // Backend validation để chống sửa tham số
         if (password == null || password.length() < 8 || !password.matches("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")) {
             model.addAttribute("error", "Password must be at least 8 characters and include letters and numbers.");
@@ -231,9 +293,19 @@ public class AuthController {
                 .findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, code);
         EmailVerification verification = optionalVerification.orElse(null);
         if (verification == null || verification.getExpiryDate().before(new Date())) {
-            model.addAttribute("error", "Verification code is invalid or has expired.");
+            int attempts = incAttempts(session, email, true);
+            if (attempts >= 5) {
+                sendNewOtpAsync(user);
+                session.setAttribute(lockKey(email, true), now + TimeUnit.SECONDS.toMillis(120));
+                model.addAttribute("error", "Verification code is invalid or has expired. Too many attempts. New OTP sent. Please try again after 2 minutes.");
+            } else if (attempts >= 3) {
+                sendNewOtpAsync(user);
+                model.addAttribute("error", "Verification code is invalid or has expired. A new OTP has been sent. Please try again.");
+            } else {
+                model.addAttribute("error", "Verification code is invalid or has expired.");
+            }
             model.addAttribute("email", email);
-            model.addAttribute("code", code);
+            model.addAttribute("code", "");
             return "authen/new-password";
         }
 
@@ -241,6 +313,9 @@ public class AuthController {
         authService.updatePassword(user, password);
         verification.setUsed(true);
         emailVerificationRepository.save(verification);
+
+        // Clear attempts on success
+        clearAttempts(session, email, true);
 
         model.asMap().clear();
         model.addAttribute("message", "Password updated successfully! You can log in.");
@@ -329,7 +404,7 @@ public class AuthController {
         if (displayName != null) {
             model.addAttribute("message", "Welcome " + displayName + " to MMOMarket!");
         }
-        return "customer/welcome";
+        return "redirect:/homepage";
     }
 
     @GetMapping("/customer/topup")
@@ -403,21 +478,72 @@ public class AuthController {
 
     @PostMapping("/authen/resend-otp")
     @ResponseBody
-    public String resendOtp(@RequestParam String email) {
+    public String resendOtp(@RequestParam String email, HttpSession session) {
         try {
+            Long lockUntil = (Long) session.getAttribute(lockKey(email, null));
+            long now = System.currentTimeMillis();
+            if (lockUntil != null && lockUntil > now) {
+                long remain = (lockUntil - now) / 1000L;
+                return "Too many attempts. Please wait " + remain + "s before requesting another OTP.";
+            }
             User user = authService.findByEmail(email);
             if (user != null) {
-                String code = authService.generateVerificationCode();
-                EmailVerification verification = new EmailVerification();
-                verification.setUser(user);
-                verification.setVerificationCode(code);
-                verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
-                verification.setUsed(false);
-                emailVerificationRepository.save(verification);
-                authService.sendVerificationCodeEmail(email, code);
+                // Offload generation + save + email to executor to avoid blocking UI
+                emailExecutor.execute(() -> {
+                    try {
+                        String code = authService.generateVerificationCode();
+                        EmailVerification verification = new EmailVerification();
+                        verification.setUser(user);
+                        verification.setVerificationCode(code);
+                        verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
+                        verification.setUsed(false);
+                        emailVerificationRepository.save(verification);
+                        authService.sendVerificationCodeEmail(email, code);
+                    } catch (Exception ignored) { }
+                });
             }
         } catch (Exception ignored) { }
-        // Luôn trả về thông báo chung để tránh lộ thông tin email tồn tại
+        // Always return generic message immediately
         return "If the email exists, a new OTP has been sent.";
+    }
+
+    // Helpers for attempt tracking keys per email and flow
+    private String attemptsKey(String email, Boolean reset) {
+        return "otpAttempts:" + (Boolean.TRUE.equals(reset) ? "reset:" : "register:") + email.toLowerCase();
+    }
+    private String lockKey(String email, Boolean reset) {
+        // Note: when called from resend-otp where reset is null, we lock both flows by using a shared key
+        String flow = (reset == null) ? "any:" : (reset ? "reset:" : "register:");
+        return "otpLockUntil:" + flow + email.toLowerCase();
+    }
+    private int incAttempts(HttpSession session, String email, Boolean reset) {
+        String key = attemptsKey(email, reset);
+        Integer cur = (Integer) session.getAttribute(key);
+        int next = (cur == null ? 0 : cur) + 1;
+        session.setAttribute(key, next);
+        return next;
+    }
+    private void clearAttempts(HttpSession session, String email, Boolean reset) {
+        session.removeAttribute(attemptsKey(email, reset));
+        session.removeAttribute(lockKey(email, reset));
+    }
+
+    // Utility to send new OTP asynchronously
+    private void sendNewOtpAsync(User user) {
+        try {
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    EmailVerification verification = new EmailVerification();
+                    verification.setUser(user);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    authService.sendVerificationCodeEmail(user.getEmail(), code);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
     }
 }

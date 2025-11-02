@@ -1,4 +1,5 @@
 package com.mmo.repository;
+<<<<<<< HEAD
 
 import java.util.Optional;
 
@@ -8,10 +9,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.mmo.entity.Category;
+=======
+import com.mmo.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+>>>>>>> main
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
+<<<<<<< HEAD
     // Find all non-deleted categories with pagination
     Page<Category> findByIsDeleteOrderByCreatedAtDesc(boolean isDelete, Pageable pageable);
 
@@ -30,3 +40,12 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     // Count categories by delete status
     long countByIsDelete(boolean isDelete);
 }
+=======
+    @Query(value = "SELECT c.* FROM Categories c LEFT JOIN Products p ON c.id = p.category_id WHERE c.isDelete = false GROUP BY c.id, c.name, c.description " +
+            "ORDER BY COUNT(p.id) DESC LIMIT 4", nativeQuery = true)
+    List<Category> findPopularCategories();
+
+    List<Category> findAll();
+
+}
+>>>>>>> main

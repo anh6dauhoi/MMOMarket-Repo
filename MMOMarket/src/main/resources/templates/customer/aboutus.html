@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MMO Market - About us</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/customer/css/aboutus.css}" />
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
+</head>
+
+<body>
+<div th:insert="~{fragments/header :: header}"></div>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <!-- Semi-transparent white wrapper for all content -->
+    <div class="bg-white bg-opacity-50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 lg:p-10 shadow-lg">
+        <div class="wrap">
+            <div class="hero">
+                <div class="img card">
+                    <img th:src="@{/images/about.jpg}" alt="About illustration">
+                </div>
+                <div class="content">
+                    <h1 class="hero-title">About MMO Market</h1>
+                    <p class="lead">
+                        MMO Market is your one-stop destination for premium online resources.
+                        From accounts, keys, and services, we provide the tools you need to excel in the digital world.
+                    </p>
+                    <a th:href="@{/category}" data-nav="category" class="btn">Explore Now</a>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Our Mission</h2>
+                <div class="card">
+                    <p class="muted">
+                        At MMO Market, our mission is to democratize access to essential online resources.
+                        We believe everyone deserves the opportunity to leverage digital tools regardless of background or budget.
+                        We provide high-quality resources at affordable prices, empowering users to achieve their goals.
+                    </p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Our Values</h2>
+                <div class="values">
+                    <div class="value">
+                        <div class="icon">Q</div>
+                        <div>
+                            <strong>Quality</strong>
+                            <div class="muted small">High standards & reliable resources</div>
+                        </div>
+                    </div>
+                    <div class="value">
+                        <div class="icon">C</div>
+                        <div>
+                            <strong>Community</strong>
+                            <div class="muted small">Share knowledge & collaborate</div>
+                        </div>
+                    </div>
+                    <div class="value">
+                        <div class="icon">$</div>
+                        <div>
+                            <strong>Affordability</strong>
+                            <div class="muted small">Competitive pricing & options</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="muted">
+                    We are committed to providing resources that meet the highest standards of quality
+                    and reliability while fostering a supportive community and flexible pricing options.
+                </p>
+            </div>
+
+            <div class="section">
+                <h2>Contact Us</h2>
+                <div class="card contact-card">
+                    <form class="form" th:object="${aboutForm}" th:action="@{/about}" method="post" novalidate
+                          onsubmit="this.querySelector('button[type=submit]').disabled=true;">
+                        <div class="field">
+                            <label for="name">Name</label>
+                            <input id="name" th:field="*{name}" type="text" placeholder="Your Name"
+                                   th:classappend="${#fields.hasErrors('name')} ? ' input-error'">
+                            <div class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="email">Email</label>
+                            <input id="email" th:field="*{email}" type="email" placeholder="Your Email"
+                                   th:classappend="${#fields.hasErrors('email')} ? ' input-error'">
+                            <div class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="message">Message</label>
+                            <textarea id="message" th:field="*{message}" placeholder="  Your Message"
+                                      th:classappend="${#fields.hasErrors('message')} ? ' input-error'"></textarea>
+                            <div class="error" th:if="${#fields.hasErrors('message')}" th:errors="*{message}"></div>
+                        </div>
+
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="submit">Send Message</button>
+                    </form>
+
+                    <div class="alert success below" th:if="${successMessage}" th:text="${successMessage}"></div>
+                </div>
+            </div>
+            <hr class="sep">
+        </div>
+    </div> <!-- end semi-transparent wrapper -->
+</main>
+
+<div th:insert="~{fragments/footer :: footer}"></div>
+</body>
+</html>

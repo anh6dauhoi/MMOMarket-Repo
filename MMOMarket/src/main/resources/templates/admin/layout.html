@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Admin - Seller Registrations</title>
+    <title th:text="${pageTitle != null ? 'Admin - ' + pageTitle : 'Admin'}">Admin</title>
+    <!-- Favicon - Multiple sizes for crisp display -->
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="48x48" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="64x64" th:href="@{/images/logo.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
+    <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <meta name="_csrf_parameter" th:content="${_csrf.parameterName}"/>

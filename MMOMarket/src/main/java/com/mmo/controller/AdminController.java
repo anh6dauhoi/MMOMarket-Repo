@@ -1,17 +1,12 @@
 package com.mmo.controller;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.mmo.dto.ProcessWithdrawalRequest;
+import com.mmo.dto.AdminWithdrawalResponse;
+import com.mmo.dto.WithdrawalDetailResponse;
+import com.mmo.dto.CoinDepositDetailResponse;
+import com.mmo.entity.User;
+import com.mmo.entity.Withdrawal;
+import com.mmo.entity.CoinDeposit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -66,15 +61,15 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 @Controller
 @RequestMapping("/admin")
 @SuppressWarnings("unchecked")
 public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
-
-    @Autowired
-    private SellerService sellerService;
 
     @Autowired
     private com.mmo.service.NotificationService notificationService;
@@ -100,520 +95,12 @@ public class AdminController {
     @PersistenceContext
     private EntityManager entityManager;
 
-    // ==================== USER MANAGEMENT ====================
-    @GetMapping("/users")
-    public String usersManagement(@RequestParam(name = "page", defaultValue = "0") int page,
-                                  @RequestParam(name = "search", defaultValue = "") String search,
-                                  @RequestParam(name = "role", defaultValue = "") String role,
-                                  @RequestParam(name = "shopStatus", defaultValue = "") String shopStatus,
-                                  @RequestParam(name = "sort", defaultValue = "") String sort,
-                                  Model model) {
-        // Determine sort field and direction
-        String sortField = "createdAt";
-        Sort.Direction sortDirection = Sort.Direction.DESC;
-        
-        if (sort != null && !sort.isBlank()) {
-            if (sort.equals("role_asc")) {
-                sortField = "role";
-                sortDirection = Sort.Direction.ASC;
-            } else if (sort.equals("role_desc")) {
-                sortField = "role";
-                // sortDirection already DESC by default
-            } else if (sort.equals("shopStatus_asc")) {
-                sortField = "shopStatus";
-                sortDirection = Sort.Direction.ASC;
-            } else if (sort.equals("shopStatus_desc")) {
-                sortField = "shopStatus";
-                // sortDirection already DESC by default
-            } else if (sort.equals("coins_asc")) {
-                sortField = "coins";
-                sortDirection = Sort.Direction.ASC;
-            } else if (sort.equals("coins_desc")) {
-                sortField = "coins";
-                // sortDirection already DESC by default
-            }
-        }
-        
-        Pageable pageable = PageRequest.of(page, 10, Sort.by(sortDirection, sortField));
-        
-        StringBuilder query = new StringBuilder("SELECT u FROM User u WHERE u.isDelete = false");
-        
-        if (search != null && !search.isBlank()) {
-            query.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
-        }
-        
-        if (role != null && !role.isBlank()) {
-            query.append(" AND LOWER(u.role) = LOWER(:role)");
-        }
-        
-        if (shopStatus != null && !shopStatus.isBlank()) {
-            query.append(" AND LOWER(u.shopStatus) = LOWER(:shopStatus)");
-        }
-        
-        query.append(" ORDER BY u.").append(sortField).append(" ").append(sortDirection.name());
-        
-        var q = entityManager.createQuery(query.toString(), User.class);
-        
-        if (search != null && !search.isBlank()) {
-            q.setParameter("search", "%" + search + "%");
-        }
-        
-        if (role != null && !role.isBlank()) {
-            q.setParameter("role", role);
-        }
-        
-        if (shopStatus != null && !shopStatus.isBlank()) {
-            q.setParameter("shopStatus", shopStatus);
-        }
-        
-        List<User> allUsers = q.getResultList();
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allUsers.size());
-        List<User> pageContent = allUsers.subList(start, end);
-        Page<User> userPage = new PageImpl<>(pageContent, pageable, allUsers.size());
-        
-        model.addAttribute("users", userPage.getContent());
-        model.addAttribute("totalPages", userPage.getTotalPages());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("currentRole", role);
-        model.addAttribute("currentShopStatus", shopStatus);
-        model.addAttribute("currentSort", sort);
-        model.addAttribute("pageTitle", "User Management");
-        model.addAttribute("body", "admin/users");
+    // NEW: Admin Dashboard route
+    @GetMapping({"", "/"})
+    public String dashboard(Model model) {
+        model.addAttribute("pageTitle", "Admin Dashboard");
+        model.addAttribute("body", "admin/dashboard");
         return "admin/layout";
-    }
-
-    @GetMapping("/users/{id}")
-    @ResponseBody
-    public ResponseEntity<?> getUser(@PathVariable Long id, Authentication auth) {
-        try {
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-
-            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
-                    .setParameter("e", auth.getName())
-                    .getResultStream().findFirst().orElse(null);
-
-            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-            }
-
-            User user = entityManager.find(User.class, id);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-            }
-            
-            return ResponseEntity.ok(user);
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    @PutMapping("/users/{id}")
-    @ResponseBody
-    @Transactional
-    public ResponseEntity<?> updateUser(@PathVariable Long id,
-                                       @RequestBody java.util.Map<String, Object> request,
-                                       Authentication auth) {
-        logger.info("=== START updateUser - ID: {}, Request: {}", id, request);
-        try {
-            if (auth == null || !auth.isAuthenticated()) {
-                logger.warn("Unauthorized access attempt");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-
-            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
-                    .setParameter("e", auth.getName())
-                    .getResultStream().findFirst().orElse(null);
-
-            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-                logger.warn("Forbidden access attempt by: {}", auth.getName());
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-            }
-
-            // Use repository instead of EntityManager
-            logger.debug("Finding user with ID: {}", id);
-            User user = userRepository.findById(id).orElse(null);
-            if (user == null) {
-                logger.warn("User not found with ID: {}", id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-            }
-
-            logger.debug("User found - Before update: fullName={}, phone={}, role={}, coins={}", 
-                user.getFullName(), user.getPhone(), user.getRole(), user.getCoins());
-
-            if (request.containsKey("fullName")) {
-                user.setFullName((String) request.get("fullName"));
-                logger.debug("Updated fullName to: {}", user.getFullName());
-            }
-            if (request.containsKey("phone")) {
-                String phone = (String) request.get("phone");
-                if (phone != null && !phone.isEmpty() && !phone.matches("^0\\d{9}$")) {
-                    logger.warn("Invalid phone format: {}", phone);
-                    return ResponseEntity.badRequest().body("Phone must be 10 digits starting with 0");
-                }
-                user.setPhone(phone);
-                logger.debug("Updated phone to: {}", user.getPhone());
-            }
-            if (request.containsKey("role")) {
-                user.setRole((String) request.get("role"));
-                logger.debug("Updated role to: {}", user.getRole());
-            }
-            if (request.containsKey("coins")) {
-                Object coinsObj = request.get("coins");
-                logger.debug("Coins object type: {}, value: {}", coinsObj != null ? coinsObj.getClass().getName() : "null", coinsObj);
-                if (coinsObj instanceof Number) {
-                    Long oldCoins = user.getCoins();
-                    user.setCoins(((Number) coinsObj).longValue());
-                    logger.debug("Updated coins from {} to {}", oldCoins, user.getCoins());
-                } else if (coinsObj instanceof String) {
-                    try {
-                        Long oldCoins = user.getCoins();
-                        user.setCoins(Long.parseLong((String) coinsObj));
-                        logger.debug("Updated coins (from String) from {} to {}", oldCoins, user.getCoins());
-                    } catch (NumberFormatException e) {
-                        logger.warn("Invalid coins format: {}", coinsObj);
-                    }
-                } else {
-                    logger.warn("Coins is neither Number nor String, it's: {}", coinsObj != null ? coinsObj.getClass().getName() : "null");
-                }
-            }
-
-            logger.debug("User after update - Before save: fullName={}, phone={}, role={}, coins={}", 
-                user.getFullName(), user.getPhone(), user.getRole(), user.getCoins());
-
-            // Use repository.save() instead of entityManager.merge()
-            User savedUser = userRepository.save(user);
-            logger.info("User saved successfully - After save: fullName={}, phone={}, role={}, coins={}", 
-                savedUser.getFullName(), savedUser.getPhone(), savedUser.getRole(), savedUser.getCoins());
-            
-            return ResponseEntity.ok("User updated successfully");
-        } catch (Exception ex) {
-            logger.error("Error updating user with ID: {}", id, ex);
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    @PutMapping("/users/{id}/ban")
-    @ResponseBody
-    @Transactional
-    public ResponseEntity<?> banUser(@PathVariable Long id, Authentication auth) {
-        logger.info("=== START banUser - ID: {}", id);
-        try {
-            if (auth == null || !auth.isAuthenticated()) {
-                logger.warn("Unauthorized access attempt");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-
-            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
-                    .setParameter("e", auth.getName())
-                    .getResultStream().findFirst().orElse(null);
-
-            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-                logger.warn("Forbidden access attempt by: {}", auth.getName());
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-            }
-
-            User user = userRepository.findById(id).orElse(null);
-            if (user == null) {
-                logger.warn("User not found with ID: {}", id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-            }
-
-            // Cannot ban admin users
-            if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-                logger.warn("Attempt to ban admin user: {}", id);
-                return ResponseEntity.badRequest().body("Cannot ban admin users");
-            }
-
-            // Set isDelete to true to ban user
-            user.setDelete(true);
-            
-            // Log user info before checking role
-            logger.info("User role before checking: {} for user ID: {}", user.getRole(), id);
-            
-            // If user is a seller, set their shop status to Inactive and soft delete all products
-            if ("SELLER".equalsIgnoreCase(user.getRole())) {
-                logger.info("User is a SELLER, setting shop status to Inactive");
-                // Set user's shop status to Inactive
-                user.setShopStatus("Inactive");
-                logger.info("Shop status set to Inactive in User object for user ID: {}", id);
-                
-                // Get user's shop
-                ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user.id = :userId", ShopInfo.class)
-                        .setParameter("userId", id)
-                        .getResultStream()
-                        .findFirst()
-                        .orElse(null);
-                
-                if (shop != null) {
-                    // Soft delete the shop
-                    shop.setDelete(true);
-                    entityManager.merge(shop);
-                    entityManager.flush();
-                    logger.info("Shop soft deleted for user - Shop ID: {}", shop.getId());
-                    
-                    // Soft delete all products of this shop
-                    int updatedProducts = entityManager.createQuery(
-                            "UPDATE Product p SET p.isDelete = true WHERE p.seller.id = :userId")
-                            .setParameter("userId", id)
-                            .executeUpdate();
-                    entityManager.flush();
-                    logger.info("Soft deleted {} products for user - ID: {}", updatedProducts, id);
-                } else {
-                    logger.warn("No shop found for seller user ID: {}", id);
-                }
-            } else {
-                logger.info("User is NOT a SELLER (role: {}), skipping shop status update", user.getRole());
-            }
-            
-            // Save user once with all changes
-            User savedUser = userRepository.save(user);
-            entityManager.flush();
-            logger.info("User banned successfully - ID: {}, isDelete: {}, Shop Status: {}", 
-                id, savedUser.isDelete(), savedUser.getShopStatus());
-            
-            return ResponseEntity.ok("User banned successfully");
-        } catch (Exception ex) {
-            logger.error("Error banning user with ID: {}", id, ex);
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    @PutMapping("/users/{id}/unban")
-    @ResponseBody
-    @Transactional
-    public ResponseEntity<?> unbanUser(@PathVariable Long id, Authentication auth) {
-        logger.info("=== START unbanUser - ID: {}", id);
-        try {
-            if (auth == null || !auth.isAuthenticated()) {
-                logger.warn("Unauthorized access attempt");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-
-            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
-                    .setParameter("e", auth.getName())
-                    .getResultStream().findFirst().orElse(null);
-
-            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-                logger.warn("Forbidden access attempt by: {}", auth.getName());
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-            }
-
-            User user = userRepository.findById(id).orElse(null);
-            if (user == null) {
-                logger.warn("User not found with ID: {}", id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-            }
-
-            // Set isDelete to false to unban user
-            user.setDelete(false);
-            
-            // If user is a seller, restore their shop status to Active and restore products
-            if ("SELLER".equalsIgnoreCase(user.getRole())) {
-                // Set user's shop status back to Active
-                user.setShopStatus("Active");
-                logger.info("Setting shop status to Active for user ID: {}", id);
-                
-                // Get user's shop
-                ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user.id = :userId", ShopInfo.class)
-                        .setParameter("userId", id)
-                        .getResultStream()
-                        .findFirst()
-                        .orElse(null);
-                
-                if (shop != null) {
-                    // Restore the shop
-                    shop.setDelete(false);
-                    entityManager.merge(shop);
-                    entityManager.flush();
-                    logger.info("Shop restored for user - Shop ID: {}", shop.getId());
-                    
-                    // Restore all products of this shop
-                    int restoredProducts = entityManager.createQuery(
-                            "UPDATE Product p SET p.isDelete = false WHERE p.seller.id = :userId")
-                            .setParameter("userId", id)
-                            .executeUpdate();
-                    entityManager.flush();
-                    logger.info("Restored {} products for user - ID: {}", restoredProducts, id);
-                } else {
-                    logger.warn("No shop found for seller user ID: {}", id);
-                }
-            }
-            
-            // Save user once with all changes
-            User savedUser = userRepository.save(user);
-            entityManager.flush();
-            logger.info("User unbanned successfully - ID: {}, isDelete: {}, Shop Status: {}", 
-                id, savedUser.isDelete(), savedUser.getShopStatus());
-            
-            return ResponseEntity.ok("User unbanned successfully");
-        } catch (Exception ex) {
-            logger.error("Error unbanning user with ID: {}", id, ex);
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    @GetMapping("/users/banned")
-    public String bannedUsers(@RequestParam(name = "page", defaultValue = "0") int page,
-                              @RequestParam(name = "search", defaultValue = "") String search,
-                              Model model) {
-        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "updatedAt"));
-        
-        StringBuilder query = new StringBuilder("SELECT u FROM User u WHERE u.isDelete = true");
-        
-        if (search != null && !search.isBlank()) {
-            query.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
-        }
-        
-        query.append(" ORDER BY u.updatedAt DESC");
-        
-        var q = entityManager.createQuery(query.toString(), User.class);
-        
-        if (search != null && !search.isBlank()) {
-            q.setParameter("search", "%" + search + "%");
-        }
-        
-        List<User> allUsers = q.getResultList();
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allUsers.size());
-        List<User> pageContent = allUsers.subList(start, end);
-        Page<User> userPage = new PageImpl<>(pageContent, pageable, allUsers.size());
-        
-        model.addAttribute("users", userPage.getContent());
-        model.addAttribute("totalPages", userPage.getTotalPages());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("pageTitle", "Banned Users");
-        model.addAttribute("body", "admin/banned-users");
-        return "admin/layout";
-    }
-
-    @GetMapping("/seller-registrations")
-    public String sellerRegistrations(@RequestParam(name = "status", defaultValue = "All") String status,
-                                      @RequestParam(name = "page", defaultValue = "0") int page,
-                                      @RequestParam(name = "search", defaultValue = "") String search,
-                                      @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
-                                      Model model) {
-        // Determine sort direction for createdAt
-        Sort.Direction dir = Sort.Direction.DESC;
-        if (sort != null) {
-            String s = sort.trim().toLowerCase();
-            if ("date_asc".equals(s) || "created_at_asc".equals(s)) dir = Sort.Direction.ASC;
-        }
-        Pageable pageable = PageRequest.of(page, 10, Sort.by(dir, "createdAt"));
-
-        Page<SellerRegistration> registrationPage;
-        if (search == null || search.isBlank()) {
-            // use existing service method (2 args)
-            registrationPage = sellerService.findAllRegistrations(status, pageable);
-        } else {
-            // fallback: perform JPQL search and manual paging into PageImpl
-            StringBuilder q = new StringBuilder("SELECT s FROM SellerRegistration s LEFT JOIN FETCH s.user u WHERE 1=1");
-            if (!"All".equalsIgnoreCase(status)) {
-                q.append(" AND LOWER(s.status) = LOWER(:status)");
-            }
-            q.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search) OR LOWER(s.shopName) LIKE LOWER(:search) OR CAST(s.id AS string) LIKE :search)");
-            q.append(" ORDER BY s.createdAt ").append(dir.isAscending() ? "ASC" : "DESC");
-            jakarta.persistence.Query query = entityManager.createQuery(q.toString(), SellerRegistration.class);
-            if (!"All".equalsIgnoreCase(status)) query.setParameter("status", status);
-            query.setParameter("search", "%" + search + "%");
-            List<SellerRegistration> all = query.getResultList();
-            int total = all.size();
-            int start = (int) pageable.getOffset();
-            int end = Math.min((start + pageable.getPageSize()), total);
-            List<SellerRegistration> pageContent = start <= end ? all.subList(start, end) : List.of();
-            registrationPage = new PageImpl<>(pageContent, pageable, total);
-        }
-
-        model.addAttribute("registrations", registrationPage.getContent());
-        model.addAttribute("currentStatus", status);
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("currentSort", sort);
-        model.addAttribute("totalPages", registrationPage.getTotalPages());
-        model.addAttribute("pageTitle", "Seller Registrations");
-        model.addAttribute("body", "admin/seller-registrations");
-        return "admin/layout";
-    }
-
-    @GetMapping("/seller-registrations/{id}")
-    @ResponseBody
-    public ResponseEntity<SellerRegistrationDTO> getRegistrationDetail(@PathVariable Long id) {
-        return sellerService.findById(id)
-                .map(reg -> ResponseEntity.ok(SellerRegistrationDTO.builder()
-                        .id(reg.getId())
-                        .customerId(reg.getUser().getId())
-                        .shopName(reg.getShopName())
-                        .email(reg.getUser().getEmail())
-                        .phone(reg.getUser().getPhone())
-                        .registrationDate(reg.getCreatedAt() != null ?
-                                reg.getCreatedAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString() : "")
-                        .status(reg.getStatus())
-                        .contractName(reg.getContract())
-                        .contractUrl(reg.getContract() != null ? "/admin/seller-registrations/" + reg.getId() + "/contract" : null)
-                        .signedContractName(reg.getSignedContract())
-                        .signedContractUrl(reg.getSignedContract() != null ? "/admin/seller-registrations/" + reg.getId() + "/contract?signed=true" : null)
-                        .reason(reg.getReason())
-                        .description(reg.getDescription())
-                        .build()))
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    // Approve: use service (handles storage + validations)
-    @PostMapping(value = "/seller-registrations/{id}/approve", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @ResponseBody
-    public ResponseEntity<?> approve(@PathVariable Long id,
-                                     @RequestPart(value = "contract", required = false) MultipartFile contract) {
-        try {
-            // Check if the registration already has a contract
-            Optional<SellerRegistration> registration = sellerService.findById(id);
-            boolean hasExistingContract = registration.isPresent() &&
-                    registration.get().getContract() != null &&
-                    !registration.get().getContract().isEmpty();
-
-            // Only require a contract file if there isn't one already
-            if (!hasExistingContract && (contract == null || contract.isEmpty())) {
-                return ResponseEntity.badRequest().body("A contract file is required to approve a seller registration.");
-            }
-
-            sellerService.approve(id, contract);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    // Reject: use service
-    @PostMapping("/seller-registrations/{id}/reject")
-    @ResponseBody
-    public ResponseEntity<?> reject(@PathVariable Long id, @RequestParam("reason") String reason) {
-        try {
-            sellerService.reject(id, reason);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
-
-    // Activate: use service (updates reg to Active and user.shopStatus = Active)
-    @PostMapping("/seller-registrations/{id}/activate")
-    @ResponseBody
-    public ResponseEntity<?> activate(@PathVariable Long id) {
-        try {
-            sellerService.activate(id);
-            return ResponseEntity.ok().build();
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
     }
 
     @GetMapping("/withdraw-management")
@@ -668,15 +155,6 @@ public class AdminController {
         return "admin/layout";
     }
 
-    @GetMapping("/seller-registrations/{id}/contract")
-    public ResponseEntity<Resource> downloadContract(@PathVariable Long id,
-                                                     @RequestParam(name = "signed", defaultValue = "false") boolean signed) throws Exception {
-        Resource resource = sellerService.loadContract(id, signed);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(resource);
-    }
 
     @PostMapping(path = "/withdrawals/{id}/process", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -696,28 +174,39 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
+            Withdrawal wd = entityManager.find(Withdrawal.class, id);
+            if (wd == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
+            }
+            String current = wd.getStatus() == null ? "" : wd.getStatus().trim();
+            if (!"Pending".equalsIgnoreCase(current)) {
+                return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
+            }
+
             String action = req.getStatus() == null ? "" : req.getStatus().trim();
             boolean approve = "Approved".equalsIgnoreCase(action);
             boolean reject = "Rejected".equalsIgnoreCase(action);
             if (!approve && !reject) {
                 return ResponseEntity.badRequest().body("Status must be 'Approved' or 'Rejected'.");
             }
-            Withdrawal wd = withdrawalService.processWithdrawal(
-                id,
-                req.getStatus(),
-                req.getProofFile(),
-                req.getReason(),
-                reject // chỉ refund khi bị từ chối
+
+            // Process via service (handles emails and refund logic)
+            Withdrawal processed = withdrawalService.processWithdrawal(
+                    id,
+                    action,
+                    req.getProofFile(),
+                    req.getReason(),
+                    reject // refund only when rejected
             );
-            // Gửi notification cho Seller
-            User seller = wd.getSeller();
-            long amount = wd.getAmount() == null ? 0L : wd.getAmount();
+
+            User seller = processed.getSeller();
+            Long amount = processed.getAmount() == null ? 0L : processed.getAmount();
             if (approve) {
-                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + req.getProofFile());
+                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved.");
             } else {
                 notificationService.createNotificationForUser(seller.getId(), "Withdrawal Rejected", "Your withdrawal request of " + amount + " VND has been rejected. Reason: " + req.getReason() + ". 95% of the amount has been refunded to your account.");
             }
-            return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
+            return ResponseEntity.ok(AdminWithdrawalResponse.from(processed));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
@@ -751,42 +240,27 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
             }
 
-            String action = status == null ? "" : status.trim();
-            boolean approve = "Approved".equalsIgnoreCase(action);
-            if (!approve) {
+            if (status == null || !"Approved".equalsIgnoreCase(status)) {
                 return ResponseEntity.badRequest().body("This endpoint only supports Approved via multipart (file upload).");
             }
 
-            if (proof == null || proof.isEmpty()) {
-                return ResponseEntity.badRequest().body("Proof file is required for Approved.");
-            }
-
-            // Save uploaded file under uploads/withdrawals
+            String proofFile = null;
             try {
-                // Use absolute path for uploads directory (project root)
-                String rootDir = System.getProperty("user.dir"); // Project root
-                Path storage = Paths.get(rootDir, "uploads", "withdrawals");
-                Files.createDirectories(storage);
-                String original = proof.getOriginalFilename() == null ? "file" : proof.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_");
-                String filename = "withdrawal-" + id + "-" + System.currentTimeMillis() + "-" + original;
-                Path dest = storage.resolve(filename);
-                proof.transferTo(dest.toFile());
-                // File URL for static serving (assumes /uploads/** is mapped in WebMvcConfigurer)
-                String fileUrl = "/uploads/withdrawals/" + filename;
+                if (proof != null && !proof.isEmpty()) {
+                    Path dir = Paths.get("uploads", "withdrawals");
+                    Files.createDirectories(dir);
+                    String filename = "proof-" + id + "-" + System.currentTimeMillis() + "-" + proof.getOriginalFilename();
+                    Path target = dir.resolve(filename);
+                    Files.copy(proof.getInputStream(), target);
+                    proofFile = target.toString().replace('\\', '/');
+                }
+            } catch (Exception ignored) {}
 
-                wd.setStatus("Approved");
-                wd.setProofFile(fileUrl);
-                wd.setUpdatedAt(new java.util.Date());
-                entityManager.merge(wd);
-
-                User seller = wd.getSeller();
-                long amount = wd.getAmount() == null ? 0L : wd.getAmount();
-                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + fileUrl);
-
-                return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
-            } catch (Exception ex) {
-                return ResponseEntity.status(500).body("Failed to save proof file: " + ex.getMessage());
-            }
+            Withdrawal processed = withdrawalService.processWithdrawal(id, "Approved", proofFile, null, false);
+            User seller = processed.getSeller();
+            Long amount = processed.getAmount() == null ? 0L : processed.getAmount();
+            notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved.");
+            return ResponseEntity.ok(AdminWithdrawalResponse.from(processed));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }

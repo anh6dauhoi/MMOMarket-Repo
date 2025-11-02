@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/MMOMarket/MMOMarket.iml" filepath="$PROJECT_DIR$/MMOMarket/MMOMarket.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/MMOMarket-Repo.iml" filepath="$PROJECT_DIR$/.idea/MMOMarket-Repo.iml" />
     </modules>
   </component>

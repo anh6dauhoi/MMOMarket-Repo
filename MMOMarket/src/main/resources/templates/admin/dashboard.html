@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-800">Welcome</h2>
+            <p class="mt-2 text-gray-600">This is your admin dashboard. Use the sidebar to navigate.</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Quick Links</h3>
+            <div class="mt-3 space-y-2">
+                <a class="text-red-600 hover:underline" th:href="@{/admin/withdraw-management}">Withdraw Management</a><br/>
+                <a class="text-red-600 hover:underline" th:href="@{/admin/topup-management}">Top-up Management</a><br/>
+                <a class="text-red-600 hover:underline" th:href="@{/admin/my-notification}">My Notification</a>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">System</h3>
+            <ul class="mt-3 text-gray-700 list-disc list-inside">
+                <li>All systems operational</li>
+                <li th:text="${#dates.format(#dates.createNow(), 'yyyy-MM-dd HH:mm')} + ' (server time)'"></li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+

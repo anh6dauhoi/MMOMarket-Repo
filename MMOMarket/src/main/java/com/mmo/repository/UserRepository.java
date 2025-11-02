@@ -20,6 +20,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.coins = COALESCE(u.coins,0) + :delta WHERE u.id = :id")
     int addCoins(@Param("id") Long id, @Param("delta") Long delta);
 
+    // Atomic deduction with guard to prevent negative balance; returns number of rows updated (0 if insufficient)
+    @Modifying
+    @Query("UPDATE User u SET u.coins = COALESCE(u.coins,0) - :amount WHERE u.id = :id AND COALESCE(u.coins,0) >= :amount")
+    int deductCoinsIfEnough(@Param("id") Long id, @Param("amount") Long amount);
+
     // New: find users by role (case-insensitive) and not deleted — used to notify all admins
     List<User> findByRoleIgnoreCaseAndIsDelete(String role, boolean isDelete);
-}
+
+    List<User> findByRoleAndShopStatus(String role, String shopStatus);
+    @Query(
+            value = "SELECT u.id AS userId, u.full_name AS fullName, " +
+                    "COUNT(t.id) AS totalProductsSold, " +
+                    "COALESCE(AVG(r.rating), 0) AS averageRating " +
+                    "FROM Users u " +
+                    "JOIN Transactions t ON u.id = t.seller_id " +
+                    "LEFT JOIN Products p ON u.id = p.seller_id " +
+                    "LEFT JOIN Reviews r ON p.id = r.product_id " +
+                    "WHERE u.role = 'customer' AND u.shop_status = 'active' AND u.isDelete = 0 " +
+                    "GROUP BY u.id, u.full_name " +
+                    "ORDER BY totalProductsSold DESC, averageRating DESC",
+            nativeQuery = true
+    )
+    List<Object[]> findReputableSellers();}
