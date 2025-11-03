@@ -48,4 +48,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     "ORDER BY totalProductsSold DESC, averageRating DESC",
             nativeQuery = true
     )
-    List<Object[]> findReputableSellers();}
+    List<Object[]> findReputableSellers();
+
+    Optional<User> findByEmailAndIsDeleteFalse(String email);
+    Optional<User> findByIdAndIsDeleteFalse(Long id);
+    List<User> findByIsDeleteFalse();
+    List<User> findByRoleAndIsDeleteFalse(String role);
+    List<User> findByRoleContainingAndIsDeleteFalse(String role);
+    boolean existsByEmail(String email);
+    boolean existsByEmailAndIsDeleteFalse(String email);
+    List<User> findByShopStatusAndIsDeleteFalse(String shopStatus);
+    long countByRoleContainingAndIsDeleteFalse(String role);
+
+}
