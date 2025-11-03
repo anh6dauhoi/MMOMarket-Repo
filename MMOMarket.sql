@@ -323,6 +323,7 @@ CREATE TABLE IF NOT EXISTS Blogs (
     author_id BIGINT NOT NULL, -- Mã tác giả
     views BIGINT DEFAULT 0, -- Lượt xem
     likes BIGINT DEFAULT 0, -- Số lượt thích
+    status TINYINT(1) DEFAULT 1, -- Trạng thái hiển thị: 1 = hiển thị, 0 = ẩn
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
