@@ -613,3 +613,17 @@ public class AdminController {
     }
 }
 
+    @GetMapping("/chat")
+    public String adminChat(Authentication authentication, Model model) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            User current = authService.findByEmail(authentication.getName());
+            List<ConversationSummaryDto> conversations = chatService.listConversations(current.getId());
+            model.addAttribute("conversations", conversations);
+            model.addAttribute("currentUser", current);
+        }
+        model.addAttribute("pageTitle", "Chat");
+        model.addAttribute("body", "admin/chat");
+        return "admin/layout";
+    }
+}
+
