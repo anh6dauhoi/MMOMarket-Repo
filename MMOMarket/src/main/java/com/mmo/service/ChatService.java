@@ -7,7 +7,6 @@ import com.mmo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class ChatService {
@@ -25,9 +24,14 @@ public class ChatService {
 
     // Gửi tin nhắn
     public Chat sendMessage(Long senderId, Long receiverId, String message) {
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new RuntimeException("Sender not found"));
+        User receiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new RuntimeException("Receiver not found"));
+
         Chat chat = new Chat();
-        chat.setSenderId(senderId);
-        chat.setReceiverId(receiverId);
+        chat.setSender(sender);
+        chat.setReceiver(receiver);
         chat.setMessage(message);
         chat.setCreatedAt(new Date());
         chat.setCreatedBy(senderId);
@@ -38,17 +42,15 @@ public class ChatService {
     // Lấy danh sách conversations với thông tin user
     public List<Map<String, Object>> getConversationList(Long userId) {
         List<Chat> lastMessages = chatRepository.findConversationList(userId);
-
-        // Group by conversation partner và sort by time DESC
         Map<Long, Chat> conversations = new LinkedHashMap<>();
 
         // Sắp xếp theo thời gian mới nhất
         lastMessages.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
 
         for (Chat chat : lastMessages) {
-            Long partnerId = chat.getSenderId().equals(userId)
-                    ? chat.getReceiverId()
-                    : chat.getSenderId();
+            Long partnerId = chat.getSender().getId().equals(userId)
+                    ? chat.getReceiver().getId()
+                    : chat.getSender().getId();
 
             if (!conversations.containsKey(partnerId)) {
                 conversations.put(partnerId, chat);
@@ -70,7 +72,7 @@ public class ChatService {
             conv.put("partnerEmail", partner.getEmail());
             conv.put("lastMessage", lastChat.getMessage());
             conv.put("lastMessageTime", lastChat.getCreatedAt());
-            conv.put("isSentByMe", lastChat.getSenderId().equals(userId));
+            conv.put("isSentByMe", lastChat.getSender().getId().equals(userId));
 
             result.add(conv);
         }

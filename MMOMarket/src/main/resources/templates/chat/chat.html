@@ -195,7 +195,7 @@
         const container = document.getElementById('messagesContainer');
 
         container.innerHTML = messages.map(msg => {
-            const isSent = msg.senderId === currentUserId;
+            const isSent = msg.sender.id === currentUserId;
             const time = new Date(msg.createdAt).toLocaleString('vi-VN', {
                 hour: '2-digit',
                 minute: '2-digit',
