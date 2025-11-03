@@ -9,10 +9,8 @@ import com.mmo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatService {
@@ -40,8 +38,66 @@ public class ChatService {
             // Convert Integer (0/1) to boolean for MySQL TINYINT compatibility
             Integer sentByMe = p.getIsSentByMe();
             dto.setSentByMe(sentByMe != null && sentByMe != 0);
+            dto.setAdmin(false);
             list.add(dto);
         }
+
+        // Determine current user role to avoid injecting self-admin for admin accounts
+        User me = requireActiveUser(currentUserId);
+        String myRole = me.getRole() == null ? "" : me.getRole().trim();
+        String roleUpper = myRole.toUpperCase(Locale.ROOT);
+        if (roleUpper.startsWith("ROLE_")) roleUpper = roleUpper.substring(5);
+
+        // Find first active admin (ADMIN or ROLE_ADMIN) by smallest ID
+        List<User> admins = new ArrayList<>();
+        admins.addAll(userRepository.findByRoleIgnoreCaseAndIsDelete("ADMIN", false));
+        admins.addAll(userRepository.findByRoleIgnoreCaseAndIsDelete("ROLE_ADMIN", false));
+        // Remove duplicates by ID
+        Map<Long, User> adminMap = admins.stream().collect(Collectors.toMap(User::getId, u -> u, (a,b)->a));
+        User firstAdmin = adminMap.values().stream()
+                .sorted(Comparator.comparing(User::getId))
+                .findFirst().orElse(null);
+
+        if (firstAdmin == null) {
+            // No admin accounts found; return the list as-is
+            return list;
+        }
+
+        Long adminId = firstAdmin.getId();
+        String adminName = Optional.ofNullable(firstAdmin.getFullName()).filter(s -> !s.isBlank()).orElse("Admin");
+
+        // Mark admin entry if present
+        int adminIndex = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (Objects.equals(list.get(i).getPartnerId(), adminId)) {
+                list.get(i).setAdmin(true);
+                adminIndex = i;
+                break;
+            }
+        }
+
+        // If current user is not admin, ensure admin conversation is pinned or injected at the top
+        boolean currentIsAdmin = "ADMIN".equals(roleUpper);
+        if (!currentIsAdmin) {
+            if (adminIndex >= 0) {
+                // Move existing admin conversation to top if not already there
+                if (adminIndex != 0) {
+                    ConversationSummaryDto adminDto = list.remove(adminIndex);
+                    list.add(0, adminDto);
+                }
+            } else {
+                // Inject synthetic admin conversation for first-time users or those without admin chat
+                ConversationSummaryDto adminDto = new ConversationSummaryDto();
+                adminDto.setPartnerId(adminId);
+                adminDto.setPartnerName(adminName);
+                adminDto.setLastMessage("Chat with Admin");
+                adminDto.setLastMessageTime(new Date());
+                adminDto.setSentByMe(false);
+                adminDto.setAdmin(true);
+                list.add(0, adminDto);
+            }
+        }
+
         return list;
     }
 
