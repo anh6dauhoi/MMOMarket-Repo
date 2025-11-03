@@ -3,30 +3,45 @@ package com.mmo.repository;
 import com.mmo.entity.Chat;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Date;
 import java.util.List;
 
-@Repository
 public interface ChatRepository extends JpaRepository<Chat, Long> {
+    // Fetch full conversation between two users (both directions), excluding soft-deleted rows
+    @Query("SELECT c FROM Chat c WHERE c.isDelete = false AND ((c.sender.id = :u1 AND c.receiver.id = :u2) OR (c.sender.id = :u2 AND c.receiver.id = :u1)) ORDER BY c.createdAt ASC, c.id ASC")
+    List<Chat> findConversation(@Param("u1") Long user1Id, @Param("u2") Long user2Id);
 
-    // Lấy tin nhắn giữa 2 user (sắp xếp theo thời gian)
-    @Query("SELECT c FROM Chat c WHERE " +
-            "((c.sender.id = ?1 AND c.receiver.id = ?2) OR " +
-            "(c.sender.id = ?2 AND c.receiver.id = ?1)) " +
-            "AND c.isDelete = false " +
-            "ORDER BY c.createdAt ASC")
-    List<Chat> findConversation(Long userId1, Long userId2);
+    // Sidebar: latest message per partner for a given user
+    interface ConversationSummaryProjection {
+        Long getPartnerId();
+        String getPartnerName();
+        String getLastMessage();
+        Date getLastMessageTime();
+        Integer getIsSentByMe();  // Changed from Boolean to Integer for MySQL TINYINT
+    }
 
-    // Lấy danh sách conversations (tin nhắn cuối cùng với mỗi người)
-    @Query("SELECT c FROM Chat c WHERE " +
-            "(c.sender.id = ?1 OR c.receiver.id = ?1) " +
-            "AND c.isDelete = false " +
-            "AND c.createdAt = (" +
-            "    SELECT MAX(c2.createdAt) FROM Chat c2 WHERE " +
-            "    ((c2.sender.id = c.sender.id AND c2.receiver.id = c.receiver.id) OR " +
-            "     (c2.sender.id = c.receiver.id AND c2.receiver.id = c.sender.id)) " +
-            "    AND c2.isDelete = false" +
-            ") " +
-            "ORDER BY c.createdAt DESC")
-    List<Chat> findConversationList(Long userId);
+    @Query(value = """
+            WITH latest AS (
+              SELECT
+                CASE WHEN c.sender_id = :userId THEN c.receiver_id ELSE c.sender_id END AS partner_id,
+                MAX(c.id) AS last_chat_id
+              FROM Chats c
+              WHERE c.isDelete = 0 AND (c.sender_id = :userId OR c.receiver_id = :userId)
+              GROUP BY partner_id
+            )
+            SELECT
+              l.partner_id AS partnerId,
+              u.full_name AS partnerName,
+              ch.message AS lastMessage,
+              ch.created_at AS lastMessageTime,
+              (ch.sender_id = :userId) AS isSentByMe
+            FROM latest l
+            JOIN Chats ch ON ch.id = l.last_chat_id
+            JOIN Users u ON u.id = l.partner_id
+            ORDER BY ch.created_at DESC, ch.id DESC
+            """,
+            nativeQuery = true)
+    List<ConversationSummaryProjection> findConversationSummaries(@Param("userId") Long userId);
 }

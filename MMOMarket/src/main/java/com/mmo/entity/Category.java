@@ -1,23 +1,10 @@
 package com.mmo.entity;
 
-import java.util.Date;
-import java.util.List;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
-import jakarta.persistence.Transient;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.Date;
 
 @Entity
 @Getter
@@ -47,38 +34,13 @@ public class Category {
     private Long deletedBy;
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
-    @Column(name = "status", columnDefinition = "TINYINT(1) DEFAULT 1")
-    private boolean status = true; // true = Active (1), false = Inactive (0)
-
-    // Products relationship
-    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
-    private List<Product> products;
-    
     // Optional readonly audit relations
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User createdByUser;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
-    
-    // Transient field for product count (use productCountCache when available)
-    @Transient
-    private Integer productCountCache;
-    
-    @Transient
-    public Integer getProductCount() {
-        // Use cached count if available to avoid loading all products
-        if (productCountCache != null) {
-            return productCountCache;
-        }
-        return products != null ? products.size() : 0;
-    }
-    
-    @Transient
-    public void setProductCountCache(Integer count) {
-        this.productCountCache = count;
-    }
 
     /**
      * Category type enum representing the possible values for the type column
