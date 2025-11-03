@@ -195,9 +195,9 @@ public class AdminController {
     @ResponseBody
     @Transactional
     public ResponseEntity<?> processWithdrawalMultipart(@PathVariable Long id,
-                                                        @RequestParam(required = false, name = "status") String status,
-                                                        @RequestPart(value = "proof", required = false) MultipartFile proof,
-                                                        Authentication auth) {
+                                                         @RequestParam(required = false, name = "status") String status,
+                                                         @RequestPart(value = "proof", required = false) MultipartFile proof,
+                                                         Authentication auth) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
