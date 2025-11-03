@@ -10,6 +10,9 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     // Use a derived query so JPA maps columns to the ProductVariant entity automatically.
     List<ProductVariant> findByProductIdAndIsDeleteFalse(Long productId);
 
+    // Count active (non-deleted) variants across all products of a seller
+    long countByProduct_Seller_IdAndIsDeleteFalse(Long sellerId);
+
     // Optionally add an ordered variant lookup if needed by views/controllers:
     // List<ProductVariant> findByProductIdAndIsDeleteFalseOrderByPriceAsc(Long productId);
 }

@@ -11,11 +11,15 @@ import com.mmo.repository.UserRepository;
 import com.mmo.service.EmailService;
 import com.mmo.service.NotificationService;
 import com.mmo.service.SellerBankInfoService;
+import com.mmo.service.SystemConfigurationService;
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -32,7 +37,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.Executor;
 
 @Controller
 @RequestMapping("/seller")
@@ -48,8 +56,42 @@ public class SellerController {
     @Autowired
     private NotificationService notificationService;
 
+    // New: queue publisher for withdrawal creation
+    @Autowired
+    private com.mmo.mq.WithdrawalQueuePublisher withdrawalQueuePublisher;
+
+    // New: queue publisher for seller registration
+    @Autowired
+    private com.mmo.mq.SellerRegistrationPublisher sellerRegistrationPublisher;
+
+    // New: queue publisher for buy-points
+    @Autowired
+    private com.mmo.mq.BuyPointsPublisher buyPointsPublisher;
+
     @PersistenceContext
     private EntityManager entityManager;
+
+    // Inject repositories used for delete-shop logic
+    @Autowired private com.mmo.repository.ProductRepository productRepository;
+    @Autowired private com.mmo.repository.ProductVariantRepository productVariantRepository;
+    @Autowired private com.mmo.repository.ProductVariantAccountRepository productVariantAccountRepository;
+    @Autowired private com.mmo.repository.ReviewRepository reviewRepository;
+    @Autowired private com.mmo.repository.TransactionRepository transactionRepository;
+    @Autowired private com.mmo.repository.ShopInfoRepository shopInfoRepository;
+
+    // OTP dependencies
+    @Autowired
+    private com.mmo.service.AuthService authService;
+    @Autowired
+    private com.mmo.repository.EmailVerificationRepository emailVerificationRepository;
+
+    @Autowired
+    @Qualifier("emailExecutor")
+    private Executor emailExecutor;
+
+    // Inject system configuration service
+    @Autowired
+    private SystemConfigurationService systemConfigurationService;
 
     private static final long REGISTRATION_FEE = 200_000L;
 
@@ -80,6 +122,21 @@ public class SellerController {
             return "redirect:/login";
         }
 
+        // Load seller agreement URL from system configuration (fallback to static PDF)
+        String agreementUrl = null;
+        try {
+            if (systemConfigurationService != null) {
+                agreementUrl = systemConfigurationService.getStringValue(
+                        com.mmo.constant.SystemConfigKeys.POLICY_SELLER_AGREEMENT_URL,
+                        null
+                );
+            }
+        } catch (Exception ignored) {}
+        if (agreementUrl == null || agreementUrl.isBlank()) {
+            agreementUrl = "/contracts/seller-contract.pdf"; // default static file
+        }
+        model.addAttribute("sellerAgreementUrl", agreementUrl);
+
         // Prefer shopStatus over legacy SellerRegistration flow
         String shopStatus = user.getShopStatus();
         model.addAttribute("shopStatus", shopStatus);
@@ -106,7 +163,6 @@ public class SellerController {
     }
 
     @PostMapping("/register")
-    @Transactional
     public String registerSeller(@Valid @ModelAttribute("sellerRegistration") SellerRegistrationForm sellerRegistration,
                                  BindingResult bindingResult,
                                  @RequestParam(value = "agree", required = false) Boolean agree,
@@ -147,10 +203,9 @@ public class SellerController {
             return "redirect:/login";
         }
 
-        // Check balance and deduct registration fee
+        // Optional soft check to provide faster feedback; final guard happens in the queue consumer
         Long currentCoins = user.getCoins() == null ? 0L : user.getCoins();
-        if (currentCoins < REGISTRATION_FEE) {
-            // Notify the user about insufficient balance
+        if (currentCoins < REGISTRATION_FEE && (user.getShopStatus() == null || !user.getShopStatus().equalsIgnoreCase("Active"))) {
             notificationService.createNotificationForUser(
                     user.getId(),
                     "Seller registration failed",
@@ -161,43 +216,75 @@ public class SellerController {
             return "redirect:/seller/register";
         }
 
-        // Deduct fee and activate shop
-        user.setCoins(currentCoins - REGISTRATION_FEE);
-        user.setShopStatus("Active");
-        // Optionally grant SELLER role if not present
+        // Enqueue registration request for idempotent, atomic processing
+        String dedupeKey = UUID.randomUUID().toString();
+        com.mmo.mq.dto.SellerRegistrationMessage msg = new com.mmo.mq.dto.SellerRegistrationMessage(
+                user.getId(),
+                sellerRegistration.getShopName(),
+                sellerRegistration.getDescription(),
+                dedupeKey
+        );
         try {
-            String role = user.getRole();
-            if (role == null || !role.equalsIgnoreCase("SELLER")) {
-                user.setRole("SELLER");
-            }
-        } catch (Exception ignored) {}
-        userRepository.save(user);
+            sellerRegistrationPublisher.publish(msg);
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to submit registration. Please try again later.");
+            redirectAttributes.addFlashAttribute("sellerRegistration", sellerRegistration);
+            return "redirect:/seller/register";
+        }
 
-        // Create or update ShopInfo
+        // Inform the user; actual activation will be applied shortly by the consumer
+        redirectAttributes.addFlashAttribute("successMessage", "Your registration request has been submitted. Your shop will be activated shortly if requirements are met.");
+        return "redirect:/seller/register";
+    }
+
+    @GetMapping("/shop-info")
+    public String showShopInfo(Model model, RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+        boolean activeShop = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
         ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
                 .setParameter("u", user)
                 .getResultStream().findFirst().orElse(null);
+
         if (shop == null) {
-            shop = new ShopInfo();
-            shop.setUser(user);
-            shop.setShopName(sellerRegistration.getShopName());
-            shop.setDescription(sellerRegistration.getDescription());
-            entityManager.persist(shop);
+            // Fallback: create a lightweight view model when ShopInfo missing
+            ShopInfo fallback = new ShopInfo();
+            fallback.setShopName(user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop");
+            fallback.setDescription("");
+            model.addAttribute("shop", fallback);
         } else {
-            shop.setShopName(sellerRegistration.getShopName());
-            shop.setDescription(sellerRegistration.getDescription());
-            entityManager.merge(shop);
+            model.addAttribute("shop", shop);
         }
-
-        // Professional notification messages (English)
-        notificationService.createNotificationForUser(
-                user.getId(),
-                "Seller account activated",
-                "Your seller registration has been completed successfully. Your shop is now active. A fee of 200,000 coins has been deducted from your account."
-        );
-
-        redirectAttributes.addFlashAttribute("successMessage", "Your seller account is now active. 200,000 coins have been deducted from your balance.");
-        return "redirect:/seller/register";
+        model.addAttribute("sellerEmail", user.getEmail());
+        model.addAttribute("shopStatus", user.getShopStatus());
+        return "seller/shop-info";
     }
 
     @GetMapping("/contract")
@@ -297,53 +384,57 @@ public class SellerController {
         return "seller/withdraw-money";
     }
 
-    // NEW: Save or update bank info for current Active seller
-    @PostMapping("/bank-info")
-    public String saveBankInfo(@RequestParam("bankName") String bankName,
-                               @RequestParam("accountNumber") String accountNumber,
-                               @RequestParam(value = "accountHolder", required = false) String accountHolder,
-                               @RequestParam(value = "branch", required = false) String branch,
-                               RedirectAttributes redirectAttributes) {
+    // NEW: Send OTP for withdrawal (asynchronous email via EmailService)
+    @PostMapping(path = "/withdrawals/send-otp")
+    @ResponseBody
+    public ResponseEntity<?> sendWithdrawalOtp(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return ResponseEntity.badRequest().body("User has no email configured. Cannot send OTP.");
+        }
+        // Cooldown: avoid spamming OTP sends (min 60 seconds between sends)
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String email = null;
-            if (authentication != null && authentication.isAuthenticated()) {
-                Object principal = authentication.getPrincipal();
-                if (principal instanceof UserDetails) {
-                    email = ((UserDetails) principal).getUsername();
-                } else if (principal instanceof OidcUser) {
-                    email = ((OidcUser) principal).getEmail();
-                } else if (principal instanceof OAuth2User) {
-                    Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
-                    if (mailAttr != null) email = mailAttr.toString();
-                } else {
-                    email = authentication.getName();
+            Optional<com.mmo.entity.EmailVerification> latest = emailVerificationRepository.findTopByUserOrderByCreatedAtDesc(user);
+            if (latest.isPresent() && latest.get().getCreatedAt() != null) {
+                long seconds = (System.currentTimeMillis() - latest.get().getCreatedAt().getTime()) / 1000L;
+                if (seconds < 60) {
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-            if (email == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
-                return "redirect:/login";
-            }
-            User user = userRepository.findByEmail(email).orElse(null);
-            if (user == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
-                return "redirect:/login";
-            }
-            boolean activeShop = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
-            if (!activeShop) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
-                return "redirect:/seller/register";
-            }
-            if (bankName == null || bankName.isBlank() || accountNumber == null || accountNumber.isBlank()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bank name and account number are required.");
-                return "redirect:/seller/withdraw-money";
-            }
-            sellerBankInfoService.saveOrUpdateBankInfo(user, bankName, accountNumber, accountHolder, branch);
-            redirectAttributes.addFlashAttribute("successMessage", "Bank details saved successfully.");
-        } catch (Exception ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Failed to save bank details: " + ex.getMessage());
-        }
-        return "redirect:/seller/withdraw-money";
+        } catch (Exception ignored) {}
+
+        // Offload OTP creation + persistence + email to executor; return immediately
+        try {
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String html = EmailTemplate.withdrawalOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+
+        return ResponseEntity.ok("OTP has been sent to your email.");
     }
 
     // NEW: Seller creates a withdrawal request
@@ -351,7 +442,9 @@ public class SellerController {
     @ResponseBody
     @Transactional
     public ResponseEntity<?> createWithdrawal(@RequestBody CreateWithdrawalRequest req,
-                                              Authentication authentication) {
+                                              Authentication authentication,
+                                              HttpSession session,
+                                              HttpServletRequest request) {
         try {
             if (authentication == null || !authentication.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -367,107 +460,55 @@ public class SellerController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
             }
 
-
-            // 1. Get the start time in milliseconds
-            long startTime = System.currentTimeMillis();
-            long delay = 5000; // 5 seconds = 5000 milliseconds
-
-            // 2. Loop until 5 seconds have passed
-            while (true) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - startTime >= delay) {
-                    // If 5 seconds or more have elapsed, exit the loop
-                    break;
-                }
-                // This loop will spin continuously, checking the time
-            }
-
             boolean sellerRole = seller.getRole() != null && seller.getRole().equalsIgnoreCase("SELLER");
             boolean activeShop = seller.getShopStatus() != null && seller.getShopStatus().equalsIgnoreCase("Active");
             if (!sellerRole && !activeShop) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
-            // Validate amount (BR-14)
             if (req == null || req.getAmount() == null || req.getAmount() <= 0) {
                 return ResponseEntity.badRequest().body("MSG16: Minimum withdrawal amount is 50000.");
             }
             if (req.getAmount() < 50_000L) {
                 return ResponseEntity.badRequest().body("MSG16: Minimum withdrawal amount is 50000.");
             }
-
-            // Check balance (MSG07)
-            Long currentCoins = seller.getCoins() == null ? 0L : seller.getCoins();
-            if (currentCoins < req.getAmount()) {
-                return ResponseEntity.badRequest().body("MSG07: Insufficient balance.");
-            }
-
-            // Validate bank info ownership (MSG17)
             if (req.getBankInfoId() == null) {
                 return ResponseEntity.badRequest().body("MSG17: Bank information not found.");
             }
-            SellerBankInfo bankInfo = entityManager.find(SellerBankInfo.class, req.getBankInfoId());
-            if (bankInfo == null) {
-                return ResponseEntity.badRequest().body("MSG17: Bank information not found.");
-            }
-            Long ownerId = tryResolveOwnerId(bankInfo);
-            if (ownerId == null || !ownerId.equals(seller.getId())) {
-                return ResponseEntity.badRequest().body("MSG17: Bank information does not belong to the seller.");
+            if (req.getOtp() == null || !req.getOtp().matches("\\d{6}")) {
+                return handleOtpFailForWithdraw(session, request, authentication, seller, seller.getId(), "withdraw_create", "MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
             }
 
-            // Create withdrawal
-            Withdrawal wd = new Withdrawal();
-            wd.setSeller(seller);
-            wd.setBankInfo(bankInfo);
-            wd.setAmount(req.getAmount());
-            wd.setStatus("Pending");
-            tryCopyBankDisplayFields(bankInfo, wd);
-            // If bank display fields are missing in DB, prefer the values submitted from the form/request
-            if ((wd.getBankName() == null || wd.getBankName().isBlank()) && req.getBankName() != null) {
-                wd.setBankName(req.getBankName());
+            // Pre-validate OTP to enforce attempts policy before enqueue
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(seller, req.getOtp());
+            if (optVerification.isEmpty()) {
+                return handleOtpFailForWithdraw(session, request, authentication, seller, seller.getId(), "withdraw_create", "MSG_OTP_INVALID: Code not found or already used.");
             }
-            if ((wd.getAccountNumber() == null || wd.getAccountNumber().isBlank()) && req.getAccountNumber() != null) {
-                wd.setAccountNumber(req.getAccountNumber());
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                return handleOtpFailForWithdraw(session, request, authentication, seller, seller.getId(), "withdraw_create", "MSG_OTP_EXPIRED: The code has expired.");
             }
-            if ((wd.getAccountName() == null || wd.getAccountName().isBlank()) && req.getAccountHolder() != null) {
-                wd.setAccountName(req.getAccountHolder());
-            }
-            if ((wd.getBranch() == null || wd.getBranch().isBlank()) && req.getBranch() != null) {
-                wd.setBranch(req.getBranch());
-            }
-            wd.setCreatedAt(new java.util.Date());
-            wd.setUpdatedAt(new java.util.Date());
-            wd.setCreatedBy(seller.getId());
-            entityManager.persist(wd);
 
-            // Deduct coins immediately (hold)
-            seller.setCoins(currentCoins - req.getAmount());
-            entityManager.merge(seller);
+            // Success so far: clear attempts for this action
+            clearSellerOtpAttempts(session, seller.getId(), "withdraw_create");
 
-            // Send async email notification
-            String subject = "[MMOMarket] Withdrawal Request Submitted";
-            String content = EmailTemplate.withdrawalRequestEmail(
-                    seller.getFullName(),
-                    String.format("%,d VND", req.getAmount()),
-                    bankInfo.getBankName() + " - " + bankInfo.getAccountNumber(),
-                    new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date())
+            // Enqueue creation message; worker will validate OTP, balance, and persist
+            String dedupeKey = seller.getId() + ":" + req.getBankInfoId() + ":" + req.getAmount() + ":" + req.getOtp();
+            com.mmo.mq.dto.WithdrawalCreateMessage msg = new com.mmo.mq.dto.WithdrawalCreateMessage(
+                    seller.getId(),
+                    req.getBankInfoId(),
+                    req.getAmount(),
+                    req.getBankName(),
+                    req.getAccountNumber(),
+                    req.getAccountHolder(),
+                    req.getBranch(),
+                    req.getOtp(),
+                    dedupeKey
             );
-            emailService.sendEmailAsync(seller.getEmail(), subject, content);
+            withdrawalQueuePublisher.publishCreate(msg);
 
-            // Create in-system notification
-            notificationService.createNotificationForUser(seller.getId(), "Withdrawal Request", "Your withdrawal request of " + req.getAmount() + " VND has been submitted and is pending approval.");
-
-            // Notify all admins so they can review the new withdrawal request
-            try {
-                notificationService.createNotificationForRole(
-                        "ADMIN",
-                        "Withdrawal request pending approval",
-                        "New withdrawal request of " + String.format("%,d VND", req.getAmount()) + " by " + (seller.getFullName() != null ? seller.getFullName() : seller.getEmail()) + " (user id: " + seller.getId() + ") is pending approval."
-                );
-            } catch (Exception ignored) {
-            }
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(SellerWithdrawalResponse.from(wd));
+            // Do not persist or deduct coins here
+            return ResponseEntity.accepted().body("Withdrawal request has been queued and will appear shortly.");
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
@@ -478,7 +519,9 @@ public class SellerController {
     @Transactional
     public String createWithdrawalForm(CreateWithdrawalRequest req,
                                        Authentication authentication,
-                                       RedirectAttributes redirectAttributes) {
+                                       RedirectAttributes redirectAttributes,
+                                       HttpSession session,
+                                       HttpServletRequest request) {
         try {
             if (authentication == null || !authentication.isAuthenticated()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Unauthorized");
@@ -501,91 +544,83 @@ public class SellerController {
                 redirectAttributes.addFlashAttribute("errorMessage", "Forbidden");
                 return "redirect:/seller/withdraw-money";
             }
-            if (req == null || req.getAmount() == null || req.getAmount() <= 0) {
+
+            if (req == null || req.getOtp() == null || !req.getOtp().matches("\\d{6}")) {
+                int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
+                if (attempts >= 5) {
+                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                    try { session.invalidate(); } catch (Exception ignored) {}
+                    redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                    return "redirect:/authen/login";
+                } else if (attempts >= 3) {
+                    sendWithdrawalOtpForUser(seller);
+                    redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP. A new OTP has been sent to your email.");
+                } else {
+                    redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP sent to your email.");
+                }
+                return "redirect:/seller/withdraw-money";
+            }
+            if (req.getAmount() == null || req.getAmount() < 50_000L) {
                 redirectAttributes.addFlashAttribute("errorMessage", "MSG16: Minimum withdrawal amount is 50000.");
                 return "redirect:/seller/withdraw-money";
             }
-            if (req.getAmount() < 50_000L) {
-                redirectAttributes.addFlashAttribute("errorMessage", "MSG16: Minimum withdrawal amount is 50000.");
-                return "redirect:/seller/withdraw-money";
-            }
-
-            // Check balance (MSG07)
-            Long currentCoins = seller.getCoins() == null ? 0L : seller.getCoins();
-            if (currentCoins < req.getAmount()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "MSG07: Insufficient balance.");
-                return "redirect:/seller/withdraw-money";
-            }
-
-            // Validate bank info ownership (MSG17)
             if (req.getBankInfoId() == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "MSG17: Bank information not found.");
                 return "redirect:/seller/withdraw-money";
             }
-            SellerBankInfo bankInfo = entityManager.find(SellerBankInfo.class, req.getBankInfoId());
-            if (bankInfo == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "MSG17: Bank information not found.");
+
+            // Pre-validate OTP
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(seller, req.getOtp());
+            if (optVerification.isEmpty()) {
+                int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
+                if (attempts >= 5) {
+                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                    try { session.invalidate(); } catch (Exception ignored) {}
+                    redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                    return "redirect:/authen/login";
+                } else if (attempts >= 3) {
+                    sendWithdrawalOtpForUser(seller);
+                    redirectAttributes.addFlashAttribute("errorMessage", "Incorrect OTP. A new OTP has been sent to your email.");
+                } else {
+                    redirectAttributes.addFlashAttribute("errorMessage", "Incorrect or used OTP.");
+                }
                 return "redirect:/seller/withdraw-money";
             }
-            Long ownerId = tryResolveOwnerId(bankInfo);
-            if (ownerId == null || !ownerId.equals(seller.getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "MSG17: Bank information does not belong to the seller.");
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
+                if (attempts >= 5) {
+                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                    try { session.invalidate(); } catch (Exception ignored) {}
+                    redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                    return "redirect:/authen/login";
+                } else if (attempts >= 3) {
+                    sendWithdrawalOtpForUser(seller);
+                    redirectAttributes.addFlashAttribute("errorMessage", "OTP expired. A new OTP has been sent to your email.");
+                } else {
+                    redirectAttributes.addFlashAttribute("errorMessage", "OTP has expired. Please request a new OTP.");
+                }
                 return "redirect:/seller/withdraw-money";
             }
 
-            // Create withdrawal
-            Withdrawal wd = new Withdrawal();
-            wd.setSeller(seller);
-            wd.setBankInfo(bankInfo);
-            wd.setAmount(req.getAmount());
-            wd.setStatus("Pending");
-            tryCopyBankDisplayFields(bankInfo, wd);
-            // If bank display fields are missing in DB, prefer the values submitted from the form/request
-            if ((wd.getBankName() == null || wd.getBankName().isBlank()) && req.getBankName() != null) {
-                wd.setBankName(req.getBankName());
-            }
-            if ((wd.getAccountNumber() == null || wd.getAccountNumber().isBlank()) && req.getAccountNumber() != null) {
-                wd.setAccountNumber(req.getAccountNumber());
-            }
-            if ((wd.getAccountName() == null || wd.getAccountName().isBlank()) && req.getAccountHolder() != null) {
-                wd.setAccountName(req.getAccountHolder());
-            }
-            if ((wd.getBranch() == null || wd.getBranch().isBlank()) && req.getBranch() != null) {
-                wd.setBranch(req.getBranch());
-            }
-            wd.setCreatedAt(new java.util.Date());
-            wd.setUpdatedAt(new java.util.Date());
-            wd.setCreatedBy(seller.getId());
-            entityManager.persist(wd);
+            // Success: clear attempts
+            clearSellerOtpAttempts(session, seller.getId(), "withdraw_create");
 
-            // Deduct coins immediately (hold)
-            seller.setCoins(currentCoins - req.getAmount());
-            entityManager.merge(seller);
-
-            // Send async email notification
-            String subject = "[MMOMarket] Withdrawal Request Submitted";
-            String content = EmailTemplate.withdrawalRequestEmail(
-                    seller.getFullName(),
-                    String.format("%,d VND", req.getAmount()),
-                    bankInfo.getBankName() + " - " + bankInfo.getAccountNumber(),
-                    new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date())
+            String dedupeKey = seller.getId() + ":" + req.getBankInfoId() + ":" + req.getAmount() + ":" + req.getOtp();
+            com.mmo.mq.dto.WithdrawalCreateMessage msg = new com.mmo.mq.dto.WithdrawalCreateMessage(
+                    seller.getId(),
+                    req.getBankInfoId(),
+                    req.getAmount(),
+                    req.getBankName(),
+                    req.getAccountNumber(),
+                    req.getAccountHolder(),
+                    req.getBranch(),
+                    req.getOtp(),
+                    dedupeKey
             );
-            emailService.sendEmailAsync(seller.getEmail(), subject, content);
+            withdrawalQueuePublisher.publishCreate(msg);
 
-            // Create in-system notification
-            notificationService.createNotificationForUser(seller.getId(), "Withdrawal Request", "Your withdrawal request of " + req.getAmount() + " VND has been submitted and is pending approval.");
-
-            // Notify all admins so they can review the new withdrawal request
-            try {
-                notificationService.createNotificationForRole(
-                        "ADMIN",
-                        "Withdrawal request pending approval",
-                        "New withdrawal request of " + String.format("%,d VND", req.getAmount()) + " by " + (seller.getFullName() != null ? seller.getFullName() : seller.getEmail()) + " (user id: " + seller.getId() + ") is pending approval."
-                );
-            } catch (Exception ignored) {
-            }
-
-            redirectAttributes.addFlashAttribute("successMessage", "Withdrawal request submitted successfully.");
+            redirectAttributes.addFlashAttribute("successMessage", "Your withdrawal request has been queued and will appear shortly.");
         } catch (Exception ex) {
             redirectAttributes.addFlashAttribute("errorMessage", "Internal error: " + ex.getMessage());
             return "redirect:/seller/withdraw-money";
@@ -916,5 +951,734 @@ public class SellerController {
                 new BankOption("TPBank"),
                 new BankOption("VPBank")
         );
+    }
+
+    @PostMapping("/withdrawals/{id}/update-bank")
+    @Transactional
+    public String updateWithdrawalBankInfo(@PathVariable Long id,
+                                           @RequestParam String bankName,
+                                           @RequestParam String accountNumber,
+                                           @RequestParam(name = "accountHolder") String accountHolder,
+                                           @RequestParam(name = "branch", required = false) String branch,
+                                           Authentication authentication,
+                                           RedirectAttributes redirectAttributes) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Unauthorized");
+                return "redirect:/seller/withdraw-money";
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmailAndIsDelete(email, false);
+            if (user == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Unauthorized");
+                return "redirect:/seller/withdraw-money";
+            }
+            Withdrawal withdrawal = entityManager.find(Withdrawal.class, id);
+            if (withdrawal == null || withdrawal.getSeller() == null || !withdrawal.getSeller().getId().equals(user.getId())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Withdrawal not found.");
+                return "redirect:/seller/withdraw-money";
+            }
+            // Only allow when Pending and within 24 hours since createdAt
+            Date createdAt = withdrawal.getCreatedAt();
+            if (createdAt == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "This withdrawal cannot be edited at this time.");
+                return "redirect:/seller/withdraw-money";
+            }
+            long diffMs = System.currentTimeMillis() - createdAt.getTime();
+            boolean within24h = diffMs <= 24L * 60L * 60L * 1000L;
+//            boolean within24h = diffMs <= 2L * 60L * 1000L;
+            String status = withdrawal.getStatus();
+            boolean isPending = status != null && status.equalsIgnoreCase("Pending");
+            if (!isPending || !within24h) {
+                redirectAttributes.addFlashAttribute("errorMessage", "You can only update bank info within 24h for pending withdrawals.");
+                return "redirect:/seller/withdraw-money";
+            }
+            // Normalize and validate non-blank fields
+            String bn = bankName == null ? null : bankName.trim();
+            String an = accountNumber == null ? null : accountNumber.trim();
+            String ah = accountHolder == null ? null : accountHolder.trim();
+            String br = branch == null ? null : branch.trim();
+            if (bn == null || bn.isEmpty() || an == null || an.isEmpty() || ah == null || ah.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Bank Name, Account Number, and Account Holder cannot be empty.");
+                return "redirect:/seller/withdraw-money";
+            }
+            // Update allowed fields only
+            withdrawal.setBankName(bn);
+            withdrawal.setAccountNumber(an);
+            withdrawal.setAccountName(ah);
+            if (br != null) {
+                withdrawal.setBranch(br);
+            }
+            entityManager.merge(withdrawal);
+            redirectAttributes.addFlashAttribute("successMessage", "Bank info updated successfully.");
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to update bank info: " + ex.getMessage());
+        }
+        return "redirect:/seller/withdraw-money";
+    }
+
+    // NEW: Seller creates a withdrawal request (JSON payload)
+    @PostMapping(path = "/withdrawals/{id}/update-bank", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateWithdrawalBankInfoJson(@PathVariable Long id,
+                                                          @RequestBody Map<String, Object> body,
+                                                          Authentication authentication,
+                                                          HttpSession session,
+                                                          HttpServletRequest request) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmailAndIsDelete(email, false);
+            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+            Withdrawal withdrawal = entityManager.find(Withdrawal.class, id);
+            if (withdrawal == null || withdrawal.getSeller() == null || !withdrawal.getSeller().getId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
+            }
+            Date createdAt = withdrawal.getCreatedAt();
+            if (createdAt == null) return ResponseEntity.badRequest().body("This withdrawal cannot be edited at this time.");
+            long diffMs = System.currentTimeMillis() - createdAt.getTime();
+            boolean within24h = diffMs <= 24L * 60L * 60L * 1000L;
+            String status = withdrawal.getStatus();
+            boolean isPending = status != null && status.equalsIgnoreCase("Pending");
+            if (!isPending || !within24h) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("You can only update bank info within 24h for pending withdrawals.");
+            }
+
+            String bankName = body.get("bankName") != null ? body.get("bankName").toString() : null;
+            String accountNumber = body.get("accountNumber") != null ? body.get("accountNumber").toString() : null;
+            String accountHolder = body.get("accountHolder") != null ? body.get("accountHolder").toString() : null;
+            String branch = body.get("branch") != null ? body.get("branch").toString() : null;
+            String otp = body.get("otp") != null ? body.get("otp").toString() : null;
+            if (bankName == null || bankName.isBlank() || accountNumber == null || accountNumber.isBlank() || accountHolder == null || accountHolder.isBlank()) {
+                return ResponseEntity.badRequest().body("bankName, accountNumber, and accountHolder are required");
+            }
+            // Require and verify OTP (6 digits)
+            if (otp == null || !otp.matches("\\d{6}")) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "withdraw_update", "MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
+            }
+            // Lookup latest unused OTP for this user/code
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, otp);
+            if (optVerification.isEmpty()) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "withdraw_update", "MSG_OTP_INVALID: Code not found or already used.");
+            }
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "withdraw_update", "MSG_OTP_EXPIRED: The code has expired.");
+            }
+
+            // Build old/new info for email
+            String oldInfo = String.format("%s - %s (%s)%s",
+                    safeString(withdrawal.getBankName()),
+                    safeString(withdrawal.getAccountNumber()),
+                    safeString(withdrawal.getAccountName()),
+                    withdrawal.getBranch() != null && !withdrawal.getBranch().isBlank() ? (" - " + withdrawal.getBranch()) : "");
+            String newInfo = String.format("%s - %s (%s)%s",
+                    bankName.trim(),
+                    accountNumber.trim(),
+                    accountHolder.trim(),
+                    branch != null && !branch.isBlank() ? (" - " + branch.trim()) : "");
+
+            // Update allowed fields only
+            withdrawal.setBankName(bankName.trim());
+            withdrawal.setAccountNumber(accountNumber.trim());
+            withdrawal.setAccountName(accountHolder.trim());
+            if (branch != null) {
+                withdrawal.setBranch(branch.trim());
+            }
+            entityManager.merge(withdrawal);
+
+            // Mark OTP as used
+            verification.setUsed(true);
+            emailVerificationRepository.save(verification);
+
+            // Clear attempts on success
+            clearSellerOtpAttempts(session, user.getId(), "withdraw_update");
+
+            // Send async email notify
+            try {
+                String userName = user.getFullName() != null ? user.getFullName() : (user.getEmail() != null ? user.getEmail() : "User");
+                String updatedAt = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date());
+                String html = EmailTemplate.withdrawalBankInfoUpdatedEmail(userName, oldInfo, newInfo, updatedAt);
+                String subject = "[MMOMarket] Cập nhật thông tin ngân hàng rút tiền";
+                if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                    emailService.sendEmailAsync(user.getEmail(), subject, html);
+                }
+            } catch (Exception ignored) {}
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("message", "Bank info updated successfully");
+            res.put("id", withdrawal.getId());
+            res.put("bankName", withdrawal.getBankName());
+            res.put("accountNumber", withdrawal.getAccountNumber());
+            res.put("accountHolder", withdrawal.getAccountName());
+            res.put("branch", withdrawal.getBranch());
+            return ResponseEntity.ok(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // NEW: Send OTP for shop deletion verification
+    @PostMapping(path = "/delete-shop/send-otp")
+    @ResponseBody
+    public ResponseEntity<?> sendDeleteShopOtp(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return ResponseEntity.badRequest().body("User has no email configured. Cannot send OTP.");
+        }
+
+        // Check if shop is active
+        String shopStatus = user.getShopStatus();
+        boolean active = shopStatus != null && shopStatus.equalsIgnoreCase("Active");
+        if (!active) {
+            return ResponseEntity.badRequest().body("Your shop is not in Active status.");
+        }
+
+        // Cooldown: avoid spamming OTP sends (min 60 seconds between sends)
+        try {
+            Optional<com.mmo.entity.EmailVerification> latest = emailVerificationRepository.findTopByUserOrderByCreatedAtDesc(user);
+            if (latest.isPresent() && latest.get().getCreatedAt() != null) {
+                long seconds = (System.currentTimeMillis() - latest.get().getCreatedAt().getTime()) / 1000L;
+                if (seconds < 60) {
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Offload OTP creation + persistence + email to executor; return immediately
+        try {
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] Confirm Shop Cancellation (OTP)";
+                    String html = EmailTemplate.deleteShopOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+
+        return ResponseEntity.ok("OTP has been sent to your email.");
+    }
+
+    // NEW: Check delete-shop conditions before showing OTP modal
+    @GetMapping(path = "/delete-shop/check")
+    @ResponseBody
+    public ResponseEntity<?> checkDeleteShopConditions(Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("ok", false, "message", "Unauthorized"));
+            }
+
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("ok", false, "message", "Unauthorized"));
+            }
+
+            // Check if shop is active
+            String shopStatus = user.getShopStatus();
+            boolean active = shopStatus != null && shopStatus.equalsIgnoreCase("Active");
+            if (!active) {
+                return ResponseEntity.ok(Map.of("ok", false, "message", "Your shop is not in Active status."));
+            }
+
+            // Business rule a.2: Coins must be 0
+            long coins = user.getCoins() == null ? 0L : user.getCoins();
+            if (coins != 0L) {
+                return ResponseEntity.ok(Map.of("ok", false, "message", "You must withdraw all your Coins balance to 0 before deleting your shop."));
+            }
+
+            // Business rule a.1: No listed products
+            Long remainingProducts = entityManager.createQuery(
+                    "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
+                .setParameter("sellerId", user.getId())
+                .getSingleResult();
+            if (remainingProducts != null && remainingProducts > 0) {
+                return ResponseEntity.ok(Map.of("ok", false, "message", "You must remove all listed products before deleting your shop."));
+            }
+
+            // Business rule a.3: Not temporarily locked or unresolved policy violation
+            if (shopStatus.equalsIgnoreCase("Suspended") || shopStatus.equalsIgnoreCase("Banned") || shopStatus.equalsIgnoreCase("Locked")) {
+                return ResponseEntity.ok(Map.of("ok", false, "message", "Your account is temporarily locked or has policy violations. Cannot delete shop."));
+            }
+
+            // All conditions met
+            return ResponseEntity.ok(Map.of("ok", true, "message", "All conditions met. You can proceed."));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("ok", false, "message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // NEW: Delete shop with OTP verification (JSON endpoint)
+    @PostMapping(path = "/delete-shop", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> deleteShopWithOtp(@RequestBody Map<String, String> payload,
+                                               Authentication authentication,
+                                               HttpSession session,
+                                               HttpServletRequest request) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            // Must have an active shop to delete
+            String shopStatus = user.getShopStatus();
+            boolean active = shopStatus != null && shopStatus.equalsIgnoreCase("Active");
+            if (!active) {
+                return ResponseEntity.badRequest().body("Your shop is not in Active status.");
+            }
+
+            // Validate OTP
+            String otp = payload != null ? payload.get("otp") : null;
+            if (otp == null || !otp.matches("\\d{6}")) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "delete_shop", "MSG_OTP_REQUIRED");
+            }
+
+            // Verify OTP
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, otp);
+            if (optVerification.isEmpty()) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "delete_shop", "MSG_OTP_INVALID");
+            }
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "delete_shop", "MSG_OTP_EXPIRED");
+            }
+
+            // Mark OTP as used
+            verification.setUsed(true);
+            emailVerificationRepository.save(verification);
+
+            // Clear OTP attempts
+            clearSellerOtpAttempts(session, user.getId(), "delete_shop");
+
+            // Business rule a.2: Coins must be 0
+            long coins = user.getCoins() == null ? 0L : user.getCoins();
+            if (coins != 0L) {
+                return ResponseEntity.badRequest().body("You must withdraw all your Coins balance to 0 before deleting your shop.");
+            }
+
+            // Business rule a.1: No listed products — ensure no non-deleted products remain
+            Long remainingProducts = entityManager.createQuery(
+                    "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
+                .setParameter("sellerId", user.getId())
+                .getSingleResult();
+            if (remainingProducts != null && remainingProducts > 0) {
+                return ResponseEntity.badRequest().body("You must remove all listed products before deleting your shop.");
+            }
+
+            // Business rule a.3: Not temporarily locked or unresolved policy violation
+            if (shopStatus != null && (shopStatus.equalsIgnoreCase("Suspended") || shopStatus.equalsIgnoreCase("Banned") || shopStatus.equalsIgnoreCase("Locked"))) {
+                return ResponseEntity.badRequest().body("Your account is temporarily locked or has policy violations. Cannot delete shop.");
+            }
+
+            // All conditions satisfied -> perform soft delete cascade (immediate and irreversible)
+            Long uid = user.getId();
+            Long sellerId = user.getId();
+
+            // Soft delete delivered accounts/inventory first to avoid FK constraints
+            entityManager.createQuery(
+                    "UPDATE ProductVariantAccount a SET a.isDelete = true, a.deletedBy = :uid " +
+                            "WHERE a.isDelete = false AND a.variant.id IN (SELECT v.id FROM ProductVariant v WHERE v.product.seller.id = :sellerId)"
+            ).setParameter("uid", uid).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Soft delete reviews of seller's products
+            entityManager.createQuery(
+                    "UPDATE Review r SET r.isDelete = true, r.deletedBy = :uid WHERE r.isDelete = false AND r.product.seller.id = :sellerId"
+            ).setParameter("uid", uid).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Soft delete transactions of this seller
+            entityManager.createQuery(
+                    "UPDATE Transaction t SET t.isDelete = true, t.deletedBy = :uid WHERE t.isDelete = false AND t.seller.id = :sellerId"
+            ).setParameter("uid", uid).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Soft delete product variants
+            entityManager.createQuery(
+                    "UPDATE ProductVariant v SET v.isDelete = true, v.deletedBy = :uid WHERE v.isDelete = false AND v.product.seller.id = :sellerId"
+            ).setParameter("uid", uid).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Soft delete products
+            entityManager.createQuery(
+                    "UPDATE Product p SET p.isDelete = true, p.deletedBy = :uid WHERE p.isDelete = false AND p.seller.id = :sellerId"
+            ).setParameter("uid", uid).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Soft delete seller bank info
+            entityManager.createQuery(
+                    "UPDATE SellerBankInfo s SET s.isDelete = true, s.deletedBy = :uid WHERE s.isDelete = false AND s.user.id = :sellerId"
+            ).setParameter("uid", uid).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Soft delete ShopInfo - Note: ShopInfo.deletedBy is a User entity, not Long
+            entityManager.createQuery(
+                    "UPDATE ShopInfo s SET s.isDelete = true, s.deletedBy = :userEntity WHERE s.isDelete = false AND s.user.id = :sellerId"
+            ).setParameter("userEntity", user).setParameter("sellerId", sellerId).executeUpdate();
+
+            // Set shopStatus back to Inactive
+            try {
+                user.setShopStatus("Inactive");
+                userRepository.save(user);
+            } catch (Exception ignored) {}
+
+            // Create notification for user
+            try {
+                notificationService.createNotificationForUser(
+                    user.getId(),
+                    "Shop Registration Cancelled",
+                    "Your shop has been successfully cancelled. You can register a new shop again at any time."
+                );
+            } catch (Exception e) {
+                // Log error but don't fail the operation
+                System.err.println("Failed to create notification: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok("Shop has been successfully cancelled.");
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // NEW: Buy Points - send OTP
+    @PostMapping(path = "/buy-points/send-otp")
+    @ResponseBody
+    public ResponseEntity<?> sendBuyPointsOtp(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return ResponseEntity.badRequest().body("User has no email configured. Cannot send OTP.");
+        }
+        // Cooldown
+        try {
+            Optional<com.mmo.entity.EmailVerification> latest = emailVerificationRepository.findTopByUserOrderByCreatedAtDesc(user);
+            if (latest.isPresent() && latest.get().getCreatedAt() != null) {
+                long seconds = (System.currentTimeMillis() - latest.get().getCreatedAt().getTime()) / 1000L;
+                if (seconds < 60) {
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] Confirm Points Purchase (OTP)";
+                    String html = EmailTemplate.buyPointsOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+        return ResponseEntity.ok("OTP has been sent to your email.");
+    }
+
+    // NEW: Buy Points - quote how many points/cost to reach a target level
+    @GetMapping(path = "/buy-points/quote", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> quoteBuyPoints(@RequestParam(name = "targetLevel", required = false) Integer targetLevel,
+                                            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("ok", false, "message", "Unauthorized"));
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("ok", false, "message", "Unauthorized"));
+        }
+        ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
+        if (shop == null) {
+            return ResponseEntity.ok(Map.of("ok", false, "message", "Shop not found."));
+        }
+        long currentPoints = shop.getPoints() == null ? 0L : shop.getPoints();
+        short currentLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        int desired = (targetLevel == null || targetLevel < currentLevel + 1) ? (currentLevel + 1) : Math.min(targetLevel, 7);
+        long threshold = levelThreshold(desired);
+        if (desired <= currentLevel) {
+            return ResponseEntity.ok(Map.of("ok", false, "message", "You already meet or exceed the selected level.", "currentLevel", currentLevel));
+        }
+        long neededPoints = Math.max(0L, threshold - currentPoints);
+        long costCoins = neededPoints; // 1 coin per point
+        long coins = user.getCoins() == null ? 0L : user.getCoins();
+        boolean enough = coins >= costCoins;
+        long shortfall = enough ? 0L : (costCoins - coins);
+        return ResponseEntity.ok(Map.of(
+                "ok", true,
+                "currentLevel", currentLevel,
+                "currentPoints", currentPoints,
+                "targetLevel", desired,
+                "targetThreshold", threshold,
+                "neededPoints", neededPoints,
+                "costCoins", costCoins,
+                "coins", coins,
+                "enough", enough,
+                "shortfall", shortfall
+        ));
+    }
+
+    private long levelThreshold(int level) {
+        return switch (level) {
+            case 1 -> 1_000_000L;
+            case 2 -> 3_000_000L;
+            case 3 -> 5_000_000L;
+            case 4 -> 10_000_000L;
+            case 5 -> 20_000_000L;
+            case 6 -> 40_000_000L;
+            case 7 -> 50_000_000L;
+            default -> 0L;
+        };
+    }
+
+    // NEW: Buy Points - submit purchase request with OTP
+    @PostMapping(path = "/buy-points", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> buyPoints(@RequestBody Map<String, Object> body,
+                                       Authentication authentication,
+                                       HttpSession session,
+                                       HttpServletRequest request) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
+            if (shop == null) return ResponseEntity.badRequest().body("Shop not found.");
+
+            String otp = body.get("otp") != null ? body.get("otp").toString() : null;
+            if (otp == null || !otp.matches("\\d{6}")) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "buy_points", "MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
+            }
+            // Pre-validate OTP
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, otp);
+            if (optVerification.isEmpty()) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "buy_points", "MSG_OTP_INVALID: Code not found or already used.");
+            }
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                return handleOtpFailForWithdraw(session, request, authentication, user, user.getId(), "buy_points", "MSG_OTP_EXPIRED: The code has expired.");
+            }
+
+            // Parse pointsToBuy or targetLevel
+            Long pointsToBuy = null;
+            if (body.get("pointsToBuy") instanceof Number n) {
+                pointsToBuy = n.longValue();
+            } else if (body.get("targetLevel") instanceof Number lv) {
+                int desired = Math.min(7, Math.max(shop.getShopLevel() == null ? 0 : (shop.getShopLevel() + 1), lv.intValue()));
+                long threshold = levelThreshold(desired);
+                long currentPoints = shop.getPoints() == null ? 0L : shop.getPoints();
+                long need = Math.max(0L, threshold - currentPoints);
+                pointsToBuy = need;
+            }
+            if (pointsToBuy == null || pointsToBuy <= 0) {
+                return ResponseEntity.badRequest().body("Invalid pointsToBuy.");
+            }
+
+            // Pre-check sufficient coins to avoid unnecessary OTP/queue
+            long coins = user.getCoins() == null ? 0L : user.getCoins();
+            if (coins < pointsToBuy) {
+                long shortfall = pointsToBuy - coins;
+                return ResponseEntity.badRequest().body("Insufficient coins. Please top up at least " + String.format("%,d", shortfall) + " coins.");
+            }
+
+            // Success so far: clear attempts
+            clearSellerOtpAttempts(session, user.getId(), "buy_points");
+
+            String dedupeKey = user.getId() + ":" + pointsToBuy + ":" + otp;
+            com.mmo.mq.dto.BuyPointsMessage msg = new com.mmo.mq.dto.BuyPointsMessage(
+                    user.getId(),
+                    pointsToBuy,
+                    pointsToBuy, // cost 1:1
+                    otp,
+                    dedupeKey
+            );
+            buyPointsPublisher.publish(msg);
+            return ResponseEntity.accepted().body("Your points purchase request has been queued. It will be applied shortly.");
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    private void sendWithdrawalOtpForUser(User user) {
+        try {
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String html = EmailTemplate.withdrawalOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+    }
+    private void sendDeleteShopOtpForUser(User user) {
+        try {
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] Confirm Shop Cancellation (OTP)";
+                    String html = EmailTemplate.deleteShopOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+    }
+    private void sendBuyPointsOtpForUser(User user) {
+        try {
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] Confirm Points Purchase (OTP)";
+                    String html = EmailTemplate.buyPointsOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+    }
+    private ResponseEntity<String> handleOtpFailForWithdraw(HttpSession session, HttpServletRequest request, Authentication authentication, User user, Long uid, String action, String baseMessage) {
+        int attempts = incSellerOtpAttempts(session, uid, action);
+        if (attempts >= 5) {
+            try {
+                new SecurityContextLogoutHandler().logout(request, null, authentication);
+            } catch (Exception ignored) { }
+            try { session.invalidate(); } catch (Exception ignored) { }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Too many OTP failures. You have been logged out. Please sign in again.");
+        } else if (attempts >= 3) {
+            try {
+                if (action != null && action.startsWith("withdraw")) {
+                    sendWithdrawalOtpForUser(user);
+                } else if (action != null && action.startsWith("delete_shop")) {
+                    sendDeleteShopOtpForUser(user);
+                } else if (action != null && action.startsWith("buy_points")) {
+                    sendBuyPointsOtpForUser(user);
+                } else {
+                    sendWithdrawalOtpForUser(user);
+                }
+            } catch (Exception ignored) {}
+            return ResponseEntity.badRequest().body(baseMessage + " A new OTP has been sent to your email. Please use the latest OTP.");
+        } else {
+            return ResponseEntity.badRequest().body(baseMessage);
+        }
+    }
+
+    // Helpers for OTP attempt tracking per action
+    private String sellerOtpAttemptsKey(Long uid, String action) {
+        return "sellerOtpAttempts:" + uid + ":" + action;
+    }
+    private int incSellerOtpAttempts(HttpSession session, Long uid, String action) {
+        String key = sellerOtpAttemptsKey(uid, action);
+        Integer cur = (Integer) session.getAttribute(key);
+        int next = (cur == null ? 0 : cur) + 1;
+        session.setAttribute(key, next);
+        return next;
+    }
+    private void clearSellerOtpAttempts(HttpSession session, Long uid, String action) {
+        session.removeAttribute(sellerOtpAttemptsKey(uid, action));
+    }
+    private static String safeString(Object s) {
+        return s == null ? "" : s.toString();
     }
 }

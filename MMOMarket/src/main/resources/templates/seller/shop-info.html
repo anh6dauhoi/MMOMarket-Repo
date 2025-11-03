@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MMO Market - Shop Information</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+            font-family: 'Inter', sans-serif;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+
+        .gradient-card {
+            background: linear-gradient(135deg, #fca5a5 0%, #ef4444 100%);
+        }
+
+        .stats-card {
+            transition: all 0.3s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .icon-wrapper {
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+            backdrop-filter: blur(10px);
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen font-sans text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="flex-grow py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Flash Messages -->
+        <div class="mb-6 rounded-lg bg-green-50 border-l-4 border-green-500 px-6 py-4 text-green-800 shadow-md" th:if="${successMessage}">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-3 text-xl"></i>
+                <span th:text="${successMessage}"></span>
+            </div>
+        </div>
+        <div class="mb-6 rounded-lg bg-red-50 border-l-4 border-red-500 px-6 py-4 text-red-800 shadow-md" th:if="${errorMessage}">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-3 text-xl"></i>
+                <span th:text="${errorMessage}"></span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Sidebar -->
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Header with Gradient -->
+                <div class="gradient-card rounded-2xl shadow-xl p-8 text-white">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between">
+                        <div>
+                            <h1 class="text-4xl font-bold mb-2 flex items-center">
+                                <i class="fas fa-store mr-3"></i>
+                                <span th:text="${shop != null ? shop.shopName : 'My Shop'}">My Shop</span>
+                            </h1>
+                            <p class="text-red-100 text-lg">Manage and view your shop details</p>
+                        </div>
+                        <div class="mt-4 md:mt-0">
+                            <div class="icon-wrapper rounded-full p-6">
+                                <i class="fas fa-store-alt text-5xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Points Card -->
+                    <div class="stats-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:scale-105" onclick="openBuyPointsModal()">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="info-label text-yellow-100 mb-2">Total Points</p>
+                                <p id="totalPointsDisplay" class="text-3xl font-bold" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'COMMA') : '0'}">0</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-coins text-3xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-yellow-100 mt-2 opacity-80">Click to buy points and level up</p>
+                    </div>
+
+                    <!-- Shop Level Card -->
+                    <div class="stats-card bg-gradient-to-br from-rose-400 to-red-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:scale-105" onclick="openLevelModal()">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="info-label text-rose-100 mb-2">Shop Level</p>
+                                <p class="text-3xl font-bold" th:text="${shop != null && shop.shopLevel != null ? shop.shopLevel : 0}">0</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-level-up-alt text-3xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-rose-100 mt-2 opacity-80">Click to view level details</p>
+                    </div>
+
+                    <!-- Commission Card -->
+                    <div class="stats-card bg-gradient-to-br from-pink-400 to-red-500 rounded-xl shadow-lg p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="info-label text-pink-100 mb-2">Commission Rate</p>
+                                <p class="text-3xl font-bold">
+                                    <span th:text="${shop != null && shop.commission != null ? shop.commission : 5.00}">5.00</span>%
+                                </p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-percent text-3xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shop Details Card -->
+                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                    <div class="bg-gradient-to-r from-red-400 to-rose-500 px-8 py-6">
+                        <h2 class="text-2xl font-bold text-white flex items-center">
+                            <i class="fas fa-info-circle mr-3"></i>
+                            General Information
+                        </h2>
+                    </div>
+
+                    <div class="p-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="group">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-store text-red-500 mr-2"></i>
+                                    <p class="info-label text-gray-500">Shop Name</p>
+                                </div>
+                                <p class="text-lg font-semibold text-gray-900 pl-6" th:text="${shop != null ? shop.shopName : 'My Shop'}">My Shop</p>
+                            </div>
+
+                            <div class="group">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-envelope text-red-500 mr-2"></i>
+                                    <p class="info-label text-gray-500">Owner Email</p>
+                                </div>
+                                <p class="text-lg font-semibold text-gray-900 pl-6" th:text="${sellerEmail}">owner@example.com</p>
+                            </div>
+
+                            <div class="group">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-toggle-on text-red-500 mr-2"></i>
+                                    <p class="info-label text-gray-500">Status</p>
+                                </div>
+                                <div class="pl-6">
+                                    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold"
+                                          th:classappend="${shopStatus != null and #strings.equalsIgnoreCase(shopStatus,'Active') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                        <i class="fas fa-circle text-xs mr-2"
+                                           th:classappend="${shopStatus != null and #strings.equalsIgnoreCase(shopStatus,'Active') ? 'text-green-500' : 'text-yellow-500'}"></i>
+                                        <span th:text="${shopStatus}">Active</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="group">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-coins text-red-500 mr-2"></i>
+                                    <p class="info-label text-gray-500">Total Points</p>
+                                </div>
+                                <p class="text-lg font-semibold text-gray-900 pl-6" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'COMMA') : '0'}">0</p>
+                            </div>
+
+                            <div class="group">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-calendar-plus text-red-500 mr-2"></i>
+                                    <p class="info-label text-gray-500">Created At</p>
+                                </div>
+                                <p class="text-lg font-semibold text-gray-900 pl-6" th:text="${shop != null && shop.createdAt != null ? #dates.format(shop.createdAt,'dd/MM/yyyy HH:mm') : '—'}">—</p>
+                            </div>
+
+                            <div class="group">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-calendar-check text-red-500 mr-2"></i>
+                                    <p class="info-label text-gray-500">Updated At</p>
+                                </div>
+                                <p class="text-lg font-semibold text-gray-900 pl-6" th:text="${shop != null && shop.updatedAt != null ? #dates.format(shop.updatedAt,'dd/MM/yyyy HH:mm') : '—'}">—</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 pt-8 border-t border-gray-200">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-align-left text-red-500 mr-2 text-lg"></i>
+                                <p class="info-label text-gray-500">Description</p>
+                            </div>
+                            <div class="border-2 border-gray-200 rounded-xl p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-[120px] ml-6">
+                                <p class="text-gray-800 whitespace-pre-wrap leading-relaxed" th:text="${shop != null && shop.description != null && !#strings.isEmpty(shop.description) ? shop.description : 'No description available'}">No description available</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danger Zone: Delete Shop -->
+                <div class="bg-white rounded-2xl shadow-xl border border-red-200 overflow-hidden" th:if="${shopStatus != null and #strings.equalsIgnoreCase(shopStatus,'Active')}">
+                    <div class="px-8 py-6 bg-red-50 border-b border-red-200">
+                        <h2 class="text-2xl font-bold text-red-700 flex items-center">
+                            <i class="fas fa-triangle-exclamation mr-3"></i>
+                            Danger Zone
+                        </h2>
+                    </div>
+                    <div class="p-8 space-y-4">
+                        <p class="text-red-700 font-semibold">Cancel Shop</p>
+                        <ul class="list-disc pl-6 text-sm text-gray-700">
+                            <li>Only proceed if: all products have been removed, Coin balance is 0, and the account is not suspended or in violation.</li>
+                            <li>Upon confirmation, all shop data (products, transaction history, etc.) will be soft-deleted immediately.</li>
+                            <li>This action cannot be undone. The shop status will be changed to Inactive.</li>
+                            <li>If you wish to sell again, you must re-register from the beginning according to current regulations.</li>
+                        </ul>
+                        <form id="deleteShopForm" th:action="@{/seller/delete-shop}" method="post">
+                            <input type="hidden" name="_csrf" th:if="${_csrf != null}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="inline-flex items-center px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold shadow focus:outline-none focus:ring-2 focus:ring-red-500">
+                                <i class="fas fa-trash-alt mr-2"></i>
+                                Permanently Delete Shop
+                            </button>
+                        </form>
+                        <p class="text-xs text-gray-500">You will need to verify with an OTP!</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- Delete Shop OTP Modal -->
+<div id="deleteShopOtpModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden">
+    <div class="relative bg-white/90 backdrop-blur rounded-2xl shadow-2xl w-full max-w-md p-6 border border-red-200">
+        <button id="deleteOtpCloseBtn" class="absolute right-4 top-2 text-3xl text-gray-400 hover:text-red-500 font-bold">&times;</button>
+        <h3 class="text-xl font-bold text-red-700 mb-3">Verify OTP to Cancel Shop</h3>
+        <p class="text-sm text-gray-600 mb-4">Enter the 6-digit OTP sent to your email to confirm this irreversible action.</p>
+        <input id="deleteOtpInput" type="text" maxlength="6" inputmode="numeric" pattern="\d{6}" class="w-full border rounded-md p-2 text-center tracking-widest font-mono text-lg" placeholder="000000" aria-label="Enter the 6-digit OTP sent to your email" />
+        <div id="deleteOtpMsg" class="mt-2 text-sm"></div>
+        <div class="mt-4 flex gap-2 justify-end">
+            <button id="deleteOtpSendBtn" type="button" class="px-3 py-2 bg-red-400 text-white rounded hover:bg-red-500">Send OTP</button>
+            <button id="deleteOtpCancelBtn" type="button" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+            <button id="deleteOtpVerifyBtn" type="button" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Verify & Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Shop Level Modal -->
+<div id="shopLevelModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden p-4">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6 md:p-8 border border-red-200">
+        <button id="shopLevelCloseBtn" class="sticky top-0 right-0 float-right text-3xl text-gray-400 hover:text-red-500 font-bold z-10 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg">&times;</button>
+        <h3 class="text-2xl md:text-3xl font-bold text-red-700 mb-2 flex items-center clear-right">
+            <i class="fas fa-layer-group mr-3"></i>
+            Seller Level System - 8 Tiers
+        </h3>
+        <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Progress through levels to unlock higher selling limits and lower commission rates</p>
+
+        <!-- Current Level Badge -->
+        <div class="mb-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded">
+            <div class="flex items-center">
+                <i class="fas fa-user-check text-green-600 mr-2"></i>
+                <span class="text-sm font-semibold text-green-800">
+                    Your Current Level: <span class="text-lg" th:text="${shop != null && shop.shopLevel != null ? shop.shopLevel : 0}">0</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Responsive Table -->
+        <div class="overflow-x-auto -mx-6 md:mx-0">
+            <div class="inline-block min-w-full align-middle px-6 md:px-0">
+                <table class="min-w-full border-collapse bg-white shadow-lg rounded-lg overflow-hidden">
+                    <thead>
+                        <tr class="bg-gradient-to-r from-red-500 to-rose-600 text-white">
+                            <th class="px-2 md:px-4 py-3 text-left font-semibold text-xs md:text-sm">Level</th>
+                            <th class="px-2 md:px-4 py-3 text-left font-semibold text-xs md:text-sm">Tier Name</th>
+                            <th class="px-2 md:px-4 py-3 text-left font-semibold text-xs md:text-sm">Requirements</th>
+                            <th class="px-2 md:px-4 py-3 text-left font-semibold text-xs md:text-sm">Max Price</th>
+                            <th class="px-2 md:px-4 py-3 text-left font-semibold text-xs md:text-sm">Fee</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <!-- Level 0 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 0 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-gray-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-200 text-gray-700 font-bold text-sm md:text-lg">0</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-seedling text-gray-500 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Starter</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 text-xs md:text-sm">0 Point</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                    50,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gray-200 text-gray-700">
+                                    0%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 1 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 1 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-red-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-100 text-red-700 font-bold text-sm md:text-lg">1</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-user-graduate text-red-500 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Apprentice</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">1,000,000 Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                    100,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-200 text-red-800">
+                                    5.0%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 2 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 2 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-orange-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-orange-100 text-orange-700 font-bold text-sm md:text-lg">2</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-shield-alt text-orange-500 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Trusted</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">3,000,000 Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                                    300,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-orange-200 text-orange-800">
+                                    4.7%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 3 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 3 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-yellow-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-yellow-100 text-yellow-700 font-bold text-sm md:text-lg">3</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-briefcase text-yellow-600 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Professional</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">5,000,000 Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                    500,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-yellow-200 text-yellow-800">
+                                    4.5%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 4 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 4 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-slate-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-200 text-slate-700 font-bold text-sm md:text-lg">4</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-medal text-slate-500 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Silver Partner</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">10,000,000 Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                    1,000,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800">
+                                    4.3%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 5 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 5 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-amber-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-amber-200 text-amber-700 font-bold text-sm md:text-lg">5</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-crown text-amber-500 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Gold Partner</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">20,000,000 Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                    2,000,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-amber-200 text-amber-800">
+                                    4.0%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 6 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 6 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-cyan-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-cyan-200 text-cyan-700 font-bold text-sm md:text-lg">6</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-gem text-cyan-500 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-gray-800 text-xs md:text-base">Platinum Partner</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">40,000,000 Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700">
+                                    4,000,000 Coins
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-cyan-200 text-cyan-800">
+                                    3.7%
+                                </span>
+                            </td>
+                        </tr>
+                        <!-- Level 7 -->
+                        <tr class="transition-colors" th:classappend="${shop != null && shop.shopLevel != null && shop.shopLevel == 7 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-blue-50'}">
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-white font-bold text-sm md:text-lg shadow-lg">7</span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-star text-blue-600 mr-1 md:mr-2 text-xs md:text-base"></i>
+                                    <span class="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 text-xs md:text-base">Diamond Partner</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4 text-gray-600 font-mono text-xs md:text-sm">50,000,000+ Points</td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700">
+                                    Unlimited
+                                </span>
+                            </td>
+                            <td class="px-2 md:px-4 py-3 md:py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-200 to-purple-200 text-blue-800">
+                                    3.5%
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-4 md:mt-6 p-3 md:p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-blue-600 mt-1 mr-2 md:mr-3 text-sm md:text-base"></i>
+                <div class="text-xs md:text-sm text-blue-800">
+                    <p class="font-semibold mb-1">How to Level Up:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Earn points through successful transactions</li>
+                        <li>Higher levels = Lower fees & Higher limits</li>
+                        <li>Diamond Partners enjoy unlimited selling</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Buy Points Modal -->
+<div id="buyPointsModal" class="fixed inset-0 z-[180] flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-md transition-opacity duration-300 hidden p-4 overflow-y-auto">
+    <div class="relative bg-gradient-to-br from-white via-orange-50 to-yellow-50 rounded-3xl shadow-2xl w-full max-w-xl my-8 p-6 border-2 border-yellow-300 transform transition-all duration-300">
+        <!-- Close Button -->
+        <button id="buyPointsCloseBtn" class="absolute right-4 top-4 text-gray-400 hover:text-red-600 transition-colors duration-200 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 z-10">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <!-- Header with Icon -->
+        <div class="text-center mb-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg mb-3">
+                <i class="fas fa-coins text-3xl text-white"></i>
+            </div>
+            <h3 class="text-2xl font-extrabold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-1">
+                Buy Points & Level Up
+            </h3>
+            <p class="text-sm text-gray-600">Purchase points using your Coins balance to upgrade instantly</p>
+        </div>
+
+        <!-- Current Status Card -->
+        <div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-yellow-200">
+            <div class="grid grid-cols-2 gap-3">
+                <!-- Current Level -->
+                <div class="relative overflow-hidden rounded-lg bg-gradient-to-br from-yellow-100 to-yellow-200 p-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-semibold text-yellow-700 uppercase tracking-wide mb-0.5">Current Level</div>
+                            <div id="bpCurrentLevel" class="text-3xl font-black text-yellow-800" th:text="${shop != null && shop.shopLevel != null ? shop.shopLevel : 0}">0</div>
+                        </div>
+                        <div class="text-yellow-600 opacity-40">
+                            <i class="fas fa-trophy text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Points -->
+                <div class="relative overflow-hidden rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 p-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-0.5">Your Points</div>
+                            <div id="bpCurrentPoints" class="text-xl font-black text-emerald-800" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'COMMA') : '0'}">0</div>
+                        </div>
+                        <div class="text-emerald-600 opacity-40">
+                            <i class="fas fa-coins text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Target Level Selection -->
+        <div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-orange-200">
+            <label for="bpTargetLevel" class="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                <i class="fas fa-bullseye text-orange-500 mr-2"></i>
+                Select Target Level
+            </label>
+            <select id="bpTargetLevel" class="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-base font-semibold text-gray-800 bg-gradient-to-r from-white to-orange-50 focus:ring-2 focus:ring-orange-300 focus:border-orange-500 transition-all duration-200 cursor-pointer hover:border-orange-400">
+                <option value="1">Level 1 - Apprentice</option>
+                <option value="2">Level 2 - Trusted</option>
+                <option value="3">Level 3 - Professional</option>
+                <option value="4">Level 4 - Silver Partner</option>
+                <option value="5">Level 5 - Gold Partner</option>
+                <option value="6">Level 6 - Platinum Partner</option>
+                <option value="7">Level 7 - Diamond Partner</option>
+            </select>
+        </div>
+
+        <!-- Calculation Summary -->
+        <div class="bg-gradient-to-br from-orange-100 via-yellow-100 to-orange-100 rounded-xl shadow-inner p-4 mb-4 border-2 border-orange-300">
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="bg-white/70 backdrop-blur rounded-lg p-2.5 border border-orange-200">
+                    <div class="text-xs text-gray-600 mb-0.5 flex items-center">
+                        <i class="fas fa-flag-checkered text-orange-500 mr-1 text-xs"></i>
+                        Target Threshold
+                    </div>
+                    <div id="bpTargetThreshold" class="text-lg font-bold text-gray-900">-</div>
+                </div>
+                <div class="bg-white/70 backdrop-blur rounded-lg p-2.5 border border-orange-200">
+                    <div class="text-xs text-gray-600 mb-0.5 flex items-center">
+                        <i class="fas fa-chart-line text-orange-500 mr-1 text-xs"></i>
+                        Points Needed
+                    </div>
+                    <div id="bpNeededPoints" class="text-lg font-bold text-orange-700">-</div>
+                </div>
+            </div>
+
+            <!-- Total Cost Highlight -->
+            <div class="bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg p-3 shadow-md">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-white/30 backdrop-blur flex items-center justify-center mr-2.5">
+                            <i class="fas fa-coins text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-white/90 font-medium">Total Cost</div>
+                            <div id="bpCostCoins" class="text-2xl font-black text-white">-</div>
+                        </div>
+                    </div>
+                    <div class="text-white/80 text-3xl">
+                        <i class="fas fa-arrow-circle-right"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OTP Section -->
+        <div id="bpOtpSection" class="bg-white rounded-xl shadow-md p-4 mb-3 border border-yellow-200">
+            <label for="bpOtpInput" class="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                <i class="fas fa-shield-alt text-yellow-600 mr-2"></i>
+                Enter 6-Digit OTP
+            </label>
+            <div class="flex gap-2 items-stretch">
+                <input id="bpOtpInput" type="text" maxlength="6" inputmode="numeric" pattern="\d{6}"
+                    class="flex-1 border-2 border-yellow-300 rounded-lg p-3 text-center tracking-[0.5em] font-mono text-xl font-bold focus:ring-2 focus:ring-yellow-300 focus:border-yellow-500 transition-all duration-200"
+                    placeholder="000000" />
+                <button id="bpSendOtpBtn" type="button"
+                    class="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold rounded-lg hover:from-yellow-600 hover:to-orange-600 focus:ring-2 focus:ring-yellow-300 transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap flex items-center text-sm">
+                    <i class="fas fa-paper-plane mr-1.5"></i>
+                    Send OTP
+                </button>
+            </div>
+            <div id="bpMsg" class="mt-2 text-sm font-medium"></div>
+        </div>
+
+        <!-- Insufficient Balance Warning -->
+        <div id="bpInsufficientBlock" class="hidden bg-red-50 border-2 border-red-300 rounded-xl p-4 mb-3">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-200 flex items-center justify-center mr-2.5">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-lg"></i>
+                </div>
+                <div class="flex-1">
+                    <div id="bpInsufficientMsg" class="text-sm font-medium text-red-800 mb-2"></div>
+                    <a id="bpTopupLink" href="/customer/topup"
+                        class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-red-700 focus:ring-2 focus:ring-red-300 transition-all duration-200 shadow-md hover:shadow-lg text-sm">
+                        <i class="fas fa-wallet mr-1.5"></i>
+                        Top Up Coins
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-2.5">
+            <button type="button"
+                class="px-5 py-2.5 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 focus:ring-2 focus:ring-gray-300 transition-all duration-200 flex items-center text-sm"
+                onclick="closeBuyPointsModal()">
+                <i class="fas fa-times mr-1.5"></i>
+                Cancel
+            </button>
+            <button id="bpConfirmBtn" type="button"
+                class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg hover:from-orange-600 hover:to-yellow-600 focus:ring-2 focus:ring-orange-300 transition-all duration-200 shadow-md hover:shadow-lg flex items-center text-sm transform hover:scale-105">
+                <i class="fas fa-check-circle mr-1.5"></i>
+                Confirm Purchase
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Helper to get CSRF token from a form (similar to withdraw page)
+    function getCsrfFromForm(form) {
+        if (!form) return { name: null, value: null };
+        const inputs = Array.from(form.querySelectorAll('input[type="hidden"]'));
+        let csrf = inputs.find(i => (i.name || '').toLowerCase().includes('csrf'));
+        if (csrf) return { name: csrf.name, value: csrf.value };
+        csrf = inputs[0];
+        return csrf ? { name: csrf.name, value: csrf.value } : { name: null, value: null };
+    }
+    function openDeleteOtpModal() {
+        const modal = document.getElementById('deleteShopOtpModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+    function closeDeleteOtpModal() {
+        const modal = document.getElementById('deleteShopOtpModal');
+        if (modal) modal.classList.add('hidden');
+        const msg = document.getElementById('deleteOtpMsg');
+        if (msg) { msg.textContent = ''; msg.className = 'mt-2 text-sm'; }
+        const input = document.getElementById('deleteOtpInput');
+        if (input) input.value = '';
+    }
+    function openLevelModal() {
+        const modal = document.getElementById('shopLevelModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+    function closeLevelModal() {
+        const modal = document.getElementById('shopLevelModal');
+        if (modal) modal.classList.add('hidden');
+    }
+    function openBuyPointsModal() {
+        const modal = document.getElementById('buyPointsModal');
+        if (!modal) return;
+        // Preselect target to next level and filter out lower levels
+        const curLv = parseInt(document.getElementById('bpCurrentLevel')?.textContent || '0', 10) || 0;
+        const select = document.getElementById('bpTargetLevel');
+        if (select) {
+            // Hide options lower than current level
+            Array.from(select.options).forEach(opt => {
+                const v = parseInt(opt.value, 10) || 0;
+                // hide strictly lower than current level (do not show smaller levels)
+                opt.hidden = v <= curLv;
+            });
+            const nextLv = Math.min(7, curLv + 1);
+            // if next level option is hidden/doesn't exist, pick the first visible one
+            let setVal = String(nextLv);
+            if (!Array.from(select.options).some(o => !o.hidden && o.value === setVal)) {
+                const firstVisible = Array.from(select.options).find(o => !o.hidden);
+                if (firstVisible) setVal = firstVisible.value;
+            }
+            select.value = setVal;
+        }
+        modal.classList.remove('hidden');
+        refreshBuyPointsQuote();
+    }
+    function closeBuyPointsModal() {
+        const modal = document.getElementById('buyPointsModal');
+        if (modal) modal.classList.add('hidden');
+        const msg = document.getElementById('bpMsg');
+        if (msg) { msg.textContent=''; msg.className='mt-2 text-sm'; }
+        const otp = document.getElementById('bpOtpInput');
+        if (otp) otp.value = '';
+        const insuff = document.getElementById('bpInsufficientMsg');
+        if (insuff) insuff.textContent = '';
+    }
+
+    async function refreshBuyPointsQuote() {
+        const select = document.getElementById('bpTargetLevel');
+        if (!select) return;
+        const lv = parseInt(select.value, 10) || 0;
+        try {
+            const res = await fetch('/seller/buy-points/quote?targetLevel=' + encodeURIComponent(lv), { method: 'GET' });
+            const data = await res.json();
+            const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            if (res.ok && data.ok) {
+                setText('bpTargetThreshold', numberWithCommas(data.targetThreshold || 0));
+                setText('bpNeededPoints', numberWithCommas(data.neededPoints || 0));
+                setText('bpCostCoins', numberWithCommas(data.costCoins || 0));
+
+                // Toggle OTP/Confirm visibility based on balance sufficiency
+                const otpBlock = document.getElementById('bpOtpSection');
+                const insuffBlock = document.getElementById('bpInsufficientBlock');
+                const insuffMsg = document.getElementById('bpInsufficientMsg');
+                const topupLink = document.getElementById('bpTopupLink');
+                const confirmBtn = document.getElementById('bpConfirmBtn');
+
+                if ((data.neededPoints || 0) <= 0) {
+                    // Nothing to buy for this level
+                    otpBlock && otpBlock.classList.add('hidden');
+                    insuffBlock && insuffBlock.classList.remove('hidden');
+                    if (insuffMsg) insuffMsg.textContent = 'Bạn đã đạt hoặc vượt mốc điểm của level này, không cần mua thêm.';
+                    if (topupLink) topupLink.classList.add('hidden');
+                    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.classList.add('hidden'); }
+                } else if (data.enough) {
+                    otpBlock && otpBlock.classList.remove('hidden');
+                    insuffBlock && insuffBlock.classList.add('hidden');
+                    if (insuffMsg) insuffMsg.textContent = '';
+                    if (topupLink) topupLink.classList.add('hidden');
+                    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.classList.remove('hidden'); }
+                } else {
+                    otpBlock && otpBlock.classList.add('hidden');
+                    insuffBlock && insuffBlock.classList.remove('hidden');
+                    if (insuffMsg) insuffMsg.textContent = 'Bạn không đủ coins để mua. Còn thiếu ' + numberWithCommas(data.shortfall || 0) + ' coins. Vui lòng nạp thêm tiền.';
+                    if (topupLink) topupLink.classList.remove('hidden');
+                    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.classList.add('hidden'); }
+                }
+            } else {
+                setText('bpTargetThreshold', '-'); setText('bpNeededPoints', '-'); setText('bpCostCoins', '-');
+                if (data && data.message) setBpMsg(data.message, false);
+            }
+        } catch (_) {
+            setBpMsg('Failed to load quote. Please try again later.', false);
+        }
+    }
+
+    function numberWithCommas(x) {
+        try { return (x || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); } catch(e) { return x; }
+    }
+
+    function setBpMsg(text, ok) {
+        const el = document.getElementById('bpMsg');
+        if (!el) return;
+        el.textContent = text || '';
+        el.className = 'mt-2 text-sm ' + (ok ? 'text-green-600' : 'text-red-600');
+    }
+
+    function showErrorMessage(message) {
+        // Create a temporary alert banner
+        const banner = document.createElement('div');
+        banner.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl z-[300] max-w-md';
+        banner.innerHTML = '<div class="flex items-center"><i class="fas fa-exclamation-circle mr-3 text-xl"></i><span>' + message + '</span></div>';
+        document.body.appendChild(banner);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            banner.style.transition = 'opacity 0.3s';
+            banner.style.opacity = '0';
+            setTimeout(() => banner.remove(), 300);
+        }, 5000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('deleteShopForm');
+        if (!form) return;
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            // Check conditions first via API
+            try {
+                const res = await fetch('/seller/delete-shop/check', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.ok === true) {
+                    // All conditions met, open OTP modal
+                    openDeleteOtpModal();
+                } else {
+                    // Conditions not met, show error message
+                    const message = data.message || 'Cannot delete shop at this time.';
+                    showErrorMessage(message);
+                }
+            } catch (error) {
+                showErrorMessage('Failed to check shop deletion conditions. Please try again later.');
+            }
+        });
+
+        const otpInput = document.getElementById('deleteOtpInput');
+        const otpSendBtn = document.getElementById('deleteOtpSendBtn');
+        const otpVerifyBtn = document.getElementById('deleteOtpVerifyBtn');
+        const otpCancelBtn = document.getElementById('deleteOtpCancelBtn');
+        const otpCloseBtn = document.getElementById('deleteOtpCloseBtn');
+        const otpMsg = document.getElementById('deleteOtpMsg');
+
+        function setMsg(text, ok) {
+            if (!otpMsg) return;
+            otpMsg.textContent = text || '';
+            otpMsg.className = 'mt-2 text-sm ' + (ok ? 'text-green-600' : 'text-red-600');
+        }
+
+        let cooldown = 0, timerId;
+        function startCooldown(seconds) {
+            cooldown = seconds;
+            if (!otpSendBtn) return;
+            otpSendBtn.disabled = true;
+            const base = 'Send OTP';
+            function tick() {
+                if (cooldown <= 0) {
+                    otpSendBtn.disabled = false;
+                    otpSendBtn.textContent = base;
+                    return;
+                }
+                otpSendBtn.textContent = base + ' (' + cooldown + 's)';
+                cooldown -= 1;
+                timerId = setTimeout(tick, 1000);
+            }
+            tick();
+        }
+
+        async function sendOtp() {
+            try {
+                setMsg('', true);
+                const csrf = getCsrfFromForm(form);
+                const body = csrf.name && csrf.value ? encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value) : '';
+                const res = await fetch('/seller/delete-shop/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                const txt = await res.text();
+                if (res.ok) {
+                    setMsg('OTP has been sent to your email.', true);
+                    startCooldown(60);
+                } else if (res.status === 429) {
+                    const m = txt.match(/(\d+)s/);
+                    const sec = m ? parseInt(m[1], 10) : 30;
+                    setMsg(txt || 'Please wait before requesting a new OTP.', false);
+                    startCooldown(Math.max(10, Math.min(60, sec)));
+                } else if (res.status === 401) {
+                    setMsg('You are not logged in. Please sign in first.', false);
+                } else {
+                    setMsg(txt || 'Failed to send OTP. Please try again later.', false);
+                }
+            } catch (e) {
+                setMsg('Failed to send OTP. Please try again later.', false);
+            }
+        }
+
+        async function verifyAndDelete() {
+            const otp = (otpInput?.value || '').trim();
+            if (!/^\d{6}$/.test(otp)) {
+                setMsg('Please enter a valid 6-digit OTP.', false);
+                otpInput && otpInput.focus();
+                return;
+            }
+            try {
+                const csrf = getCsrfFromForm(form);
+                const res = await fetch('/seller/delete-shop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf.value || ''
+                    },
+                    body: JSON.stringify({ otp })
+                });
+                const txt = await res.text();
+                if (res.ok) {
+                    closeDeleteOtpModal();
+                    try {
+                        const banner = document.createElement('div');
+                        banner.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50';
+                        banner.textContent = 'Shop has been cancelled successfully.';
+                        document.body.appendChild(banner);
+                        setTimeout(() => { window.location.href = '/'; }, 700);
+                    } catch (_) { window.location.href = '/'; }
+                } else if (res.status === 400) {
+                    if (txt && txt.startsWith('MSG_OTP_EXPIRED')) {
+                        setMsg('OTP has expired. Please request a new OTP.', false);
+                    } else if (txt && txt.startsWith('MSG_OTP_INVALID')) {
+                        setMsg('OTP is incorrect or already used.', false);
+                    } else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) {
+                        setMsg('Please enter the 6-digit OTP sent to your email.', false);
+                    } else {
+                        setMsg(txt || 'Cannot cancel shop at this time.', false);
+                    }
+                } else if (res.status === 401) {
+                    try { sessionStorage.setItem('redirectMessage', 'You have been logged out due to entering the wrong OTP more than the allowed number of times.'); } catch (e) {}
+                    window.location.href = '/authen/login';
+                } else if (res.status === 403) {
+                    setMsg('You do not have permission to perform this action.', false);
+                } else {
+                    setMsg(txt || 'Unexpected error. Please try again later.', false);
+                }
+            } catch (e) {
+                setMsg('Network error. Please try again later.', false);
+            }
+        }
+
+        otpSendBtn && otpSendBtn.addEventListener('click', sendOtp);
+        otpVerifyBtn && otpVerifyBtn.addEventListener('click', verifyAndDelete);
+        [otpCancelBtn, otpCloseBtn].forEach(btn => btn && btn.addEventListener('click', closeDeleteOtpModal));
+        const modal = document.getElementById('deleteShopOtpModal');
+        modal && modal.addEventListener('click', function (e) { if (e.target === modal) closeDeleteOtpModal(); });
+
+        // Shop Level Modal
+        const levelModal = document.getElementById('shopLevelModal');
+        if (levelModal) {
+            levelModal.addEventListener('click', function (e) { if (e.target === levelModal) closeLevelModal(); });
+        }
+        document.getElementById('shopLevelCloseBtn')?.addEventListener('click', closeLevelModal);
+
+        // Buy Points Modal
+        const buyClose = document.getElementById('buyPointsCloseBtn');
+        buyClose && buyClose.addEventListener('click', closeBuyPointsModal);
+        const targetSelect = document.getElementById('bpTargetLevel');
+        targetSelect && targetSelect.addEventListener('change', refreshBuyPointsQuote);
+
+        const bpSendOtpBtn = document.getElementById('bpSendOtpBtn');
+        const bpConfirmBtn = document.getElementById('bpConfirmBtn');
+        const bpOtpInput = document.getElementById('bpOtpInput');
+        const anyForm = document.getElementById('deleteShopForm'); // reuse CSRF
+
+        async function sendBuyOtp() {
+            try {
+                setBpMsg('', true);
+                const csrf = getCsrfFromForm(anyForm);
+                const body = csrf.name && csrf.value ? encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value) : '';
+                const res = await fetch('/seller/buy-points/send-otp', {
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body
+                });
+                const txt = await res.text();
+                if (res.ok) setBpMsg('OTP has been sent to your email.', true);
+                else if (res.status === 429) setBpMsg(txt || 'Please wait before requesting a new OTP.', false);
+                else if (res.status === 401) setBpMsg('You are not logged in. Please sign in first.', false);
+                else setBpMsg(txt || 'Failed to send OTP. Please try again later.', false);
+            } catch (_) { setBpMsg('Failed to send OTP. Please try again later.', false); }
+        }
+
+        async function confirmBuyPoints() {
+            const otp = (bpOtpInput?.value || '').trim();
+            if (!/^\d{6}$/.test(otp)) { setBpMsg('Please enter a valid 6-digit OTP.', false); bpOtpInput && bpOtpInput.focus(); return; }
+            const targetLevel = parseInt(document.getElementById('bpTargetLevel')?.value || '0', 10) || 0;
+            try {
+                const csrf = getCsrfFromForm(anyForm);
+                const res = await fetch('/seller/buy-points', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.value || '' },
+                    body: JSON.stringify({ targetLevel, otp })
+                });
+                const txt = await res.text();
+                if (res.ok || res.status === 202) {
+                    setBpMsg('Your request was queued. Points will be added shortly.', true);
+                    setTimeout(() => window.location.reload(), 800);
+                } else if (res.status === 400) {
+                    if (txt && txt.startsWith('MSG_OTP_EXPIRED')) setBpMsg('OTP has expired. Please request a new OTP.', false);
+                    else if (txt && txt.startsWith('MSG_OTP_INVALID')) setBpMsg('OTP is incorrect or already used.', false);
+                    else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) setBpMsg('Please enter the 6-digit OTP sent to your email.', false);
+                    else setBpMsg(txt || 'Cannot process purchase at this time.', false);
+                } else if (res.status === 401) {
+                    try { sessionStorage.setItem('redirectMessage', 'You have been logged out due to entering the wrong OTP too many times.'); } catch (e) {}
+                    window.location.href = '/authen/login';
+                } else {
+                    setBpMsg(txt || 'Failed to submit request.', false);
+                }
+            } catch (_) {
+                setBpMsg('Failed to submit request. Please try again later.', false);
+            }
+        }
+
+        bpSendOtpBtn && bpSendOtpBtn.addEventListener('click', sendBuyOtp);
+        bpConfirmBtn && bpConfirmBtn.addEventListener('click', confirmBuyPoints);
+    });
+</script>
+
+</body>
+</html>

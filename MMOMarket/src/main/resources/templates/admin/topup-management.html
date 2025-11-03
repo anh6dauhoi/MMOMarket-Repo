@@ -57,7 +57,8 @@
                         <div class="font-medium" th:text="${dep.user != null ? dep.user.fullName : 'Unknown'}">User Name</div>
                         <div class="text-sm text-gray-500" th:text="${dep.user != null ? dep.user.email : ''}">user@example.com</div>
                     </td>
-                    <td class="py-4 px-4 whitespace-nowrap" th:text="${dep.amount}">100000</td>
+                    <!-- Format amount with dot thousands separator -->
+                    <td class="py-4 px-4 whitespace-nowrap" th:text="${dep.amount != null ? #numbers.formatDecimal(dep.amount, 0, 'POINT', 0, 'COMMA') : '0'}">100000</td>
                     <td class="py-4 px-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                           th:with="
@@ -230,6 +231,13 @@
         </div>
 
         <script>
+            // Helper to format VND-style numbers with dot thousands separators
+            function formatVnd(x) {
+                const n = Number(x);
+                if (!isFinite(n)) return x ?? '';
+                return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n);
+            }
+
             // Open modal, fetch detail and render with nice UI transitions
             window.openTopupModal = function(btn) {
                 const modal = document.getElementById('topupModal');
@@ -267,8 +275,10 @@
                 tx.textContent = id ? '#' + id : (data.id || '');
                 un.textContent = data.userName || '';
                 ue.textContent = data.userEmail || '';
-                amt.textContent = data.amount || '';
-                coins.textContent = data.coinsAdded || '';
+                // format amount with dot thousands
+                amt.textContent = formatVnd(data.amount);
+                // format coins added with dot thousands
+                coins.textContent = formatVnd(data.coinsAdded);
                 st.textContent = data.status || '';
                 stx.textContent = data.status || '';
                 content.textContent = data.content || '';

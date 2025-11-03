@@ -60,6 +60,9 @@ public class AdminController {
     @Autowired
     private com.mmo.service.EmailService emailService;
 
+    @Autowired
+    private com.mmo.service.SystemConfigurationService systemConfigurationService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -142,29 +145,39 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
+            Withdrawal wd = entityManager.find(Withdrawal.class, id);
+            if (wd == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
+            }
+            String current = wd.getStatus() == null ? "" : wd.getStatus().trim();
+            if (!"Pending".equalsIgnoreCase(current)) {
+                return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
+            }
+
             String action = req.getStatus() == null ? "" : req.getStatus().trim();
             boolean approve = "Approved".equalsIgnoreCase(action);
             boolean reject = "Rejected".equalsIgnoreCase(action);
             if (!approve && !reject) {
                 return ResponseEntity.badRequest().body("Status must be 'Approved' or 'Rejected'.");
             }
-            boolean refund = reject; // chỉ refund khi bị từ chối
-            Withdrawal wd = withdrawalService.processWithdrawal(
-                id,
-                req.getStatus(),
-                req.getProofFile(),
-                req.getReason(),
-                refund
+
+            // Process via service (handles emails and refund logic)
+            Withdrawal processed = withdrawalService.processWithdrawal(
+                    id,
+                    action,
+                    req.getProofFile(),
+                    req.getReason(),
+                    reject // refund only when rejected
             );
-            // Gửi notification cho Seller
-            User seller = wd.getSeller();
-            Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
+
+            User seller = processed.getSeller();
+            Long amount = processed.getAmount() == null ? 0L : processed.getAmount();
             if (approve) {
-                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + req.getProofFile());
+                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved.");
             } else {
                 notificationService.createNotificationForUser(seller.getId(), "Withdrawal Rejected", "Your withdrawal request of " + amount + " VND has been rejected. Reason: " + req.getReason() + ". 95% of the amount has been refunded to your account.");
             }
-            return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
+            return ResponseEntity.ok(AdminWithdrawalResponse.from(processed));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
@@ -198,42 +211,27 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("Only pending withdrawals can be processed.");
             }
 
-            String action = status == null ? "" : status.trim();
-            boolean approve = "Approved".equalsIgnoreCase(action);
-            if (!approve) {
+            if (status == null || !"Approved".equalsIgnoreCase(status)) {
                 return ResponseEntity.badRequest().body("This endpoint only supports Approved via multipart (file upload).");
             }
 
-            if (proof == null || proof.isEmpty()) {
-                return ResponseEntity.badRequest().body("Proof file is required for Approved.");
-            }
-
-            // Save uploaded file under uploads/withdrawals
+            String proofFile = null;
             try {
-                // Use absolute path for uploads directory (project root)
-                String rootDir = System.getProperty("user.dir"); // Project root
-                Path storage = Paths.get(rootDir, "uploads", "withdrawals");
-                Files.createDirectories(storage);
-                String original = proof.getOriginalFilename() == null ? "file" : proof.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_");
-                String filename = "withdrawal-" + id + "-" + System.currentTimeMillis() + "-" + original;
-                Path dest = storage.resolve(filename);
-                proof.transferTo(dest.toFile());
-                // File URL for static serving (assumes /uploads/** is mapped in WebMvcConfigurer)
-                String fileUrl = "/uploads/withdrawals/" + filename;
+                if (proof != null && !proof.isEmpty()) {
+                    Path dir = Paths.get("uploads", "withdrawals");
+                    Files.createDirectories(dir);
+                    String filename = "proof-" + id + "-" + System.currentTimeMillis() + "-" + proof.getOriginalFilename();
+                    Path target = dir.resolve(filename);
+                    Files.copy(proof.getInputStream(), target);
+                    proofFile = target.toString().replace('\\', '/');
+                }
+            } catch (Exception ignored) {}
 
-                wd.setStatus("Approved");
-                wd.setProofFile(fileUrl);
-                wd.setUpdatedAt(new java.util.Date());
-                entityManager.merge(wd);
-
-                User seller = wd.getSeller();
-                Long amount = wd.getAmount() == null ? 0L : wd.getAmount();
-                notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved. Proof: " + fileUrl);
-
-                return ResponseEntity.ok(AdminWithdrawalResponse.from(wd));
-            } catch (Exception ex) {
-                return ResponseEntity.status(500).body("Failed to save proof file: " + ex.getMessage());
-            }
+            Withdrawal processed = withdrawalService.processWithdrawal(id, "Approved", proofFile, null, false);
+            User seller = processed.getSeller();
+            Long amount = processed.getAmount() == null ? 0L : processed.getAmount();
+            notificationService.createNotificationForUser(seller.getId(), "Withdrawal Approved", "Your withdrawal request of " + amount + " VND has been approved.");
+            return ResponseEntity.ok(AdminWithdrawalResponse.from(processed));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
@@ -397,6 +395,153 @@ public class AdminController {
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("pageTitle", "Top-up Management");
         model.addAttribute("body", "admin/topup-management");
+        return "admin/layout";
+    }
+
+    // NEW: System configuration management
+
+    @GetMapping("/system-config")
+    public String systemConfig(Model model, Authentication authentication,
+                               @RequestParam(name = "success", required = false) String success) {
+        // Ensure default keys exist
+        systemConfigurationService.ensureDefaults();
+        // Load all
+        model.addAttribute("configMap", systemConfigurationService.getAllAsMap());
+        model.addAttribute("defaults", com.mmo.service.SystemConfigurationService.DEFAULTS);
+        // Provide bank options from util.Bank
+        model.addAttribute("bankOptions", Bank.listAll());
+        if (success != null) {
+            model.addAttribute("successMessage", "System configuration updated successfully.");
+        }
+        // Build SePay QR preview from current config values
+        try {
+            String bankName = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_NAME, "MBBank");
+            String accountNumber = systemConfigurationService.getStringValue(com.mmo.constant.SystemConfigKeys.SYSTEM_BANK_ACCOUNT_NUMBER, "0813302283");
+            String sampleDes = "MMOPREVIEW123456";
+            String url = "https://qr.sepay.vn/img?acc=" + URLEncoder.encode(accountNumber, StandardCharsets.UTF_8) +
+                    "&bank=" + URLEncoder.encode(bankName, StandardCharsets.UTF_8) +
+                    "&des=" + URLEncoder.encode(sampleDes, StandardCharsets.UTF_8);
+            model.addAttribute("sepayQrPreview", url);
+        } catch (Exception ignored) { }
+        model.addAttribute("pageTitle", "System Configuration");
+        model.addAttribute("body", "admin/system-config");
+        return "admin/layout";
+    }
+
+    @PostMapping(value = "/system-config", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public String updateSystemConfig(@RequestParam java.util.Map<String, String> params,
+                                     Model model,
+                                     Authentication authentication) {
+        // Find admin user for updatedBy
+        User admin = null;
+        try {
+            Authentication auth = authentication;
+            if (auth == null || !auth.isAuthenticated()) auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                String email = auth.getName();
+                if (auth instanceof OAuth2AuthenticationToken oauth2Token) {
+                    OAuth2User oauthUser = oauth2Token.getPrincipal();
+                    String mail = oauthUser.getAttribute("email");
+                    if (mail != null) email = mail;
+                }
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", email)
+                        .getResultStream().findFirst().orElse(null);
+            }
+        } catch (Exception ignored) { }
+
+        java.util.Map<String, String> errors = systemConfigurationService.updateConfigs(params, admin);
+        if (errors.isEmpty()) {
+            return "redirect:/admin/system-config?success=1";
+        }
+        // On errors, re-render with messages and bank options
+        model.addAttribute("errors", errors);
+        model.addAttribute("configMap", systemConfigurationService.getAllAsMap());
+        model.addAttribute("defaults", com.mmo.service.SystemConfigurationService.DEFAULTS);
+        model.addAttribute("bankOptions", Bank.listAll());
+        model.addAttribute("pageTitle", "System Configuration");
+        model.addAttribute("body", "admin/system-config");
+        return "admin/layout";
+    }
+
+    @PostMapping(path = "/system-config", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String updateSystemConfigMultipart(@RequestParam java.util.Map<String, String> params,
+                                              @RequestParam(name = "policy_complaint", required = false) MultipartFile policyComplaint,
+                                              @RequestParam(name = "policy_seller_agreement", required = false) MultipartFile policySellerAgreement,
+                                              Model model,
+                                              Authentication authentication) {
+        // Find admin user for updatedBy
+        User admin = null;
+        try {
+            Authentication auth = authentication;
+            if (auth == null || !auth.isAuthenticated()) auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                String email = auth.getName();
+                if (auth instanceof OAuth2AuthenticationToken oauth2Token) {
+                    OAuth2User oauthUser = oauth2Token.getPrincipal();
+                    String mail = oauthUser.getAttribute("email");
+                    if (mail != null) email = mail;
+                }
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", email)
+                        .getResultStream().findFirst().orElse(null);
+            }
+        } catch (Exception ignored) { }
+
+        java.util.Map<String, String> errors = new java.util.LinkedHashMap<>();
+
+        // Handle file uploads for policies
+        try {
+            // Use absolute path under application root to match WebMvcConfig's /uploads/** mapping
+            String rootDir = System.getProperty("user.dir");
+            java.nio.file.Path dir = java.nio.file.Paths.get(rootDir, "uploads", "policies");
+            java.nio.file.Files.createDirectories(dir);
+
+            if (policyComplaint != null && !policyComplaint.isEmpty()) {
+                String original = policyComplaint.getOriginalFilename();
+                String lower = original != null ? original.toLowerCase() : "";
+                if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
+                    errors.put("system_complaint", "Only PDF, DOC, or DOCX files are allowed.");
+                } else {
+                    String filename = "complaint-" + System.currentTimeMillis() + "-" + (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
+                    java.nio.file.Path target = dir.resolve(filename);
+                    policyComplaint.transferTo(target.toFile());
+                    String publicUrl = "/uploads/policies/" + filename;
+                    params.put("system_complaint", publicUrl);
+                }
+            }
+
+            if (policySellerAgreement != null && !policySellerAgreement.isEmpty()) {
+                String original = policySellerAgreement.getOriginalFilename();
+                String lower = original != null ? original.toLowerCase() : "";
+                if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
+                    errors.put("system_contract", "Only PDF, DOC, or DOCX files are allowed.");
+                } else {
+                    String filename = "seller-agreement-" + System.currentTimeMillis() + "-" + (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
+                    java.nio.file.Path target = dir.resolve(filename);
+                    policySellerAgreement.transferTo(target.toFile());
+                    String publicUrl = "/uploads/policies/" + filename;
+                    params.put("system_contract", publicUrl);
+                }
+            }
+        } catch (Exception ex) {
+            errors.put("_global", "Failed to upload policy files: " + ex.getMessage());
+        }
+
+        // Merge validation from service
+        java.util.Map<String, String> svcErrors = systemConfigurationService.updateConfigs(params, admin);
+        if (!svcErrors.isEmpty()) errors.putAll(svcErrors);
+
+        if (errors.isEmpty()) {
+            return "redirect:/admin/system-config?success=1";
+        }
+        // On errors, re-render with messages and bank options
+        model.addAttribute("errors", errors);
+        model.addAttribute("configMap", systemConfigurationService.getAllAsMap());
+        model.addAttribute("defaults", com.mmo.service.SystemConfigurationService.DEFAULTS);
+        model.addAttribute("bankOptions", Bank.listAll());
+        model.addAttribute("pageTitle", "System Configuration");
+        model.addAttribute("body", "admin/system-config");
         return "admin/layout";
     }
 
@@ -633,3 +778,4 @@ public class AdminController {
         }
     }
 }
+

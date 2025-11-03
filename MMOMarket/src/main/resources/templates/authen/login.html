@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>MMO Market - Login</title>
+    <!-- Favicon - Multiple sizes for crisp display -->
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="48x48" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="64x64" th:href="@{/images/logo.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
+    <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/authen/css/authen.css}">
@@ -47,6 +54,8 @@
                 <div class="text-red-500 text-sm text-center mt-2" th:if="${message} and !${#strings.containsIgnoreCase(message, 'success')}">
                     <span th:text="${message}"></span>
                 </div>
+                <!-- Placeholder for client-side message on redirect -->
+                <div id="redirectMessageBox" class="text-red-500 text-sm text-center mt-2 hidden"></div>
             </form>
             <div class="text-center">
                 <a class="text-red-500 hover:text-red-600 text-sm font-medium" href="/authen/register">Don't have an account? Sign up</a>
@@ -68,5 +77,30 @@
     </div>
 </main>
 <th:block th:replace="~{fragments/footer :: footer}"></th:block>
+<script>
+    // Show a client-side message when redirected after OTP lockout/logout
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const msg = sessionStorage.getItem('redirectMessage');
+            if (msg) {
+                const box = document.getElementById('redirectMessageBox');
+                if (box) {
+                    box.textContent = msg;
+                    box.classList.remove('hidden');
+                } else {
+                    // Fallback: inject below the heading
+                    const form = document.querySelector('form[th\\:action]') || document.querySelector('form');
+                    if (form) {
+                        const div = document.createElement('div');
+                        div.className = 'text-red-500 text-sm text-center mt-2';
+                        div.textContent = msg;
+                        form.insertBefore(div, form.firstChild);
+                    }
+                }
+                sessionStorage.removeItem('redirectMessage');
+            }
+        } catch (e) { /* ignore */ }
+    });
+</script>
 </body>
 </html>

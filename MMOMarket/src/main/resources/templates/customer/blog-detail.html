@@ -11,93 +11,107 @@
     <!-- CSRF tokens for AJAX (Spring Security) -->
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="font-sans">
 <div th:replace="~{fragments/header :: header}"></div>
 
-<div id="post-container" th:attr="data-post-id=${post.id}" class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 bg-white rounded-xl shadow border border-gray-100">
-    <header class="mb-6">
-        <h1 class="text-4xl font-bold text-gray-800" th:text="${post.title}">Title</h1>
-        <div class="text-sm text-gray-500 mt-2 flex items-center space-x-4">
-            <span th:text="${#dates.format(post.createdAt, 'dd MMM yyyy')}">date</span>
-            <span class="mx-2">•</span>
-            <span><i class="fas fa-eye"></i>&nbsp;
-                <span id="view-count"
-                      th:text="${displayViews != null ? displayViews : (post.views != null ? post.views : 0)}">0</span>
-            </span>
+<div class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
+    <div id="post-container" th:attr="data-post-id=${post.id}" class="bg-white rounded-xl shadow border border-gray-100 p-6 sm:p-8">
+        <header class="mb-6">
+            <h1 class="text-4xl font-bold text-gray-800" th:text="${post.title}">Title</h1>
+            <div class="text-sm text-gray-500 mt-2 flex items-center space-x-4">
+                <span th:text="${#dates.format(post.createdAt, 'dd MMM yyyy')}">date</span>
+                <span class="mx-2">•</span>
+                <span><i class="fas fa-eye"></i>&nbsp;
+                    <span id="view-count"
+                          th:text="${displayViews != null ? displayViews : (post.views != null ? post.views : 0)}">0</span>
+                </span>
 
-            <!-- Blog like button -->
-            <span class="flex items-center">
-                <i id="blog-heart" class="fas fa-heart heart"
-                   th:classappend="${isBlogLiked} ? ' liked' : ''"
-                   th:onclick="|toggleBlogLike(${post.id})|"></i>
-                <span id="blog-like-count" class="ml-2"
-                      th:text="${displayLikes != null ? displayLikes : (post.likes != null ? post.likes : 0)}">0</span>
-            </span>
+                <!-- Blog like button -->
+                <span class="flex items-center">
+                    <i id="blog-heart" class="fas fa-heart heart"
+                       th:classappend="${isBlogLiked} ? ' liked' : ''"
+                       th:onclick="|toggleBlogLike(${post.id})|"></i>
+                    <span id="blog-like-count" class="ml-2"
+                          th:text="${displayLikes != null ? displayLikes : (post.likes != null ? post.likes : 0)}">0</span>
+                </span>
+            </div>
+        </header>
+
+        <div class="mb-6">
+            <img th:src="${post.image != null ? post.image : '/images/placeholder-1200x600.png'}" th:alt="${post.title}" class="w-full h-64 object-cover rounded-xl shadow">
         </div>
-    </header>
 
-    <div class="mb-6">
-        <img th:src="${post.image != null ? post.image : '/images/placeholder-1200x600.png'}" th:alt="${post.title}" class="w-full h-64 object-cover rounded-xl shadow">
-    </div>
+        <article class="prose max-w-none text-gray-800" th:utext="${post.content}">
+            <!-- post content rendered here -->
+        </article>
 
-    <article class="prose max-w-none text-gray-800" th:utext="${post.content}">
-        <!-- post content rendered here -->
-    </article>
+        <!-- Comments block -->
+        <div class="mt-10">
+            <h3 class="text-xl font-semibold mb-4">
+                Comments (<span th:text="${comments != null ? #lists.size(comments) : 0}">0</span>)
+            </h3>
 
-    <!-- Comments block -->
-    <div class="mt-10">
-        <h3 class="text-xl font-semibold mb-4">
-            Comments (<span th:text="${comments != null ? #lists.size(comments) : 0}">0</span>)
-        </h3>
+            <div id="commentsContainer">
+                <div th:if="${comments == null or #lists.isEmpty(comments)}" class="text-gray-500">No comments yet.</div>
 
-        <div id="commentsContainer">
-            <div th:if="${comments == null or #lists.isEmpty(comments)}" class="text-gray-500">No comments yet.</div>
-
-            <div th:each="comment : ${comments}" class="mb-6 comment-card p-4" th:attr="data-comment-id=${comment.id}">
-                <div class="flex justify-between items-start">
-                    <div class="flex items-start gap-3">
-                        <div class="comment-avatar">
-                            <i class="fa-regular fa-user"></i>
+                <div th:each="comment : ${comments}" class="mb-6 comment-card p-4" th:attr="data-comment-id=${comment.id}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-start gap-3">
+                            <div class="comment-avatar">
+                                <i class="fa-regular fa-user"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-800" th:text="${comment.user != null ? comment.user.fullName : 'Anonymous'}">Author</div>
+                                <div class="text-sm text-gray-500" th:text="${#dates.format(comment.createdAt, 'dd MMM yyyy HH:mm')}">date</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="font-semibold text-gray-800" th:text="${comment.user != null ? comment.user.fullName : 'Anonymous'}">Author</div>
-                            <div class="text-sm text-gray-500" th:text="${#dates.format(comment.createdAt, 'dd MMM yyyy HH:mm')}">date</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="flex items-center text-sm text-gray-600">
-                            <!-- existing comment-like icon (session-based) -->
-                            <i class="fas fa-heart heart"
-                               th:classappend="${likedComments != null and likedComments.contains(comment.id)} ? ' liked' : ''"
-                               th:attr="id=${'heart-' + comment.id}"
-                               th:onclick="|toggleCommentLike(${comment.id})|"></i>
-                            <span class="ml-2" th:attr="id=${'cl-' + comment.id}"
-                                  th:text="${commentLikes != null && commentLikes.containsKey(comment.id) ? commentLikes[comment.id] : 0}">0</span>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <!-- existing comment-like icon (session-based) -->
+                                <i class="fas fa-heart heart"
+                                   th:classappend="${likedComments != null and likedComments.contains(comment.id)} ? ' liked' : ''"
+                                   th:attr="id=${'heart-' + comment.id}"
+                                   th:onclick="|toggleCommentLike(${comment.id})|"></i>
+                                <span class="ml-2" th:attr="id=${'cl-' + comment.id}"
+                                      th:text="${commentLikes != null && commentLikes.containsKey(comment.id) ? commentLikes[comment.id] : 0}">0</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="mt-3 text-gray-800" th:utext="${comment.content}">Comment content</div>
                 </div>
-                <div class="mt-3 text-gray-800" th:utext="${comment.content}">Comment content</div>
+            </div>
+
+            <!-- Comment form -->
+            <div class="mt-6 border rounded-xl p-4 bg-white">
+                <h4 class="font-semibold mb-2">Leave a comment</h4>
+                <textarea id="commentContent" rows="4" class="w-full border rounded-lg p-3 focus:outline-none focus:ring-4 focus:ring-red-200" placeholder="Write your comment..."></textarea>
+                <div class="mt-3 flex justify-end space-x-2">
+                    <button class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100" onclick="document.getElementById('commentContent').value=''">Clear</button>
+                    <button class="px-4 py-2 rounded-lg text-white shadow bg-gradient-to-r from-[#F53E32] to-[#ff6a5b] hover:opacity-95" onclick="submitComment()" id="submitCommentBtn">Post Comment</button>
+                </div>
+                <div id="commentError" class="text-red-500 text-sm mt-2 hidden"></div>
             </div>
         </div>
 
-        <!-- Comment form -->
-        <div class="mt-6 border rounded-xl p-4 bg-white">
-            <h4 class="font-semibold mb-2">Leave a comment</h4>
-            <textarea id="commentContent" rows="4" class="w-full border rounded-lg p-3 focus:outline-none focus:ring-4 focus:ring-red-200" placeholder="Write your comment..."></textarea>
-            <div class="mt-3 flex justify-end space-x-2">
-                <button class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100" onclick="document.getElementById('commentContent').value=''">Clear</button>
-                <button class="px-4 py-2 rounded-lg text-white shadow bg-gradient-to-r from-[#F53E32] to-[#ff6a5b] hover:opacity-95" onclick="submitComment()" id="submitCommentBtn">Post Comment</button>
-            </div>
-            <div id="commentError" class="text-red-500 text-sm mt-2 hidden"></div>
+        <div class="mt-8">
+            <a th:href="@{/blog}" class="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back to blog</span>
+            </a>
         </div>
-    </div>
-
-    <div class="mt-8">
-        <a th:href="@{/blog}" class="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700">
-            <i class="fa-solid fa-arrow-left"></i>
-            <span>Back to blog</span>
-        </a>
     </div>
 </div>
 

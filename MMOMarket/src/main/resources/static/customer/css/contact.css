@@ -11,29 +11,53 @@ body {
     max-width: 1100px;
     margin: 60px auto;
     padding: 0 24px;
+    text-align: center;
 }
 
 .page-hero {
     text-align: center;
-    margin-bottom: 36px;
+    margin-bottom: 40px;
+    background: linear-gradient(135deg, rgba(245, 62, 50, 0.95) 0%, rgba(239, 68, 68, 0.92) 50%, rgba(220, 38, 38, 0.95) 100%);
+    padding: 16px 36px;
+    border-radius: 50px;
+    box-shadow: 0 15px 40px rgba(245, 62, 50, 0.3), 0 8px 16px rgba(0, 0, 0, 0.12);
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+    max-width: fit-content;
+}
+
+.page-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+    animation: heroShine 6s ease-in-out infinite;
+}
+
+@keyframes heroShine {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-15px, -15px); }
 }
 
 h1 {
-    font-size: 2.6rem;
-    font-weight: 800;
-    letter-spacing: -0.4px;
-    margin-bottom: 8px;
-    background: linear-gradient(90deg, #111827 0%, #F53E32 55%, #ff6a5b 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    font-size: 1.75rem;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    margin: 0;
+    color: #ffffff;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
+    text-transform: uppercase;
 }
 
 .subtitle {
-    color: #4b5563;
-    font-size: 1rem;
-    max-width: 700px;
-    margin: 0 auto;
+    display: none;
 }
 
 /* ===== Grid Layout ===== */
@@ -67,82 +91,129 @@ form {
 
 label {
     font-weight: 700;
-    color: #0f1724;          /* deeper, more readable label color */
-    margin-bottom: 8px;
+    color: #0f1724;
+    margin-bottom: 10px;
     font-size: 0.95rem;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+label::before {
+    content: '•';
+    color: #F53E32;
+    font-size: 1.2rem;
+    font-weight: 900;
 }
 
 input, textarea {
     width: 100%;
-    padding: 14px 16px;      /* a touch more horizontal padding for visual balance */
-    font-size: 16px;         /* larger, easier to read */
-    line-height: 1.45;       /* breathing room for multi-line text */
-    font-family: inherit;    /* inherit Inter */
-    color: #0b1220;          /* darker input text for contrast */
-    border: 1px solid #e6e8eb;
-    border-radius: 12px;
-    background: #fff;        /* white inputs for clarity */
-    margin-bottom: 14px;
-    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-    -webkit-font-smoothing:antialiased;
+    padding: 16px 18px;
+    font-size: 16px;
+    line-height: 1.5;
+    font-family: inherit;
+    color: #0b1220;
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%);
+    margin-bottom: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-font-smoothing: antialiased;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02), inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 input::placeholder, textarea::placeholder {
-    color: #94a3b8;
+    color: #9ca3af;
     opacity: 1;
+    font-weight: 400;
+}
+
+input:hover, textarea:hover {
+    border-color: #d1d5db;
+    background: #ffffff;
 }
 
 input:focus, textarea:focus {
     border-color: #F53E32;
-    box-shadow: 0 8px 24px rgba(245,62,50,0.08);
+    box-shadow: 0 0 0 4px rgba(245, 62, 50, 0.1), 0 8px 24px rgba(245, 62, 50, 0.12);
     outline: none;
+    background: #ffffff;
+    transform: translateY(-1px);
 }
 
 textarea {
     resize: vertical;
-    min-height: 130px;
+    min-height: 140px;
 }
 
 .input-error {
-    border-color: #fca5a5 !important;
-    box-shadow: 0 6px 18px rgba(249,115,115,0.06);
+    border-color: #f87171 !important;
+    background: #fef2f2 !important;
+    box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.1) !important;
 }
 
 .error {
     color: #dc2626;
     font-size: 13px;
-    margin: -6px 0 12px 2px;
+    margin: 4px 0 12px 2px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.error::before {
+    content: '⚠';
+    font-size: 14px;
 }
 
 /* ===== Submit Button ===== */
 .submit-btn {
-    background: linear-gradient(90deg, #F53E32, #ff6a5b);
+    background: linear-gradient(135deg, #F53E32 0%, #ef4444 50%, #dc2626 100%);
     color: #fff;
-    font-weight: 800;          /* thicker text weight for button label */
+    font-weight: 800;
     font-size: 16px;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
     border: none;
-    border-radius: 12px;
-    padding: 12px 22px;
+    border-radius: 14px;
+    padding: 16px 32px;
     cursor: pointer;
-    box-shadow: 0 10px 28px rgba(245,62,50,0.16);
-    transition: transform .14s ease, box-shadow .14s ease, opacity .14s ease;
+    box-shadow: 0 12px 32px rgba(245, 62, 50, 0.25), 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     font-family: inherit;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.submit-btn:hover::before {
+    left: 100%;
 }
 
 .submit-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 36px rgba(245,62,50,0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 40px rgba(245, 62, 50, 0.35), 0 8px 16px rgba(0, 0, 0, 0.15);
 }
+
 .submit-btn:active {
-    transform: translateY(0);
-    opacity: 0.98;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(245, 62, 50, 0.3);
 }
 
 /* ===== Success Alert ===== */
@@ -167,7 +238,7 @@ textarea {
 
 .info-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 14px;
     padding: 14px;
     border-radius: 12px;
@@ -184,6 +255,7 @@ textarea {
 .icon {
     width: 44px;
     height: 44px;
+    min-width: 44px;
     border-radius: 50%;
     background: #fff;
     border: 1px solid #ffe0de;
@@ -192,17 +264,22 @@ textarea {
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 10px rgba(245,62,50,0.08);
+    flex-shrink: 0;
 }
 
 .info-text {
     display: flex;
     flex-direction: column;
     line-height: 1.4;
+    gap: 4px;
+    flex: 1;
+    text-align: left;
 }
 
 .info-text strong {
     font-weight: 700;
     color: #1f2937;
+    font-size: 15px;
 }
 
 .info-text span {

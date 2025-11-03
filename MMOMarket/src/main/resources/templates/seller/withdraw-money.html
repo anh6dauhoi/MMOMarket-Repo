@@ -62,7 +62,7 @@
 
                         </div>
 
-                        <p class="text-gray-500 mb-2">Request a withdrawal to your bank account.</p>
+                        <p class="text-gray-500 mb-2">Request a withdrawal to your bank account.<br>Bank info can be edited within 24h while pending.</p>
 
                         <div class="bg-primary-50 border border-primary-200 rounded-lg p-4 flex items-center gap-3">
 
@@ -79,7 +79,7 @@
 
                                 <p class="text-2xl font-bold text-primary-900 mt-1">
 
-                                    <span id="availableBalance" th:text="${coins != null ? coins : 0}" th:data-coins="${coins != null ? coins : 0}">0</span>
+                                    <span id="availableBalance" th:text="${coins != null ? #numbers.formatDecimal(coins, 0, 'POINT', 0, 'COMMA') : 0}" th:data-coins="${coins != null ? coins : 0}">0</span>
 
                                     <span class="text-base font-normal">points</span>
 
@@ -166,7 +166,7 @@
 
                                                 th:each="b : ${bankInfos}"
 
-                                                th:text="${b.bankName + ' - ' + #strings.substring(b.accountNumber, b.accountNumber.length() - 4)}"
+                                                th:text="${b.bankName + ' - ' + (b.accountNumber != null and #strings.length(b.accountNumber) >= 4 ? #strings.substring(b.accountNumber, #strings.length(b.accountNumber) - 4, #strings.length(b.accountNumber)) : (b.accountNumber != null ? b.accountNumber : ''))}"
 
                                                 th:value="${b.id}">
 
@@ -178,6 +178,8 @@
 
                             </div>
 
+                            <!-- Removed inline OTP input; OTP will be verified in a modal before creating the withdrawal -->
+
                             <div>
 
                                 <button class="w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 flex items-center justify-center gap-2"
@@ -185,7 +187,7 @@
 
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor"
                                          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                                        <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                               stroke-linecap="round" stroke-linejoin="round"
                                               stroke-width="2"/>
                                     </svg>
@@ -390,10 +392,8 @@
 
                                             <span class="text-xs font-semibold text-primary-700">Bank Name</span>
 
-                                            <input class="font-semibold text-lg text-primary-900 bg-transparent border-0 focus:ring-0"
-                                                   id="bankNameDetail"
-                                                   readonly
-                                                   type="text">
+                                            <div class="font-semibold text-lg text-primary-900"
+                                                 id="bankNameDetail"></div>
 
                                         </div>
 
@@ -418,10 +418,8 @@
 
                                             <span class="text-xs font-semibold text-gray-600">Account Number</span>
 
-                                            <input class="bg-transparent border-0 focus:ring-0 text-gray-800 font-mono font-bold tracking-wider text-base"
-                                                   id="accountNumberDetail"
-                                                   readonly
-                                                   type="text">
+                                            <div class="text-gray-800 font-mono font-bold tracking-wider text-base"
+                                                 id="accountNumberDetail"></div>
 
                                         </div>
 
@@ -444,10 +442,8 @@
 
                                             <span class="text-xs font-semibold text-gray-600">Account Holder</span>
 
-                                            <input class="bg-transparent border-0 focus:ring-0 text-gray-800 font-medium"
-                                                   id="accountHolderDetail"
-                                                   readonly
-                                                   type="text">
+                                            <div class="text-gray-800 font-medium"
+                                                 id="accountHolderDetail"></div>
 
                                         </div>
 
@@ -470,10 +466,8 @@
 
                                             <span class="text-xs font-semibold text-gray-600">Branch</span>
 
-                                            <input class="bg-transparent border-0 focus:ring-0 text-gray-800 font-medium"
-                                                   id="branchDetail"
-                                                   readonly
-                                                   type="text">
+                                            <div class="text-gray-800 font-medium"
+                                                 id="branchDetail"></div>
 
                                         </div>
 
@@ -574,11 +568,11 @@
 
                                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
 
-                                        <svg class="h-5 w-5 text-gray-500" fill="none"
-                                             stroke="currentColor" viewBox="0 0 24 24"
-                                             xmlns="http://www.w3.org/2000/svg"><path
+                                        <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
                                                 d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
-                                                stroke-linecap="round" stroke-linejoin="round"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
                                                 stroke-width="2"/></svg>
 
                                     </span>
@@ -627,8 +621,8 @@
 
                                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
 
-                                             stroke="currentColor" viewBox="0 0 24 24"
-                                             xmlns="http://www.w3.org/2000/svg"><path
+                                        <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor"
+                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path
                                                 d="M16 7a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round"
                                                 stroke-width="2"/></svg>
 
@@ -685,7 +679,7 @@
                              viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                   stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                    </svg>
+                        </svg>
                         Withdrawal History
                     </h2>
                     <div class="overflow-x-auto">
@@ -728,7 +722,7 @@
                                     <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="' #' + ${w.id}"></td> -->
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="${iterStat.index + 1}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                                        th:text="${w.amount}"></td>
+                                        th:text="${w.amount != null ? #numbers.formatDecimal(w.amount, 0, 'POINT', 0, 'COMMA') : '0'}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span th:classappend="
                                             ${w.status} == 'Pending' ? 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200' :
@@ -737,11 +731,11 @@
                                         " th:text="${w.status}"></span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                                        th:text="${#dates.format(w.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                        th:text="${w.createdAt != null ? #dates.format(w.createdAt, 'yyyy-MM-dd HH:mm') : ''}"></td>
                                     <td class="px-6 py-4 whitespace-nowrap space-x-2">
                                         <button type="button"
                                                 class="inline-block px-3 py-1 bg-primary-600 text-white font-semibold rounded-lg shadow hover:bg-primary-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 view-detail-btn"
-                                                th:attr="data-id=${w.id},data-amount=${w.amount},data-status=${w.status},data-date=${#dates.format(w.createdAt, 'yyyy-MM-dd HH:mm')},data-bankname=${w.bankName},data-accountnumber=${w.accountNumber},data-accountname=${w.accountName},data-branch=${w.branch},data-stt=${iterStat.index + 1}">
+                                                th:attr="data-id=${w.id},data-amount=${w.amount},data-status=${w.status},data-date=${w.createdAt != null ? #dates.format(w.createdAt, 'yyyy-MM-dd HH:mm') : ''},data-createdms=${w.createdAt != null ? w.createdAt.time : 0},data-bankname=${w.bankName},data-accountnumber=${w.accountNumber},data-accountname=${w.accountName},data-branch=${w.branch},data-stt=${iterStat.index + 1}">
                                             View Detail
                                         </button>
                                     </td>
@@ -765,6 +759,38 @@
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
+<!-- OTP Modal for creating a withdrawal (referenced by existing JS) -->
+<div id="verifyOtpModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden">
+    <div class="relative bg-white/90 backdrop-blur rounded-2xl shadow-2xl w-full max-w-md p-6 border border-primary-200">
+        <button id="otpModalCloseBtn" class="absolute right-4 top-2 text-3xl text-gray-400 hover:text-red-500 font-bold">&times;</button>
+        <h3 class="text-xl font-bold text-primary-700 mb-3">Verify OTP</h3>
+        <p class="text-sm text-gray-600 mb-4">Enter the 6-digit OTP sent to your email to confirm the withdrawal request.</p>
+        <input id="otpInput" type="text" maxlength="6" inputmode="numeric" pattern="\d{6}" class="w-full border rounded-md p-2 text-center tracking-widest font-mono text-lg" placeholder="000000" />
+        <div id="otpModalMsg" class="mt-2 text-sm"></div>
+        <div class="mt-4 flex gap-2 justify-end">
+            <button id="otpSendBtn" type="button" class="px-3 py-2 bg-primary-400 rounded hover:bg-primary-500">Send OTP</button>
+            <button id="otpCancelBtn" type="button" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+            <button id="otpVerifySubmitBtn" type="button" class="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700">Verify & Submit</button>
+        </div>
+    </div>
+</div>
+
+<!-- OTP Modal for updating bank info of a pending withdrawal -->
+<div id="updateBankOtpModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden">
+    <div class="relative bg-white/90 backdrop-blur rounded-2xl shadow-2xl w-full max-w-md p-6 border border-primary-200">
+        <button id="updateOtpCloseBtn" class="absolute right-4 top-2 text-3xl text-gray-400 hover:text-red-500 font-bold">&times;</button>
+        <h3 class="text-xl font-bold text-primary-700 mb-3">Confirm bank info update</h3>
+        <p class="text-sm text-gray-600 mb-4">Enter the 6-digit OTP sent to your email to confirm updating bank information for this pending withdrawal.</p>
+        <input id="updateOtpInput" type="text" maxlength="6" inputmode="numeric" pattern="\d{6}" class="w-full border rounded-md p-2 text-center tracking-widest font-mono text-lg" placeholder="000000" />
+        <div id="updateOtpMsg" class="mt-2 text-sm"></div>
+        <div class="mt-4 flex gap-2 justify-end">
+            <button id="updateOtpSendBtn" type="button" class="px-3 py-2 bg-primary-400 rounded hover:bg-primary-500">Send OTP</button>
+            <button id="updateOtpCancelBtn" type="button" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+            <button id="updateOtpVerifyBtn" type="button" class="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700">Verify & Save</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Structure -->
 <div id="withdrawDetailModal"
      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden">
@@ -784,6 +810,7 @@
             </button>
         </div>
         <div class="space-y-4">
+            <!-- immutable info rows -->
             <div class="flex items-center gap-3">
                 <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
                     <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
@@ -803,8 +830,8 @@
             <div class="flex items-center gap-3">
                 <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
                     <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span class="font-semibold text-gray-700">Amount:</span>
                 <span id="modalWithdrawAmount" class="ml-2 text-gray-900 font-bold"></span>
@@ -827,133 +854,134 @@
                 <span class="font-semibold text-gray-700">Date:</span>
                 <span id="modalWithdrawDate" class="ml-2 text-gray-900 font-bold"></span>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100">
-                    <svg class="h-5 w-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                            d="M3 10l9-7 9 7-9 7-9-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-                </span>
-                <span class="font-semibold text-gray-700">Bank Name:</span>
-                <span id="modalWithdrawBankName" class="ml-2 text-gray-900 font-bold"></span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-100">
-                    <svg class="h-5 w-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                            d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
-                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-                </span>
-                <span class="font-semibold text-gray-700">Account Number:</span>
-                <span id="modalWithdrawAccountNumber" class="ml-2 text-gray-900 font-bold"></span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
-                    <svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                            d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
-                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-                </span>
-                <span class="font-semibold text-gray-700">Account Holder:</span>
-                <span id="modalWithdrawAccountHolder" class="ml-2 text-gray-900 font-bold"></span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100">
-                    <svg class="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
-                            d="M16 7a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-                </span>
-                <span class="font-semibold text-gray-700">Branch:</span>
-                <span id="modalWithdrawBranch" class="ml-2 text-gray-900 font-bold"></span>
-            </div>
+
+            <!-- Editable form (bank info) -->
+            <form id="modalUpdateForm" method="post" th:action="@{'/seller/withdrawals/' + 0 + '/update-bank'}" class="pt-2 border-t mt-4">
+                <input th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+
+                <div class="mt-4 flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100">
+                        <svg class="h-5 w-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                                d="M3 10l9-7 9 7-9 7-9-7z" stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"/></svg>
+                    </span>
+                    <label for="modalWithdrawBankName" class="font-semibold text-gray-700 w-36">Bank Name:</label>
+                    <input id="modalWithdrawBankName" name="bankName" type="text" class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" readonly />
+                </div>
+                <div class="mt-3 flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-100">
+                        <svg class="h-5 w-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                                d="M12 11c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0V7m0 4v4m0 0v1m0-1c-1.104 0-2-.896-2-2s.896-2 2-2z"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"/></svg>
+                    </span>
+                    <label for="modalWithdrawAccountNumber" class="font-semibold text-gray-700 w-36">Account Number:</label>
+                    <input id="modalWithdrawAccountNumber" name="accountNumber" type="text" class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 font-mono" readonly />
+                </div>
+                <div class="mt-3 flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
+                        <svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                                d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.304.534 6.121 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                    </span>
+                    <label for="modalWithdrawAccountHolder" class="font-semibold text-gray-700 w-36">Account Holder:</label>
+                    <input id="modalWithdrawAccountHolder" name="accountHolder" type="text" class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" readonly />
+                </div>
+                <div class="mt-3 flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100">
+                        <svg class="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                                d="M16 7a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                    </span>
+                    <label for="modalWithdrawBranch" class="font-semibold text-gray-700 w-36">Branch:</label>
+                    <input id="modalWithdrawBranch" name="branch" type="text" class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" readonly />
+                </div>
+
+                <div class="mt-5 flex justify-end">
+                    <button id="modalSaveBtn" type="submit" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 hidden">Save</button>
+                </div>
+                <div id="modalUpdateMsg" class="mt-2 text-sm"></div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
+    // Helper to format VND-style numbers with dot thousands separators
+    function formatVnd(x) {
+        const n = Number(x);
+        if (!isFinite(n)) return x ?? '';
+        return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n);
+    }
 
     function onBankSelect() {
-
         const select = document.getElementById('bankInfoId');
+        const selectedOption = select.options[select.selectedIndex];
+        const bankInfoDetail = document.getElementById('bankInfoDetail');
+        const addBankForm = document.getElementById('addBankForm');
 
-        const addForm = document.getElementById('addBankForm');
+        if (selectedOption.value) {
+            // Sanitize selected id to numeric only (prevent malformed values like '1/23')
+            let selectedId = (selectedOption.value || '').toString().replace(/\D/g, '');
+            if (!selectedId) {
+                bankInfoDetail.classList.add('hidden');
+                addBankForm.classList.remove('hidden');
+                // Clear hidden fields
+                document.getElementById('hiddenBankName').value = '';
+                document.getElementById('hiddenAccountNumber').value = '';
+                document.getElementById('hiddenAccountHolder').value = '';
+                document.getElementById('hiddenBranch').value = '';
+                // Reset actions
+                const deleteFormReset = document.getElementById('deleteBankForm');
+                deleteFormReset && deleteFormReset.setAttribute('action', '/seller/bank-info/0/delete');
+                const editFormReset = document.getElementById('editBankForm');
+                editFormReset && editFormReset.setAttribute('action', '/seller/bank-info/0/edit');
+                return;
+            }
+             const bankName = selectedOption.getAttribute('data-bank-name');
+             const accountNumber = selectedOption.getAttribute('data-account-number');
+             const accountHolder = selectedOption.getAttribute('data-account-holder');
+             const branch = selectedOption.getAttribute('data-branch');
 
-        const detail = document.getElementById('bankInfoDetail');
+             // Update hidden fields for form submission
+             document.getElementById('hiddenBankName').value = bankName;
+             document.getElementById('hiddenAccountNumber').value = accountNumber;
+             document.getElementById('hiddenAccountHolder').value = accountHolder;
+             document.getElementById('hiddenBranch').value = branch;
 
-        const editForm = document.getElementById('editBankForm');
+             // Update detail view
+             document.getElementById('bankNameDetail').textContent = bankName;
+             document.getElementById('accountNumberDetail').textContent = accountNumber;
+             document.getElementById('accountHolderDetail').textContent = accountHolder;
+             document.getElementById('branchDetail').textContent = branch || 'N/A';
 
-        const deleteForm = document.getElementById('deleteBankForm');
+            // Update delete form action with clean base
+            const deleteForm = document.getElementById('deleteBankForm');
+            deleteForm && deleteForm.setAttribute('action', '/seller/bank-info/' + selectedId + '/delete');
 
-        if (select.value) {
+            // Update edit form action with clean base
+             const editForm = document.getElementById('editBankForm');
+             editForm && editForm.setAttribute('action', '/seller/bank-info/' + selectedId + '/edit');
 
-            // Lấy option đang chọn
-
-            const selected = select.options[select.selectedIndex];
-
-            // Hiện chi tiết
-
-            addForm.classList.add('hidden');
-
-            detail.classList.remove('hidden');
-
-            editForm.classList.add('hidden');
-
-            // Đổ dữ liệu
-
-            document.getElementById('bankNameDetail').value = selected.getAttribute('data-bank-name') || '';
-
-            document.getElementById('accountNumberDetail').value = selected.getAttribute('data-account-number') || '';
-
-            document.getElementById('accountHolderDetail').value = selected.getAttribute('data-account-holder') || '';
-
-            document.getElementById('branchDetail').value = selected.getAttribute('data-branch') || '';
-
-            // Populate hidden inputs so they are sent with withdrawal form
-            const hiddenBankName = document.getElementById('hiddenBankName');
-            const hiddenAccountNumber = document.getElementById('hiddenAccountNumber');
-            const hiddenAccountHolder = document.getElementById('hiddenAccountHolder');
-            const hiddenBranch = document.getElementById('hiddenBranch');
-
-            if (hiddenBankName) hiddenBankName.value = selected.getAttribute('data-bank-name') || '';
-            if (hiddenAccountNumber) hiddenAccountNumber.value = selected.getAttribute('data-account-number') || '';
-            if (hiddenAccountHolder) hiddenAccountHolder.value = selected.getAttribute('data-account-holder') || '';
-            if (hiddenBranch) hiddenBranch.value = selected.getAttribute('data-branch') || '';
-
-            // Cập nhật action xóa/sửa
-
-            const bankId = select.value;
-
-            deleteForm.setAttribute('action', '/seller/bank-info/' + bankId + '/delete');
-
-            editForm.setAttribute('action', '/seller/bank-info/' + bankId + '/edit');
-
-            // Đổ dữ liệu vào form edit (nếu cần)
-
-            document.getElementById('editBankName').value = selected.getAttribute('data-bank-name') || '';
-
-            document.getElementById('editAccountNumber').value = selected.getAttribute('data-account-number') || '';
-
-            document.getElementById('editAccountHolder').value = selected.getAttribute('data-account-holder') || '';
-
-            document.getElementById('editBranch').value = selected.getAttribute('data-branch') || '';
-
+             bankInfoDetail.classList.remove('hidden');
+             addBankForm.classList.add('hidden');
         } else {
+            bankInfoDetail.classList.add('hidden');
+            addBankForm.classList.remove('hidden');
 
-            // Không chọn bank nào, hiện form add
+            // Clear hidden fields
+            document.getElementById('hiddenBankName').value = '';
+            document.getElementById('hiddenAccountNumber').value = '';
+            document.getElementById('hiddenAccountHolder').value = '';
+            document.getElementById('hiddenBranch').value = '';
 
-            addForm.classList.remove('hidden');
-
-            detail.classList.add('hidden');
-
-            editForm.classList.add('hidden');
-
-            // Clear hidden inputs when no bank selected
-            const hiddenBankName = document.getElementById('hiddenBankName');
-            const hiddenAccountNumber = document.getElementById('hiddenAccountNumber');
-            const hiddenAccountHolder = document.getElementById('hiddenAccountHolder');
-            const hiddenBranch = document.getElementById('hiddenBranch');
-            if (hiddenBankName) hiddenBankName.value = '';
-            if (hiddenAccountNumber) hiddenAccountNumber.value = '';
-            if (hiddenAccountHolder) hiddenAccountHolder.value = '';
-            if (hiddenBranch) hiddenBranch.value = '';
-
+            // Reset actions
+            const deleteFormReset = document.getElementById('deleteBankForm');
+            deleteFormReset && deleteFormReset.setAttribute('action', '/seller/bank-info/0/delete');
+            const editFormReset = document.getElementById('editBankForm');
+            editFormReset && editFormReset.setAttribute('action', '/seller/bank-info/0/edit');
         }
-
     }
 
     function showEditBank() {
@@ -962,6 +990,15 @@
 
         document.getElementById('editBankForm').classList.remove('hidden');
 
+        const bankName = document.getElementById('bankNameDetail').textContent;
+        const accountNumber = document.getElementById('accountNumberDetail').textContent;
+        const accountHolder = document.getElementById('accountHolderDetail').textContent;
+        const branch = document.getElementById('branchDetail').textContent;
+
+        document.getElementById('editBankName').value = bankName;
+        document.getElementById('editAccountNumber').value = accountNumber;
+        document.getElementById('editAccountHolder').value = accountHolder;
+        document.getElementById('editBranch').value = (branch === 'N/A' ? '' : branch);
     }
 
     function cancelEditBank() {
@@ -986,34 +1023,236 @@
         const amountSpan = document.getElementById('modalWithdrawAmount');
         const statusSpan = document.getElementById('modalWithdrawStatus');
         const dateSpan = document.getElementById('modalWithdrawDate');
-        const bankNameSpan = document.getElementById('modalWithdrawBankName');
-        const accountNumberSpan = document.getElementById('modalWithdrawAccountNumber');
-        const accountHolderSpan = document.getElementById('modalWithdrawAccountHolder');
-        const branchSpan = document.getElementById('modalWithdrawBranch');
+        const bankNameInput = document.getElementById('modalWithdrawBankName');
+        const accountNumberInput = document.getElementById('modalWithdrawAccountNumber');
+        const accountHolderInput = document.getElementById('modalWithdrawAccountHolder');
+        const branchInput = document.getElementById('modalWithdrawBranch');
+        const form = document.getElementById('modalUpdateForm');
+        const saveBtn = document.getElementById('modalSaveBtn');
+
+        let currentDetailBtn = null;
+        let pendingUpdate = null; // holds { url, payload }
 
         document.querySelectorAll('.view-detail-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
+                // Fill static info
                 sttSpan.textContent = btn.getAttribute('data-stt');
                 idSpan.textContent = btn.getAttribute('data-id');
-                amountSpan.textContent = btn.getAttribute('data-amount');
+                amountSpan.textContent = formatVnd(btn.getAttribute('data-amount'));
                 statusSpan.textContent = btn.getAttribute('data-status');
                 dateSpan.textContent = btn.getAttribute('data-date');
-                bankNameSpan.textContent = btn.getAttribute('data-bankname');
-                accountNumberSpan.textContent = btn.getAttribute('data-accountnumber');
-                accountHolderSpan.textContent = btn.getAttribute('data-accountname');
-                branchSpan.textContent = btn.getAttribute('data-branch');
+
+                // Determine edit eligibility
+                const status = (btn.getAttribute('data-status') || '').toLowerCase();
+                const createdMs = parseInt(btn.getAttribute('data-createdms') || '0', 10);
+                const within24h = createdMs > 0 && (Date.now() - createdMs) <= (24 * 60 * 60 * 1000);
+                const canEdit = status === 'pending' && within24h;
+
+                // Populate inputs
+                bankNameInput.value = btn.getAttribute('data-bankname') || '';
+                accountNumberInput.value = btn.getAttribute('data-accountnumber') || '';
+                accountHolderInput.value = btn.getAttribute('data-accountname') || '';
+                branchInput.value = btn.getAttribute('data-branch') || '';
+
+                // Toggle readonly and Save button
+                [bankNameInput, accountNumberInput, accountHolderInput, branchInput].forEach(inp => {
+                    if (!inp) return;
+                    inp.readOnly = !canEdit;
+                    inp.classList.toggle('bg-gray-100', !canEdit);
+                });
+                if (saveBtn) {
+                    saveBtn.classList.toggle('hidden', !canEdit);
+                }
+
+                // Set form action with id
+                if (form) {
+                    const id = btn.getAttribute('data-id');
+                    form.setAttribute('action', '/seller/withdrawals/' + id + '/update-bank');
+                }
+
+                currentDetailBtn = btn;
                 modal.classList.remove('hidden');
             });
         });
+
         closeModalBtn.addEventListener('click', function () {
             modal.classList.add('hidden');
         });
-        // Optional: close modal when clicking outside the modal content
         modal.addEventListener('click', function (e) {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
+            if (e.target === modal) modal.classList.add('hidden');
         });
+
+        // Intercept modal form submit to require OTP before saving
+        if (form) {
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const msg = document.getElementById('modalUpdateMsg');
+                function setMsg(text, ok) {
+                    if (!msg) return;
+                    msg.textContent = text || '';
+                    msg.className = 'mt-2 text-sm ' + (ok ? 'text-green-600' : 'text-red-600');
+                }
+                setMsg('', true);
+                if (!saveBtn || saveBtn.classList.contains('hidden')) {
+                    return; // not editable
+                }
+                // Basic client-side required check
+                const bn = bankNameInput.value.trim();
+                const an = accountNumberInput.value.trim();
+                const ah = accountHolderInput.value.trim();
+                if (!bn || !an || !ah) {
+                    setMsg('Bank Name, Account Number, and Account Holder cannot be empty.', false);
+                    return;
+                }
+
+                // Prepare payload and stash for OTP-verification step
+                const payload = {
+                    bankName: bn,
+                    accountNumber: an,
+                    accountHolder: ah,
+                    branch: branchInput.value.trim()
+                };
+                const url = form.getAttribute('action');
+                pendingUpdate = { url, payload };
+                openUpdateOtpModal();
+            });
+        }
+
+        // Update-bank OTP modal wiring
+        const updateModal = document.getElementById('updateBankOtpModal');
+        const updateOtpInput = document.getElementById('updateOtpInput');
+        const updateOtpSendBtn = document.getElementById('updateOtpSendBtn');
+        const updateOtpVerifyBtn = document.getElementById('updateOtpVerifyBtn');
+        const updateOtpCancelBtn = document.getElementById('updateOtpCancelBtn');
+        const updateOtpCloseBtn = document.getElementById('updateOtpCloseBtn');
+        const updateOtpMsg = document.getElementById('updateOtpMsg');
+
+        function setUpdateOtpMsg(text, ok) {
+            if (!updateOtpMsg) return;
+            updateOtpMsg.textContent = text || '';
+            updateOtpMsg.className = 'mt-2 text-sm ' + (ok ? 'text-green-600' : 'text-red-600');
+        }
+        function openUpdateOtpModal() { updateModal && updateModal.classList.remove('hidden'); }
+        function closeUpdateOtpModal() {
+            if (!updateModal) return;
+            updateModal.classList.add('hidden');
+            setUpdateOtpMsg('', true);
+            updateOtpInput && (updateOtpInput.value = '');
+        }
+        window.openUpdateOtpModal = openUpdateOtpModal;
+
+        let cooldownUpdate = 0, cooldownTimerUpdate;
+        function startUpdateCooldown(seconds) {
+            cooldownUpdate = seconds;
+            if (!updateOtpSendBtn) return;
+            updateOtpSendBtn.disabled = true;
+            const base = 'Send OTP';
+            function tick() {
+                if (cooldownUpdate <= 0) {
+                    updateOtpSendBtn.disabled = false;
+                    updateOtpSendBtn.textContent = base;
+                    return;
+                }
+                updateOtpSendBtn.textContent = base + ' (' + cooldownUpdate + 's)';
+                cooldownUpdate -= 1;
+                cooldownTimerUpdate = setTimeout(tick, 1000);
+            }
+            tick();
+        }
+
+        async function sendUpdateOtp() {
+            try {
+                setUpdateOtpMsg('', true);
+                const csrf = getCsrfFromForm(form);
+                const body = csrf.name && csrf.value ? encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value) : '';
+                const res = await fetch('/seller/withdrawals/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                const txt = await res.text();
+                if (res.ok) {
+                    setUpdateOtpMsg('OTP has been sent to your email.', true);
+                    startUpdateCooldown(60);
+                } else if (res.status === 429) {
+                    const m = txt.match(/(\d+)s/);
+                    const sec = m ? parseInt(m[1], 10) : 30;
+                    setUpdateOtpMsg(txt || 'Please wait before requesting a new OTP.', false);
+                    startUpdateCooldown(Math.max(10, Math.min(60, sec)));
+                } else if (res.status === 401) {
+                    setUpdateOtpMsg('You are not logged in. Please sign in first.', false);
+                } else {
+                    setUpdateOtpMsg(txt || 'Failed to send OTP. Please try again later.', false);
+                }
+            } catch (e) {
+                setUpdateOtpMsg('Failed to send OTP. Please try again later.', false);
+            }
+        }
+
+        async function verifyUpdateAndSave() {
+            const otp = (updateOtpInput?.value || '').trim();
+            if (!/^\d{6}$/.test(otp)) {
+                setUpdateOtpMsg('Please enter a valid 6-digit OTP.', false);
+                updateOtpInput && updateOtpInput.focus();
+                return;
+            }
+            if (!pendingUpdate || !pendingUpdate.url) {
+                setUpdateOtpMsg('No update is pending. Please try again.', false);
+                return;
+            }
+            const csrf = getCsrfFromForm(form);
+            const payload = Object.assign({}, pendingUpdate.payload, { otp });
+            try {
+                const res = await fetch(pendingUpdate.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf.value || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const txt = await res.text();
+                if (res.ok) {
+                    // Success: close modals and reload page to avoid stale state
+                    closeUpdateOtpModal();
+                    document.getElementById('withdrawDetailModal')?.classList.add('hidden');
+                    try {
+                        const banner = document.createElement('div');
+                        banner.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50';
+                        banner.textContent = 'Bank information updated successfully.';
+                        document.body.appendChild(banner);
+                        setTimeout(() => { window.location.reload(); }, 700);
+                    } catch (_) { window.location.reload(); }
+                } else if (res.status === 400) {
+                    if (txt && txt.startsWith('MSG_OTP_EXPIRED')) {
+                        setUpdateOtpMsg('OTP has expired. Please request a new OTP.', false);
+                    } else if (txt && txt.startsWith('MSG_OTP_INVALID')) {
+                        setUpdateOtpMsg('OTP is incorrect or already used.', false);
+                    } else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) {
+                        setUpdateOtpMsg('Please enter the 6-digit OTP sent to your email.', false);
+                    } else {
+                        setUpdateOtpMsg(txt || 'Failed to update bank information.', false);
+                    }
+                } else if (res.status === 401) {
+                    try {
+                        sessionStorage.setItem('redirectMessage', 'You have been logged out due to entering the wrong OTP more than the allowed number of times.');
+                    } catch (e) {}
+                    window.location.href = '/authen/login';
+                    return;
+                } else if (res.status === 403) {
+                    setUpdateOtpMsg('You do not have permission to perform this action.', false);
+                } else {
+                    setUpdateOtpMsg(txt || 'Unexpected error while updating bank info.', false);
+                }
+            } catch (e) {
+                setUpdateOtpMsg('Network error. Please try again later.', false);
+            }
+        }
+
+        updateOtpSendBtn && updateOtpSendBtn.addEventListener('click', sendUpdateOtp);
+        updateOtpVerifyBtn && updateOtpVerifyBtn.addEventListener('click', verifyUpdateAndSave);
+        [updateOtpCancelBtn, updateOtpCloseBtn].forEach(btn => btn && btn.addEventListener('click', closeUpdateOtpModal));
+        updateModal && updateModal.addEventListener('click', function (e) { if (e.target === updateModal) closeUpdateOtpModal(); });
     });
 
     // Sort table function
@@ -1038,8 +1277,9 @@
 
             let aVal, bVal;
             if (columnIndex === 1) { // Amount
-                aVal = parseInt(aText.replace(/,/g, '')) || 0;
-                bVal = parseInt(bText.replace(/,/g, '')) || 0;
+                // remove dot or comma group separators
+                aVal = parseInt(aText.replace(/[\.,\s]/g, '')) || 0;
+                bVal = parseInt(bText.replace(/[\.,\s]/g, '')) || 0;
             } else if (columnIndex === 3) { // Date
                 aVal = new Date(aText);
                 bVal = new Date(bText);
@@ -1085,7 +1325,7 @@
             const amountInput = withdrawForm.querySelector('#amount');
             const availableSpan = document.getElementById('availableBalance');
             const amountError = document.getElementById('amountError');
-            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.trim() || 0) : 0;
+            const available = availableSpan ? Number(availableSpan.dataset.coins || availableSpan.textContent.replace(/[\.,\s]/g, '') || 0) : 0;
 
             // Set max attribute in case JS runs on client-side rendering
             if (amountInput && !isNaN(available)) {
@@ -1110,27 +1350,219 @@
                     const val = Number(amountInput.value || 0);
                     if (!isFinite(val)) return;
                     if (val > available) {
-                        showError('Amount cannot exceed available balance (' + available.toLocaleString() + ').');
+                        showError('Amount cannot exceed available balance (' + formatVnd(available) + ').');
                     }
                 });
             }
 
+            // Intercept submit to open OTP modal instead of direct submit
             withdrawForm.addEventListener('submit', function (ev) {
-                if (!amountInput) return;
+                ev.preventDefault();
+                clearError();
                 const val = Number(amountInput.value || 0);
-                if (!isFinite(val)) return;
-                if (val > available) {
-                    ev.preventDefault();
-                    showError('Amount cannot exceed available balance (' + available.toLocaleString() + ').');
+                if (!isFinite(val) || val <= 0) {
+                    showError('Please enter a valid amount.');
                     amountInput.focus();
                     return false;
                 }
-                // Let server-side validation handle remaining checks
+                if (val < 50000) {
+                    showError('Minimum withdrawal amount is 50,000.');
+                    amountInput.focus();
+                    return false;
+                }
+                if (val > available) {
+                    showError('Amount cannot exceed available balance (' + formatVnd(available) + ').');
+                    amountInput.focus();
+                    return false;
+                }
+                const bankSelect = document.getElementById('bankInfoId');
+                if (!bankSelect || !bankSelect.value) {
+                    showError('Please select a bank account.');
+                    bankSelect && bankSelect.focus();
+                    return false;
+                }
+                // All good: open OTP modal
+                openOtpModal();
             });
         } catch (e) {
-            // fail silently to avoid breaking other scripts
             console.error('Withdraw form validation setup failed', e);
         }
+    });
+
+    // OTP modal logic
+    function getCsrfFromForm(form) {
+        if (!form) return { name: null, value: null };
+        // try name contains 'csrf'
+        const inputs = Array.from(form.querySelectorAll('input[type="hidden"]'));
+        let csrf = inputs.find(i => (i.name || '').toLowerCase().includes('csrf'));
+        if (csrf) return { name: csrf.name, value: csrf.value };
+        // fallback to first hidden
+        csrf = inputs[0];
+        return csrf ? { name: csrf.name, value: csrf.value } : { name: null, value: null };
+    }
+
+    function openOtpModal() {
+        const modal = document.getElementById('verifyOtpModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+    function closeOtpModal() {
+        const modal = document.getElementById('verifyOtpModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form[action="/seller/withdrawals"]');
+        if (!form) return;
+        const otpInput = document.getElementById('otpInput');
+        const otpSendBtn = document.getElementById('otpSendBtn');
+        const otpVerifySubmitBtn = document.getElementById('otpVerifySubmitBtn');
+        const otpCancelBtn = document.getElementById('otpCancelBtn');
+        const otpModalCloseBtn = document.getElementById('otpModalCloseBtn');
+        const otpMsg = document.getElementById('otpModalMsg');
+
+        let cooldown = 0;
+        let cooldownTimer;
+
+        function setOtpMsg(text, ok) {
+            otpMsg.textContent = text || '';
+            otpMsg.className = 'text-sm ' + (ok ? 'text-green-600' : 'text-red-600');
+        }
+        function startCooldown(seconds) {
+            cooldown = seconds;
+            otpSendBtn.disabled = true;
+            const base = 'Send OTP';
+            function tick() {
+                if (cooldown <= 0) {
+                    otpSendBtn.disabled = false;
+                    otpSendBtn.textContent = base;
+                    return;
+                }
+                otpSendBtn.textContent = base + ' (' + cooldown + 's)';
+                cooldown -= 1;
+                cooldownTimer = setTimeout(tick, 1000);
+            }
+            tick();
+        }
+
+        function buildPayload() {
+            const amount = Number(document.getElementById('amount').value || 0);
+            const bankInfoId = document.getElementById('bankInfoId').value ? Number(document.getElementById('bankInfoId').value) : null;
+            return {
+                amount: amount,
+                bankInfoId: bankInfoId,
+                bankName: document.getElementById('hiddenBankName')?.value || null,
+                accountNumber: document.getElementById('hiddenAccountNumber')?.value || null,
+                accountHolder: document.getElementById('hiddenAccountHolder')?.value || null,
+                branch: document.getElementById('hiddenBranch')?.value || null,
+                otp: (otpInput?.value || '').trim()
+            };
+        }
+
+        async function sendOtp() {
+            try {
+                setOtpMsg('', true);
+                const csrf = getCsrfFromForm(form);
+                const body = csrf.name && csrf.value ? encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value) : '';
+                const res = await fetch('/seller/withdrawals/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                const txt = await res.text();
+                if (res.ok) {
+                    setOtpMsg('OTP has been sent to your email.', true);
+                    startCooldown(60);
+                } else if (res.status === 429) {
+                    const m = txt.match(/(\d+)s/);
+                    const sec = m ? parseInt(m[1], 10) : 30;
+                    setOtpMsg(txt || 'Please wait before requesting a new OTP.', false);
+                    startCooldown(Math.max(10, Math.min(60, sec)));
+                } else if (res.status === 401) {
+                    setOtpMsg('You are not logged in. Please sign in first.', false);
+                } else {
+                    setOtpMsg(txt || 'Failed to send OTP. Please try again later.', false);
+                }
+            } catch (e) {
+                setOtpMsg('Failed to send OTP. Please try again later.', false);
+            }
+        }
+
+        async function verifyAndSubmit() {
+            const otp = (otpInput?.value || '').trim();
+            if (!/^\d{6}$/.test(otp)) {
+                setOtpMsg('Please enter a valid 6-digit OTP.', false);
+                otpInput && otpInput.focus();
+                return;
+            }
+            const payload = buildPayload();
+            const csrf = getCsrfFromForm(form);
+            try {
+                const res = await fetch('/seller/withdrawals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf.value || '',
+                        'X-XSRF-TOKEN': csrf.value || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const txt = await res.text();
+                if (res.status === 201 || res.ok) {
+                    // Success: reload to see new record and updated balance
+                    closeOtpModal();
+                    // Create a temporary success banner
+                    try {
+                        const banner = document.createElement('div');
+                        banner.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50';
+                        banner.textContent = 'Withdrawal request submitted successfully.';
+                        document.body.appendChild(banner);
+                        setTimeout(() => { window.location.reload(); }, 800);
+                    } catch (_) { window.location.reload(); }
+                } else if (res.status === 400) {
+                    // Server-side validation messages
+                    if (txt && txt.startsWith('MSG_OTP_EXPIRED')) {
+                        setOtpMsg('OTP has expired. Please request a new OTP.', false);
+                    } else if (txt && txt.startsWith('MSG_OTP_INVALID')) {
+                        setOtpMsg('OTP is incorrect or already used.', false);
+                    } else if (txt && txt.startsWith('MSG16')) {
+                        setOtpMsg('Minimum withdrawal amount is 50,000.', false);
+                    } else if (txt && txt.startsWith('MSG07')) {
+                        setOtpMsg('Insufficient balance for this withdrawal.', false);
+                    } else if (txt && txt.startsWith('MSG17')) {
+                        setOtpMsg('Bank information is invalid for this user.', false);
+                    } else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) {
+                        setOtpMsg('Please enter the 6-digit OTP sent to your email.', false);
+                    } else {
+                        setOtpMsg(txt || 'Failed to create withdrawal. Please try again.', false);
+                    }
+                } else if (res.status === 401) {
+                    try {
+                        sessionStorage.setItem('redirectMessage', 'Logged out: too many wrong OTPs.');
+                    } catch (e) {}
+                    window.location.href = '/authen/login';
+                    return;
+                } else if (res.status === 403) {
+                    setOtpMsg('You do not have permission to perform this action.', false);
+                } else {
+                    setOtpMsg(txt || 'Unexpected error while creating withdrawal.', false);
+                }
+            } catch (e) {
+                setOtpMsg('Network error. Please try again later.', false);
+            }
+        }
+
+        // Wire up modal buttons
+        otpSendBtn && otpSendBtn.addEventListener('click', sendOtp);
+        otpVerifySubmitBtn && otpVerifySubmitBtn.addEventListener('click', verifyAndSubmit);
+        const closeHandlers = [otpCancelBtn, otpModalCloseBtn];
+        closeHandlers.forEach(btn => btn && btn.addEventListener('click', function () {
+            closeOtpModal();
+        }));
+        // Close on backdrop click
+        const otpModal = document.getElementById('verifyOtpModal');
+        otpModal && otpModal.addEventListener('click', function (e) {
+            if (e.target === otpModal) closeOtpModal();
+        });
     });
 
 </script>

@@ -6,13 +6,13 @@
             <div class="flex justify-between items-center h-16">
                 <!-- Logo - Updated to red -->
                 <div class="flex items-center space-x-2">
-                    <a class="flex items-center space-x-2" th:href="@{/welcome}">
+                    <a class="flex items-center space-x-2" th:href="@{/homepage}">
                         <div class="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round"
                                       stroke-linejoin="round"
                                       stroke-width="2"></path>
-                            </svg>
+                            </svg> 
                         </div>
                         <span class="text-xl font-bold text-gray-900">MMO Market</span>
                     </a>
@@ -32,7 +32,7 @@
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex space-x-4 lg:space-x-8">
                     <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
-                       th:classappend="${(activePage == 'home') or (uri == '/' or #strings.startsWith(uri,'/welcome') or #strings.startsWith(uri,'/homepage')) ? ' text-red-500 border-b-2 border-red-500' : ''}"
+                       th:classappend="${(activePage == 'home') or (uri == '/' or #strings.startsWith(uri,'/homepage')) ? ' text-red-500 border-b-2 border-red-500' : ''}"
                        th:href="@{/homepage}"
                        data-nav="home">Home</a>
 
@@ -63,7 +63,7 @@
                     <a class="text-gray-700 hover:text-gray-900 font-medium px-2 py-1"
                        th:href="@{/customer/topup}"
                        th:classappend="${(activePage == 'topup') or #strings.startsWith(uri,'/customer/topup') ? ' text-red-500 border-b-2 border-red-500' : ''}">
-                        Topup
+                        Top-up
                     </a>
                 </nav>
 
@@ -176,7 +176,7 @@
                                     <div class="flex justify-between items-center">
                                         <span class="font-semibold">Balance:</span>
                                         <span class="font-semibold text-red-500"
-                                              th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT') + ' coins' : '0 coins'}"></span>
+                                              th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'POINT', 0, 'COMMA') + ' coins' : '0 coins'}"></span>
                                     </div>
                                 </div>
                                 <div class="border-t my-2"></div>
@@ -207,7 +207,7 @@
                                               stroke-linecap="round" stroke-linejoin="round"
                                               stroke-width="2"></path>
                                     </svg>
-                                    My wishlist
+                                    My Wishlist
                                 </a>
 
                                 <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
@@ -278,8 +278,8 @@
                 <!-- Mobile Navigation -->
                 <nav class="pt-2 pb-3 space-y-1 border-t border-gray-200 mt-2">
                     <a class="block px-3 py-2 rounded-md font-medium"
-                       th:classappend="${(activePage == 'home') or (uri == '/' or #strings.startsWith(uri,'/welcome') or #strings.startsWith(uri,'/homepage')) ? ' bg-red-50 text-red-500' : ' text-gray-700 hover:bg-gray-50'}"
-                       th:href="@{/welcome}"
+                       th:classappend="${(activePage == 'home') or (uri == '/' or #strings.startsWith(uri,'/homepage')) ? ' bg-red-50 text-red-500' : ' text-gray-700 hover:bg-gray-50'}"
+                       th:href="@{/homepage}"
                        data-nav="home">Home</a>
 
                     <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 font-medium"
@@ -324,7 +324,7 @@
                         <div>
                             <div class="font-medium text-gray-800" th:text="${displayName}">User Name</div>
                             <div class="text-xs text-red-500 font-semibold"
-                                 th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'COMMA', 0, 'POINT') + ' coins' : '0 coins'}">
+                                 th:text="${currentUser.coins != null ? #numbers.formatDecimal(currentUser.coins, 0, 'POINT', 0, 'COMMA') + ' coins' : '0 coins'}">
                                 0 coins
                             </div>
                         </div>
@@ -354,7 +354,6 @@
                             <svg class="w-5 h-5 inline-block mr-1 text-red-500" viewBox="0 0 24 24" fill="currentColor"
                                  xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M12.001 4.529c1.664-1.76 4.632-1.76 6.297 0 1.688 1.786 1.688 4.687 0 6.473L12 20.08l-6.298-8.079c-1.688-1.786-1.688-4.687 0-6.473 1.665-1.76 4.633-1.76 6.299 0z"/>
-                            </svg>
                         </a>
 
                         <a class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
@@ -400,6 +399,8 @@
         </div>
     </header>
     <script defer src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js"></script>
+    <!-- Anti-DevTools Protection - Chặn F12 và Developer Tools -->
+    <script defer th:src="@{/js/anti-devtools.js}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
@@ -423,7 +424,7 @@
                 if (dropdown) dropdown.classList.remove('hidden');
                 if (!categoriesLoaded && listContainer) {
                     fetch('/api/categories').then(res => res.ok ? res.json() : Promise.reject('Failed'))
-                        .then(data => {
+                        .then data => {
                             if (!Array.isArray(data)) return;
                             data.forEach(cat => {
                                 const a = document.createElement('a');

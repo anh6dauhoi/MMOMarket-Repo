@@ -20,6 +20,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.coins = COALESCE(u.coins,0) + :delta WHERE u.id = :id")
     int addCoins(@Param("id") Long id, @Param("delta") Long delta);
 
+    // Atomic deduction with guard to prevent negative balance; returns number of rows updated (0 if insufficient)
+    @Modifying
+    @Query("UPDATE User u SET u.coins = COALESCE(u.coins,0) - :amount WHERE u.id = :id AND COALESCE(u.coins,0) >= :amount")
+    int deductCoinsIfEnough(@Param("id") Long id, @Param("amount") Long amount);
+
+    // Atomic: deduct registration fee and activate shop status only if not already Active and enough coins
+    @Modifying
+    @Query("UPDATE User u SET u.coins = COALESCE(u.coins,0) - :amount, u.shopStatus = 'Active' " +
+            "WHERE u.id = :id AND (u.shopStatus IS NULL OR LOWER(u.shopStatus) <> 'active') AND COALESCE(u.coins,0) >= :amount")
+    int activateSellerAndDeductIfNotActive(@Param("id") Long id, @Param("amount") Long amount);
+
     // New: find users by role (case-insensitive) and not deleted — used to notify all admins
     List<User> findByRoleIgnoreCaseAndIsDelete(String role, boolean isDelete);
 

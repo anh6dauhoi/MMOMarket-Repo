@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MMO Market - Product Detail</title>
+    <!-- Favicon - Multiple sizes for crisp display -->
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="48x48" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="64x64" th:href="@{/images/logo.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
+    <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -11,6 +18,19 @@
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf_header" th:content="${_csrf.headerName}" />
     <meta name="_csrf_parameter" th:content="${_csrf.parameterName}" />
+
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
 </head>
 <body>
 <div th:replace="~{fragments/header :: header}"></div>
