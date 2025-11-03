@@ -39,6 +39,9 @@ public class Transaction {
     @JoinColumn(name = "variant_id", nullable = false)
     private ProductVariant variant;
 
+    @Column(name = "quantity", nullable = false)
+    private Long quantity = 1L;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "delivered_account_id", nullable = true)
     private ProductVariantAccount deliveredAccount;
@@ -57,12 +60,12 @@ public class Transaction {
     private Long coinSeller;
 
     // Status
-    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Pending'")
-    private String status = "Pending";
+    @Column(name = "status", length = 50, columnDefinition = "VARCHAR(50) DEFAULT 'CREATED'")
+    private String status = "CREATED";
 
     // Escrow release
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "escrow_release_date")
+    @Column(name = "escrow_release_date", columnDefinition = "DATETIME(6)")
     private Date escrowReleaseDate;
 
     // Audit timestamps (DB-managed)
