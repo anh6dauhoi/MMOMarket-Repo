@@ -43,9 +43,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import com.mmo.dto.ConversationSummaryDto;
-import com.mmo.service.ChatService;
-import com.mmo.service.AuthService;
 
 @Controller
 @RequestMapping("/admin")
@@ -66,12 +63,6 @@ public class AdminController {
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    @Autowired
-    private ChatService chatService;
-
-    @Autowired
-    private AuthService authService;
 
     // NEW: Admin Dashboard route
     @GetMapping({"", "/"})
@@ -620,6 +611,7 @@ public class AdminController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+}
 
     @GetMapping("/chat")
     public String adminChat(Authentication authentication, Model model) {
@@ -634,3 +626,4 @@ public class AdminController {
         return "admin/layout";
     }
 }
+

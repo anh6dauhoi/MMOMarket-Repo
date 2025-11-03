@@ -43,14 +43,12 @@
                 <div th:each="conv : ${conversations}"
                      th:data-partner-id="${conv.partnerId}"
                      th:data-partner-name="${conv.partnerName}"
-                     th:attr="data-is-admin=${conv.admin}"
                      onclick="selectConversation(this)"
                      class="p-4 hover:bg-gray-50 cursor-pointer transition conversation-item">
                     <div class="flex items-start gap-3">
                         <!-- Avatar -->
                         <div class="relative">
-                            <div th:classappend="${conv.admin} ? ' from-red-500 to-rose-600' : ' from-red-400 to-orange-400'"
-                                 class="w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center flex-shrink-0">
                                 <span class="text-white font-bold text-lg"
                                       th:text="${#strings.substring(conv.partnerName, 0, 1)}">U</span>
                             </div>
@@ -62,13 +60,7 @@
                         <!-- Content -->
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start mb-1">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <h3 class="font-semibold text-gray-800 truncate" th:text="${conv.partnerName}">User Name</h3>
-                                    <span th:if="${conv.admin}"
-                                          class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 flex-shrink-0">
-                                        <i class="fas fa-shield-alt mr-1"></i> Support
-                                    </span>
-                                </div>
+                                <h3 class="font-semibold text-gray-800 truncate" th:text="${conv.partnerName}">User Name</h3>
                                 <span class="text-xs text-gray-500 flex-shrink-0 ml-2"
                                       th:text="${#dates.format(conv.lastMessageTime, 'HH:mm')}">11:30</span>
                             </div>
@@ -618,23 +610,13 @@
             timeSpan.textContent = time;
         }
 
-        // Move conversation appropriately while keeping Admin pinned first (if present)
+        // Move conversation to top of the list
         const conversationList = document.querySelector('.conversation-list');
         if (conversationList && item.parentElement === conversationList) {
-            const adminItem = conversationList.querySelector('.conversation-item[data-is-admin="true"]');
-            const isAdminItem = item.getAttribute('data-is-admin') === 'true';
+            // Remove from current position
             conversationList.removeChild(item);
-            if (adminItem && adminItem !== item && !isAdminItem) {
-                // Insert right after admin pinned item
-                if (adminItem.nextSibling) {
-                    conversationList.insertBefore(item, adminItem.nextSibling);
-                } else {
-                    conversationList.appendChild(item);
-                }
-            } else {
-                // For admin item or when no admin pinned, place at top
-                conversationList.insertBefore(item, conversationList.firstChild);
-            }
+            // Insert at the beginning
+            conversationList.insertBefore(item, conversationList.firstChild);
 
             // Add a subtle animation effect
             item.style.animation = 'none';
