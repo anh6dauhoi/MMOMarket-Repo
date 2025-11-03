@@ -1579,6 +1579,294 @@ public class AdminController {
         }
     }
 
+    // ==================== USER MANAGEMENT ====================
+
+    @GetMapping("/users")
+    @Transactional(readOnly = true)
+    public String usersManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                  @RequestParam(name = "search", defaultValue = "") String search,
+                                  @RequestParam(name = "role", defaultValue = "") String role,
+                                  @RequestParam(name = "shopStatus", defaultValue = "") String shopStatus,
+                                  @RequestParam(name = "sort", defaultValue = "") String sort,
+                                  Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+
+        // Build dynamic query
+        StringBuilder jpql = new StringBuilder("SELECT u FROM User u WHERE u.isDelete = false");
+
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
+        }
+
+        if (role != null && !role.trim().isEmpty()) {
+            jpql.append(" AND LOWER(u.role) = LOWER(:role)");
+        }
+
+        if (shopStatus != null && !shopStatus.trim().isEmpty()) {
+            jpql.append(" AND LOWER(u.shopStatus) = LOWER(:shopStatus)");
+        }
+
+        // Add sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("role_asc")) {
+                jpql.append(" ORDER BY u.role ASC");
+            } else if (sort.equals("role_desc")) {
+                jpql.append(" ORDER BY u.role DESC");
+            } else if (sort.equals("shopStatus_asc")) {
+                jpql.append(" ORDER BY u.shopStatus ASC");
+            } else if (sort.equals("shopStatus_desc")) {
+                jpql.append(" ORDER BY u.shopStatus DESC");
+            } else if (sort.equals("coins_asc")) {
+                jpql.append(" ORDER BY u.coins ASC");
+            } else if (sort.equals("coins_desc")) {
+                jpql.append(" ORDER BY u.coins DESC");
+            } else {
+                jpql.append(" ORDER BY u.createdAt DESC");
+            }
+        } else {
+            jpql.append(" ORDER BY u.createdAt DESC");
+        }
+
+        // Get total count
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(u) FROM User u WHERE u.isDelete = false");
+        if (search != null && !search.trim().isEmpty()) {
+            countJpql.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
+        }
+        if (role != null && !role.trim().isEmpty()) {
+            countJpql.append(" AND LOWER(u.role) = LOWER(:role)");
+        }
+        if (shopStatus != null && !shopStatus.trim().isEmpty()) {
+            countJpql.append(" AND LOWER(u.shopStatus) = LOWER(:shopStatus)");
+        }
+
+        TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+        if (search != null && !search.trim().isEmpty()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        if (role != null && !role.trim().isEmpty()) {
+            countQuery.setParameter("role", role.trim());
+        }
+        if (shopStatus != null && !shopStatus.trim().isEmpty()) {
+            countQuery.setParameter("shopStatus", shopStatus.trim());
+        }
+        long total = countQuery.getSingleResult();
+
+        // Get paginated results
+        TypedQuery<User> query = entityManager.createQuery(jpql.toString(), User.class);
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+        if (role != null && !role.trim().isEmpty()) {
+            query.setParameter("role", role.trim());
+        }
+        if (shopStatus != null && !shopStatus.trim().isEmpty()) {
+            query.setParameter("shopStatus", shopStatus.trim());
+        }
+
+        query.setFirstResult(page * 10);
+        query.setMaxResults(10);
+        List<User> users = query.getResultList();
+
+        Page<User> userPage = new PageImpl<>(users, pageable, total);
+
+        model.addAttribute("users", userPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentRole", role);
+        model.addAttribute("currentShopStatus", shopStatus);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", userPage.getTotalPages());
+        model.addAttribute("pageTitle", "User Management");
+        model.addAttribute("body", "admin/users");
+        return "admin/layout";
+    }
+
+    @GetMapping("/users/banned")
+    @Transactional(readOnly = true)
+    public String bannedUsers(@RequestParam(name = "page", defaultValue = "0") int page,
+                              @RequestParam(name = "search", defaultValue = "") String search,
+                              Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+
+        // Build dynamic query
+        StringBuilder jpql = new StringBuilder("SELECT u FROM User u WHERE u.isDelete = true");
+
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
+        }
+
+        jpql.append(" ORDER BY u.updatedAt DESC");
+
+        // Get total count
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(u) FROM User u WHERE u.isDelete = true");
+        if (search != null && !search.trim().isEmpty()) {
+            countJpql.append(" AND (LOWER(u.fullName) LIKE LOWER(:search) OR LOWER(u.email) LIKE LOWER(:search))");
+        }
+
+        TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+        if (search != null && !search.trim().isEmpty()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        long total = countQuery.getSingleResult();
+
+        // Get paginated results
+        TypedQuery<User> query = entityManager.createQuery(jpql.toString(), User.class);
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+
+        query.setFirstResult(page * 10);
+        query.setMaxResults(10);
+        List<User> users = query.getResultList();
+
+        // Load deletedBy user information
+        for (User user : users) {
+            if (user.getDeletedBy() != null) {
+                User deletedByUser = entityManager.find(User.class, user.getDeletedBy());
+                if (deletedByUser != null) {
+                    user.setDeletedByUser(deletedByUser);
+                }
+            }
+        }
+
+        Page<User> userPage = new PageImpl<>(users, pageable, total);
+
+        model.addAttribute("users", userPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("totalPages", userPage.getTotalPages());
+        model.addAttribute("pageTitle", "Banned Users");
+        model.addAttribute("body", "admin/banned-users");
+        return "admin/layout";
+    }
+
+    @GetMapping(value = "/users/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getUserDetail(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            User user = entityManager.find(User.class, id);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+
+            // Build response
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("id", user.getId());
+            response.put("email", user.getEmail());
+            response.put("fullName", user.getFullName());
+            response.put("role", user.getRole());
+            response.put("phone", user.getPhone());
+            response.put("shopStatus", user.getShopStatus());
+            response.put("coins", user.getCoins());
+            response.put("verified", user.isVerified());
+            response.put("isDelete", user.isDelete());
+            response.put("createdAt", user.getCreatedAt() != null ? user.getCreatedAt().toString() : "");
+            response.put("updatedAt", user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : "");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/users/{id}/ban")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> banUser(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            User user = entityManager.find(User.class, id);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+
+            if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.badRequest().body("Cannot ban admin users");
+            }
+
+            if (user.isDelete()) {
+                return ResponseEntity.badRequest().body("User is already banned");
+            }
+
+            user.setDelete(true);
+            user.setDeletedBy(admin.getId());
+            entityManager.merge(user);
+
+            // Create notification for banned user
+            notificationService.createNotificationForUser(user.getId(), "Account Banned",
+                "Your account has been banned by administrator. Please contact support for more information.");
+
+            return ResponseEntity.ok().body("User banned successfully");
+        } catch (Exception ex) {
+            logger.error("Error banning user {}: {}", id, ex.getMessage(), ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/users/{id}/unban")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> unbanUser(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            User user = entityManager.find(User.class, id);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            }
+
+            if (!user.isDelete()) {
+                return ResponseEntity.badRequest().body("User is not banned");
+            }
+
+            user.setDelete(false);
+            user.setDeletedBy(null);
+            entityManager.merge(user);
+
+            // Create notification for unbanned user
+            notificationService.createNotificationForUser(user.getId(), "Account Unbanned",
+                "Your account has been unbanned. You can now access the platform again.");
+
+            return ResponseEntity.ok().body("User unbanned successfully");
+        } catch (Exception ex) {
+            logger.error("Error unbanning user {}: {}", id, ex.getMessage(), ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
     // ==================== CHANGE PASSWORD ====================
 
     @GetMapping("/change-password")
