@@ -23,7 +23,7 @@ public class Orders {
 
     @Column(name = "variant_id", nullable = false)
     private Long variantId;
-    
+
     @Column(nullable = false)
     private Integer quantity;
 
