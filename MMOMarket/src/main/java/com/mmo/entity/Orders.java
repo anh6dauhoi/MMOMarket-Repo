@@ -54,6 +54,6 @@ public class Orders {
         PENDING,
         PROCESSING,
         COMPLETED,
-        FAILED     
+        FAILED
     }
 }
