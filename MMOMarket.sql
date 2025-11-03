@@ -374,6 +374,7 @@ CREATE TABLE IF NOT EXISTS Orders (
     customer_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     variant_id BIGINT NOT NULL,
+    quantity INT NOT NULL,
     total_price BIGINT NOT NULL,
     status ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED') NOT NULL DEFAULT 'PENDING',
     error_message TEXT,

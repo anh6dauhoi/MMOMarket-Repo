@@ -23,6 +23,9 @@ public class Orders {
 
     @Column(name = "variant_id", nullable = false)
     private Long variantId;
+    
+    @Column(nullable = false)
+    private Integer quantity;
 
     @Column(name = "total_price", nullable = false)
     private Long totalPrice;
