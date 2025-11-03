@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 import com.mmo.dto.SellerRegistrationForm;
 import com.mmo.dto.UpdateProfileRequest;
+import com.mmo.dto.ChangePasswordRequest;
+import com.mmo.service.AccountService;
 
 @Controller
 public class AccountController {
@@ -39,6 +41,9 @@ public class AccountController {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private AccountService accountService;
 
     @PersistenceContext
     private EntityManager entityManager;

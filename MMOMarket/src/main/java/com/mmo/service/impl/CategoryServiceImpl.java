@@ -12,12 +12,32 @@ import com.mmo.entity.Category;
 import com.mmo.repository.CategoryRepository;
 import com.mmo.service.CategoryService;
 
+import java.util.List;
+import java.util.Optional;
+
 @Service
 public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private CategoryRepository categoryRepository;
 
+    // Old methods implementation
+    @Override
+    public List<Category> getPopularCategories() {
+        return categoryRepository.findPopularCategories();
+    }
+
+    @Override
+    public List<Category> findAll() {
+        return categoryRepository.findAll();
+    }
+
+    @Override
+    public Optional<Category> findById(Long id) {
+        return categoryRepository.findById(id);
+    }
+
+    // New admin methods implementation
     @Override
     public Page<Category> getAllCategories(Pageable pageable) {
         return categoryRepository.findByIsDeleteOrderByCreatedAtDesc(false, pageable);
@@ -180,3 +200,4 @@ public class CategoryServiceImpl implements CategoryService {
                 search.trim(), true, pageable);
     }
 }
+
