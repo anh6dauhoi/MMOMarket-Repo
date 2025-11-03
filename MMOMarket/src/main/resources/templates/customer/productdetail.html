@@ -8,26 +8,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" th:href="@{/customer/css/productdetail.css}">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta name="_csrf_parameter" th:content="${_csrf.parameterName}" />
 </head>
 <body>
 <div th:replace="~{fragments/header :: header}"></div>
-
-<!-- Success toast (compat) - bottom-left with safe spacing -->
-<div th:if="${param.wishlistSuccess != null}"
-     id="wishlist-toast"
-     class="fixed z-50 w-auto max-w-xs bottom-8 sm:bottom-10 left-4 sm:left-8 pointer-events-none"
-     role="alert" aria-live="polite" aria-atomic="true">
-    <div th:if="${param.wishlistSuccess[0] == '1'}"
-         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
-        <span class="flex-1">Added to wishlist successfully.</span>
-        <button type="button" onclick="document.getElementById('wishlist-toast')?.remove()" aria-label="Close">✕</button>
-    </div>
-    <div th:unless="${param.wishlistSuccess[0] == '1'}"
-         class="pointer-events-auto flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg">
-        <span class="flex-1">This item is already in your wishlist.</span>
-        <button type="button" onclick="document.getElementById('wishlist-toast')?.remove()" aria-label="Close">✕</button>
-    </div>
-</div>
 
 <div class="container" th:if="${product != null}">
     <div class="product-main">
@@ -245,7 +231,10 @@
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
-<script>
+<!-- Container to inject buy preview modal fragment -->
+<div id="buyModalContainer"></div>
+
+<script th:inline="javascript">
     function changeQuantity(amount) {
         const quantityEl = document.getElementById('quantity');
         if (!quantityEl) return;
@@ -363,10 +352,84 @@
         syncActionButtons();
     });
 
-    // Auto-hide toast after 2.2s (robust selector)
+    function postBuyPreview() {
+        const productId = /*[[${product != null ? product.id : 0}]]*/ 0;
+        if (!productId) return;
+        const variantSelect = document.getElementById('variation');
+        const qtyEl = document.getElementById('quantity');
+        const variantId = variantSelect ? variantSelect.value : '';
+        const quantity = qtyEl ? (parseInt(qtyEl.textContent || '1', 10) || 1) : 1;
+
+        const paramName = document.querySelector('meta[name="_csrf_parameter"]')?.content;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        const formData = new URLSearchParams();
+        formData.set('productId', productId);
+        formData.set('variantId', variantId);
+        formData.set('quantity', String(quantity));
+        if (paramName && token) formData.set(paramName, token);
+
+        return fetch('/buy/preview', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                ...(header && token ? { [header]: token } : {})
+            },
+            body: formData.toString()
+        }).then(res => res.text());
+    }
+
+    function attachModalDismissHandlers(root) {
+        if (!root) return;
+        root.querySelectorAll('[data-dismiss="true"]').forEach(el => {
+            el.addEventListener('click', () => {
+                const container = document.getElementById('buyModalContainer');
+                if (container) container.innerHTML = '';
+            });
+        });
+        // Click outside to close
+        const overlay = root.querySelector('.absolute.inset-0');
+        if (overlay) overlay.addEventListener('click', () => {
+            const container = document.getElementById('buyModalContainer');
+            if (container) container.innerHTML = '';
+        });
+        // Escape key to close
+        document.addEventListener('keydown', function esc(e){
+            if (e.key === 'Escape') {
+                const container = document.getElementById('buyModalContainer');
+                if (container) container.innerHTML = '';
+                document.removeEventListener('keydown', esc);
+            }
+        });
+    }
+
+    function enhanceFormatPrices(root) {
+        (root || document).querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            const num = Math.round(Number(String(v).replace(/[^0-9.-]+/g,'')) || 0);
+            el.textContent = String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-        const toast = document.getElementById('wishlist-toast');
-        if (toast) setTimeout(() => toast.remove(), 2200);
+        // Ensure Buy Now opens modal via backend preview
+        const buyBtn = document.getElementById('buyNowBtn');
+        if (buyBtn) {
+            buyBtn.addEventListener('click', async () => {
+                try {
+                    const html = await postBuyPreview();
+                    const container = document.getElementById('buyModalContainer');
+                    if (!container) return;
+                    container.innerHTML = html;
+                    enhanceFormatPrices(container);
+                    attachModalDismissHandlers(container);
+                } catch (e) {
+                    console.error('Failed to load preview', e);
+                }
+            });
+        }
     });
 </script>
 </body>
