@@ -30,8 +30,11 @@ public class ShopInfo {
     @Column(name = "shop_level", columnDefinition = "TINYINT UNSIGNED DEFAULT 0")
     private Short shopLevel = 0;
 
-    @Column(name = "commission", precision = 5, scale = 2, nullable = false, columnDefinition = "DECIMAL(5,2) DEFAULT 5.00")
-    private BigDecimal commission = new BigDecimal("5.00");
+    @Column(name = "commission", precision = 5, scale = 2, nullable = false)
+    private BigDecimal commission;
+
+    @Column(name = "points", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long points = 0L;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
@@ -52,4 +55,3 @@ public class ShopInfo {
     @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
     private boolean isDelete;
 }
-

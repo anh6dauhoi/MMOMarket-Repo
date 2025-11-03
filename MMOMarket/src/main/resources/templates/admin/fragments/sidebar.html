@@ -163,6 +163,17 @@
                         th:if="${unreadCount != null and unreadCount > 0}"
                         th:text="${unreadCount > 99 ? '99+' : unreadCount}"></span>
                 </a>
+                <!-- New: System Config -->
+                <a th:href="@{/admin/system-config}"
+                   th:classappend="${uri.startsWith('/admin/system-config')} ? ' bg-red-50 text-red-800' : ''"
+                   th:attr="aria-current=${uri.startsWith('/admin/system-config')} ? 'page' : null"
+                   class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-red-50 text-gray-700 hover:text-red-700 transition duration-150">
+                    <svg th:classappend="${uri.startsWith('/admin/system-config')} ? ' text-red-600' : ''" class="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500 transition duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 4a6.94 6.94 0 01-.18 1.6l2.11 1.65a.5.5 0 01.12.64l-2 3.46a.5.5 0 01-.61.22l-2.49-1a7.02 7.02 0 01-1.38.8l-.38 2.65a.5.5 0 01-.49.42h-4a.5.5 0 01-.49-.42l-.38-2.65a7.02 7.02 0 01-1.38-.8l-2.49 1a.5.5 0 01-.61-.22l-2-3.46a.5.5 0 01.12-.64l2.11-1.65A6.94 6.94 0 013.06 12c0-.55.06-1.09.18-1.6L1.13 8.75a.5.5 0 01-.12-.64l2-3.46a.5.5 0 01.61-.22l2.49 1c.43-.31.89-.58 1.38-.8l.38-2.65A.5.5 0 019.34 1h4c.24 0 .45.17.49.42l.38 2.65c.49.22.95.49 1.38.8l2.49-1a.5.5 0 01.61.22l2 3.46a.5.5 0 01-.12.64l-2.11 1.65c.12.51.18 1.05.18 1.6z"
+                              stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+                    </svg>
+                    System Configuration
+                </a>
             </div>
         </div>
     </div>

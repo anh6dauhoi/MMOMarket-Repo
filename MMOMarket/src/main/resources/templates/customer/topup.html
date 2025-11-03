@@ -60,19 +60,19 @@
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-user"></i> Account Holder</label>
-                        <div class="field-value">TRAN VAN TUAN ANH</div>
+                        <div class="field-value" th:text="${sysAccountName != null ? sysAccountName : 'N/A'}">TRAN VAN TUAN ANH</div>
                     </div>
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-hashtag"></i> Account Number</label>
                         <div class="field-value">
-                            <span class="copy-badge">0813302283</span>
+                            <span class="copy-badge" th:text="${sysAccountNumber != null ? sysAccountNumber : 'N/A'}">0813302283</span>
                         </div>
                     </div>
 
                     <div class="info-field">
                         <label><i class="fa-solid fa-building-columns"></i> Bank</label>
-                        <div class="field-value">MB BANK</div>
+                        <div class="field-value" th:text="${sysBankName != null ? sysBankName : 'N/A'}">MB BANK</div>
                     </div>
 
                     <div class="info-field">
@@ -92,7 +92,7 @@
                         <ul>
                             <li>Please transfer the correct content to avoid not being automatically credited.</li>
                             <li>After transferring money, please wait at least 1 minute for the system to process.</li>
-                            <li>Contact support: support@mmomarket.com</li>
+                            <li>Contact support: <span th:text="${supportEmail != null ? supportEmail : 'support@mmomarket.com'}">support@mmomarket.com</span></li>
                         </ul>
                     </div>
 
@@ -108,7 +108,7 @@
 
                     <div class="qr-image-wrapper">
                         <img alt="QR Code for payment"
-                             th:src="@{'https://qr.sepay.vn/img?acc=0813302283&bank=MBBank&des=' + ${depositCode}}"/>
+                             th:src="@{'https://qr.sepay.vn/img'(acc=${sysAccountNumber}, bank=${sysBankName}, des=${depositCode})}"/>
                     </div>
 
                     <div class="quick-guide">

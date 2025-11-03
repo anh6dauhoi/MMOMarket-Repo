@@ -27,10 +27,16 @@ public class GlobalModelAttributes {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    // Add: system configuration for global attributes
+    @Autowired(required = false)
+    private com.mmo.service.SystemConfigurationService systemConfigurationService;
+
     @ModelAttribute
     public void addCurrentUser(Model model, Authentication authentication) {
         try {
             if (authentication == null || !authentication.isAuthenticated()) {
+                // Ensure sellerAgreementUrl is still provided for anonymous views
+                provideSellerAgreementUrl(model);
                 return;
             }
             User user = null;
@@ -87,7 +93,27 @@ public class GlobalModelAttributes {
             }
         } catch (Exception ignored) {
             // Avoid breaking views if anything unexpected happens
+        } finally {
+            // Always provide seller agreement URL for templates that need it
+            provideSellerAgreementUrl(model);
         }
+    }
+
+    private void provideSellerAgreementUrl(Model model) {
+        try {
+            if (model.containsAttribute("sellerAgreementUrl")) return;
+            String url = null;
+            if (systemConfigurationService != null) {
+                url = systemConfigurationService.getStringValue(
+                        com.mmo.constant.SystemConfigKeys.POLICY_SELLER_AGREEMENT_URL,
+                        null
+                );
+            }
+            if (url == null || url.isBlank()) {
+                url = "/contracts/seller-contract.pdf"; // fallback static file
+            }
+            model.addAttribute("sellerAgreementUrl", url);
+        } catch (Exception ignored) { }
     }
 
     private String resolvePreferredName(User user) {

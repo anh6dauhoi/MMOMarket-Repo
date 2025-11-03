@@ -12,6 +12,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import static com.mmo.constant.SystemConfigKeys.SYSTEM_EMAIL_CONTACT;
+
 @Service
 public class EmailService {
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
@@ -26,6 +28,10 @@ public class EmailService {
     private String mailUsername;
     @Value("${application.email.personalName:MMOMarket}")
     private String personalName;
+
+    // Inject system configuration to resolve contact email dynamically
+    @Autowired(required = false)
+    private SystemConfigurationService systemConfigurationService;
 
     // Public API: generic async email sender with retry
     @Async("emailExecutor")
@@ -70,7 +76,7 @@ public class EmailService {
 
     // Convenience: send verification code email using existing EmailTemplate
     public void sendVerificationCodeEmailAsync(String to, String code) {
-        String subject = "MMOMarket - Xác thực tài khoản & Đổi mật khẩu";
+        String subject = "MMOMarket - Verify Account & Change Password";
         String content = EmailTemplate.verificationEmail(code);
         sendEmailAsync(to, subject, content);
     }
@@ -98,6 +104,13 @@ public class EmailService {
     }
 
     private String resolveFromAddress() {
+        // Prefer dynamic contact email from system configuration if available
+        try {
+            if (systemConfigurationService != null) {
+                String cfg = systemConfigurationService.getStringValue(SYSTEM_EMAIL_CONTACT, null);
+                if (cfg != null && !cfg.isBlank()) return cfg.trim();
+            }
+        } catch (Exception ignored) {}
         if (fromEmailConfigured != null && !fromEmailConfigured.isBlank()) {
             return fromEmailConfigured.trim();
         }
@@ -107,4 +120,3 @@ public class EmailService {
         return "no-reply@mmomarket.com";
     }
 }
-
