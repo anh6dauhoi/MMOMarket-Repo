@@ -1,4 +1,4 @@
-/* Chat Page Styles */
+/* Admin Chat Page Styles - Copied from Customer Chat */
 
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
@@ -18,9 +18,9 @@
     background: #555;
 }
 
-/* Emoji picker - fixed positioning */
+/* Emoji picker - MUST BE HIDDEN by default */
 .emoji-picker {
-    display: none;
+    display: none !important; /* Force hidden by default */
     position: absolute;
     bottom: 60px;
     left: 0;
@@ -34,7 +34,7 @@
 }
 
 .emoji-picker.active {
-    display: block;
+    display: block !important; /* Only show when has active class */
 }
 
 .emoji-item {
@@ -48,28 +48,43 @@
 
 .emoji-item:hover {
     transform: scale(1.2);
+    background: #f3f4f6;
 }
 
-/* Chat container - cố định chiều cao theo viewport */
-.chat-container {
-    height: calc(100vh - 200px);
-    max-height: 800px;
+/* Admin chat container - FULL HEIGHT fixed layout */
+.admin-chat-container {
+    /* Remove parent padding with negative margin */
+    margin: -1rem -1.5rem;
+    /* Full viewport height minus header */
+    height: calc(100vh - 80px);
+    max-height: calc(100vh - 80px);
     min-height: 500px;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
+    overflow: hidden; /* Prevent container from scrolling */
+}
+
+/* Responsive for mobile */
+@media (max-width: 768px) {
+    .admin-chat-container {
+        margin: -1rem;
+        height: calc(100vh - 60px);
+        max-height: calc(100vh - 60px);
+    }
 }
 
 /* Conversation list - scrollable */
 .conversation-list {
-    height: calc(100% - 80px);
+    flex: 1;
     overflow-y: auto;
+    min-height: 0; /* Important for flex scroll */
 }
 
 /* Messages area - scrollable with fixed height */
 .messages-area {
     flex: 1;
     overflow-y: auto;
-    min-height: 0;
+    min-height: 0; /* Important for flex scroll */
     background: rgba(249, 250, 251, 0.5);
 }
 
@@ -78,6 +93,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0; /* Important for flex scroll */
 }
 
 /* Input area - fixed at bottom */
@@ -93,7 +109,7 @@ mark.search-highlight {
     font-weight: 600;
 }
 
-#messagesContainer > div.search-active {
+#adminMessagesContainer > div.search-active {
     background-color: #fef3c7;
     transition: background-color 0.3s ease;
 }
@@ -163,26 +179,6 @@ mark.search-highlight {
     to {
         opacity: 1;
         transform: translateY(0);
-    }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .chat-container {
-        height: calc(100vh - 150px);
-        min-height: 400px;
-    }
-
-    body.chat-page {
-        background-position: top center;
-    }
-}
-
-@media (max-width: 640px) {
-    .emoji-picker {
-        width: 240px;
-        left: 50%;
-        transform: translateX(-50%);
     }
 }
 
