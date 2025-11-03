@@ -11,7 +11,9 @@
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round"
                                       stroke-linejoin="round"
-                                      stroke-width="2"></path> </svg> </div>
+                                      stroke-width="2"></path>
+                            </svg> 
+                        </div>
                         <span class="text-xl font-bold text-gray-900">MMO Market</span>
                     </a>
                 </div>
@@ -71,7 +73,7 @@
                         <form th:action="@{/search}" method="get" class="flex items-center">
                             <input name="q"
                                    th:value="${param.q}"
-                                   class="w-48 lg:w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-l-lg rounded-r-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                   class="w-48 lg:w-64 pl-4 pr-14 py-2 border border-gray-300 rounded-l-lg rounded-r-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                                    placeholder="Search product / shop"
                                    type="search" aria-label="Search">
                             <button type="submit"
@@ -218,6 +220,7 @@
                                 <a class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-500 hover:text-white"
                                     th:href="@{/seller/my-shop}"
                                     th:if="${currentUser != null and currentUser.shopStatus != null and #strings.equalsIgnoreCase(currentUser.shopStatus, 'Active')}">
+
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                         xmlns="http://www.w3.org/2000/svg">
                                         <path d="M3 3h18M3 7h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2zm3-7h4v4H8v-4z"
@@ -295,9 +298,10 @@
                 <!-- Mobile search -->
                 <div class="px-3 pb-3">
                     <div class="relative flex">
-                        <input
-                            class="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                            placeholder="Search product/seller" type="text">
+                        <input class="w-full pl-3 pr-14 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                               placeholder="Search product/seller"
+                               type="text">
+
                         <button class="absolute right-0 top-0 h-full px-3 bg-red-500 text-white rounded-r-lg">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round"
@@ -478,3 +482,4 @@
         });
     </script>
 </div>
+
