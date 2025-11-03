@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Banned Users</title>
+</head>
+<body>
+<div th:fragment="content">
+    <!-- Toast Notification -->
+    <div class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50"
+         id="toast">
+        <p id="toast-message"></p>
+    </div>
+
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Banned Users</h1>
+            <a th:href="@{/admin/users}" 
+               class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                Back to Users
+            </a>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-6">
+            <form method="get" th:action="@{/admin/users/banned}" class="relative">
+                <label for="user-search" class="sr-only">Search banned users</label>
+                <div class="relative">
+                    <input id="user-search" name="search" aria-label="Search users"
+                           class="w-full py-2 pl-14 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm bg-white transition-shadow duration-150 focus:shadow-md"
+                           placeholder="Search by name or email"
+                           type="text" th:value="${currentSearch}">
+                    <button type="submit" class="absolute inset-y-0 left-3 flex items-center justify-center text-gray-400 p-0 m-0 bg-transparent border-0 h-8 w-8" aria-label="Search">
+                        <svg class="h-6 w-6 mt-3" fill="none" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width:2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Table for medium+ screens -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-red-50">
+                    <tr>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Full Name</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Email</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Role</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <tr th:if="${users == null or users.isEmpty()}">
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <p class="text-lg font-medium">No banned users found</p>
+                        </td>
+                    </tr>
+                    <tr th:each="user,iter : ${users}" class="hover:bg-gray-50">
+                        <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900" th:text="${user.fullName}">Name</div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900" th:text="${user.email}">Email</div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span th:if="${user.role == 'ADMIN'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                Admin
+                            </span>
+                            <span th:if="${user.role == 'SELLER'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                Seller
+                            </span>
+                            <span th:if="${user.role == 'CUSTOMER'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Customer
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <button class="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600" 
+                                    onclick="unbanUser(this)"
+                                    th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                                Unban
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4" 
+                 th:each="user,iter : ${users}">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="font-semibold text-gray-900" th:text="${user.fullName}">Full Name</h3>
+                        <p class="text-xs text-gray-500" th:text="${user.email}">Email</p>
+                    </div>
+                    <span th:if="${user.role == 'ADMIN'}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                        Admin
+                    </span>
+                    <span th:if="${user.role == 'SELLER'}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        Seller
+                    </span>
+                    <span th:if="${user.role == 'CUSTOMER'}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                        Customer
+                    </span>
+                </div>
+                <button class="w-full py-2 bg-red-500 text-white hover:bg-red-600 rounded font-medium text-sm"
+                        onclick="unbanUser(this)"
+                        th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                    Unban
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Page <span th:text="${currentPage + 1}">1</span> of <span th:text="${totalPages}">1</span>
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/users/banned(page=${currentPage - 1}, search=${currentSearch})}"
+                   th:if="${currentPage > 0}">Previous</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md"
+                   th:classappend="${i == currentPage} ? 'bg-red-500 text-white' : 'hover:bg-gray-100'"
+                   th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                   th:href="@{/admin/users/banned(page=${i}, search=${currentSearch})}"
+                   th:if="${(i == 0) || (i == currentPage) || (i == currentPage-1) || (i == currentPage+1) || (i == totalPages-1)}"
+                   th:text="${i + 1}">1</a>
+
+                <span class="px-2 sm:px-3 py-1" th:if="${currentPage > 2 && totalPages > 5}">...</span>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/users/banned(page=${currentPage + 1}, search=${currentSearch})}"
+                   th:if="${currentPage < totalPages - 1}">Next</a>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        async function unbanUser(button) {
+            const userId = button.dataset.id;
+            const userName = button.dataset.name;
+
+            if (!confirm(`Are you sure you want to unban user "${userName}"? This will restore their access to the system.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/users/${userId}/unban`, {
+                    method: 'PUT',
+                    headers: {
+                        [csrfHeader]: csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('User unbanned successfully');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to unban user', true);
+            }
+        }
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html></html>
