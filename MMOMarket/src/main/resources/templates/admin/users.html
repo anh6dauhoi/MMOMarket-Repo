@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="content">
+    <!-- Toast Notification -->
+    <div class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50"
+         id="toast">
+        <p id="toast-message"></p>
+    </div>
+
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">User Management</h1>
+            <a th:href="@{/admin/users/banned}" 
+               class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                View Banned Users
+            </a>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div class="mb-6 flex flex-col md:flex-row gap-4">
+            <form method="get" th:action="@{/admin/users}" class="relative flex-1">
+                <label for="user-search" class="sr-only">Search users</label>
+                <div class="relative">
+                    <input id="user-search" name="search" aria-label="Search users"
+                           class="w-full py-2 pl-14 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm bg-white transition-shadow duration-150 focus:shadow-md"
+                           placeholder="Search by name or email"
+                           type="text" th:value="${param.search}">
+                    <button type="submit" class="absolute inset-y-0 left-3 flex items-center justify-center text-gray-400 p-0 m-0 bg-transparent border-0 h-8 w-8" aria-label="Search">
+                        <svg class="h-6 w-6 mt-3" fill="none" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width:2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Filters -->
+            <form method="get" th:action="@{/admin/users}" class="flex gap-2">
+                <input type="hidden" name="search" th:value="${currentSearch}">
+                <input type="hidden" name="sort" th:value="${currentSort}">
+                
+                <!-- Role Filter -->
+                <select name="role" onchange="this.form.submit()"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white">
+                    <option value="">All Roles</option>
+                    <option value="CUSTOMER" th:selected="${currentRole == 'CUSTOMER'}">Customer</option>
+                    <option value="SELLER" th:selected="${currentRole == 'SELLER'}">Seller</option>
+                    <option value="ADMIN" th:selected="${currentRole == 'ADMIN'}">Admin</option>
+                </select>
+                
+                <!-- Shop Status Filter -->
+                <select name="shopStatus" onchange="this.form.submit()"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white">
+                    <option value="">All Shop Status</option>
+                    <option value="Active" th:selected="${currentShopStatus == 'Active'}">Active</option>
+                    <option value="Inactive" th:selected="${currentShopStatus == 'Inactive'}">Inactive</option>
+                </select>
+            </form>
+        </div>
+
+        <!-- Table for medium+ screens -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-red-50">
+                    <tr>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">User Info</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Email</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
+                            <a th:href="@{/admin/users(sort=${currentSort == 'role_asc' ? 'role_desc' : 'role_asc'}, search=${currentSearch}, role=${currentRole}, shopStatus=${currentShopStatus})}" 
+                               class="flex items-center">
+                                Role
+                                <span class="ml-1">
+                                    <svg class="h-3 w-3 mb-0.5" th:classappend="${currentSort == 'role_asc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5-5 5 5"/>
+                                    </svg>
+                                    <svg class="h-3 w-3 mt-0.5" th:classappend="${currentSort == 'role_desc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l5 5 5-5"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
+                            <a th:href="@{/admin/users(sort=${currentSort == 'shopStatus_asc' ? 'shopStatus_desc' : 'shopStatus_asc'}, search=${currentSearch}, role=${currentRole}, shopStatus=${currentShopStatus})}" 
+                               class="flex items-center">
+                                Shop Status
+                                <span class="ml-1">
+                                    <svg class="h-3 w-3 mb-0.5" th:classappend="${currentSort == 'shopStatus_asc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5-5 5 5"/>
+                                    </svg>
+                                    <svg class="h-3 w-3 mt-0.5" th:classappend="${currentSort == 'shopStatus_desc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l5 5 5-5"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
+                            <a th:href="@{/admin/users(sort=${currentSort == 'coins_asc' ? 'coins_desc' : 'coins_asc'}, search=${currentSearch}, role=${currentRole}, shopStatus=${currentShopStatus})}" 
+                               class="flex items-center">
+                                Coins
+                                <span class="ml-1">
+                                    <svg class="h-3 w-3 mb-0.5" th:classappend="${currentSort == 'coins_asc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5-5 5 5"/>
+                                    </svg>
+                                    <svg class="h-3 w-3 mt-0.5" th:classappend="${currentSort == 'coins_desc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l5 5 5-5"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <tr th:if="${users == null or users.isEmpty()}">
+                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <p class="text-lg font-medium">No users found</p>
+                        </td>
+                    </tr>
+                    <tr th:each="user,iter : ${users}" class="hover:bg-gray-50">
+                        <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center text-white font-semibold">
+                                        <span th:text="${#strings.substring(user.fullName ?: 'U', 0, 1).toUpperCase()}">U</span>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900" th:text="${user.fullName}">Full Name</div>
+                                    <div class="text-xs text-gray-500" th:text="${user.phone ?: 'No phone'}">Phone</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4">
+                            <span class="text-sm text-gray-900" th:text="${user.email}">email@example.com</span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span th:if="${user.role == 'ADMIN'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                Admin
+                            </span>
+                            <span th:if="${user.role == 'SELLER'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                Seller
+                            </span>
+                            <span th:if="${user.role == 'CUSTOMER'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Customer
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span th:if="${user.shopStatus == 'Active'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            <span th:if="${user.shopStatus == 'Inactive'}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Inactive
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span class="text-sm font-medium text-gray-900" th:text="${#numbers.formatInteger(user.coins ?: 0, 0, 'COMMA')}">0</span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span th:if="${user.verified}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Verified
+                            </span>
+                            <span th:unless="${user.verified}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Unverified
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <button class="text-red-500 hover:underline" 
+                                    onclick="viewUserDetail(this)"
+                                    th:attr="data-id=${user.id}">
+                                View
+                            </button>
+                            <button class="text-red-500 hover:underline ml-3" 
+                                    onclick="banUser(this)"
+                                    th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                                Ban
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4" 
+                 th:each="user,iter : ${users}">
+                <div class="flex items-center mb-3">
+                    <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
+                    <div class="flex-shrink-0 h-10 w-10">
+                        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center text-white font-semibold">
+                            <span th:text="${#strings.substring(user.fullName ?: 'U', 0, 1).toUpperCase()}">U</span>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="font-semibold text-gray-900" th:text="${user.fullName}">Full Name</h3>
+                        <p class="text-xs text-gray-500" th:text="${user.email}">email@example.com</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500">Role:</p>
+                        <span th:if="${user.role == 'ADMIN'}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                            Admin
+                        </span>
+                        <span th:if="${user.role == 'SELLER'}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            Seller
+                        </span>
+                        <span th:if="${user.role == 'CUSTOMER'}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                            Customer
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Shop Status:</p>
+                        <span th:if="${user.shopStatus == 'Active'}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            Active
+                        </span>
+                        <span th:if="${user.shopStatus == 'Inactive'}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            Inactive
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Coins:</p>
+                        <p class="font-medium" th:text="${#numbers.formatInteger(user.coins ?: 0, 0, 'COMMA')}">0</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Status:</p>
+                        <span th:if="${user.verified}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            Verified
+                        </span>
+                        <span th:unless="${user.verified}"
+                            class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Unverified
+                        </span>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="viewUserDetail(this)"
+                            th:attr="data-id=${user.id}">
+                        View
+                    </button>
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="banUser(this)"
+                            th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                        Ban
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Showing <span th:text="${users != null and !users.isEmpty() ? (currentPage * 10 + 1) : 0}">0</span>
+                to <span th:text="${currentPage * 10 + (users != null ? #lists.size(users) : 0)}">0</span>
+                of <span th:text="${totalPages * 10}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/users(page=${currentPage - 1}, search=${currentSearch}, role=${currentRole}, shopStatus=${currentShopStatus}, sort=${currentSort})}"
+                   th:if="${currentPage > 0}">Previous</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md"
+                   th:classappend="${i == currentPage} ? 'bg-red-500 text-white' : 'hover:bg-gray-100'"
+                   th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                   th:href="@{/admin/users(page=${i}, search=${currentSearch}, role=${currentRole}, shopStatus=${currentShopStatus}, sort=${currentSort})}"
+                   th:if="${(i == 0) || (i == currentPage) || (i == currentPage-1) || (i == currentPage+1) || (i == totalPages-1)}"
+                   th:text="${i + 1}">1</a>
+
+                <span class="px-2 sm:px-3 py-1" th:if="${currentPage > 2 && totalPages > 5}">...</span>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/users(page=${currentPage + 1}, search=${currentSearch}, role=${currentRole}, shopStatus=${currentShopStatus}, sort=${currentSort})}"
+                   th:if="${currentPage < totalPages - 1}">Next</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- View User Detail Modal -->
+    <div id="viewUserModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 m-4 relative transform transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto">
+            <button class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 text-2xl font-bold z-10"
+                    onclick="closeViewModal()">&times;</button>
+            
+            <h3 id="modal-title" class="text-2xl font-bold text-gray-800 mb-6">User Details</h3>
+
+            <form id="userDetailForm" onsubmit="submitUserEdit(event)">
+                <input type="hidden" id="detail-userId">
+
+                <div class="space-y-6">
+                    <!-- Personal Info -->
+                    <div class="border-b pb-4">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-4">Personal Information</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Full Name</p>
+                                <p id="detail-fullName-text" class="text-base font-medium text-gray-900 mt-1 edit-mode-hidden">-</p>
+                                <input type="text" id="detail-fullName-input" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent mt-1 edit-mode-visible hidden">
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Email</p>
+                                <p id="detail-email-text" class="text-base text-gray-900 mt-1">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Phone</p>
+                                <p id="detail-phone-text" class="text-base text-gray-900 mt-1 edit-mode-hidden">-</p>
+                                <input type="text" id="detail-phone-input" pattern="^0\d{9}$"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent mt-1 edit-mode-visible hidden"
+                                    placeholder="Format: 10 digits starting with 0">
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Role</p>
+                                <div id="detail-role-text" class="mt-1 edit-mode-hidden">
+                                    <span class="px-2 py-1 text-xs rounded-full">-</span>
+                                </div>
+                                <select id="detail-role-input" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent mt-1 edit-mode-visible hidden">
+                                    <option value="CUSTOMER">Customer</option>
+                                    <option value="SELLER">Seller</option>
+                                    <option value="ADMIN">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Info -->
+                    <div class="border-b pb-4">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-4">Account Information</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Shop Status</p>
+                                <div id="detail-shopStatus" class="mt-1">
+                                    <span class="px-2 py-1 text-xs rounded-full">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Coins</p>
+                                <p id="detail-coins-text" class="text-base font-medium text-gray-900 mt-1 edit-mode-hidden">-</p>
+                                <input type="number" id="detail-coins-input" min="0" step="1"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent mt-1 edit-mode-visible hidden">
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Verification Status</p>
+                                <div id="detail-verified" class="mt-1">
+                                    <span class="px-2 py-1 text-xs rounded-full">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Created At</p>
+                                <p id="detail-createdAt" class="text-base text-gray-900 mt-1">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 mt-6 pt-4 border-t">
+                    <!-- View mode buttons -->
+                    <div id="view-mode-buttons" class="flex space-x-3 w-full">
+                        <button type="button" onclick="enableEditMode()"
+                            class="flex-1 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition">
+                            Edit
+                        </button>
+                        <button type="button" onclick="closeViewModal()"
+                            class="flex-1 px-6 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition">
+                            Close
+                        </button>
+                    </div>
+
+                    <!-- Edit mode buttons -->
+                    <div id="edit-mode-buttons" class="flex space-x-3 w-full hidden">
+                        <button type="submit"
+                            class="flex-1 px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition">
+                            Save
+                        </button>
+                        <button type="button" onclick="cancelEditMode()"
+                            class="flex-1 px-6 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+        let currentUserId = null;
+        let originalUserData = {};
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        async function viewUserDetail(button) {
+            const id = button.dataset.id;
+            currentUserId = id;
+            
+            try {
+                const response = await fetch(`/admin/users/${id}`);
+                if (response.ok) {
+                    const user = await response.json();
+                    originalUserData = { ...user }; // Store original data
+
+                    // Set text values
+                    document.getElementById('detail-fullName-text').textContent = user.fullName || '-';
+                    document.getElementById('detail-email-text').textContent = user.email || '-';
+                    document.getElementById('detail-phone-text').textContent = user.phone || 'Not provided';
+                    document.getElementById('detail-coins-text').textContent = user.coins ? user.coins.toLocaleString() : '0';
+                    document.getElementById('detail-createdAt').textContent = user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+                    
+                    // Set input values
+                    document.getElementById('detail-userId').value = id;
+                    document.getElementById('detail-fullName-input').value = user.fullName || '';
+                    document.getElementById('detail-phone-input').value = user.phone || '';
+                    document.getElementById('detail-role-input').value = user.role || 'CUSTOMER';
+                    document.getElementById('detail-coins-input').value = user.coins || 0;
+
+                    // Role badge
+                    const roleElement = document.getElementById('detail-role-text');
+                    let roleBadge = '';
+                    if (user.role === 'ADMIN') {
+                        roleBadge = '<span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">Admin</span>';
+                    } else if (user.role === 'SELLER') {
+                        roleBadge = '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Seller</span>';
+                    } else {
+                        roleBadge = '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Customer</span>';
+                    }
+                    roleElement.innerHTML = roleBadge;
+                    
+                    // Shop Status
+                    const shopStatusElement = document.getElementById('detail-shopStatus');
+                    const shopStatusBadge = user.shopStatus === 'Active' 
+                        ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>'
+                        : '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Inactive</span>';
+                    shopStatusElement.innerHTML = shopStatusBadge;
+                    
+                    // Verified status
+                    const verifiedElement = document.getElementById('detail-verified');
+                    const verifiedBadge = user.verified 
+                        ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Verified</span>'
+                        : '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Unverified</span>';
+                    verifiedElement.innerHTML = verifiedBadge;
+                    
+                    // Reset to view mode
+                    setViewMode();
+
+                    document.getElementById('viewUserModal').classList.remove('hidden');
+                } else {
+                    showToast('Failed to load user details', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to load user details', true);
+            }
+        }
+
+        function setViewMode() {
+            // Hide edit elements
+            document.querySelectorAll('.edit-mode-visible').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.edit-mode-hidden').forEach(el => el.classList.remove('hidden'));
+
+            // Show/hide button groups
+            document.getElementById('view-mode-buttons').classList.remove('hidden');
+            document.getElementById('edit-mode-buttons').classList.add('hidden');
+        }
+
+        function setEditMode() {
+            // Show edit elements
+            document.querySelectorAll('.edit-mode-visible').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.edit-mode-hidden').forEach(el => el.classList.add('hidden'));
+
+            // Show/hide button groups
+            document.getElementById('view-mode-buttons').classList.add('hidden');
+            document.getElementById('edit-mode-buttons').classList.remove('hidden');
+
+            // Disable role select if user is admin
+            const roleSelect = document.getElementById('detail-role-input');
+            if (originalUserData.role === 'ADMIN') {
+                roleSelect.disabled = true;
+                roleSelect.classList.add('bg-gray-100', 'cursor-not-allowed');
+            } else {
+                roleSelect.disabled = false;
+                roleSelect.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            }
+        }
+
+        function enableEditMode() {
+            setEditMode();
+        }
+
+        function cancelEditMode() {
+            // Reset input values to original data
+            document.getElementById('detail-fullName-input').value = originalUserData.fullName || '';
+            document.getElementById('detail-phone-input').value = originalUserData.phone || '';
+            document.getElementById('detail-role-input').value = originalUserData.role || 'CUSTOMER';
+            document.getElementById('detail-coins-input').value = originalUserData.coins || 0;
+
+            setViewMode();
+        }
+
+        async function submitUserEdit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('detail-userId').value;
+            const fullName = document.getElementById('detail-fullName-input').value;
+            const phone = document.getElementById('detail-phone-input').value;
+            const role = document.getElementById('detail-role-input').value;
+            const coins = document.getElementById('detail-coins-input').value;
+
+            try {
+                const response = await fetch(`/admin/users/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    },
+                    body: JSON.stringify({ fullName, phone, role, coins })
+                });
+
+                if (response.ok) {
+                    showToast('User updated successfully!');
+
+                    // Update original data and display
+                    originalUserData.fullName = fullName;
+                    originalUserData.phone = phone;
+                    originalUserData.role = role;
+                    originalUserData.coins = parseInt(coins);
+
+                    // Update text displays
+                    document.getElementById('detail-fullName-text').textContent = fullName || '-';
+                    document.getElementById('detail-phone-text').textContent = phone || 'Not provided';
+                    document.getElementById('detail-coins-text').textContent = coins ? parseInt(coins).toLocaleString() : '0';
+
+                    // Update role badge
+                    const roleElement = document.getElementById('detail-role-text');
+                    let roleBadge = '';
+                    if (role === 'ADMIN') {
+                        roleBadge = '<span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">Admin</span>';
+                    } else if (role === 'SELLER') {
+                        roleBadge = '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Seller</span>';
+                    } else {
+                        roleBadge = '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Customer</span>';
+                    }
+                    roleElement.innerHTML = roleBadge;
+
+                    setViewMode();
+
+                    // Reload page after 1 second to update table
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to update user', true);
+            }
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewUserModal').classList.add('hidden');
+            currentUserId = null;
+            originalUserData = {};
+            setViewMode();
+        }
+
+
+        // Close modals when clicking outside
+        document.addEventListener('DOMContentLoaded', function () {
+            const viewModal = document.getElementById('viewUserModal');
+
+            if (viewModal) {
+                viewModal.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        closeViewModal();
+                    }
+                });
+            }
+        });
+
+        async function banUser(button) {
+            const userId = button.dataset.id;
+            const userName = button.dataset.name;
+
+            if (!confirm(`Are you sure you want to ban user "${userName}"? This will restrict their access to the system.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/users/${userId}/ban`, {
+                    method: 'PUT',
+                    headers: {
+                        [csrfHeader]: csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('User banned successfully');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to ban user', true);
+            }
+        }
+        /*]]>*/
+    </script>
+</div>
+
+</html>
