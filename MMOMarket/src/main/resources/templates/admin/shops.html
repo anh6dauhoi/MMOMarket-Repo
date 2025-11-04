@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="content">
+    <!-- Toast Notification -->
+    <div class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50"
+         id="toast">
+        <p id="toast-message"></p>
+    </div>
+
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Shop Management</h1>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-6">
+            <!-- Search Form -->
+            <form method="get" th:action="@{/admin/shops}" class="relative">
+                <label for="shop-search" class="sr-only">Search shops</label>
+                <div class="relative">
+                    <input id="shop-search" name="search" aria-label="Search shops"
+                           class="w-full py-2 pl-14 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm bg-white transition-shadow duration-150 focus:shadow-md"
+                           placeholder="Search by shop or seller name"
+                           type="text" th:value="${currentSearch}">
+                    <button type="submit" class="absolute inset-y-0 left-3 flex items-center justify-center text-gray-400 p-0 m-0 bg-transparent border-0 h-8 w-8" aria-label="Search">
+                        <svg class="h-6 w-6 mt-3" fill="none" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width:2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+                        </svg>
+                    </button>
+                </div>
+                <input type="hidden" name="sort" th:value="${currentSort}">
+            </form>
+        </div>
+
+        <!-- Table for medium+ screens -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-red-50">
+                    <tr>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Shop Name</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller ID</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller Name</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Level</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Products</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
+                            <a th:href="@{/admin/shops(sort=${currentSort == 'rating_asc' ? 'rating_desc' : 'rating_asc'}, search=${currentSearch})}" 
+                               class="flex items-center">
+                                Rating
+                                <span class="ml-1">
+                                    <svg class="h-3 w-3 mb-0.5" th:classappend="${currentSort == 'rating_asc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5-5 5 5"/>
+                                    </svg>
+                                    <svg class="h-3 w-3 mt-0.5" th:classappend="${currentSort == 'rating_desc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l5 5 5-5"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-100">
+                            <a th:href="@{/admin/shops(sort=${currentSort == 'commission_asc' ? 'commission_desc' : 'commission_asc'}, search=${currentSearch})}" 
+                               class="flex items-center">
+                                Commission
+                                <span class="ml-1">
+                                    <svg class="h-3 w-3 mb-0.5" th:classappend="${currentSort == 'commission_asc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5-5 5 5"/>
+                                    </svg>
+                                    <svg class="h-3 w-3 mt-0.5" th:classappend="${currentSort == 'commission_desc' ? 'opacity-100' : 'opacity-40'}" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l5 5 5-5"/>
+                                    </svg>
+                                </span>
+                            </a>
+                        </th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <tr th:if="${shops == null or shops.isEmpty()}">
+                        <td colspan="10" class="px-6 py-12 text-center text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <p class="text-lg font-medium">No shops found</p>
+                        </td>
+                    </tr>
+                    <tr th:each="shop,iter : ${shops}" class="hover:bg-gray-50">
+                        <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900" th:text="${shop.shopName}">Shop Name</div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900" th:text="${shop.sellerId}">1</div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900" th:text="${shop.sellerName}">Seller Name</div>
+                            <div class="text-xs text-gray-500" th:text="${shop.sellerEmail}">email@example.com</div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span th:if="${shop.isDelete == false}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            <span th:if="${shop.isDelete == true}"
+                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Inactive
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                                  th:text="${shop.shopLevel != null ? shop.shopLevel : 0}">0</span>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900" th:text="${shop.productCount}">0</div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <svg class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                <span class="ml-1 text-sm text-gray-900" th:text="${#numbers.formatDecimal(shop.rating, 1, 1)}">0.0</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
+                                <span th:text="${shop.commission}">5.00</span>%
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 whitespace-nowrap">
+                            <button class="text-red-500 hover:underline" 
+                                    onclick="openCommissionModal(this)"
+                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-rate=${shop.commission}">
+                                Config
+                            </button>
+                            <button class="text-red-500 hover:underline ml-3" 
+                                    onclick="openShopDetail(this)"
+                                    th:attr="data-id=${shop.id}">
+                                Detail
+                            </button>
+                            <button class="text-red-500 hover:underline ml-3" 
+                                    onclick="toggleShopStatus(this)"
+                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}, data-isdelete=${shop.isDelete}"
+                                    th:text="${shop.isDelete == true ? 'Active' : 'Inactive'}">
+                                Active
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4" 
+                 th:each="shop,iter : ${shops}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
+                        <h3 class="font-semibold text-gray-900" th:text="${shop.shopName}">Shop Name</h3>
+                    </div>
+                    <span th:if="${shop.isDelete == false}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        Active
+                    </span>
+                    <span th:if="${shop.isDelete == true}"
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        Inactive
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500">Seller:</p>
+                        <p class="font-medium" th:text="${shop.sellerName}">Seller</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Level:</p>
+                        <span class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            <span th:text="${shop.shopLevel != null ? shop.shopLevel : 0}">0</span>
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Products:</p>
+                        <p class="font-medium" th:text="${shop.productCount}">0</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Rating:</p>
+                        <div class="flex items-center">
+                            <svg class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            <span class="ml-1 font-medium" th:text="${#numbers.formatDecimal(shop.rating, 1, 1)}">0.0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Commission:</p>
+                        <p class="font-medium"><span th:text="${shop.commission}">5.00</span>%</p>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="openCommissionModal(this)"
+                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-rate=${shop.commission}">
+                        Config
+                    </button>
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="openShopDetail(this)"
+                            th:attr="data-id=${shop.id}">
+                        Detail
+                    </button>
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="toggleShopStatus(this)"
+                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}, data-isdelete=${shop.isDelete}"
+                            th:text="${shop.isDelete == true ? 'Active' : 'Inactive'}">
+                        Active
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Showing <span th:text="${shops != null and !shops.isEmpty() ? (currentPage * 10 + 1) : 0}">0</span>
+                to <span th:text="${currentPage * 10 + (shops != null ? #lists.size(shops) : 0)}">0</span>
+                of <span th:text="${totalPages * 10}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/shops(page=${currentPage - 1}, search=${currentSearch}, sort=${currentSort})}"
+                   th:if="${currentPage > 0}">Previous</a>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md"
+                   th:classappend="${i == currentPage} ? 'bg-red-500 text-white' : 'hover:bg-gray-100'"
+                   th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                   th:href="@{/admin/shops(page=${i}, search=${currentSearch}, sort=${currentSort})}"
+                   th:if="${(i == 0) || (i == currentPage) || (i == currentPage - 1) || (i == currentPage + 1) || (i == totalPages - 1)}"
+                   th:text="${i + 1}">1</a>
+
+                <span class="px-2 sm:px-3 py-1" th:if="${currentPage > 2 && totalPages > 5}">...</span>
+
+                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                   th:href="@{/admin/shops(page=${currentPage + 1}, search=${currentSearch}, sort=${currentSort})}"
+                   th:if="${currentPage < totalPages - 1}">Next</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commission Config Modal -->
+    <div id="commissionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 m-4 relative transform transition-all duration-300 ease-out">
+            <button class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                    onclick="closeCommissionModal()">&times;</button>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-6">Configure Commission Rate</h3>
+
+            <form id="commissionForm" onsubmit="submitCommission(event)">
+                <input type="hidden" id="shopId">
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="shopName" class="block text-sm font-medium text-gray-700 mb-2">Shop Name</label>
+                        <input type="text" id="shopName" readonly
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50">
+                    </div>
+
+                    <div>
+                        <label for="commissionRate" class="block text-sm font-medium text-gray-700 mb-2">Commission Rate (%) *</label>
+                        <input type="number" id="commissionRate" step="0.01" min="0" max="100" required
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                        <p class="mt-1 text-xs text-gray-500">Enter a value between 0 and 100</p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 mt-6">
+                    <button type="submit"
+                        class="flex-1 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition">
+                        Save
+                    </button>
+                    <button type="button" onclick="closeCommissionModal()"
+                        class="flex-1 px-6 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Shop Detail Modal -->
+    <div id="shopDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 m-4 relative transform transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto">
+            <button class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 text-2xl font-bold z-10"
+                    onclick="closeShopDetail()">&times;</button>
+            
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">Shop Details</h3>
+
+            <div class="space-y-6">
+                <!-- Shop Info -->
+                <div class="border-b pb-4">
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4">Shop Information</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Shop Name</p>
+                            <p id="detail-shopName" class="text-base font-medium text-gray-900 mt-1">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Status</p>
+                            <div id="detail-status" class="mt-1">
+                                <span class="px-2 py-1 text-xs rounded-full">-</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Product Count</p>
+                            <p id="detail-productCount" class="text-base text-gray-900 mt-1">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Rating</p>
+                            <div id="detail-rating" class="flex items-center mt-1">
+                                <svg class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                <span class="ml-1 text-base text-gray-900">-</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Commission Rate</p>
+                            <p id="detail-commission" class="text-base text-gray-900 mt-1">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Seller Info -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4">Seller Information</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Seller ID</p>
+                            <p id="detail-sellerId" class="text-base text-gray-900 mt-1">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Seller Name</p>
+                            <p id="detail-sellerName" class="text-base font-medium text-gray-900 mt-1">-</p>
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-sm font-medium text-gray-500">Email</p>
+                            <p id="detail-sellerEmail" class="text-base text-gray-900 mt-1">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 mt-6 pt-4 border-t">
+                <button onclick="closeShopDetail()"
+                    class="flex-1 px-6 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function openCommissionModal(button) {
+            const shopId = button.dataset.id;
+            const shopName = button.dataset.name;
+            const currentRate = button.dataset.rate;
+
+            document.getElementById('shopId').value = shopId;
+            document.getElementById('shopName').value = shopName;
+            document.getElementById('commissionRate').value = currentRate;
+            document.getElementById('commissionModal').classList.remove('hidden');
+        }
+
+        function closeCommissionModal() {
+            document.getElementById('commissionModal').classList.add('hidden');
+            document.getElementById('commissionForm').reset();
+        }
+
+        async function submitCommission(event) {
+            event.preventDefault();
+
+            const shopId = document.getElementById('shopId').value;
+            const commissionRate = Number.parseFloat(document.getElementById('commissionRate').value);
+
+            if (Number.isNaN(commissionRate) || commissionRate < 0 || commissionRate > 100) {
+                showToast('Commission rate must be between 0 and 100', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/shops/${shopId}/commission`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    },
+                    body: JSON.stringify({ commission: commissionRate })
+                });
+
+                if (response.ok) {
+                    showToast('Commission rate updated successfully');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to update commission rate', true);
+            }
+        }
+
+        async function openShopDetail(button) {
+            const shopId = button.dataset.id;
+            
+            try {
+                const response = await fetch(`/admin/shops/${shopId}/detail`);
+                if (response.ok) {
+                    const shop = await response.json();
+                    
+                    document.getElementById('detail-shopName').textContent = shop.shopName || '-';
+                    document.getElementById('detail-productCount').textContent = shop.productCount || '0';
+                    document.getElementById('detail-rating').querySelector('span').textContent = shop.rating ? shop.rating.toFixed(1) : '0.0';
+                    document.getElementById('detail-commission').textContent = shop.commission ? shop.commission + '%' : '-';
+                    document.getElementById('detail-sellerId').textContent = shop.sellerId || '-';
+                    document.getElementById('detail-sellerName').textContent = shop.sellerName || '-';
+                    document.getElementById('detail-sellerEmail').textContent = shop.sellerEmail || '-';
+                    
+                    const statusElement = document.getElementById('detail-status');
+                    const statusBadge = shop.isDelete === false
+                        ? `<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>`
+                        : `<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inactive</span>`;
+                    statusElement.innerHTML = statusBadge;
+                    
+                    document.getElementById('shopDetailModal').classList.remove('hidden');
+                } else {
+                    showToast('Failed to load shop details', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to load shop details', true);
+            }
+        }
+
+        function closeShopDetail() {
+            document.getElementById('shopDetailModal').classList.add('hidden');
+        }
+
+        async function toggleShopStatus(button) {
+            const shopId = button.dataset.id;
+            const shopName = button.dataset.name;
+            const isDelete = button.dataset.isdelete === 'true';
+            const newStatus = isDelete ? 'Active' : 'Inactive';
+            const action = isDelete ? 'activate' : 'deactivate';
+
+            if (!confirm(`Are you sure you want to ${action} shop "${shopName}"? This will set the shop status to ${newStatus}.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/shops/${shopId}/toggle-status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    showToast(`Shop ${action}d successfully`);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast(`Failed to ${action} shop`, true);
+            }
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('DOMContentLoaded', function () {
+            const commissionModal = document.getElementById('commissionModal');
+            const shopDetailModal = document.getElementById('shopDetailModal');
+            
+            if (commissionModal) {
+                commissionModal.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        closeCommissionModal();
+                    }
+                });
+            }
+            
+            if (shopDetailModal) {
+                shopDetailModal.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        closeShopDetail();
+                    }
+                });
+            }
+        });
+        /*]]>*/
+    </script>
+</div>
+
+</html>

@@ -451,4 +451,61 @@ public class BlogService {
             return "";
         }
     }
+
+    // Admin methods for blog management
+    @Transactional
+    public Blog createBlog(com.mmo.dto.CreateBlogRequest request, Long adminId) {
+        Blog blog = new Blog();
+        blog.setTitle(request.getTitle());
+        blog.setContent(request.getContent());
+        blog.setImage(request.getImage());
+        blog.setCreatedBy(adminId);
+        blog.setStatus(true); // Active by default
+        blog.setDelete(false);
+        blog.setCreatedAt(new java.util.Date());
+        return blogRepository.save(blog);
+    }
+
+    public Blog getBlogById(Long id) {
+        return blogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Blog not found with id: " + id));
+    }
+
+    public long getCommentsCount(Long blogId) {
+        try {
+            Long count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM BlogComments WHERE blog_id = ? AND COALESCE(isDelete,0) = 0",
+                    new Object[]{blogId},
+                    Long.class
+            );
+            return count == null ? 0L : count;
+        } catch (org.springframework.dao.DataAccessException ex) {
+            return 0L;
+        }
+    }
+
+    @Transactional
+    public Blog updateBlog(Long id, com.mmo.dto.UpdateBlogRequest request) {
+        Blog blog = getBlogById(id);
+        if (request.getTitle() != null) {
+            blog.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            blog.setContent(request.getContent());
+        }
+        if (request.getImage() != null) {
+            blog.setImage(request.getImage());
+        }
+        blog.setUpdatedAt(new java.util.Date());
+        return blogRepository.save(blog);
+    }
+
+    @Transactional
+    public Blog toggleBlogStatus(Long id) {
+        Blog blog = getBlogById(id);
+        blog.setStatus(!blog.isStatus());
+        return blogRepository.save(blog);
+    }
 }
+
+

@@ -100,8 +100,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/contact").permitAll()
                         // admin area
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")
-                        // Chat endpoints - require authentication
-                        .requestMatchers("/chat/**").authenticated()
                         // existing allowed posts
                         .requestMatchers(HttpMethod.POST, "/customer/topup").permitAll()
                         // static assets

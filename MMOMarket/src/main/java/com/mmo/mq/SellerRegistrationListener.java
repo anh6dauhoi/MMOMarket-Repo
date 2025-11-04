@@ -16,6 +16,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 @Component
 public class SellerRegistrationListener {
@@ -77,8 +78,16 @@ public class SellerRegistrationListener {
             }
         }
 
-        // updated > 0: fee deducted and shopStatus set to Active. Do NOT change user's role.
-        // Keep existing user role (typically CUSTOMER) to avoid role escalation.
+        // updated > 0: fee deducted and status set to Active. Ensure role SELLER.
+        try {
+            String role = user.getRole();
+            if (role == null || !"SELLER".equalsIgnoreCase(role)) {
+                user.setRole("SELLER");
+                userRepository.save(user);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to set SELLER role for user id={}: {}", user.getId(), ex.getMessage());
+        }
 
         // Create or update ShopInfo with defaults and provided data
         upsertShopInfo(user, msg.shopName(), msg.description());
@@ -128,3 +137,4 @@ public class SellerRegistrationListener {
         }
     }
 }
+

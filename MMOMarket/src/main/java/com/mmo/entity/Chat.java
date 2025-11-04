@@ -38,18 +38,6 @@ public class Chat {
     @Column(name = "message", nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @Column(name = "file_path", length = 500)
-    private String filePath;
-
-    @Column(name = "file_type", length = 50)
-    private String fileType; // image, video, document
-
-    @Column(name = "file_name", length = 255)
-    private String fileName;
-
-    @Column(name = "file_size")
-    private Long fileSize;
-
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date createdAt;

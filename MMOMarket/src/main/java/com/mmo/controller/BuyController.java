@@ -41,7 +41,7 @@ public class BuyController {
         if (opt.isEmpty()) {
             model.addAttribute("error", "Product not found");
             model.addAttribute("canConfirm", false);
-            return "customer/buy-modal :: modal";
+            return "customer/fragments/buy-modal :: modal";
         }
         Product product = opt.get();
 
@@ -94,7 +94,7 @@ public class BuyController {
         model.addAttribute("displayImage", displayImage);
         model.addAttribute("canConfirm", chosenVariantId != null && q >= 1 && (stock == 0 || stock >= q));
 
-        return "customer/buy-modal :: modal";
+        return "customer/fragments/buy-modal :: modal";
     }
 
     @PostMapping("/confirm")
