@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.Random;
 
 @Service
@@ -26,6 +27,14 @@ public class AuthService {
 
     public User findByDepositCode(String depositCode) {
         return userRepository.findByDepositCodeAndIsDelete(depositCode, false);
+    }
+
+    public Optional<User> findOptionalById(Long id) {
+        return userRepository.findById(id).filter(u -> !u.isDelete());
+    }
+
+    public User findById(Long id) {
+        return findOptionalById(id).orElse(null);
     }
 
     public User register(String email, String password, String fullName) throws MessagingException {

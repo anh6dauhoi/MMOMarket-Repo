@@ -280,47 +280,4 @@ public class ShopService {
 
         return sellerData;
     }
-
-    // Admin methods for shop management
-    @org.springframework.transaction.annotation.Transactional
-    public void updateCommission(Long shopId, com.mmo.dto.UpdateCommissionRequest request, Long adminId) {
-        ShopInfo shop = shopInfoRepository.findById(shopId)
-                .orElseThrow(() -> new IllegalArgumentException("Shop not found with id: " + shopId));
-
-        if (request.getCommission() != null) {
-            shop.setCommission(request.getCommission());
-        }
-        shopInfoRepository.save(shop);
-    }
-
-    @org.springframework.transaction.annotation.Transactional
-    public void deleteShop(Long shopId, Long adminId) {
-        ShopInfo shop = shopInfoRepository.findById(shopId)
-                .orElseThrow(() -> new IllegalArgumentException("Shop not found with id: " + shopId));
-
-        shop.setDelete(true);
-        // deletedBy expects User entity, so we need to fetch it
-        if (adminId != null) {
-            User deletedByUser = userRepository.findById(adminId).orElse(null);
-            shop.setDeletedBy(deletedByUser);
-        }
-        shopInfoRepository.save(shop);
-    }
-
-    public org.springframework.data.domain.Page<com.mmo.dto.ShopResponse> getDeletedShops(org.springframework.data.domain.Pageable pageable) {
-        // Simple implementation - returns empty page
-        return org.springframework.data.domain.Page.empty(pageable);
-    }
-
-    @org.springframework.transaction.annotation.Transactional
-    public void restoreShop(Long shopId) {
-        ShopInfo shop = shopInfoRepository.findById(shopId)
-                .orElseThrow(() -> new IllegalArgumentException("Shop not found with id: " + shopId));
-
-        shop.setDelete(false);
-        shop.setDeletedBy(null);
-        shopInfoRepository.save(shop);
-    }
 }
-
-
