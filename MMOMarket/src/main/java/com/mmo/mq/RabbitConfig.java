@@ -1,11 +1,13 @@
 package com.mmo.mq;
 
+import org.aopalliance.aop.Advice;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +28,11 @@ public class RabbitConfig {
     public static final String BUY_POINTS_EXCHANGE = "buy.points.exchange";
     public static final String BUY_POINTS_ROUTING_KEY = "buy.points.requested";
     public static final String BUY_POINTS_QUEUE = "buy.points.requests";
+
+    // New: dedicated exchange/queue for buy-account (orders) flow
+    public static final String BUY_ACCOUNT_EXCHANGE = "buy.account.exchange";
+    public static final String BUY_ACCOUNT_ROUTING_KEY = "buy.account.requested";
+    public static final String BUY_ACCOUNT_QUEUE = "buy.account.requests";
 
     @Bean
     public DirectExchange withdrawalExchange() {
@@ -74,6 +81,22 @@ public class RabbitConfig {
         return BindingBuilder.bind(buyPointsQueue).to(buyPointsExchange).with(BUY_POINTS_ROUTING_KEY);
     }
 
+    // New beans for buy account messaging
+    @Bean
+    public DirectExchange buyAccountExchange() {
+        return new DirectExchange(BUY_ACCOUNT_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue buyAccountQueue() {
+        return QueueBuilder.durable(BUY_ACCOUNT_QUEUE).build();
+    }
+
+    @Bean
+    public Binding buyAccountBinding(Queue buyAccountQueue, DirectExchange buyAccountExchange) {
+        return BindingBuilder.bind(buyAccountQueue).to(buyAccountExchange).with(BUY_ACCOUNT_ROUTING_KEY);
+    }
+
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();
@@ -102,6 +125,26 @@ public class RabbitConfig {
         factory.setMessageConverter(converter);
         factory.setDefaultRequeueRejected(true);
         factory.setMissingQueuesFatal(false);
+        return factory;
+    }
+
+    // Dedicated factory for buy-account listener with retry/backoff and tuned throughput
+    @Bean
+    public SimpleRabbitListenerContainerFactory buyAccountListenerContainerFactory(ConnectionFactory connectionFactory,
+                                                                                   Jackson2JsonMessageConverter converter) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(converter);
+        factory.setDefaultRequeueRejected(true); // preserve message on failures after local retries
+        factory.setMissingQueuesFatal(false);
+        factory.setPrefetchCount(10);
+        factory.setConcurrentConsumers(2);
+        factory.setMaxConcurrentConsumers(5);
+        Advice retry = RetryInterceptorBuilder.stateless()
+                .maxAttempts(5)
+                .backOffOptions(1000, 2.0, 10000)
+                .build();
+        factory.setAdviceChain(retry);
         return factory;
     }
 }

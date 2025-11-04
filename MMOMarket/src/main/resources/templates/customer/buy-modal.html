@@ -83,11 +83,23 @@
                     </div>
                 </div>
 
-                <!-- Warning message with refined styling -->
-                <div th:if="${!canConfirm}"
+                <!-- Warning message for stock -->
+                <div th:if="${!canConfirm && stock == 0}"
                      class="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200">
                     <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
                     <span class="text-xs text-amber-800 font-medium leading-relaxed">This product is currently out of stock or unavailable.</span>
+                </div>
+
+                <!-- Insufficient coins notice -->
+                <div th:if="${!hasEnoughCoins}"
+                     class="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-red-50 border border-red-200">
+                    <i class="fa-solid fa-coins text-red-600 mt-0.5"></i>
+                    <div class="text-xs text-red-800 font-medium leading-relaxed">
+                        <div>Your balance is insufficient to complete this purchase.</div>
+                        <div class="mt-1 text-[11px] text-red-700">
+                            Balance: <span class="format-price" th:attr="data-price=${userCoins}">0</span> coins · Required: <span class="format-price" th:attr="data-price=${total}">0</span> coins
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -99,7 +111,14 @@
                             data-dismiss="true">
                         Cancel
                     </button>
+                    <a th:if="${!hasEnoughCoins}"
+                       href="/customer/topup"
+                       class="px-6 py-2.5 rounded-xl font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                        Top Up
+                    </a>
                     <button type="button"
+                            id="confirmPurchaseBtn"
+                            th:attr="data-product-id=${product.id}, data-variant-id=${variantId}, data-quantity=${quantity}"
                             class="px-7 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-500 via-red-600 to-orange-500 hover:from-red-600 hover:via-red-700 hover:to-orange-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 disabled:shadow-none disabled:scale-100"
                             th:disabled="${!canConfirm}">
                         <span class="flex items-center gap-2">
