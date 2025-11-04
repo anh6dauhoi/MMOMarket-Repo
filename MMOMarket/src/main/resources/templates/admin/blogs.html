@@ -53,8 +53,8 @@
                         onchange="this.form.submit()"
                         class="w-full md:w-40 py-2 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm bg-white">
                     <option value="" th:selected="${currentStatus == null or currentStatus == '' or currentStatus == 'All'}">All Status</option>
-                    <option value="Active" th:selected="${currentStatus == 'Active'}">Show (Active)</option>
-                    <option value="Inactive" th:selected="${currentStatus == 'Inactive'}">Hidden (Inactive)</option>
+                    <option value="Active" th:selected="${currentStatus == 'Active'}">Show</option>
+                    <option value="Inactive" th:selected="${currentStatus == 'Inactive'}">Hidden</option>
                 </select>
                 <input type="hidden" name="search" th:value="${currentSearch}">
                 <input type="hidden" name="sort" th:value="${currentSort}">

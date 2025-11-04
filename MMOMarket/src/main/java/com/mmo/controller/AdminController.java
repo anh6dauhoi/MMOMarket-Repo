@@ -1,10 +1,7 @@
 package com.mmo.controller;
 
 import com.mmo.dto.*;
-import com.mmo.entity.Category;
-import com.mmo.entity.User;
-import com.mmo.entity.Withdrawal;
-import com.mmo.entity.CoinDeposit;
+import com.mmo.entity.*;
 import jakarta.persistence.TypedQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -70,6 +67,9 @@ public class AdminController {
 
     @Autowired
     private com.mmo.service.BlogService blogService;
+
+    @Autowired
+    private com.mmo.service.ShopService shopService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -1197,4 +1197,484 @@ public class AdminController {
         }
     }
 
+    // ==================== SHOP MANAGEMENT ====================
+
+    @GetMapping("/shops")
+    @Transactional(readOnly = true)
+    public String shops(@RequestParam(name = "page", defaultValue = "0") int page,
+                        @RequestParam(name = "search", defaultValue = "") String search,
+                        @RequestParam(name = "sort", defaultValue = "") String sort,
+                        @RequestParam(name = "status", defaultValue = "All") String status,
+                        Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+
+        // For rating sort, we need a different approach with subquery
+        boolean isRatingSort = sort != null && (sort.equals("rating_asc") || sort.equals("rating_desc"));
+
+        if (isRatingSort) {
+            // Use optimized rating sort with single query
+            String direction = sort.equals("rating_asc") ? "ASC" : "DESC";
+            StringBuilder whereClause = new StringBuilder();
+            boolean hasWhere = false;
+
+            // Add status filter
+            if (!"All".equalsIgnoreCase(status)) {
+                if (status.equalsIgnoreCase("Active")) {
+                    whereClause.append("s.isDelete = false");
+                } else if (status.equalsIgnoreCase("Inactive")) {
+                    whereClause.append("s.isDelete = true");
+                }
+                hasWhere = true;
+            }
+
+            // Add search filter
+            if (search != null && !search.trim().isEmpty()) {
+                if (hasWhere) {
+                    whereClause.append(" AND ");
+                }
+                whereClause.append("(LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+                hasWhere = true;
+            }
+
+            String jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user ";
+            if (hasWhere) {
+                jpql += "WHERE " + whereClause.toString() + " ";
+            }
+            jpql += "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
+                    "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
+
+            // Get total count
+            StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s");
+            if (hasWhere) {
+                countJpql.append(" WHERE ").append(whereClause.toString());
+            }
+
+            TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+            if (search != null && !search.trim().isEmpty()) {
+                countQuery.setParameter("search", "%" + search.trim() + "%");
+            }
+            long total = countQuery.getSingleResult();
+
+            // Get paginated results
+            TypedQuery<ShopInfo> query = entityManager.createQuery(jpql, ShopInfo.class);
+            if (search != null && !search.trim().isEmpty()) {
+                query.setParameter("search", "%" + search.trim() + "%");
+            }
+            query.setFirstResult(page * 10);
+            query.setMaxResults(10);
+            List<ShopInfo> shopInfos = query.getResultList();
+
+            // Build response with batch-loaded data
+            List<com.mmo.dto.ShopResponse> shops = buildShopResponses(shopInfos);
+
+            Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
+
+            model.addAttribute("shops", shopPage.getContent());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("currentStatus", status);
+            model.addAttribute("totalPages", shopPage.getTotalPages());
+            model.addAttribute("pageTitle", "Shop Management");
+            model.addAttribute("body", "admin/shops");
+            return "admin/layout";
+        }
+
+        // Normal sort (commission, or default by ID)
+        StringBuilder jpql = new StringBuilder(
+                "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user"
+        );
+
+        boolean hasWhere = false;
+
+        // Add status filter
+        if (!"All".equalsIgnoreCase(status)) {
+            jpql.append(" WHERE ");
+            if (status.equalsIgnoreCase("Active")) {
+                jpql.append("s.isDelete = false");
+            } else if (status.equalsIgnoreCase("Inactive")) {
+                jpql.append("s.isDelete = true");
+            }
+            hasWhere = true;
+        }
+
+        // Add search filter
+        if (search != null && !search.trim().isEmpty()) {
+            if (hasWhere) {
+                jpql.append(" AND ");
+            } else {
+                jpql.append(" WHERE ");
+            }
+            jpql.append("(LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+            hasWhere = true;
+        }
+
+        // Add simple sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("commission_asc")) {
+                jpql.append(" ORDER BY s.commission ASC");
+            } else if (sort.equals("commission_desc")) {
+                jpql.append(" ORDER BY s.commission DESC");
+            } else if (sort.equals("level_asc")) {
+                jpql.append(" ORDER BY s.shopLevel ASC");
+            } else if (sort.equals("level_desc")) {
+                jpql.append(" ORDER BY s.shopLevel DESC");
+            } else {
+                jpql.append(" ORDER BY s.id DESC");
+            }
+        } else {
+            jpql.append(" ORDER BY s.id DESC");
+        }
+
+        // Get total count efficiently with separate COUNT query
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s");
+        boolean hasCountWhere = false;
+
+        // Add status filter to count
+        if (!"All".equalsIgnoreCase(status)) {
+            countJpql.append(" WHERE ");
+            if (status.equalsIgnoreCase("Active")) {
+                countJpql.append("s.isDelete = false");
+            } else if (status.equalsIgnoreCase("Inactive")) {
+                countJpql.append("s.isDelete = true");
+            }
+            hasCountWhere = true;
+        }
+
+        // Add search filter to count
+        if (search != null && !search.trim().isEmpty()) {
+            if (hasCountWhere) {
+                countJpql.append(" AND ");
+            } else {
+                countJpql.append(" WHERE ");
+            }
+            countJpql.append("(LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
+        }
+
+        TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+        if (search != null && !search.trim().isEmpty()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        long total = countQuery.getSingleResult();
+
+        // Get paginated results
+        TypedQuery<ShopInfo> query = entityManager.createQuery(jpql.toString(), ShopInfo.class);
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+        query.setFirstResult(page * 10);
+        query.setMaxResults(10);
+        List<ShopInfo> shopInfos = query.getResultList();
+
+        // Build response with batch-loaded data
+        List<com.mmo.dto.ShopResponse> shops = buildShopResponses(shopInfos);
+
+        Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
+
+        model.addAttribute("shops", shopPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("currentStatus", status);
+        model.addAttribute("totalPages", shopPage.getTotalPages());
+        model.addAttribute("pageTitle", "Shop Management");
+        model.addAttribute("body", "admin/shops");
+        return "admin/layout";
+    }
+
+    // Helper method to build shop responses with batch-loaded data
+    private List<com.mmo.dto.ShopResponse> buildShopResponses(List<ShopInfo> shopInfos) {
+        List<com.mmo.dto.ShopResponse> shops = new java.util.ArrayList<>();
+        if (!shopInfos.isEmpty()) {
+            List<Long> sellerIds = shopInfos.stream()
+                    .map(s -> s.getUser().getId())
+                    .collect(java.util.stream.Collectors.toList());
+
+            // Batch query for product counts
+            List<Object[]> productCounts = entityManager.createQuery(
+                    "SELECT p.seller.id, COUNT(p) FROM Product p WHERE p.seller.id IN :ids GROUP BY p.seller.id",
+                    Object[].class
+            ).setParameter("ids", sellerIds).getResultList();
+
+            java.util.Map<Long, Long> countMap = productCounts.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> (Long) row[1]
+                    ));
+
+            // Batch query for ratings
+            List<Object[]> ratings = entityManager.createQuery(
+                    "SELECT r.product.seller.id, AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id IN :ids GROUP BY r.product.seller.id",
+                    Object[].class
+            ).setParameter("ids", sellerIds).getResultList();
+
+            java.util.Map<Long, Double> ratingMap = ratings.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> (Double) row[1]
+                    ));
+
+            // Build response with cached data
+            for (ShopInfo shop : shopInfos) {
+                Long sellerId = shop.getUser().getId();
+                Long productCount = countMap.getOrDefault(sellerId, 0L);
+                Double rating = ratingMap.getOrDefault(sellerId, 0.0);
+                shops.add(com.mmo.dto.ShopResponse.fromEntity(shop, productCount, rating));
+            }
+        }
+        return shops;
+    }
+
+    @PutMapping("/shops/{id}/commission")
+    @ResponseBody
+    public ResponseEntity<?> updateCommission(@PathVariable Long id,
+                                              @RequestBody com.mmo.dto.UpdateCommissionRequest request,
+                                              Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            shopService.updateCommission(id, request, admin.getId());
+            return ResponseEntity.ok().body("Commission updated successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/shops/{id}/detail")
+    @ResponseBody
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getShopDetail(@PathVariable Long id) {
+        try {
+            // Find shop by ID
+            ShopInfo shop = entityManager.find(ShopInfo.class, id);
+            if (shop == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Shop not found");
+            }
+
+            // Get product count using seller_id
+            Long productCount = entityManager.createQuery(
+                            "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false",
+                            Long.class)
+                    .setParameter("sellerId", shop.getUser().getId())
+                    .getSingleResult();
+
+            // Get average rating - Review -> Product -> Seller
+            Double avgRating = entityManager.createQuery(
+                            "SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = :sellerId AND r.isDelete = false",
+                            Double.class)
+                    .setParameter("sellerId", shop.getUser().getId())
+                    .getSingleResult();
+
+            // Build response
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("id", shop.getId());
+            response.put("shopName", shop.getShopName());
+            response.put("status", shop.getUser() != null ? shop.getUser().getShopStatus() : "Inactive");
+            response.put("isDelete", shop.isDelete());
+            response.put("shopLevel", shop.getShopLevel() != null ? shop.getShopLevel() : 0);
+            response.put("points", shop.getPoints() != null ? shop.getPoints() : 0L);
+            response.put("productCount", productCount);
+            response.put("rating", avgRating != null ? avgRating : 0.0);
+            response.put("commission", shop.getCommission());
+            response.put("sellerId", shop.getUser() != null ? shop.getUser().getId() : null);
+            response.put("sellerName", shop.getUser() != null ? shop.getUser().getFullName() : "-");
+            response.put("sellerEmail", shop.getUser() != null ? shop.getUser().getEmail() : "-");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            logger.error("Error getting shop detail for ID: {}", id, ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/shops/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteShop(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            shopService.deleteShop(id, admin.getId());
+            return ResponseEntity.ok().body("Shop deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/shops/{id}/toggle-status")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> toggleShopStatus(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            // Find the shop by id
+            ShopInfo shop = entityManager.createQuery(
+                            "SELECT s FROM ShopInfo s WHERE s.id = :id", ShopInfo.class)
+                    .setParameter("id", id)
+                    .getSingleResult();
+
+            // Toggle the isDelete status
+            boolean currentIsDelete = shop.isDelete();
+            shop.setDelete(!currentIsDelete);
+
+            if (!currentIsDelete) {
+                // If we're setting isDelete to true (deactivating), set deletedBy
+                shop.setDeletedBy(admin);
+            } else {
+                // If we're setting isDelete to false (activating), clear deletedBy
+                shop.setDeletedBy(null);
+            }
+
+            entityManager.merge(shop);
+
+            String action = currentIsDelete ? "activated" : "deactivated";
+            return ResponseEntity.ok().body("Shop " + action + " successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/shops/{id}/level-points")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateShopLevelAndPoints(@PathVariable Long id,
+                                                       @RequestBody java.util.Map<String, Object> request,
+                                                       Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            // Find the shop by id
+            ShopInfo shop = entityManager.find(ShopInfo.class, id);
+            if (shop == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Shop not found");
+            }
+
+            // Update shop level
+            if (request.containsKey("shopLevel")) {
+                Integer shopLevel = Integer.parseInt(request.get("shopLevel").toString());
+                if (shopLevel < 0 || shopLevel > 255) {
+                    return ResponseEntity.badRequest().body("Shop level must be between 0 and 255");
+                }
+                shop.setShopLevel(shopLevel.shortValue());
+            }
+
+            // Update points
+            if (request.containsKey("points")) {
+                Long points = Long.parseLong(request.get("points").toString());
+                if (points < 0) {
+                    return ResponseEntity.badRequest().body("Points must be greater than or equal to 0");
+                }
+                shop.setPoints(points);
+            }
+
+            entityManager.merge(shop);
+
+            return ResponseEntity.ok().body(java.util.Map.of(
+                "message", "Shop level and points updated successfully",
+                "shopLevel", shop.getShopLevel(),
+                "points", shop.getPoints()
+            ));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("Invalid number format");
+        } catch (Exception ex) {
+            logger.error("Error updating shop level and points for shop ID: {}", id, ex);
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/shops/deleted")
+    public String deletedShops(@RequestParam(name = "page", defaultValue = "0") int page, Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<com.mmo.dto.ShopResponse> shopPage = shopService.getDeletedShops(pageable);
+
+        model.addAttribute("shops", shopPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", shopPage.getTotalPages());
+        model.addAttribute("pageTitle", "Deleted Shops");
+        model.addAttribute("body", "admin/deleted-shops");
+        return "admin/layout";
+    }
+
+    @GetMapping("/shops/deleted/list")
+    @ResponseBody
+    public ResponseEntity<?> getDeletedShopsList() {
+        try {
+            Pageable pageable = PageRequest.of(0, 100); // Get up to 100 deleted shops
+            Page<com.mmo.dto.ShopResponse> shopPage = shopService.getDeletedShops(pageable);
+            return ResponseEntity.ok(shopPage.getContent());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping("/shops/{id}/restore")
+    @ResponseBody
+    public ResponseEntity<?> restoreShop(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            shopService.restoreShop(id);
+            return ResponseEntity.ok().body("Shop restored successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
 }
