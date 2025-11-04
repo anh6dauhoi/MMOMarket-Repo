@@ -159,13 +159,14 @@ CREATE TABLE IF NOT EXISTS Transactions (
     seller_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     variant_id BIGINT NOT NULL,
+    quantity BIGINT NOT NULL DEFAULT 1,
     delivered_account_id BIGINT NULL, -- Sẽ thêm FK sau
     amount BIGINT NOT NULL,
     commission BIGINT NOT NULL,
     coinAdmin BIGINT NOT NULL,
     coinSeller BIGINT NOT NULL,
-    status VARCHAR(20) DEFAULT 'Pending',
-    escrow_release_date DATETIME,
+    status VARCHAR(50) NOT NULL DEFAULT 'CREATED', -- Trạng thái (VD: CREATED, ESCROW, DISPUTED, RELEASED, COMPLETED)
+    escrow_release_date DATETIME(6) NULL, -- Ngày dự kiến giải ngân (VD: NOW() + 3 ngày)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by BIGINT,
@@ -284,6 +285,10 @@ CREATE TABLE IF NOT EXISTS Chats (
     receiver_id BIGINT NOT NULL, -- Mã người nhận
     complaint_id BIGINT, -- Mã khiếu nại liên kết
     message TEXT NOT NULL, -- Nội dung tin nhắn
+    file_path VARCHAR(500) NULL,
+    file_type VARCHAR(50) NULL,
+    file_name VARCHAR(255) NULL,
+    file_size BIGINT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -323,7 +328,6 @@ CREATE TABLE IF NOT EXISTS Blogs (
     author_id BIGINT NOT NULL, -- Mã tác giả
     views BIGINT DEFAULT 0, -- Lượt xem
     likes BIGINT DEFAULT 0, -- Số lượt thích
-    status TINYINT(1) DEFAULT 1, -- Trạng thái hiển thị: 1 = hiển thị, 0 = ẩn
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -372,10 +376,11 @@ CREATE TABLE IF NOT EXISTS Notifications (
 
 CREATE TABLE IF NOT EXISTS Orders (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    request_id VARCHAR(255) NULL,
     customer_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     variant_id BIGINT NOT NULL,
-    quantity INT NOT NULL,
+    quantity BIGINT NOT NULL DEFAULT 1,
     total_price BIGINT NOT NULL,
     status ENUM('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED') NOT NULL DEFAULT 'PENDING',
     error_message TEXT,
@@ -384,9 +389,11 @@ CREATE TABLE IF NOT EXISTS Orders (
     processed_at DATETIME,
     INDEX idx_status (status),
     INDEX idx_customer (customer_id),
+    UNIQUE KEY uk_orders_request_id (request_id),
     FOREIGN KEY (customer_id) REFERENCES Users(id),
     FOREIGN KEY (product_id) REFERENCES Products(id),
-    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id)
+    FOREIGN KEY (variant_id) REFERENCES ProductVariants(id),
+	FOREIGN KEY (transaction_id) REFERENCES Transactions(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Trigger update points with transaction completed

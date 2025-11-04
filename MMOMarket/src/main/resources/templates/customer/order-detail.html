@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" th:href="@{/customer/css/order-detail.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+</head>
+<body class="min-h-screen flex flex-col">
+<div th:insert="~{fragments/header :: header}"></div>
+
+<main class="flex-grow py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="md:col-span-1">
+                <div th:replace="~{customer/account-setting :: sidebar}"></div>
+            </div>
+            <div class="md:col-span-3">
+                <div class="card-modern p-8">
+                    <!-- Header -->
+                    <div class="order-header">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h1 class="page-title">Order Details</h1>
+                                <p class="text-gray-500 mt-1 flex items-center">
+                                    <i class="fas fa-layer-group mr-2 text-red-400"></i>
+                                    Category: <span class="font-bold ml-1" th:text="${categoryName} + ' (' + ${categoryType} + ')'">Unknown (common)</span>
+                                </p>
+                            </div>
+                            <a th:href="@{/account/orders}" class="btn-back inline-flex items-center space-x-2">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Back to Orders</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Order Info Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <!-- Product Info -->
+                        <div class="info-card">
+                            <p class="info-label">
+                                <i class="fas fa-box mr-1"></i>Product Name
+                            </p>
+                            <p class="info-value" th:text="${productName}">Product Name</p>
+                        </div>
+
+                        <!-- Variant Info (moved from bottom) -->
+                        <div class="info-card" th:if="${variant != null}">
+                            <p class="info-label">
+                                <i class="fas fa-tag mr-1"></i>Product Variant
+                            </p>
+                            <p class="info-value">
+                                <span class="font-semibold" th:text="${variant.variantName}">Default</span>
+                                <span class="text-sm text-gray-500 ml-2">
+                                    Unit price:
+                                    <span class="format-price" th:attr="data-price=${variant.price}">0</span>
+                                    coins
+                                </span>
+                            </p>
+                        </div>
+
+                        <!-- Quantity -->
+                        <div class="info-card">
+                            <p class="info-label">
+                                <i class="fas fa-hashtag mr-1"></i>Quantity
+                            </p>
+                            <p class="info-value flex items-center">
+                                <i class="fas fa-cubes mr-2 text-red-400"></i>
+                                <span th:text="${order.quantity}">1</span>
+                                <span class="text-sm text-gray-500 ml-2">units</span>
+                            </p>
+                        </div>
+
+                        <!-- Total Price -->
+                        <div class="info-card">
+                            <p class="info-label">
+                                <i class="fas fa-coins mr-1"></i>Total Price
+                            </p>
+                            <p class="info-value flex items-center">
+                                <i class="fas fa-coins coin-highlight mr-2"></i>
+                                <span class="format-price coin-highlight" th:attr="data-price=${order.totalPrice}">0</span>
+                                <span class="text-sm text-gray-500 ml-2">coins</span>
+                            </p>
+                        </div>
+
+                        <!-- Created Date -->
+                        <div class="info-card">
+                            <p class="info-label">
+                                <i class="fas fa-calendar-plus mr-1"></i>Order Date
+                            </p>
+                            <p class="info-value flex items-center">
+                                <i class="fas fa-clock mr-2 text-red-400"></i>
+                                <span th:text="${#dates.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 00:00</span>
+                            </p>
+                        </div>
+
+                        <!-- Status (moved from top) -->
+                        <div class="info-card">
+                            <p class="info-label">
+                                <i class="fas fa-info-circle mr-1"></i>Order Status
+                            </p>
+                            <div>
+                                <span th:class="${order.status.name() == 'COMPLETED'} ? 'badge-completed' : (${order.status.name() == 'PENDING' or order.status.name() == 'PROCESSING'} ? 'badge-pending' : 'badge-failed')"
+                                      th:text="${order.status}">PENDING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error Message (if any) -->
+                    <div class="info-card bg-red-50 border-red-300 mb-8" th:if="${order.errorMessage != null and !#strings.isEmpty(order.errorMessage)}">
+                        <p class="info-label text-red-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Error Message
+                        </p>
+                        <p class="text-red-700 font-semibold" th:text="${order.errorMessage}">-</p>
+                    </div>
+
+                    <!-- Delivered Accounts -->
+                    <div class="mb-8" th:if="${accounts != null and !#lists.isEmpty(accounts)}">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-lg font-bold text-gray-900 flex items-center">
+                                <i class="fas fa-key text-red-500 mr-2"></i>
+                                Delivered Accounts
+                            </h2>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-gray-500" th:text="${#lists.size(accounts)} + ' item(s)'"></span>
+                                <span class="text-xs font-semibold" th:classappend="${activatedCount == #lists.size(accounts)} ? ' text-green-600' : ' text-amber-600'">
+                                    <i class="fas" th:classappend="${activatedCount == #lists.size(accounts)} ? ' fa-check-circle' : ' fa-hourglass-half'"></i>
+                                    <span th:text="${activatedCount} + '/' + ${#lists.size(accounts)}"></span>
+                                    <span> activated</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Per-account rows: show activated with show/hide+copy; not-activated with Activate button -->
+                        <div id="accounts-container" class="space-y-3">
+                            <div class="bg-white border rounded-lg p-3 flex items-start justify-between gap-3 shadow-sm account-item"
+                                 th:each="acc,iter : ${accounts}"
+                                 th:classappend="${acc.activated} ? ' border-gray-200' : ' border-amber-300'"
+                                 th:attr="data-account-index=${iter.index},data-account-id=${acc.id},data-is-activated=${acc.activated}">
+                                <div class="flex-1">
+                                    <div class="text-xs text-gray-500 mb-1">Account [[${iter.index + 1}]]</div>
+                                    <!-- Activated account: show placeholder, data will be loaded on demand -->
+                                    <div th:if="${acc.activated}">
+                                        <pre class="acc-data whitespace-pre-wrap break-words font-mono text-sm text-gray-500 select-none">Click "Show Info" to view account details</pre>
+                                        <div class="text-[11px] text-gray-400 mt-1" th:if="${acc.activatedAt != null}">
+                                            Activated at: <span th:text="${#dates.format(acc.activatedAt, 'dd/MM/yyyy HH:mm')}">-</span>
+                                        </div>
+                                    </div>
+                                    <!-- Not activated: always masked -->
+                                    <div th:unless="${acc.activated}">
+                                        <pre class="whitespace-pre-wrap break-words font-mono text-sm text-gray-500 select-none">••••••••••  (encrypted)</pre>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end gap-2 min-w-[160px]">
+                                    <!-- Controls for activated account: show/hide + copy (disabled until shown) -->
+                                    <div th:if="${acc.activated}" class="flex flex-col items-end gap-2">
+                                        <button type="button"
+                                                class="btn-show-account px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-50 flex items-center gap-1"
+                                                onclick="toggleAccountVisibility(this)">
+                                            <i class="fas fa-eye"></i><span>Show Info</span>
+                                        </button>
+                                        <button type="button" class="btn-copy px-3 py-2 rounded-md bg-gray-300 text-white text-xs font-semibold cursor-not-allowed flex items-center gap-1" disabled
+                                                onclick="copyToClipboard(this)">
+                                            <i class="fas fa-copy"></i><span>Copy</span>
+                                        </button>
+                                    </div>
+                                    <!-- Controls for not-activated account: Activate button -->
+                                    <div th:unless="${acc.activated}">
+                                        <button type="button" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2"
+                                                th:attr="data-acc-id=${acc.id}"
+                                                onclick="openActivationModalFor(this.getAttribute('data-acc-id'))">
+                                            <i class="fas fa-unlock"></i>
+                                            <span>Activate</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pagination Controls -->
+                        <div id="accounts-pagination" class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                            <div class="text-sm text-gray-600">
+                                Showing <span id="accounts-showing-from">1</span> to <span id="accounts-showing-to">5</span> of <span id="accounts-total">0</span> accounts
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="accounts-prev-btn" onclick="changeAccountsPage(-1)"
+                                        class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                                    <i class="fas fa-chevron-left"></i>
+                                    <span>Previous</span>
+                                </button>
+                                <div class="flex items-center gap-1" id="accounts-page-numbers">
+                                    <!-- Page numbers will be generated by JavaScript -->
+                                </div>
+                                <button id="accounts-next-btn" onclick="changeAccountsPage(1)"
+                                        class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                                    <span>Next</span>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-gray-500 mt-2">
+                            Keep these credentials secure. Do not share them with anyone.
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-3 pt-6 border-t border-gray-200">
+                        <a th:href="@{/account/orders}" class="btn-back inline-flex items-center space-x-2">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Back to My Orders</span>
+                        </a>
+                        <button class="btn-disabled inline-flex items-center space-x-2" disabled>
+                            <i class="fas fa-star"></i>
+                            <span>Leave Feedback</span>
+                        </button>
+                        <button class="btn-disabled inline-flex items-center space-x-2" disabled>
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span>File Complaint</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:insert="~{fragments/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    function formatWithDots(n){
+        const num = Math.round(Number(String(n).replace(/[^0-9.-]+/g,'')) || 0);
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+    });
+
+    function copyToClipboard(btn) {
+        try {
+            const text = btn.getAttribute('data-clip') || '';
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied';
+                    setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy'; }, 1500);
+                }).catch(() => fallbackCopy(text, btn));
+            } else {
+                fallbackCopy(text, btn);
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+    function fallbackCopy(text, btn) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied';
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy'; }, 1500);
+        } catch (e) {}
+        document.body.removeChild(ta);
+    }
+    function qs(sel){return document.querySelector(sel);}
+    function openActivationModal(){ qs('#activation-modal').classList.remove('hidden'); qs('#activation-modal').classList.add('flex'); }
+    function closeActivationModal(){ const m = qs('#activation-modal'); if(!m) return; m.classList.add('hidden'); m.classList.remove('flex'); }
+    let selectedAccId = null;
+    function openActivationModalFor(accId){ selectedAccId = accId; openActivationModal(); }
+    function confirmActivation(){
+        try{
+            const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+            const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+            const orderId = /*[[${order.id}]]*/ '0';
+            if(!selectedAccId){ alert('No account selected'); return; }
+            fetch(`/account/orders/${orderId}/accounts/${selectedAccId}/activate`, { method:'POST', headers: { [header]: token } })
+                .then(r => r.ok ? r.json() : r.text().then(t=>Promise.reject(t)))
+                .then(() => { window.location.reload(); })
+                .catch(err => { alert(typeof err === 'string' ? err : 'Activation failed'); });
+        }catch(e){ alert('Activation failed'); }
+    }
+    function toggleAccountVisibility(btn){
+        try{
+            const item = btn.closest('.account-item');
+            const accData = item.querySelector('.acc-data');
+            const copy = item.querySelector('.btn-copy');
+            const labelSpan = btn.querySelector('span');
+            const icon = btn.querySelector('i');
+            const accountId = item.getAttribute('data-account-id');
+
+            // Check if data is already loaded
+            const isLoaded = item.hasAttribute('data-loaded');
+
+            if(!isLoaded){
+                // First time showing - fetch data from API
+                labelSpan.textContent = 'Loading...';
+                btn.disabled = true;
+
+                const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+                const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+                const orderId = /*[[${order.id}]]*/ '0';
+
+                fetch(`/account/orders/${orderId}/accounts/${accountId}/data`, {
+                    method:'GET',
+                    headers: { [header]: token }
+                })
+                .then(r => r.ok ? r.json() : r.text().then(t=>Promise.reject(t)))
+                .then(data => {
+                    // Store data temporarily in memory (not in DOM attribute to prevent F12 inspection)
+                    if(!window.accountDataCache) window.accountDataCache = {};
+                    window.accountDataCache[accountId] = data.accountData;
+
+                    // Display the data
+                    accData.textContent = data.accountData;
+                    accData.classList.remove('text-gray-500', 'select-none');
+                    accData.classList.add('text-gray-900');
+
+                    // Mark as loaded and shown
+                    item.setAttribute('data-loaded', 'true');
+                    item.setAttribute('data-shown', 'true');
+
+                    // Update button
+                    btn.disabled = false;
+                    labelSpan.textContent = 'Hide Info';
+                    if(icon){ icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+
+                    // Enable copy button
+                    copy.disabled = false;
+                    copy.classList.remove('bg-gray-300','cursor-not-allowed');
+                    copy.classList.add('bg-red-500','hover:bg-red-600','text-white');
+                    copy.setAttribute('data-clip', data.accountData);
+                })
+                .catch(err => {
+                    alert('Failed to load account data: ' + (typeof err === 'string' ? err : 'Unknown error'));
+                    btn.disabled = false;
+                    labelSpan.textContent = 'Show Info';
+                });
+            } else {
+                // Data already loaded - toggle visibility
+                const isShown = item.getAttribute('data-shown') === 'true';
+
+                if(isShown){
+                    // Hide data
+                    accData.textContent = 'Click "Show Info" to view account details';
+                    accData.classList.add('text-gray-500', 'select-none');
+                    accData.classList.remove('text-gray-900');
+                    item.setAttribute('data-shown', 'false');
+
+                    labelSpan.textContent = 'Show Info';
+                    if(icon){ icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+
+                    // Disable copy button
+                    copy.disabled = true;
+                    copy.classList.add('bg-gray-300','cursor-not-allowed');
+                    copy.classList.remove('bg-red-500','hover:bg-red-600');
+                    copy.removeAttribute('data-clip');
+                } else {
+                    // Show cached data
+                    const cachedData = window.accountDataCache[accountId];
+                    accData.textContent = cachedData;
+                    accData.classList.remove('text-gray-500', 'select-none');
+                    accData.classList.add('text-gray-900');
+                    item.setAttribute('data-shown', 'true');
+
+                    labelSpan.textContent = 'Hide Info';
+                    if(icon){ icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+
+                    // Enable copy button
+                    copy.disabled = false;
+                    copy.classList.remove('bg-gray-300','cursor-not-allowed');
+                    copy.classList.add('bg-red-500','hover:bg-red-600','text-white');
+                    copy.setAttribute('data-clip', cachedData);
+                }
+            }
+        }catch(e){
+            console.error('Toggle visibility error:', e);
+            alert('An error occurred');
+        }
+    }
+
+    // Pagination script for accounts
+    let currentAccountsPage = 1;
+    const accountsPerPage = 5;
+
+    function updateAccountsDisplay() {
+        const allItems = document.querySelectorAll('#accounts-container .account-item');
+        const totalAccounts = allItems.length;
+        const totalPages = Math.ceil(totalAccounts / accountsPerPage);
+
+        if (totalAccounts === 0) return;
+
+        // Calculate range
+        const from = (currentAccountsPage - 1) * accountsPerPage;
+        const to = Math.min(currentAccountsPage * accountsPerPage, totalAccounts);
+
+        // Show/hide items
+        allItems.forEach((item, index) => {
+            if (index >= from && index < to) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Update showing info
+        document.getElementById('accounts-showing-from').textContent = from + 1;
+        document.getElementById('accounts-showing-to').textContent = to;
+        document.getElementById('accounts-total').textContent = totalAccounts;
+
+        // Update buttons
+        const prevBtn = document.getElementById('accounts-prev-btn');
+        const nextBtn = document.getElementById('accounts-next-btn');
+
+        prevBtn.disabled = currentAccountsPage === 1;
+        nextBtn.disabled = currentAccountsPage === totalPages;
+
+        // Generate page numbers
+        const pageNumbersContainer = document.getElementById('accounts-page-numbers');
+        pageNumbersContainer.innerHTML = '';
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'px-3 py-2 rounded-md text-sm font-semibold transition-all duration-200 ease-in-out';
+            if (i === currentAccountsPage) {
+                btn.className += ' bg-red-600 text-white';
+            } else {
+                btn.className += ' bg-white border border-gray-300 text-gray-700 hover:bg-gray-50';
+            }
+            btn.textContent = i;
+            btn.onclick = () => goToAccountsPage(i);
+            pageNumbersContainer.appendChild(btn);
+        }
+
+        // Hide pagination if only 1 page
+        const pagination = document.getElementById('accounts-pagination');
+        if (totalPages <= 1) {
+            pagination.style.display = 'none';
+        } else {
+            pagination.style.display = 'flex';
+        }
+    }
+
+    function changeAccountsPage(delta) {
+        const allItems = document.querySelectorAll('#accounts-container .account-item');
+        const totalPages = Math.ceil(allItems.length / accountsPerPage);
+
+        const newPage = currentAccountsPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentAccountsPage = newPage;
+            updateAccountsDisplay();
+        }
+    }
+
+    function goToAccountsPage(page) {
+        currentAccountsPage = page;
+        updateAccountsDisplay();
+    }
+
+    // Initialize pagination on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Wait a bit for Thymeleaf rendering to complete
+        setTimeout(() => {
+            updateAccountsDisplay();
+        }, 100);
+    });
+</script>
+
+<!-- Activation Modal -->
+<div id="activation-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 hidden">
+    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-red-500 via-red-600 to-orange-500 text-white flex items-center justify-between">
+            <h3 class="text-lg font-bold flex items-center">
+                <i class="fas fa-triangle-exclamation mr-2"></i>
+                Confirm Activation and View Account
+            </h3>
+            <button class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20" onclick="closeActivationModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-4 max-h-[70vh] overflow-auto">
+            <div class="text-sm text-gray-800">
+                <p class="font-bold text-red-600 mb-2">ARTICLE 2: MANDATORY EVIDENCE REQUIREMENTS</p>
+                <div th:if="${categoryType == 'warning'}">
+                    <p class="mb-2"><strong>2.1. For Products in Warning Category:</strong></p>
+                    <ul class="list-disc ml-5 space-y-1">
+                        <li>Applicable products: Game keys, software keys, codes, giftcards, high-value accounts, or digital products that can only be activated once.</li>
+                        <li>MANDATORY evidence requirement: Provide <strong>ONE continuous video</strong>, without cuts/pauses, recording the entire process from receiving information to activation.</li>
+                        <li>The video must clearly show the following steps: receiving information on MMOMarket, copying, switching to activation platform, pasting/entering information, and the displayed result.</li>
+                        <li>Reason: This is the only evidence proving the code/account was defective from the start and has not been used by you.</li>
+                    </ul>
+                </div>
+                <div th:if="${categoryType == 'common'}">
+                    <p class="mb-2"><strong>2.2. For Products in Common Category:</strong></p>
+                    <ul class="list-disc ml-5 space-y-1">
+                        <li>Applicable products: Common accounts (education, streaming), documents, tools, etc.</li>
+                        <li>MANDATORY evidence requirement: Provide valid evidence in the form of video <em>or</em> clear images, without editing.</li>
+                        <li>Valid examples: Login error screenshot; Video of failed login process; Screenshot showing features not matching description.</li>
+                    </ul>
+                </div>
+                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded">
+                    <p class="text-amber-800 text-xs">
+                        When you click "Activate and View", the system will record the activation timestamp. Please prepare your screen recording tool (for Warning category items) before proceeding.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t flex items-center justify-end gap-3">
+            <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100" onclick="closeActivationModal()">Cancel</button>
+            <button class="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold" onclick="confirmActivation()">
+                Activate and View
+            </button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

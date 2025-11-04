@@ -23,6 +23,7 @@
         }
     </style>
     <link rel="stylesheet" th:href="@{/customer/css/chat.css}">
+    <link rel="icon" href="/images/logo.png" type="image/png">
 </head>
 <body class="chat-page">
 <th:insert th:replace="~{fragments/header :: header}" />
@@ -506,7 +507,7 @@
                             Your browser does not support the video tag.
                         </video>
                         <a href="${msg.filePath}" download="${escapeHtml(msg.fileName)}"
-                           class="text-xs ${isSentByMe ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-800'} underline mt-1 inline-block">
+                           class="text-xs ${isSent ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-800'} underline mt-1 inline-block">
                             <i class="fas fa-download"></i> Download
                         </a>
                     </div>

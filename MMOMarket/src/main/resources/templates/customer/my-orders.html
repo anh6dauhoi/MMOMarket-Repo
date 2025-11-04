@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>My Orders</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" th:href="@{/customer/css/my-orders.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<div th:insert="~{fragments/header :: header}"></div>
+
+<main class="flex-grow py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="md:col-span-1">
+                <div th:replace="~{customer/account-setting :: sidebar}"></div>
+            </div>
+            <div class="md:col-span-3">
+                <div class="card-modern p-6">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="page-title">My Orders</h1>
+                            <p class="text-gray-500 mt-1 text-sm">Track and manage your orders</p>
+                        </div>
+                        <div class="flex items-center space-x-2 text-xs">
+                            <i class="fas fa-shopping-bag text-red-400"></i>
+                            <span class="text-gray-600">Total:</span>
+                            <span class="font-bold text-red-500" th:text="${totalElements ?: 0}">0</span>
+                            <span class="text-gray-600">orders</span>
+                        </div>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="mb-5 relative">
+                        <form method="get" th:action="@{/account/orders}" class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-red-400 text-sm"></i>
+                            <input type="text"
+                                   name="search"
+                                   th:value="${param.search != null ? param.search[0] : ''}"
+                                   placeholder="Search by product name..."
+                                   class="search-input w-full text-gray-700"/>
+                            <input type="hidden" name="page" value="0"/>
+                        </form>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto rounded-lg">
+                        <table class="min-w-full">
+                            <thead class="table-header">
+                            <tr>
+                                <th class="text-left text-xs font-bold text-red-700 uppercase tracking-wider" style="width: 6%;">#</th>
+                                <th class="text-left text-xs font-bold text-red-700 uppercase tracking-wider" style="width: 45%;">
+                                    <i class="fas fa-box-open mr-1"></i>Product
+                                </th>
+                                <th class="text-left text-xs font-bold text-red-700 uppercase tracking-wider" style="width: 17%;">
+                                    <i class="fas fa-coins mr-1"></i>Price
+                                    <a th:href="@{/account/orders(page=${currentPage}, search=${param.search != null ? param.search[0] : ''}, sortBy='price', sortDir=${param.sortDir != null and param.sortDir[0] == 'asc' ? 'desc' : 'asc'})}"
+                                       class="sort-icon inline-block">
+                                        <i class="fas fa-sort" th:classappend="${param.sortBy != null and param.sortBy[0] == 'price' ? (param.sortDir != null and param.sortDir[0] == 'asc' ? 'fa-sort-up' : 'fa-sort-down') : ''}"></i>
+                                    </a>
+                                </th>
+                                <th class="text-left text-xs font-bold text-red-700 uppercase tracking-wider" style="width: 15%;">
+                                    <i class="fas fa-calendar mr-1"></i>Date
+                                    <a th:href="@{/account/orders(page=${currentPage}, search=${param.search != null ? param.search[0] : ''}, sortBy='date', sortDir=${param.sortDir != null and param.sortDir[0] == 'asc' ? 'desc' : 'asc'})}"
+                                       class="sort-icon inline-block">
+                                        <i class="fas fa-sort" th:classappend="${param.sortBy != null and param.sortBy[0] == 'date' ? (param.sortDir != null and param.sortDir[0] == 'asc' ? 'fa-sort-up' : 'fa-sort-down') : ''}"></i>
+                                    </a>
+                                </th>
+                                <th class="text-center text-xs font-bold text-red-700 uppercase tracking-wider" style="width: 17%;">
+                                    <i class="fas fa-cog mr-1"></i>Actions
+                                </th>
+                            </tr>
+                            </thead>
+                            <tbody class="bg-white">
+                            <tr class="table-row" th:each="o : ${orders}">
+                                <td class="text-sm font-bold text-gray-500" th:text="${o['index']}">1</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="product-icon bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-box text-red-500 text-sm"></i>
+                                        </div>
+                                        <div class="ml-2">
+                                            <div class="text-sm font-semibold text-gray-900 truncate" style="max-width: 300px;" th:text="${o['productName']}">Product Name</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <i class="fas fa-coins coin-text mr-1 text-xs"></i>
+                                        <span class="format-price text-sm font-bold text-gray-900" th:attr="data-price=${o['totalPrice']}">0</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-xs text-gray-900 font-semibold" th:text="${#dates.format(o['createdAt'], 'dd/MM/yyyy')}">01/01/2025</div>
+                                    <div class="text-xs text-gray-500" th:text="${#dates.format(o['createdAt'], 'HH:mm')}">00:00</div>
+                                </td>
+                                <td>
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <a class="btn-detail inline-flex items-center space-x-1"
+                                           th:href="@{/account/orders/{id}(id=${o['id']})}">
+                                            <i class="fas fa-eye"></i>
+                                            <span>View</span>
+                                        </a>
+                                        <button class="btn-disabled inline-flex items-center space-x-1" disabled title="Coming soon">
+                                            <i class="fas fa-star"></i>
+                                        </button>
+                                        <button class="btn-disabled inline-flex items-center space-x-1" disabled title="Coming soon">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${orders == null or #lists.isEmpty(orders)}">
+                                <td class="py-12 text-center" colspan="5">
+                                    <div class="flex flex-col items-center">
+                                        <i class="fas fa-shopping-bag text-gray-300 text-5xl mb-3"></i>
+                                        <p class="text-gray-500 text-base font-semibold">No orders found</p>
+                                        <p class="text-gray-400 text-xs mt-1">Start shopping to see your orders here</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="mt-6 flex justify-center items-center space-x-1" th:if="${totalPages > 1}">
+                        <a class="pagination-btn"
+                           th:classappend="${currentPage == 0} ? 'disabled' : ''"
+                           th:href="@{/account/orders(page=${currentPage - 1}, search=${param.search != null ? param.search[0] : ''}, sortBy=${param.sortBy != null ? param.sortBy[0] : ''}, sortDir=${param.sortDir != null ? param.sortDir[0] : ''})}">
+                            <i class="fas fa-chevron-left text-xs"></i>
+                        </a>
+
+                        <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                            <a class="pagination-btn"
+                               th:classappend="${currentPage == i} ? 'active' : ''"
+                               th:href="@{/account/orders(page=${i}, search=${param.search != null ? param.search[0] : ''}, sortBy=${param.sortBy != null ? param.sortBy[0] : ''}, sortDir=${param.sortDir != null ? param.sortDir[0] : ''})}"
+                               th:text="${i + 1}"></a>
+                        </span>
+
+                        <a class="pagination-btn"
+                           th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''"
+                           th:href="@{/account/orders(page=${currentPage + 1}, search=${param.search != null ? param.search[0] : ''}, sortBy=${param.sortBy != null ? param.sortBy[0] : ''}, sortDir=${param.sortDir != null ? param.sortDir[0] : ''})}">
+                            <i class="fas fa-chevron-right text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:insert="~{fragments/footer :: footer}"></div>
+
+<script>
+    function formatWithDots(n){
+        const num = Math.round(Number(String(n).replace(/[^0-9.-]+/g,'')) || 0);
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+
+        // Auto-submit search on input change with debounce
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput) {
+            let timeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    this.form.submit();
+                }, 500);
+            });
+        }
+    });
+</script>
+</body>
+</html>
