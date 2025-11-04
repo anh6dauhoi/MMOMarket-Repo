@@ -164,7 +164,9 @@
                                   total=${totalPages != null and totalPages > 0 ? totalPages : 1}">
 
                         <div class="text-sm text-gray-700 text-center sm:text-left">
-                            Total: <span th:text="${totalItems}">0</span> products
+                            <span th:with="s=${startItem != null ? startItem : (totalItems > 0 ? 1 : 0)}, e=${endItem != null ? endItem : (totalItems > 0 ? (pageSize != null ? ( (currentPage != null ? ((currentPage -1) * pageSize + 1) : 1) + ( (totalItems < pageSize) ? (totalItems -1) : (pageSize -1) ) ) : totalItems) : 0)}">
+                                <span th:text="${totalItems == 0 ? 'Showing 0 of 0 results' : 'Showing ' + s + ' to ' + e + ' of ' + totalItems + ' results'}">Showing 0 to 0 of 0 results</span>
+                            </span>
                         </div>
 
                         <div class="flex space-x-1 flex-wrap justify-center">

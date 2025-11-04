@@ -741,6 +741,9 @@ public class AdminController {
             model.addAttribute("totalPages", 1);
             model.addAttribute("pageTitle", "Transaction Management");
             model.addAttribute("body", "admin/transaction-management");
+        }
+        return "admin/layout";
+    }
 
     // ==================== CATEGORY MANAGEMENT ====================
 
@@ -1144,6 +1147,10 @@ public class AdminController {
             );
 
             return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
 
     @GetMapping("/categories/deleted/list")
     @ResponseBody

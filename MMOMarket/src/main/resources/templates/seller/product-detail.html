@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title th:text="${productName != null} ? ${productName} + ' - Product Detail' : 'Product Detail'">Product Detail</title>
+    <title th:text="${productName != null ? productName + ' - Product Detail' : 'Product Detail'}">Product Detail</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/js/tailwind-config.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,6 +11,24 @@
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
     <style> body { font-family: 'Inter', sans-serif; } .thumb { width:100%; height:320px; object-fit:contain; background:#f8fafc; border-radius:12px; }</style>
+    <style>
+        /* Base styles */
+        .card { border: 1px solid #eef2f7; border-radius: 12px; background: #fff; }
+        .sticky-th { position: sticky; top: 0; z-index: 5; }
+        .tn { font-variant-numeric: tabular-nums; }
+        .btn { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border-radius:.5rem; }
+        .btn-primary { background:#2563eb; color:#fff; }
+        .btn-primary:hover { background:#1d4ed8; }
+        .btn-success { background:#16a34a; color:#fff; }
+        .btn-success:hover { background:#15803d; }
+        .btn-light { background:#f3f4f6; }
+        .btn-light:hover { background:#e5e7eb; }
+        .badge { display:inline-flex; align-items:center; gap:.35rem; padding:.15rem .5rem; border-radius:9999px; font-size:.75rem; font-weight:600; }
+        .badge-blue { background:#eff6ff; color:#1d4ed8; }
+        .badge-amber { background:#fffbeb; color:#b45309; }
+        .badge-emerald { background:#ecfdf5; color:#059669; }
+        .btn-ic { width: 32px; height: 32px; padding: 0; }
+    </style>
 </head>
 <body class="flex flex-col min-h-screen text-gray-800">
 <div th:replace="~{fragments/header :: header}"></div>
@@ -23,7 +41,6 @@
                     <div class="flex items-start justify-between mb-6">
                         <div>
                             <h1 id="pdTitleRoot" class="text-2xl font-bold" th:text="${productName}">Product name</h1>
-                            <div class="text-sm text-gray-500 mt-1">Seller product detail</div>
                         </div>
                         <div class="flex items-center gap-2">
                             <a href="/seller/product-management" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">Back</a>
@@ -44,33 +61,32 @@
                         <!-- Right: Info + variants -->
                         <div class="md:col-span-2">
                             <div class="grid grid-cols-1 gap-4">
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-sm text-gray-500">Lowest price</div>
-                                            <div id="pdLowest" class="text-2xl font-bold text-emerald-600">0</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-sm text-gray-500">Total sold</div>
-                                            <div id="pdSold" class="text-lg font-semibold">0</div>
-                                        </div>
-                                    </div>
-                                </div>
 
                                 <div class="prose text-sm text-gray-700" id="pdDescRoot">Description will show here</div>
 
                                 <div class="mt-4">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <h3 class="text-lg font-semibold">Variants</h3>
-                                        <button type="button" onclick="showAddVariantForm()" class="px-3 py-1 bg-green-600 text-white rounded">Add variant</button>
+                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                                        <h3 class="text-lg font-semibold flex items-center gap-2">
+                                            <i class="fa-solid fa-layer-group text-blue-600"></i>
+                                            <span>Variants</span>
+                                            <span class="badge badge-blue"><i class="fa-solid fa-list"></i><span id="pdVariantCount">0</span></span>
+                                            <span class="badge badge-emerald"><i class="fa-solid fa-box"></i><span id="pdTotalStock">0</span> stock</span>
+                                            <span class="badge badge-amber"><i class="fa-solid fa-cart-shopping"></i><span id="pdTotalSold">0</span> sold</span>
+                                        </h3>
+                                        <div class="flex items-center gap-2 w-full md:w-auto">
+                                            <button type="button" onclick="showAddVariantForm()" class="btn btn-success">
+                                                <i class="fa-solid fa-plus"></i><span>Add variant</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="overflow-x-auto">
-                                        <table id="variantsTable" class="w-full text-left text-sm border-collapse" style="border:1px solid #e5e7eb;">
+                                    <div class="overflow-auto border rounded-xl">
+                                        <table id="variantsTable" class="w-full text-left text-sm border-collapse">
                                             <thead class="bg-gray-50 text-xs text-gray-600">
-                                                <tr>
+                                                <tr class="sticky-th">
                                                     <th class="px-3 py-2">#</th>
                                                     <th class="px-3 py-2">Name</th>
                                                     <th class="px-3 py-2">Price</th>
+                                                    <th class="px-3 py-2">Stock</th>
                                                     <th class="px-3 py-2">Sold</th>
                                                     <th class="px-3 py-2">Actions</th>
                                                 </tr>
@@ -127,6 +143,10 @@
     }
     function csrfHeaders() { var c = getCsrf(); var h = {}; if (c.value) { h[c.headerName] = c.value; h['X-CSRF-TOKEN'] = c.value; } return h; }
 
+    // Local state
+    var pd_variantListCache = [];
+    var pd_editingVariantId = null;
+
     function pd_loadProductAndVariants(pid) {
         if (!pid) return;
         fetch('/seller/products/' + pid + '/json', { credentials: 'same-origin' })
@@ -135,7 +155,7 @@
                 document.getElementById('pdTitleRoot').innerText = data.name || 'Product Detail';
                 document.getElementById('pdDescRoot').innerText = data.description || '';
                 // set main image if available
-                var img = data.image || '/images/default-avatar.svg';
+                var img = (data.image && String(data.image).trim() !== '') ? data.image : 'https://via.placeholder.com/600x600?text=No+Image';
                 var main = document.getElementById('pdMainImage'); if (main) main.src = img;
                 // other fields: lowest/sold may be fetched via separate endpoint or left to variants/table
             })
@@ -149,62 +169,98 @@
         // optionally fetch aggregated info e.g., totalSold/lowestPrice using product-management style queries
     }
 
+    // Helper to escape HTML when inserting into innerHTML
+    function pd_escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Ensure Add button works: alias to existing modal opener pd_openAddModal
+    function pd_onAddStock(variantId) {
+        try {
+            if (typeof pd_openAddModal === 'function') return pd_openAddModal(variantId);
+        } catch (e) { /* ignore */ }
+        // fallback: alert user
+        alert('Upload modal not available');
+    }
+
     function pd_renderVariants(list) {
+        pd_variantListCache = Array.isArray(list) ? list.slice() : [];
         var tbody = document.querySelector('#variantsTable tbody'); tbody.innerHTML = '';
+        var totalStock = 0, totalSold = 0;
         if (!Array.isArray(list) || list.length === 0) {
-            var tr = document.createElement('tr'); tr.innerHTML = '<td colspan="5" class="px-3 py-3 text-center text-gray-500">No variants</td>'; tbody.appendChild(tr); return;
+            var tr = document.createElement('tr'); tr.innerHTML = '<td colspan="6" class="px-3 py-3 text-center text-gray-500">No variants</td>'; tbody.appendChild(tr);
+            document.getElementById('pdVariantCount').innerText = '0';
+            document.getElementById('pdTotalStock').innerText = '0';
+            document.getElementById('pdTotalSold').innerText = '0';
+            return;
         }
+        document.getElementById('pdVariantCount').innerText = String(list.length);
         list.forEach(function(v, idx){
+            var stock = Number(v.stock||0); var sold = Number(v.sold||0); totalStock += stock; totalSold += sold;
             var tr = document.createElement('tr');
-            tr.className = 'border-t';
+            tr.className = (idx % 2 === 0) ? 'bg-white' : 'bg-gray-50';
             tr.innerHTML = '<td class="px-3 py-2">'+(idx+1)+'</td>' +
                 '<td class="px-3 py-2">'+pd_escapeHtml(v.variantName||'')+'</td>' +
-                '<td class="px-3 py-2">'+(v.price!=null? v.price : '')+'</td>' +
-                '<td class="px-3 py-2">'+(v.sold!=null? v.sold : 0)+'</td>' +
-                '<td class="px-3 py-2">' +
-                '<button onclick="pd_onAddStock('+v.id+')" class="px-2 py-1 mr-2 bg-green-500 text-white rounded">Add</button>' +
-                '<button onclick="pd_onEditVariant('+v.id+')" class="px-2 py-1 mr-2 bg-yellow-400 text-white rounded">Edit</button>' +
-                '<button onclick="pd_onDeleteVariant('+v.id+')" class="px-2 py-1 bg-red-500 text-white rounded">Delete</button>' +
+                '<td class="px-3 py-2 tn">'+pd_fmtInt(v.price)+'</td>' +
+                '<td class="px-3 py-2 tn">'+pd_fmtInt(stock)+'</td>' +
+                '<td class="px-3 py-2 tn">'+pd_fmtInt(sold)+'</td>' +
+                '<td class="px-3 py-2 whitespace-nowrap">' +
+                '<button onclick="pd_onAddStock('+v.id+')" class="btn btn-success btn-ic" title="Add accounts"><i class="fa-solid fa-file-arrow-up"></i></button> ' +
+                '<button onclick="pd_onEditVariant('+v.id+')" class="btn btn-light btn-ic" title="Edit variant"><i class="fa-regular fa-pen-to-square"></i></button> ' +
+                '<button onclick="pd_onDeleteVariant('+v.id+')" class="btn btn-light btn-ic" title="Delete variant"><i class="fa-regular fa-trash-can"></i></button>' +
                 '</td>';
             tbody.appendChild(tr);
         });
+        document.getElementById('pdTotalStock').innerText = pd_fmtInt(totalStock);
+        document.getElementById('pdTotalSold').innerText = pd_fmtInt(totalSold);
     }
 
-    function pd_showAddVariantForm(){ window.editVariantId = null; document.getElementById('vfTitle').innerText = 'Add variant'; document.getElementById('vfName').value = ''; document.getElementById('vfPrice').value = ''; document.getElementById('variantFormWrap').classList.remove('hidden'); document.getElementById('vfName').focus(); }
-    function pd_hideVariantForm(){ document.getElementById('variantFormWrap').classList.add('hidden'); window.editVariantId = null; }
+    function pd_fmtInt(n){ if (n==null || isNaN(n)) return '0'; try { return Number(n).toLocaleString('en-US'); } catch(e){ return String(n); } }
 
-    function pd_onSaveVariant(){
-        var name = (document.getElementById('vfName').value || '').trim();
-        var price = parseInt(document.getElementById('vfPrice').value || '0', 10);
-        if (!name) { alert('Variant name required'); return; }
-        if (isNaN(price) || price < 0) { alert('Invalid price'); return; }
-        if (window.editVariantId) {
-            fetch('/seller/products/variants/' + window.editVariantId, { method: 'PUT', headers: Object.assign({'Content-Type':'application/json'}, csrfHeaders()), body: JSON.stringify({ variantName: name, price: price }), credentials: 'same-origin' })
-                .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(t||'Failed'); }); return r.json().catch(()=>({})); })
-                .then(function(){ pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); })
-                .catch(function(e){ console.error(e); alert('Failed to update variant'); });
-        } else {
-            fetch('/seller/products/' + currentProductId + '/variants', { method: 'POST', headers: Object.assign({'Content-Type':'application/json'}, csrfHeaders()), body: JSON.stringify({ variantName: name, price: price }), credentials: 'same-origin' })
-                .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(t||'Failed'); }); return r.json(); })
-                .then(function(){ pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); })
-                .catch(function(e){ console.error(e); alert('Failed to create variant'); });
-        }
-    }
-
-    function pd_onEditVariant(id){
-        fetch('/seller/products/' + currentProductId + '/variants', { credentials: 'same-origin' })
-            .then(function(r){ if(!r.ok) throw r; return r.json(); })
-            .then(function(list){ var v = (list||[]).find(function(x){ return Number(x.id) === Number(id); }); if(!v) { alert('Variant not found'); return; } window.editVariantId = id; document.getElementById('vfTitle').innerText = 'Edit variant'; document.getElementById('vfName').value = v.variantName || ''; document.getElementById('vfPrice').value = v.price || ''; document.getElementById('variantFormWrap').classList.remove('hidden'); })
-            .catch(function(e){ console.error(e); alert('Failed to load variant'); });
-    }
-
-    function pd_onDeleteVariant(id){ if (!confirm('Delete this variant?')) return; fetch('/seller/products/variants/' + id, { method: 'DELETE', headers: csrfHeaders(), credentials: 'same-origin' }) .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(t||'Failed'); }); return r.json().catch(()=>({})); }) .then(function(){ pd_loadProductAndVariants(currentProductId); }) .catch(function(e){ console.error(e); alert('Failed to delete'); }); }
-
-    // Modal for Excel upload
+    // Modal for CSV upload (fixed, CSV only)
     function pd_createUploadModalHtml(){
         if (document.getElementById('pdUploadModal')) return;
-        var div = document.createElement('div'); div.id = 'pdUploadModal'; div.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 overflow-auto';
-        div.innerHTML = '\n+            <div class="bg-white rounded p-6 w-full max-w-3xl mx-4">\n+                <div class="flex items-start justify-between">\n+                    <h3 class="text-lg font-semibold mb-2">Upload accounts (Excel / CSV)</h3>\n+                    <button onclick="pd_closeUploadModal();return false;" class="text-gray-600">✕</button>\n+                </div>\n+                <p class="text-sm text-gray-600 mb-4">Download the template, fill username and password columns, then preview and confirm upload.</p>\n+                <div class="mb-3 flex items-center gap-3">\n+                    <a id="pdTemplateLink" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 inline-block">Download template</a>\n+                    <label class="text-sm text-gray-600">\n+                        <input id="pdAcceptCsv" type="checkbox" class="mr-1" /> Allow CSV\n+                    </label>\n+                    <label class="text-sm text-gray-600">\n+                        <input id="pdDedupe" type="checkbox" class="mr-1" checked /> Skip duplicates\n+                    </label>\n+                </div>\n+                <div class="mb-4">\n+                    <input id="pdExcelFile" type="file" accept=".xlsx,.xls,.csv" />\n+                </div>\n+                <div class="mb-4 flex gap-2">\n+                    <button id="pdPreviewBtn" onclick="pd_previewExcel();return false;" class="px-3 py-2 bg-amber-500 text-white rounded">Preview</button>\n+                    <button id="pdConfirmBtn" onclick="pd_confirmUpload();return false;" class="px-3 py-2 bg-blue-600 text-white rounded">Upload & Confirm</button>\n+                </div>\n+                <div id="pdPreviewArea" class="mt-4 hidden">\n+                    <h4 class="font-semibold mb-2">Preview parsed rows</h4>\n                    <div id="pdPreviewSummary" class="text-sm text-gray-600 mb-2"></div>\n+                    <div class="overflow-auto max-h-72 border rounded">\n+                        <table id="pdPreviewTable" class="w-full text-sm">\n+                            <thead class="bg-gray-50"><tr><th class="px-2 py-1">#</th><th class="px-2 py-1">Username</th><th class="px-2 py-1">Password</th><th class="px-2 py-1">Duplicate</th></tr></thead>\n+                            <tbody></tbody>\n+                        </table>\n+                    </div>\n+                </div>\n+            </div>\n+        ';
+        var div = document.createElement('div');
+        div.id = 'pdUploadModal';
+        div.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 overflow-auto';
+        div.innerHTML = `
+            <div class="bg-white rounded-2xl p-6 w-full max-w-3xl mx-4 shadow-xl">
+                <div class="flex items-start justify-between mb-2">
+                    <h3 class="text-lg font-semibold">Upload accounts (CSV)</h3>
+                    <button onclick="pd_closeUploadModal();return false;" class="text-gray-600 hover:text-gray-900">✕</button>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Download the template, fill <b>Account|Seri</b> and <b>Password|PIN</b> columns, then preview and confirm upload.</p>
+                <div class="mb-3 flex flex-wrap items-center gap-3">
+                    <a id="pdTemplateLink" class="btn btn-light"><i class="fa-regular fa-file"></i> Download template</a>
+                    <label class="text-sm text-gray-700 flex items-center gap-2">
+                        <input id="pdDedupe" type="checkbox" class="accent-blue-600" checked /> <span>Skip duplicates</span>
+                    </label>
+                </div>
+                <div class="mb-4">
+                    <input id="pdExcelFile" type="file" accept=".csv" class="block w-full" />
+                    <div class="text-xs text-gray-500 mt-1">Only CSV is supported. Max ~5MB recommended.</div>
+                </div>
+                <div class="mb-4 flex gap-2">
+                    <button id="pdPreviewBtn" onclick="pd_previewExcel();return false;" class="btn btn-light"><i class="fa-regular fa-eye"></i> Preview</button>
+                    <button id="pdConfirmBtn" onclick="pd_confirmUpload();return false;" class="btn btn-primary"><i class="fa-solid fa-upload"></i> Upload & Confirm</button>
+                </div>
+                <div id="pdPreviewArea" class="mt-4 hidden">
+                    <h4 class="font-semibold mb-2">Preview parsed rows</h4>
+                    <div id="pdPreviewSummary" class="text-sm text-gray-600 mb-2"></div>
+                    <div class="overflow-auto max-h-72 border rounded">
+                        <table id="pdPreviewTable" class="w-full text-sm">
+                            <thead class="bg-gray-50"><tr><th class="px-2 py-1">#</th><th class="px-2 py-1">Username</th><th class="px-2 py-1">Password</th><th class="px-2 py-1">Duplicate</th><th class="px-2 py-1">Invalid</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
         document.body.appendChild(div);
     }
 
@@ -224,8 +280,9 @@
             .then(function(resp){
                 var area = document.getElementById('pdPreviewArea'); area.classList.remove('hidden'); var tbody = document.querySelector('#pdPreviewTable tbody'); tbody.innerHTML = '';
                 var rows = resp.rows || [];
-                rows.forEach(function(row, idx){ var tr = document.createElement('tr'); tr.innerHTML = '<td class="px-2 py-1">'+(idx+1)+'</td><td class="px-2 py-1">'+pd_escapeHtml(row.username||'')+'</td><td class="px-2 py-1">'+pd_escapeHtml(row.password||'')+'</td><td class="px-2 py-1">'+(row.duplicate? 'Yes':'No')+'</td>'; tbody.appendChild(tr); });
-                document.getElementById('pdPreviewSummary').innerText = 'Parsed ' + (resp.count||rows.length) + ' rows — duplicates: ' + (resp.duplicateCount||0);
+                rows.forEach(function(row, idx){ var tr = document.createElement('tr'); tr.innerHTML = '<td class="px-2 py-1">'+(idx+1)+'</td><td class="px-2 py-1">'+pd_escapeHtml(row.username||'')+'</td><td class="px-2 py-1">'+pd_escapeHtml(row.password||'')+'</td><td class="px-2 py-1">'+(row.duplicate? 'Yes':'No')+'</td><td class="px-2 py-1">'+(row.invalid? 'Yes':'No')+'</td>'; tbody.appendChild(tr); });
+                var invalid = Number(resp.invalidCount||0), dup = Number(resp.duplicateCount||0), total = Number(resp.count||rows.length);
+                document.getElementById('pdPreviewSummary').innerText = 'Rows: ' + total + ' — duplicates: ' + dup + ' — invalid: ' + invalid + ' (invalid rows have missing username or password)';
             })
             .catch(function(e){ console.error('preview', e); alert('Preview failed: ' + e.message); });
     }
@@ -238,9 +295,71 @@
         var dedupe = document.getElementById('pdDedupe').checked ? 'true' : 'false';
         var headers = csrfHeaders();
         fetch('/seller/products/variants/' + pd_currentVariantForUpload + '/upload-excel?dedupe=' + dedupe, { method: 'POST', body: fd, headers: headers, credentials: 'same-origin' })
-            .then(function(r){ if(!r.ok) return r.text().then(t=>{ throw new Error(t||'Upload failed'); }); return r.json(); })
+            .then(function(r){ if(!r.ok) return r.json().catch(()=>({message:'Upload failed'})).then(o=>{ throw new Error(o.message||'Upload failed'); }); return r.json(); })
             .then(function(resp){ alert('Imported: ' + (resp.created||0) + ' created, ' + (resp.skipped||0) + ' skipped'); pd_closeUploadModal(); pd_loadProductAndVariants(currentProductId); })
             .catch(function(e){ console.error('upload', e); alert('Upload failed: ' + e.message); });
+    }
+
+    // --- Inline Variant Form logic ---
+    function pd_showAddVariantForm(){
+        pd_editingVariantId = null;
+        var wrap = document.getElementById('variantFormWrap');
+        if (wrap) wrap.classList.remove('hidden');
+        var title = document.getElementById('vfTitle'); if (title) title.innerText = 'Add Variant';
+        var name = document.getElementById('vfName'); var price = document.getElementById('vfPrice');
+        if (name) name.value = '';
+        if (price) price.value = '';
+    }
+    function pd_hideVariantForm(){ var wrap = document.getElementById('variantFormWrap'); if (wrap) wrap.classList.add('hidden'); pd_editingVariantId = null; }
+
+    function pd_onSaveVariant(){
+        var nameEl = document.getElementById('vfName'); var priceEl = document.getElementById('vfPrice');
+        var variantName = nameEl ? nameEl.value.trim() : '';
+        var priceVal = priceEl ? priceEl.value : '';
+        var price = null; try { price = priceVal === '' ? null : Number(priceVal); } catch(e) { price = null; }
+        if (!variantName) { alert('Please enter variant name'); return; }
+        if (price == null || isNaN(price) || price < 0) { alert('Please enter a valid price'); return; }
+        var headers = Object.assign({ 'Content-Type': 'application/json' }, csrfHeaders());
+        if (pd_editingVariantId == null) {
+            // Create
+            fetch('/seller/products/' + currentProductId + '/variants', {
+                method: 'POST',
+                headers: headers,
+                credentials: 'same-origin',
+                body: JSON.stringify({ variantName: variantName, price: price })
+            }).then(function(r){ if(!r.ok) return r.json().catch(()=>({message:'Failed'})).then(o=>{ throw new Error(o.message||'Create failed'); }); return r.json(); })
+              .then(function(){ pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); })
+              .catch(function(e){ alert(e.message||'Create failed'); });
+        } else {
+            // Update
+            fetch('/seller/products/variants/' + pd_editingVariantId, {
+                method: 'PUT',
+                headers: headers,
+                credentials: 'same-origin',
+                body: JSON.stringify({ variantName: variantName, price: price })
+            }).then(function(r){ if(!r.ok) return r.json().catch(()=>({message:'Failed'})).then(o=>{ throw new Error(o.message||'Update failed'); }); return r.json(); })
+              .then(function(){ pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); })
+              .catch(function(e){ alert(e.message||'Update failed'); });
+        }
+    }
+
+    function pd_onEditVariant(variantId){
+        var v = (pd_variantListCache||[]).find(function(it){ return it && Number(it.id) === Number(variantId); });
+        pd_editingVariantId = variantId;
+        var wrap = document.getElementById('variantFormWrap'); if (wrap) wrap.classList.remove('hidden');
+        var title = document.getElementById('vfTitle'); if (title) title.innerText = 'Edit Variant';
+        var name = document.getElementById('vfName'); var price = document.getElementById('vfPrice');
+        if (name) name.value = v && v.variantName ? v.variantName : '';
+        if (price) price.value = v && v.price != null ? v.price : '';
+    }
+
+    function pd_onDeleteVariant(variantId){
+        if (!confirm('Delete this variant? This action cannot be undone.')) return;
+        var headers = csrfHeaders();
+        fetch('/seller/products/variants/' + variantId, { method: 'DELETE', headers: headers, credentials: 'same-origin' })
+            .then(function(r){ if(!r.ok) return r.text().then(t=>{ throw new Error(t||'Delete failed'); }); return r.text(); })
+            .then(function(){ pd_loadProductAndVariants(currentProductId); })
+            .catch(function(e){ alert(e.message||'Delete failed'); });
     }
 
     // Replace pd_onAddStock with modal open
@@ -248,8 +367,13 @@
 
     // expose for onclick attributes
     window.showAddVariantForm = pd_showAddVariantForm;
-    window.onEditVariant = pd_onEditVariant;
-    window.onDeleteVariant = pd_onDeleteVariant;
+    window.pd_showAddVariantForm = pd_showAddVariantForm;
+    window.pd_hideVariantForm = pd_hideVariantForm;
+    window.pd_onSaveVariant = pd_onSaveVariant;
+    window.onEditVariant = pd_onEditVariant; // legacy alias (not used by our markup)
+    window.onDeleteVariant = pd_onDeleteVariant; // legacy alias (not used by our markup)
+    window.pd_onEditVariant = pd_onEditVariant;
+    window.pd_onDeleteVariant = pd_onDeleteVariant;
 
     // initial load
     if (currentProductId) pd_loadProductAndVariants(currentProductId);

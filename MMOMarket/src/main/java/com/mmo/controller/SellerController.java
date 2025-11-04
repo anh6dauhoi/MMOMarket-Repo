@@ -9,6 +9,7 @@ import com.mmo.service.EmailService;
 import com.mmo.service.NotificationService;
 import com.mmo.service.SellerBankInfoService;
 import com.mmo.service.SystemConfigurationService;
+import com.mmo.service.ProductVariantAccountService;
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -91,6 +92,10 @@ public class SellerController {
     // Inject system configuration service
     @Autowired
     private SystemConfigurationService systemConfigurationService;
+
+    // New: injected field for ProductVariantAccountService
+    @Autowired
+    private ProductVariantAccountService productVariantAccountService;
 
     private static final long REGISTRATION_FEE = 200_000L;
 
@@ -1347,6 +1352,13 @@ public class SellerController {
         model.addAttribute("prevPage", page > 1 ? page - 1 : null);
         model.addAttribute("nextPage", page < totalPages ? page + 1 : null);
 
+        // Calculate 1-based start/end indices for the current page (for "Showing X to Y of Z results")
+        long startItem = totalItems == 0 ? 0 : (long) offset + 1L;
+        long endItem = totalItems == 0 ? 0 : (long) offset + rows.size();
+        if (endItem > totalItems) endItem = totalItems;
+        model.addAttribute("startItem", startItem);
+        model.addAttribute("endItem", endItem);
+
         return "seller/product-management";
     }
 
@@ -2117,7 +2129,7 @@ public class SellerController {
     private static String safeString(Object s) {
         return s == null ? "" : s.toString();
     }
-    
+
 
     // Create product via JSON (used by Product Management modal)
     @PostMapping(path = "/products", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2193,6 +2205,97 @@ public class SellerController {
             res.put("image", image);
             res.put("description", p.getDescription());
             return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Download Excel template for uploading accounts to a variant (username,password)
+    @GetMapping(path = "/products/variants/{variantId}/template")
+    public ResponseEntity<byte[]> downloadVariantTemplate(@PathVariable Long variantId, Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
+            if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            byte[] bytes = productVariantAccountService.buildTemplateCsv();
+            String filename = "variant-" + variantId + "-template.csv";
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .contentType(org.springframework.http.MediaType.parseMediaType("text/csv"))
+                    .body(bytes);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    // Preview or confirm upload of accounts for a variant via Excel/CSV
+    @PostMapping(path = "/products/variants/{variantId}/upload-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> uploadVariantAccounts(@PathVariable Long variantId,
+                                                   @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                                   @RequestParam(name = "preview", required = false, defaultValue = "false") boolean preview,
+                                                   @RequestParam(name = "dedupe", required = false, defaultValue = "true") boolean dedupe,
+                                                   Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
+            if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "No file uploaded"));
+            }
+
+            if (preview) {
+                var pr = productVariantAccountService.previewUpload(user, v, file, dedupe);
+                java.util.List<java.util.Map<String,Object>> rows = new java.util.ArrayList<>();
+                for (var r : pr.getRows()) rows.add(Map.of(
+                        "username", r.getUsername(),
+                        "password", r.getPassword(),
+                        "duplicate", r.isDuplicate(),
+                        "invalid", r.isInvalid(),
+                        "rowIndex", r.getRowIndex()
+                ));
+                return ResponseEntity.ok(Map.of(
+                        "count", pr.getCount(),
+                        "duplicateCount", pr.getDuplicateCount(),
+                        "invalidCount", pr.getInvalidCount(),
+                        "rows", rows
+                ));
+            } else {
+                try {
+                    var ur = productVariantAccountService.confirmUpload(user, v, file, dedupe);
+                    return ResponseEntity.ok(Map.of("created", ur.getCreated(), "skipped", ur.getSkipped()));
+                } catch (IllegalArgumentException iae) {
+                    // Invalid rows: respond 400 with message
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", iae.getMessage()));
+                }
+            }
+        } catch (org.springframework.web.multipart.MultipartException mex) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Upload error: " + mex.getMessage()));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
         }
