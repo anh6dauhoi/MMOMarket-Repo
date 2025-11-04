@@ -995,7 +995,7 @@
                 });
                 const txt = await res.text();
                 if (res.ok || res.status === 202) {
-                    setBpMsg('Your request was queued. Points will be added shortly.', true);
+                    setBpMsg('Your request is being processed. Points will be added shortly.', true);
                     setTimeout(() => window.location.reload(), 800);
                 } else if (res.status === 400) {
                     if (txt && txt.startsWith('MSG_OTP_EXPIRED')) setBpMsg('OTP has expired. Please request a new OTP.', false);

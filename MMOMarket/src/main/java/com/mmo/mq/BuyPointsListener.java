@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 import java.text.NumberFormat;
 import java.util.Date;
 import java.util.Locale;
+import com.mmo.entity.ShopPointPurchase;
+import com.mmo.repository.ShopPointPurchaseRepository;
 
 @Component
 public class BuyPointsListener {
@@ -27,17 +29,20 @@ public class BuyPointsListener {
     private final EmailVerificationRepository emailVerificationRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final ShopPointPurchaseRepository shopPointPurchaseRepository;
 
     public BuyPointsListener(UserRepository userRepository,
                              ShopInfoRepository shopInfoRepository,
                              EmailVerificationRepository emailVerificationRepository,
                              NotificationService notificationService,
-                             EmailService emailService) {
+                             EmailService emailService,
+                             ShopPointPurchaseRepository shopPointPurchaseRepository) {
         this.userRepository = userRepository;
         this.shopInfoRepository = shopInfoRepository;
         this.emailVerificationRepository = emailVerificationRepository;
         this.notificationService = notificationService;
         this.emailService = emailService;
+        this.shopPointPurchaseRepository = shopPointPurchaseRepository;
     }
 
     @Transactional
@@ -96,6 +101,20 @@ public class BuyPointsListener {
         // Note: level and commission are automatically updated by database trigger
         shopInfoRepository.save(shop);
 
+        // Persist purchase audit record
+        try {
+            ShopPointPurchase purchase = new ShopPointPurchase();
+            purchase.setUser(user);
+            purchase.setPointsBought(pointsToBuy);
+            purchase.setCoinsSpent(expectedCost);
+            purchase.setPointsBefore(current);
+            purchase.setPointsAfter(nextTotal);
+            shopPointPurchaseRepository.save(purchase);
+        } catch (Exception ex) {
+            log.error("Failed to record ShopPointPurchase for user {}: {}", user.getId(), ex.getMessage(), ex);
+            throw ex; // rethrow to ensure transaction rollback to keep consistency
+        }
+
         // Refresh shop to get the updated level and commission from trigger
         shop = shopInfoRepository.findById(shop.getId()).orElse(shop);
 
@@ -118,17 +137,5 @@ public class BuyPointsListener {
         } catch (Exception ignored) {}
 
         log.info("Buy points completed for user id={} +{} points, total={}, newLevel={}", user.getId(), pointsToBuy, nextTotal, shop.getShopLevel());
-    }
-
-    private short computeLevelForPoints(long points) {
-        // thresholds copied from UI table
-        if (points >= 50_000_000L) return 7;
-        if (points >= 40_000_000L) return 6;
-        if (points >= 20_000_000L) return 5;
-        if (points >= 10_000_000L) return 4;
-        if (points >= 5_000_000L) return 3;
-        if (points >= 3_000_000L) return 2;
-        if (points >= 1_000_000L) return 1;
-        return 0;
     }
 }

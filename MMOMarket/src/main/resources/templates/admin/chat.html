@@ -1,40 +1,58 @@
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Admin Chat</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/admin/css/chat.css}">
-</head>
-<body>
 <div th:fragment="content">
-    <div class="w-full bg-white rounded-lg shadow flex admin-chat-container">
-
-        <div class="w-1/4 border-r flex flex-col min-h-0">
-            <div class="p-4 border-b flex-shrink-0">
+    <div class="w-full bg-white rounded-lg shadow flex chat-container admin-chat-page">
+        <!-- Left Sidebar - Conversation List -->
+        <div class="w-1/4 border-r flex flex-col">
+            <!-- Header -->
+            <div class="p-4 border-b">
                 <h2 class="font-bold text-lg text-gray-800">Messages</h2>
                 <p class="text-xs text-gray-500 mt-1">Recent conversations</p>
             </div>
 
+            <!-- Start new chat - User directory/search -->
+            <div class="p-3 border-b bg-gray-50">
+                <div class="mb-2 flex items-center gap-2">
+                    <i class="fas fa-user-plus text-gray-500"></i>
+                    <span class="text-sm font-semibold text-gray-700">Start new chat</span>
+                </div>
+                <div class="relative">
+                    <input id="userSearchInput" type="text" placeholder="Search name or email..."
+                           class="w-full px-3 py-2 pr-20 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
+                        <button id="userPrevBtn" type="button" class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-40" title="Prev" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button id="userNextBtn" type="button" class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-40" title="Next" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="userDirectoryResults" class="mt-2 max-h-52 overflow-y-auto divide-y rounded-md bg-white border border-gray-200 hidden"></div>
+            </div>
+
+            <!-- Conversation List -->
             <div class="flex-1 overflow-y-auto divide-y custom-scrollbar conversation-list">
                 <div th:each="conv : ${conversations}"
                      th:data-partner-id="${conv.partnerId}"
                      th:data-partner-name="${conv.partnerName}"
-                     onclick="adminSelectConversation(this)"
+                     th:attr="data-is-admin=${conv.admin}"
+                     onclick="selectConversation(this)"
                      class="p-4 hover:bg-gray-50 cursor-pointer transition conversation-item">
                     <div class="flex items-start gap-3">
                         <div class="relative">
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                            <div th:classappend="${conv.admin} ? ' from-red-500 to-rose-600' : ' from-red-400 to-orange-400'"
+                                 class="w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center flex-shrink-0">
                                 <span class="text-white font-bold text-lg"
                                       th:text="${#strings.substring(conv.partnerName, 0, 1)}">U</span>
                             </div>
                         </div>
-
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start mb-1">
                                 <div class="flex items-center gap-2 min-w-0">
                                     <h3 class="font-semibold text-gray-800 truncate" th:text="${conv.partnerName}">User Name</h3>
+                                    <span th:if="${conv.admin}"
+                                          class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 flex-shrink-0">
+                                        <i class="fas fa-shield-alt mr-1"></i> Support
+                                    </span>
                                 </div>
                                 <span class="text-xs text-gray-500 flex-shrink-0 ml-2"
                                       th:text="${#dates.format(conv.lastMessageTime, 'HH:mm')}">11:30</span>
@@ -46,7 +64,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div th:if="${#lists.isEmpty(conversations)}" class="p-8 text-center text-gray-500">
                     <i class="fas fa-inbox text-4xl mb-3"></i>
                     <p>No messages yet</p>
@@ -54,9 +71,9 @@
             </div>
         </div>
 
-        <div class="w-3/4 flex flex-col min-h-0">
-
-            <div id="adminEmptyState" class="flex-1 flex items-center justify-center text-gray-400">
+        <!-- Right - Chat Box -->
+        <div class="w-3/4 flex flex-col">
+            <div id="emptyState" class="flex-1 flex items-center justify-center text-gray-400">
                 <div class="text-center">
                     <i class="fas fa-comments text-6xl mb-4 text-gray-300"></i>
                     <p class="text-lg font-medium">Select a conversation to start chatting</p>
@@ -64,9 +81,8 @@
                 </div>
             </div>
 
-            <div id="adminChatArea" class="hidden flex-1 flex flex-col chat-area-wrapper drop-zone min-h-0">
-
-                <div id="adminDragOverlay" class="hidden drag-overlay">
+            <div id="chatArea" class="hidden flex-1 flex flex-col chat-area-wrapper drop-zone">
+                <div id="dragOverlay" class="hidden drag-overlay">
                     <div class="drag-overlay-content">
                         <i class="fas fa-cloud-upload-alt text-6xl mb-4"></i>
                         <p class="text-xl font-semibold">Drop your file here</p>
@@ -76,101 +92,98 @@
 
                 <div class="border-b p-4 flex items-center justify-between bg-gray-50 flex-shrink-0">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                            <span id="adminChatHeaderInitial" class="text-white font-bold">U</span>
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
+                            <span id="chatHeaderInitial" class="text-white font-bold">U</span>
                         </div>
-
                         <div>
-                            <h2 id="adminChatHeaderName" class="font-bold text-gray-800">User Name</h2>
+                            <h2 id="chatHeaderName" class="font-bold text-gray-800">User Name</h2>
                             <p class="text-xs text-gray-500">
-                                <span id="adminChatHeaderStatus" class="inline-flex items-center">
+                                <span id="chatHeaderStatus" class="inline-flex items-center">
                                     <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
                                     Online
                                 </span>
                             </p>
                         </div>
                     </div>
-
                     <div class="flex items-center gap-2">
-                        <button type="button" id="adminSearchToggleBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-full transition" title="Search in conversation">
+                        <button type="button" id="searchToggleBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-full transition" title="Search in conversation">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
                 </div>
 
-                <div id="adminSearchBar" class="hidden border-b p-3 bg-white flex-shrink-0">
+                <div id="searchBar" class="hidden border-b p-3 bg-white flex-shrink-0">
                     <div class="flex items-center gap-2">
                         <div class="flex-1 relative">
-                            <input type="text"
-                                   id="adminSearchInput"
-                                   placeholder="Search messages..."
-                                   class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                            <button type="button" id="adminClearSearchBtn" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <input type="text" id="searchInput" placeholder="Search messages..." class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                            <button type="button" id="clearSearchBtn" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        <div id="adminSearchResults" class="hidden text-sm text-gray-600 whitespace-nowrap">
-                            <span id="adminSearchCounter">0/0</span>
+                        <div id="searchResults" class="hidden text-sm text-gray-600 whitespace-nowrap">
+                            <span id="searchCounter">0/0</span>
                         </div>
                         <div class="flex gap-1">
-                            <button type="button" id="adminPrevSearchBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <button type="button" id="prevSearchBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <i class="fas fa-chevron-up"></i>
                             </button>
-                            <button type="button" id="adminNextSearchBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <button type="button" id="nextSearchBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                         </div>
-                        <button type="button" id="adminCloseSearchBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition">
+                        <button type="button" id="closeSearchBtn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                 </div>
 
-                <div id="adminMessagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50 messages-area">
+                <div id="warningBanner" class="bg-yellow-50 border-b border-yellow-200 p-3 text-sm text-yellow-800 flex items-center gap-2 flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Please be wary of uninsured off-exchange trading!</span>
+                    <button onclick="this.parentElement.style.display='none'" class="ml-auto text-yellow-600 hover:text-yellow-800">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
-                <div id="adminFilePreview" class="hidden border-t p-3 bg-gray-50 flex-shrink-0">
+                <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50 messages-area"></div>
+
+                <div id="filePreview" class="hidden border-t p-3 bg-gray-50 flex-shrink-0">
                     <div class="flex items-center gap-3 bg-white p-3 rounded-lg border">
                         <i class="fas fa-file text-2xl text-gray-400"></i>
                         <div class="flex-1 min-w-0">
-                            <p id="adminFileName" class="text-sm font-medium text-gray-700 truncate">filename.pdf</p>
-                            <p id="adminFileSize" class="text-xs text-gray-500">1.2 MB</p>
+                            <p id="fileName" class="text-sm font-medium text-gray-700 truncate">filename.pdf</p>
+                            <p id="fileSize" class="text-xs text-gray-500">1.2 MB</p>
                         </div>
-                        <button onclick="adminCancelFileUpload()" class="text-red-500 hover:text-red-700 flex-shrink-0">
+                        <button onclick="cancelFileUpload()" class="text-red-500 hover:text-red-700 flex-shrink-0">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-
-                    <div id="adminImagePreviewContainer" class="hidden mt-2">
-                        <img id="adminImagePreview" src="" alt="Image preview" style="max-width: 150px; max-height: 150px; object-fit: cover;" class="rounded-lg shadow">
+                    <div id="imagePreviewContainer" class="hidden mt-2">
+                        <img id="imagePreview" src="" alt="Image preview" style="max-width: 150px; max-height: 150px; object-fit: cover;" class="rounded-lg shadow">
                     </div>
-
-                    <div id="adminVideoPreviewContainer" class="hidden mt-2">
-                        <video id="adminVideoPreview" controls style="max-width: 200px; max-height: 150px;" class="rounded-lg shadow">
-                            <source src="" type="video/mp4">
-                            Your browser does not support the video tag.
+                    <div id="videoPreviewContainer" class="hidden mt-2">
+                        <video id="videoPreview" controls style="max-width: 200px; max-height: 150px;" class="rounded-lg shadow">
+                            <source src="" type="video/mp4">Your browser does not support the video tag.
                         </video>
                     </div>
-
-                    <div id="adminFileIconContainer" class="hidden mt-2 flex items-center gap-2">
-                        <i id="adminFileIcon" class="fas fa-file text-3xl"></i>
-                        <span class="text-sm text-gray-700" id="adminFileDescription">File description here</span>
+                    <div id="fileIconContainer" class="hidden mt-2 flex items-center gap-2">
+                        <i id="fileIcon" class="fas fa-file text-3xl"></i>
+                        <span class="text-sm text-gray-700" id="fileDescription">File description here</span>
                     </div>
                 </div>
 
                 <div class="border-t p-4 bg-white flex-shrink-0 input-area-wrapper">
-                    <form id="adminChatForm" class="flex items-center gap-2 relative">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" id="adminCsrfToken">
-                        <input type="file" id="adminFileInput" class="hidden" accept="image/*,.pdf,.doc,.docx,.mp4,video/mp4,video/*">
-
+                    <form id="chatForm" class="flex items-center gap-2 relative">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" id="csrfToken">
+                        <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf,.doc,.docx,.mp4,video/mp4,video/*">
                         <div class="relative">
-                            <button type="button" id="adminEmojiButton" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition" title="Emoji">
+                            <button type="button" id="emojiButton" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition" title="Emoji">
                                 <i class="fas fa-smile text-xl"></i>
                             </button>
-                            <div id="adminEmojiPicker" class="emoji-picker">
+                            <div id="emojiPicker" class="emoji-picker">
                                 <div class="flex items-center justify-between mb-3">
                                     <span class="text-sm font-semibold text-gray-700">Pick an emoji</span>
-                                    <button type="button" onclick="adminCloseEmojiPicker()" class="text-gray-400 hover:text-gray-600">
+                                    <button type="button" onclick="closeEmojiPicker()" class="text-gray-400 hover:text-gray-600">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
@@ -202,20 +215,11 @@
                                 </div>
                             </div>
                         </div>
-
-                        <button type="button" onclick="document.getElementById('adminFileInput').click()" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="Attach file">
+                        <button type="button" onclick="document.getElementById('fileInput').click()" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="Attach file">
                             <i class="fas fa-paperclip text-xl"></i>
                         </button>
-
-                        <input type="text"
-                               id="adminMessageInput"
-                               placeholder="Type a message..."
-                               class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
-
-                        <button type="submit"
-                                class="bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0"
-                                id="adminSendButton"
-                                title="Send message">
+                        <input type="text" id="messageInput" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
+                        <button type="submit" class="bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0" id="sendButton" title="Send message">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </form>
@@ -224,116 +228,99 @@
         </div>
     </div>
 
+    <link rel="stylesheet" th:href="@{/customer/css/chat.css}">
+
     <script th:inline="javascript">
-        const adminCurrentUserId = /*[[${currentUser.id}]]*/ 0;
-        const adminCsrfToken = document.getElementById('adminCsrfToken').value;
+        const currentUserId = /*[[${currentUser.id}]]*/ 0;
+        const csrfToken = document.getElementById('csrfToken').value;
+        let selectedReceiverId = null;
+        let selectedReceiverName = '';
+        let eventSource = null;
+        const shownMessageIds = new Set();
+        let selectedFile = null;
 
-        let adminSelectedReceiverId = null;
-        let adminSelectedReceiverName = '';
-        let adminEventSource = null;
-        const adminShownMessageIds = new Set();
-        let adminSelectedFile = null;
-
-        function adminEnsureSseConnected() {
-            if (adminEventSource || !adminCurrentUserId) return;
-            adminEventSource = new EventSource('/chat/stream');
-            adminEventSource.addEventListener('init', () => console.log('Admin SSE connected'));
-            adminEventSource.addEventListener('message', (evt) => {
+        function ensureSseConnected() {
+            if (eventSource || !currentUserId) return;
+            eventSource = new EventSource('/chat/stream');
+            eventSource.addEventListener('init', () => console.log('SSE connected'));
+            eventSource.addEventListener('message', (evt) => {
                 try {
                     const msg = JSON.parse(evt.data);
                     if (!msg || !msg.id) return;
-                    if (adminShownMessageIds.has(msg.id)) return;
-                    const relatedToOpen = adminSelectedReceiverId &&
-                        (msg.senderId === adminSelectedReceiverId || msg.receiverId === adminSelectedReceiverId);
-                    const fromMeToSelected = adminSelectedReceiverId && msg.senderId === adminCurrentUserId && msg.receiverId === adminSelectedReceiverId;
+                    if (shownMessageIds.has(msg.id)) return;
+                    const relatedToOpen = selectedReceiverId && (msg.senderId === selectedReceiverId || msg.receiverId === selectedReceiverId);
+                    const fromMeToSelected = selectedReceiverId && msg.senderId === currentUserId && msg.receiverId === selectedReceiverId;
                     if (relatedToOpen || fromMeToSelected) {
-                        adminAppendMessage(msg);
-                        adminScrollToBottom();
+                        appendMessage(msg);
+                        scrollToBottom();
                     }
-                    adminShownMessageIds.add(msg.id);
-                    adminUpdateConversationPreview(msg);
-                } catch (e) { console.warn('Admin SSE parse failed', e); }
+                    shownMessageIds.add(msg.id);
+                    updateConversationPreview(msg);
+                } catch (e) { console.warn('SSE parse failed', e); }
             });
-            adminEventSource.onerror = (e) => {
-                console.warn('Admin SSE error', e);
-                try { adminEventSource.close(); } catch {}
-                adminEventSource = null;
-                setTimeout(adminEnsureSseConnected, 3000);
+            eventSource.onerror = (e) => {
+                console.warn('SSE error', e);
+                try { eventSource.close(); } catch {}
+                eventSource = null;
+                setTimeout(ensureSseConnected, 3000);
             };
         }
 
-        // Emoji picker functions
-        document.getElementById('adminEmojiButton').addEventListener('click', (e) => {
-            // Ngăn sự kiện click này lan ra 'document'
-            e.stopPropagation();
-            const picker = document.getElementById('adminEmojiPicker');
+        function toggleEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
             picker.classList.toggle('active');
-        });
-
-        function adminCloseEmojiPicker() {
-            const picker = document.getElementById('adminEmojiPicker');
+        }
+        function closeEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
             picker.classList.remove('active');
         }
-
-        function adminInsertEmoji(emoji) {
-            const input = document.getElementById('adminMessageInput');
+        function insertEmoji(emoji) {
+            const input = document.getElementById('messageInput');
             input.value += emoji;
             input.focus();
-            adminCloseEmojiPicker();
+            closeEmojiPicker();
         }
-
-        // Event delegation for emoji items
-        document.getElementById('adminEmojiPicker').addEventListener('click', (e) => {
+        document.getElementById('emojiPicker').addEventListener('click', (e) => {
             if (e.target.classList.contains('emoji-item')) {
                 const emoji = e.target.dataset.emoji || e.target.textContent;
-                adminInsertEmoji(emoji);
+                insertEmoji(emoji);
             }
         });
-
-        // Close emoji picker when clicking outside
+        document.getElementById('emojiButton').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleEmojiPicker();
+        });
         document.addEventListener('click', (e) => {
-            const picker = document.getElementById('adminEmojiPicker');
-            const emojiBtn = document.getElementById('adminEmojiButton');
-
-            // Nếu click vào bên ngoài cả picker VÀ cả nút emoji
+            const picker = document.getElementById('emojiPicker');
+            const emojiBtn = document.getElementById('emojiButton');
             if (!picker.contains(e.target) && !emojiBtn.contains(e.target)) {
-                adminCloseEmojiPicker();
+                closeEmojiPicker();
             }
         });
 
-        // File upload handling
-        document.getElementById('adminFileInput').addEventListener('change', (e) => {
+        document.getElementById('fileInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
-            // Check file size (max 50MB)
             if (file.size > 50 * 1024 * 1024) {
                 alert('File size must be less than 50MB');
                 e.target.value = '';
                 return;
             }
-
-            adminSelectedFile = file;
-            const preview = document.getElementById('adminFilePreview');
-            const fileName = document.getElementById('adminFileName');
-            const fileSize = document.getElementById('adminFileSize');
-
-            const imagePreviewContainer = document.getElementById('adminImagePreviewContainer');
-            const videoPreviewContainer = document.getElementById('adminVideoPreviewContainer');
-            const fileIconContainer = document.getElementById('adminFileIconContainer');
-            const imagePreview = document.getElementById('adminImagePreview');
-            const videoPreview = document.getElementById('adminVideoPreview');
-            const fileIcon = document.getElementById('adminFileIcon');
-
-            // Hide all preview types first
+            selectedFile = file;
+            const preview = document.getElementById('filePreview');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+            const fileIconContainer = document.getElementById('fileIconContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const videoPreview = document.getElementById('videoPreview');
+            const fileIcon = document.getElementById('fileIcon');
             imagePreviewContainer.classList.add('hidden');
             videoPreviewContainer.classList.add('hidden');
             fileIconContainer.classList.add('hidden');
-
             fileName.textContent = file.name;
-            fileSize.textContent = adminFormatFileSize(file.size);
-
-            // Show appropriate preview based on file type
+            fileSize.textContent = formatFileSize(file.size);
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -349,7 +336,6 @@
                 };
                 reader.readAsDataURL(file);
             } else {
-                // Show file icon for other types
                 if (file.type.includes('pdf')) {
                     fileIcon.className = 'fas fa-file-pdf text-3xl text-red-500';
                 } else if (file.type.includes('word') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
@@ -363,558 +349,359 @@
                 }
                 fileIconContainer.classList.remove('hidden');
             }
-
             preview.classList.remove('hidden');
         });
 
-        function adminFormatFileSize(bytes) {
+        function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
-
-        function adminCancelFileUpload() {
-            adminSelectedFile = null;
-            document.getElementById('adminFileInput').value = '';
-            document.getElementById('adminFilePreview').classList.add('hidden');
-            document.getElementById('adminImagePreview').src = '';
-            document.getElementById('adminVideoPreview').src = '';
+        function cancelFileUpload() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('filePreview').classList.add('hidden');
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('videoPreview').src = '';
         }
 
-        function adminSelectConversation(element) {
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                item.classList.remove('bg-gray-100');
-            });
+        function selectConversation(element) {
+            document.querySelectorAll('.conversation-item').forEach(item => item.classList.remove('bg-gray-100'));
             element.classList.add('bg-gray-100');
-
-            adminSelectedReceiverId = parseInt(element.dataset.partnerId);
-            adminSelectedReceiverName = element.dataset.partnerName;
-
-            document.getElementById('adminChatHeaderName').textContent = adminSelectedReceiverName;
-            document.getElementById('adminChatHeaderInitial').textContent = adminSelectedReceiverName.charAt(0);
-
-            document.getElementById('adminEmptyState').classList.add('hidden');
-            document.getElementById('adminChatArea').classList.remove('hidden');
-
-            adminLoadMessages();
-            adminEnsureSseConnected();
+            selectedReceiverId = parseInt(element.dataset.partnerId);
+            selectedReceiverName = element.dataset.partnerName;
+            document.getElementById('chatHeaderName').textContent = selectedReceiverName;
+            document.getElementById('chatHeaderInitial').textContent = selectedReceiverName.charAt(0);
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('chatArea').classList.remove('hidden');
+            loadMessages();
+            ensureSseConnected();
         }
 
-        async function adminLoadMessages() {
-            if (!adminSelectedReceiverId) return;
+        async function loadMessages() {
+            if (!selectedReceiverId) return;
             try {
-                const response = await fetch(`/chat/messages/${adminSelectedReceiverId}`);
+                const response = await fetch(`/chat/messages/${selectedReceiverId}`);
                 const messages = await response.json();
-                adminRenderMessages(messages);
-                setTimeout(adminScrollToBottom, 100);
+                renderMessages(messages);
+                setTimeout(scrollToBottom, 100);
             } catch (error) {
                 console.error('Error loading messages:', error);
             }
         }
 
-        function adminMessageBubbleHtml(msg) {
-            const isSent = msg.senderId === adminCurrentUserId;
-            const time = new Date(msg.createdAt).toLocaleString('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
+        function messageBubbleHtml(msg) {
+            const isSent = msg.senderId === currentUserId;
+            const time = new Date(msg.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' });
             let fileContent = '';
             if (msg.filePath) {
                 if (msg.fileType === 'image') {
                     fileContent = `
-                        <div class="mt-2">
-                            <a href="${msg.filePath}" target="_blank" download="${adminEscapeHtml(msg.fileName)}">
-                                <img src="${msg.filePath}" alt="${adminEscapeHtml(msg.fileName)}"
-                                     class="max-w-xs max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition">
-                            </a>
-                        </div>
-                    `;
+                    <div class="mt-2">
+                        <a href="${msg.filePath}" target="_blank" download="${escapeHtml(msg.fileName)}">
+                            <img src="${msg.filePath}" alt="${escapeHtml(msg.fileName)}" class="max-w-xs max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition">
+                        </a>
+                    </div>`;
                 } else if (msg.fileType === 'video') {
                     fileContent = `
-                        <div class="mt-2">
-                            <video controls class="max-w-xs max-h-48 rounded-lg">
-                                <source src="${msg.filePath}" type="video/mp4">
-                                Your browser does not support the video tag.
-                            </video>
-                            <a href="${msg.filePath}" download="${adminEscapeHtml(msg.fileName)}"
-                               class="text-xs ${isSent ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-800'} underline mt-1 inline-block">
-                                <i class="fas fa-download"></i> Download
-                            </a>
-                        </div>
-                    `;
+                    <div class="mt-2">
+                        <video controls class="max-w-xs max-h-48 rounded-lg">
+                            <source src="${msg.filePath}" type="video/mp4">Your browser does not support the video tag.
+                        </video>
+                        <a href="${msg.filePath}" download="${escapeHtml(msg.fileName)}" class="text-xs ${isSent ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-800'} underline mt-1 inline-block">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </div>`;
                 } else {
-                    // Document or other file types
                     let iconClass = 'fa-file';
                     let iconColor = 'text-gray-400';
                     if (msg.fileName) {
-                        if (msg.fileName.endsWith('.pdf')) {
-                            iconClass = 'fa-file-pdf';
-                            iconColor = 'text-red-500';
-                        } else if (msg.fileName.match(/\.(doc|docx)$/)) {
-                            iconClass = 'fa-file-word';
-                            iconColor = 'text-blue-500';
-                        } else if (msg.fileName.match(/\.(xls|xlsx)$/)) {
-                            iconClass = 'fa-file-excel';
-                            iconColor = 'text-green-500';
-                        } else if (msg.fileName.match(/\.(zip|rar)$/)) {
-                            iconClass = 'fa-file-archive';
-                            iconColor = 'text-yellow-600';
-                        }
+                        if (msg.fileName.endsWith('.pdf')) { iconClass = 'fa-file-pdf'; iconColor = 'text-red-500'; }
+                        else if (msg.fileName.match(/\.(doc|docx)$/)) { iconClass = 'fa-file-word'; iconColor = 'text-blue-500'; }
+                        else if (msg.fileName.match(/\.(xls|xlsx)$/)) { iconClass = 'fa-file-excel'; iconColor = 'text-green-500'; }
+                        else if (msg.fileName.match(/\.(zip|rar)$/)) { iconClass = 'fa-file-archive'; iconColor = 'text-yellow-600'; }
                     }
                     fileContent = `
-                        <div class="mt-2">
-                            <a href="${msg.filePath}" download="${adminEscapeHtml(msg.fileName)}"
-                               class="flex items-center gap-2 p-3 ${isSent ? 'bg-white bg-opacity-20 hover:bg-opacity-30' : 'bg-gray-100 hover:bg-gray-200'} rounded-lg transition">
-                                <i class="fas ${iconClass} text-2xl ${iconColor}"></i>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium truncate">${adminEscapeHtml(msg.fileName)}</p>
-                                    <p class="text-xs opacity-75">${msg.fileSize ? adminFormatFileSize(msg.fileSize) : ''}</p>
-                                </div>
-                                <i class="fas fa-download text-sm"></i>
-                            </a>
-                        </div>
-                    `;
+                    <div class="mt-2">
+                        <a href="${msg.filePath}" download="${escapeHtml(msg.fileName)}" class="flex items-center gap-2 p-3 ${isSent ? 'bg-white bg-opacity-20 hover:bg-opacity-30' : 'bg-gray-100 hover:bg-gray-200'} rounded-lg transition">
+                            <i class="fas ${iconClass} text-2xl ${iconColor}"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium truncate">${escapeHtml(msg.fileName)}</p>
+                                <p class="text-xs opacity-75">${msg.fileSize ? formatFileSize(msg.fileSize) : ''}</p>
+                            </div>
+                            <i class="fas fa-download text-sm"></i>
+                        </a>
+                    </div>`;
                 }
             }
-
             if (isSent) {
                 return `
-                    <div class="flex justify-end" data-msg-id="${msg.id}">
-                        <div class="max-w-[70%]">
-                            <div class="bg-red-500 text-white rounded-2xl rounded-tr-none px-4 py-2 shadow">
-                                ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="break-words">${adminEscapeHtml(msg.message)}</p>` : ''}
-                                ${fileContent}
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1 mr-2 text-right">${time}</div>
+                <div class="flex justify-end" data-msg-id="${msg.id}">
+                    <div class="max-w-[70%]">
+                        <div class="bg-red-500 text-white rounded-2xl rounded-tr-none px-4 py-2 shadow">
+                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="break-words">${escapeHtml(msg.message)}</p>` : ''}
+                            ${fileContent}
                         </div>
+                        <div class="text-xs text-gray-500 mt-1 mr-2 text-right">${time}</div>
                     </div>
-                `;
+                </div>`;
             } else {
                 return `
-                    <div class="flex items-start gap-2 max-w-[70%]" data-msg-id="${msg.id}">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-                            <span class="text-white text-xs font-bold">${adminSelectedReceiverName.charAt(0)}</span>
-                        </div>
-                        <div>
-                            <div class="bg-white rounded-2xl rounded-tl-none px-4 py-2 shadow">
-                                ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="text-gray-800 break-words">${adminEscapeHtml(msg.message)}</p>` : ''}
-                                ${fileContent}
-                            </div>
-                            <span class="text-xs text-gray-500 mt-1 ml-2">${time}</span>
-                        </div>
+                <div class="flex items-start gap-2 max-w-[70%]" data-msg-id="${msg.id}">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center flex-shrink-0">
+                        <span class="text-white text-xs font-bold">${selectedReceiverName.charAt(0)}</span>
                     </div>
-                `;
+                    <div>
+                        <div class="bg-white rounded-2xl rounded-tl-none px-4 py-2 shadow">
+                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="text-gray-800 break-words">${escapeHtml(msg.message)}</p>` : ''}
+                            ${fileContent}
+                        </div>
+                        <span class="text-xs text-gray-500 mt-1 ml-2">${time}</span>
+                    </div>
+                </div>`;
             }
         }
 
-        function adminRenderMessages(messages) {
-            const container = document.getElementById('adminMessagesContainer');
-            container.innerHTML = messages.map(m => {
-                if (m && m.id) adminShownMessageIds.add(m.id);
-                return adminMessageBubbleHtml(m);
-            }).join('');
+        function renderMessages(messages) {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = messages.map(m => { if (m && m.id) shownMessageIds.add(m.id); return messageBubbleHtml(m); }).join('');
         }
-
-        function adminAppendMessage(msg) {
-            const container = document.getElementById('adminMessagesContainer');
-            if (msg && msg.id && container.querySelector(`[data-msg-id="${msg.id}"]`)) {
-                return;
-            }
-            container.insertAdjacentHTML('beforeend', adminMessageBubbleHtml(msg));
+        function appendMessage(msg) {
+            const container = document.getElementById('messagesContainer');
+            if (msg && msg.id && container.querySelector(`[data-msg-id="${msg.id}"]`)) return;
+            container.insertAdjacentHTML('beforeend', messageBubbleHtml(msg));
         }
+        function escapeHtml(str) { return (str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s])); }
 
-        function adminEscapeHtml(str) {
-            return (str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));
-        }
-
-        function adminUpdateConversationPreview(msg) {
-            const partnerId = msg.senderId === adminCurrentUserId ? msg.receiverId : msg.senderId;
+        function updateConversationPreview(msg) {
+            const partnerId = msg.senderId === currentUserId ? msg.receiverId : msg.senderId;
             const item = document.querySelector(`.conversation-item[data-partner-id="${partnerId}"]`);
             if (!item) return;
-
-            // Update message content
             const p = item.querySelector('p.text-sm');
             if (p) {
-                const isSentByMe = msg.senderId === adminCurrentUserId;
-                p.innerHTML = (isSentByMe ? '<span class="text-gray-500">You: </span>' : '') + adminEscapeHtml(msg.message);
+                const isSentByMe = msg.senderId === currentUserId;
+                p.innerHTML = (isSentByMe ? '<span class="text-gray-500">You: </span>' : '') + escapeHtml(msg.message);
             }
-
-            // Update timestamp
             const timeSpan = item.querySelector('span.text-xs');
             if (timeSpan && msg.createdAt) {
-                const time = new Date(msg.createdAt).toLocaleString('vi-VN', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+                const time = new Date(msg.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                 timeSpan.textContent = time;
             }
-
-            // Move conversation to top
             const conversationList = document.querySelector('.conversation-list');
             if (conversationList && item.parentElement === conversationList) {
+                const adminItem = conversationList.querySelector('.conversation-item[data-is-admin="true"]');
+                const isAdminItem = item.getAttribute('data-is-admin') === 'true';
                 conversationList.removeChild(item);
-                conversationList.insertBefore(item, conversationList.firstChild);
-
-                // Add a subtle animation effect
+                if (adminItem && adminItem !== item && !isAdminItem) {
+                    if (adminItem.nextSibling) conversationList.insertBefore(item, adminItem.nextSibling);
+                    else conversationList.appendChild(item);
+                } else {
+                    conversationList.insertBefore(item, conversationList.firstChild);
+                }
                 item.style.animation = 'none';
-                setTimeout(() => {
-                    item.style.animation = 'fadeIn 0.3s ease-in-out';
-                }, 10);
+                setTimeout(() => { item.style.animation = 'fadeIn 0.3s ease-in-out'; }, 10);
             }
         }
 
-        document.getElementById('adminChatForm').addEventListener('submit', async (e) => {
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const messageInput = document.getElementById('adminMessageInput');
+            const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
-
-            // Allow sending if either message or file exists
-            if (!message && !adminSelectedFile) return;
-            if (!adminSelectedReceiverId) return;
-
-            const sendButton = document.getElementById('adminSendButton');
+            if (!message && !selectedFile) return; if (!selectedReceiverId) return;
+            const sendButton = document.getElementById('sendButton');
             sendButton.disabled = true;
-
             try {
-                if (adminSelectedFile) {
-                    // Send with file
+                if (selectedFile) {
                     const formData = new FormData();
-                    formData.append('receiverId', adminSelectedReceiverId);
+                    formData.append('receiverId', selectedReceiverId);
                     formData.append('message', message || '');
-                    formData.append('file', adminSelectedFile);
-                    formData.append('_csrf', adminCsrfToken);
-
-                    const response = await fetch('/chat/send-file', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        messageInput.value = '';
-                        adminCancelFileUpload();
-                    } else {
-                        const err = await response.json().catch(() => ({}));
-                        alert(err.error || 'Cannot send file');
-                    }
+                    formData.append('file', selectedFile);
+                    formData.append('_csrf', csrfToken);
+                    const response = await fetch('/chat/send-file', { method: 'POST', body: formData });
+                    if (response.ok) { messageInput.value = ''; cancelFileUpload(); }
+                    else { const err = await response.json().catch(() => ({})); alert(err.error || 'Cannot send file'); }
                 } else {
-                    // Send text only
                     const response = await fetch('/chat/send', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ receiverId: adminSelectedReceiverId, message: message, _csrf: adminCsrfToken })
+                        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ receiverId: selectedReceiverId, message: message, _csrf: csrfToken })
                     });
-
-                    if (response.ok) {
-                        messageInput.value = '';
-                    } else {
-                        const err = await response.json().catch(() => ({}));
-                        alert(err.error || 'Cannot send message');
-                    }
+                    if (response.ok) { messageInput.value = ''; }
+                    else { const err = await response.json().catch(() => ({})); alert(err.error || 'Cannot send message'); }
                 }
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('Failed to send message. Please try again.');
-            } finally {
-                sendButton.disabled = false;
-            }
+            } catch (error) { console.error('Error sending message:', error); alert('Failed to send message. Please try again.'); }
+            finally { sendButton.disabled = false; }
         });
 
-        function adminScrollToBottom() {
-            const container = document.getElementById('adminMessagesContainer');
-            if (container) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }
+        function scrollToBottom() { const container = document.getElementById('messagesContainer'); if (container) container.scrollTop = container.scrollHeight; }
 
         document.addEventListener('DOMContentLoaded', () => {
-            adminEnsureSseConnected();
-            const firstConv = document.querySelector('.conversation-item');
-            if (firstConv) adminSelectConversation(firstConv);
+            ensureSseConnected();
+            const partnerId = /*[[${partnerId}]]*/ null;
+            if (partnerId) {
+                const partnerConv = document.querySelector(`.conversation-item[data-partner-id="${partnerId}"]`);
+                if (partnerConv) {
+                    selectConversation(partnerConv);
+                } else {
+                    createNewConversation(parseInt(partnerId));
+                }
+            } else {
+                const firstConv = document.querySelector('.conversation-item');
+                if (firstConv) selectConversation(firstConv);
+            }
         });
 
-        document.getElementById('adminMessageInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('adminChatForm').dispatchEvent(new Event('submit'));
+        let userSearchPage = 0;
+        const userSearchSize = 10;
+        let userSearchQuery = '';
+        let userSearchDebounce = null;
+
+        function renderUserDirectory(list) {
+            const box = document.getElementById('userDirectoryResults');
+            if (!list || list.length === 0) {
+                box.innerHTML = '<div class="p-3 text-sm text-gray-500">No users</div>';
+                box.classList.remove('hidden');
+                document.getElementById('userPrevBtn').disabled = userSearchPage <= 0;
+                document.getElementById('userNextBtn').disabled = true; // unknown total; keep disabled until further enhancement
+                return;
             }
+            box.innerHTML = list.map(u => `
+                <div class="p-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2" data-user-id="${u.id}" data-user-name="${(u.fullName || ('User #' + u.id)).replace(/"/g,'&quot;')}" onclick="startChatWithUser(this)">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-orange-400 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">${(u.fullName || ('User #' + u.id)).charAt(0)}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm text-gray-800 truncate">${escapeHtml(u.fullName || ('User #' + u.id))}</div>
+                        <div class="text-xs text-gray-500 truncate">${escapeHtml(u.email || '')}</div>
+                    </div>
+                    <i class="fas fa-comment-dots text-gray-400"></i>
+                </div>
+            `).join('');
+            box.classList.remove('hidden');
+            document.getElementById('userPrevBtn').disabled = userSearchPage <= 0;
+            // We don't know total; enable next if we received a full page
+            document.getElementById('userNextBtn').disabled = list.length < userSearchSize;
+        }
+
+        function fetchUserDirectory() {
+            const params = new URLSearchParams({ page: userSearchPage, size: userSearchSize });
+            if (userSearchQuery && userSearchQuery.trim() !== '') params.append('kw', userSearchQuery.trim());
+            fetch(`/admin/api/users?${params.toString()}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) renderUserDirectory(data); else renderUserDirectory([]);
+                })
+                .catch(() => renderUserDirectory([]));
+        }
+
+        function startChatWithUser(el) {
+            const uid = parseInt(el.getAttribute('data-user-id'));
+            const uname = el.getAttribute('data-user-name') || ("User #" + uid);
+            const existing = document.querySelector(`.conversation-item[data-partner-id="${uid}"]`);
+            if (existing) {
+                selectConversation(existing);
+            } else {
+                createNewConversation(uid, uname);
+            }
+        }
+
+        (function initUserDirectory() {
+            const input = document.getElementById('userSearchInput');
+            const prevBtn = document.getElementById('userPrevBtn');
+            const nextBtn = document.getElementById('userNextBtn');
+            if (!input || !prevBtn || !nextBtn) return;
+            input.addEventListener('focus', () => { if (document.getElementById('userDirectoryResults').classList.contains('hidden')) fetchUserDirectory(); });
+            input.addEventListener('input', () => {
+                const val = input.value;
+                userSearchQuery = val;
+                userSearchPage = 0;
+                clearTimeout(userSearchDebounce);
+                userSearchDebounce = setTimeout(fetchUserDirectory, 300);
+            });
+            prevBtn.addEventListener('click', () => { if (userSearchPage > 0) { userSearchPage--; fetchUserDirectory(); } });
+            nextBtn.addEventListener('click', () => { userSearchPage++; fetchUserDirectory(); });
+        })();
+
+        // Update createNewConversation to accept optional name
+        function createNewConversation(pid, displayName) {
+            selectedReceiverId = pid;
+            selectedReceiverName = displayName && displayName.trim() !== '' ? displayName : `User #${pid}`;
+            document.getElementById('chatHeaderName').textContent = selectedReceiverName;
+            document.getElementById('chatHeaderInitial').textContent = selectedReceiverName.charAt(0);
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('chatArea').classList.remove('hidden');
+            document.getElementById('messagesContainer').innerHTML = '<div class="text-center text-gray-400 py-8"><p>Start your conversation</p></div>';
+        }
+        document.getElementById('messageInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('chatForm').dispatchEvent(new Event('submit')); }
         });
 
         // Search functionality
-        let adminSearchResults = [];
-        let adminCurrentSearchIndex = -1;
-
-        document.getElementById('adminSearchToggleBtn').addEventListener('click', () => {
-            const searchBar = document.getElementById('adminSearchBar');
-            const wasHidden = searchBar.classList.contains('hidden');
-            searchBar.classList.toggle('hidden');
-
-            if (wasHidden) {
-                document.getElementById('adminSearchInput').focus();
-            } else {
-                adminClearSearch();
-            }
+        let searchResults = []; let currentSearchIndex = -1;
+        document.getElementById('searchToggleBtn').addEventListener('click', () => {
+            const searchBar = document.getElementById('searchBar'); const wasHidden = searchBar.classList.contains('hidden');
+            searchBar.classList.toggle('hidden'); if (wasHidden) document.getElementById('searchInput').focus(); else clearSearch();
         });
-
-        document.getElementById('adminCloseSearchBtn').addEventListener('click', () => {
-            document.getElementById('adminSearchBar').classList.add('hidden');
-            adminClearSearch();
+        document.getElementById('closeSearchBtn').addEventListener('click', () => { document.getElementById('searchBar').classList.add('hidden'); clearSearch(); });
+        document.getElementById('clearSearchBtn').addEventListener('click', () => { document.getElementById('searchInput').value = ''; clearSearch(); document.getElementById('searchInput').focus(); });
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const query = this.value.trim(); const clearBtn = document.getElementById('clearSearchBtn'); const resultsDiv = document.getElementById('searchResults');
+            if (query) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden');
+            if (!query) { clearSearch(); resultsDiv.classList.add('hidden'); return; }
+            performSearch(query); resultsDiv.classList.remove('hidden');
         });
+        document.getElementById('prevSearchBtn').addEventListener('click', () => { if (currentSearchIndex > 0) { currentSearchIndex--; updateSearchNavigation(); scrollToSearchResult(); } });
+        document.getElementById('nextSearchBtn').addEventListener('click', () => { if (currentSearchIndex < searchResults.length - 1) { currentSearchIndex++; updateSearchNavigation(); scrollToSearchResult(); } });
 
-        document.getElementById('adminClearSearchBtn').addEventListener('click', () => {
-            document.getElementById('adminSearchInput').value = '';
-            adminClearSearch();
-            document.getElementById('adminSearchInput').focus();
-        });
-
-        document.getElementById('adminSearchInput').addEventListener('input', function() {
-            const query = this.value.trim();
-            const clearBtn = document.getElementById('adminClearSearchBtn');
-            const resultsDiv = document.getElementById('adminSearchResults');
-
-            // Show/hide clear button
-            if (query) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-            }
-
-            if (!query) {
-                adminClearSearch();
-                resultsDiv.classList.add('hidden');
-                return;
-            }
-
-            adminPerformSearch(query);
-            resultsDiv.classList.remove('hidden');
-        });
-
-        document.getElementById('adminPrevSearchBtn').addEventListener('click', () => {
-            if (adminCurrentSearchIndex > 0) {
-                adminCurrentSearchIndex--;
-                adminUpdateSearchNavigation();
-                adminScrollToSearchResult();
-            }
-        });
-
-        document.getElementById('adminNextSearchBtn').addEventListener('click', () => {
-            if (adminCurrentSearchIndex < adminSearchResults.length - 1) {
-                adminCurrentSearchIndex++;
-                adminUpdateSearchNavigation();
-                adminScrollToSearchResult();
-            }
-        });
-
-        function adminPerformSearch(query) {
-            // Clear previous highlights
-            adminClearHighlights();
-
-            const queryLower = query.toLowerCase();
-            const messages = document.querySelectorAll('#adminMessagesContainer > div');
-            adminSearchResults = [];
-
+        function performSearch(query) {
+            clearHighlights(); const queryLower = query.toLowerCase(); const messages = document.querySelectorAll('#messagesContainer > div'); searchResults = [];
             messages.forEach((msgEl) => {
-                // Find the message text element (p tag)
-                const textElement = msgEl.querySelector('p.break-words');
-                if (!textElement) return;
-
-                const originalText = textElement.textContent;
-                if (originalText.toLowerCase().includes(queryLower)) {
-                    adminSearchResults.push({
-                        element: msgEl,
-                        textElement: textElement,
-                        originalText: originalText
-                    });
-
-                    // Highlight the search term
-                    const regex = new RegExp(`(${adminEscapeRegex(query)})`, 'gi');
-                    const highlightedText = originalText.replace(regex, '<mark class="search-highlight">$1</mark>');
-                    textElement.innerHTML = highlightedText;
+                const textElement = msgEl.querySelector('p.break-words'); if (!textElement) return;
+                const originalText = textElement.textContent; if (originalText.toLowerCase().includes(queryLower)) {
+                    searchResults.push({ element: msgEl, textElement: textElement, originalText: originalText });
+                    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi'); const highlightedText = originalText.replace(regex, '<mark class="search-highlight">$1</mark>'); textElement.innerHTML = highlightedText;
                 }
             });
-
-            // Set to first result if found
-            if (adminSearchResults.length > 0) {
-                adminCurrentSearchIndex = 0;
-                adminUpdateSearchNavigation();
-                adminScrollToSearchResult();
-            } else {
-                adminCurrentSearchIndex = -1;
-                adminUpdateSearchNavigation();
-            }
+            if (searchResults.length > 0) { currentSearchIndex = 0; updateSearchNavigation(); scrollToSearchResult(); }
+            else { currentSearchIndex = -1; updateSearchNavigation(); }
         }
-
-        function adminClearSearch() {
-            adminClearHighlights();
-            adminSearchResults = [];
-            adminCurrentSearchIndex = -1;
-            document.getElementById('adminSearchInput').value = '';
-            document.getElementById('adminClearSearchBtn').classList.add('hidden');
-            document.getElementById('adminSearchResults').classList.add('hidden');
-            adminUpdateSearchNavigation();
+        function clearSearch() {
+            clearHighlights(); searchResults = []; currentSearchIndex = -1; document.getElementById('searchInput').value = ''; document.getElementById('clearSearchBtn').classList.add('hidden'); document.getElementById('searchResults').classList.add('hidden'); updateSearchNavigation();
         }
-
-        function adminClearHighlights() {
-            // Remove all highlights and restore original text
-            document.querySelectorAll('#adminMessagesContainer p.break-words').forEach(textEl => {
-                const marks = textEl.querySelectorAll('mark.search-highlight');
-                marks.forEach(mark => {
-                    const text = document.createTextNode(mark.textContent);
-                    mark.parentNode.replaceChild(text, mark);
-                });
+        function clearHighlights() {
+            document.querySelectorAll('#messagesContainer p.break-words').forEach(textEl => {
+                const marks = textEl.querySelectorAll('mark.search-highlight'); marks.forEach(mark => { const text = document.createTextNode(mark.textContent); mark.parentNode.replaceChild(text, mark); });
             });
-
-            // Remove active class from all messages
-            document.querySelectorAll('#adminMessagesContainer > div').forEach(msgEl => {
-                msgEl.classList.remove('search-active');
-            });
+            document.querySelectorAll('#messagesContainer > div').forEach(msgEl => { msgEl.classList.remove('search-active'); });
         }
-
-        function adminUpdateSearchNavigation() {
-            const counter = document.getElementById('adminSearchCounter');
-            const prevBtn = document.getElementById('adminPrevSearchBtn');
-            const nextBtn = document.getElementById('adminNextSearchBtn');
-
-            if (adminSearchResults.length > 0) {
-                counter.textContent = `${adminCurrentSearchIndex + 1}/${adminSearchResults.length}`;
-                prevBtn.disabled = adminCurrentSearchIndex <= 0;
-                nextBtn.disabled = adminCurrentSearchIndex >= adminSearchResults.length - 1;
-            } else {
-                counter.textContent = '0/0';
-                prevBtn.disabled = true;
-                nextBtn.disabled = true;
-            }
-
-            // Highlight current result
-            document.querySelectorAll('#adminMessagesContainer > div').forEach(msgEl => {
-                msgEl.classList.remove('search-active');
-            });
-
-            if (adminCurrentSearchIndex >= 0 && adminCurrentSearchIndex < adminSearchResults.length) {
-                adminSearchResults[adminCurrentSearchIndex].element.classList.add('search-active');
-            }
+        function updateSearchNavigation() {
+            const counter = document.getElementById('searchCounter'); const prevBtn = document.getElementById('prevSearchBtn'); const nextBtn = document.getElementById('nextSearchBtn');
+            if (searchResults.length > 0) { counter.textContent = `${currentSearchIndex + 1}/${searchResults.length}`; prevBtn.disabled = currentSearchIndex <= 0; nextBtn.disabled = currentSearchIndex >= searchResults.length - 1; }
+            else { counter.textContent = '0/0'; prevBtn.disabled = true; nextBtn.disabled = true; }
+            document.querySelectorAll('#messagesContainer > div').forEach(msgEl => { msgEl.classList.remove('search-active'); });
+            if (currentSearchIndex >= 0 && currentSearchIndex < searchResults.length) { searchResults[currentSearchIndex].element.classList.add('search-active'); }
         }
+        function scrollToSearchResult() { if (currentSearchIndex >= 0 && currentSearchIndex < searchResults.length) { const result = searchResults[currentSearchIndex].element; result.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
+        function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+        const originalSelectConversation = selectConversation; selectConversation = function(element) { clearSearch(); document.getElementById('searchBar').classList.add('hidden'); originalSelectConversation(element); };
 
-        function adminScrollToSearchResult() {
-            if (adminCurrentSearchIndex >= 0 && adminCurrentSearchIndex < adminSearchResults.length) {
-                const result = adminSearchResults[adminCurrentSearchIndex].element;
-                result.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        function adminEscapeRegex(string) {
-            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
-
-        // Clear search when switching conversations
-        const originalAdminSelectConversation = adminSelectConversation;
-        adminSelectConversation = function(element) {
-            adminClearSearch();
-            document.getElementById('adminSearchBar').classList.add('hidden');
-            originalAdminSelectConversation(element);
-        };
-
-        // Drag and drop functionality
-        const adminChatArea = document.getElementById('adminChatArea');
-        const adminDragOverlay = document.getElementById('adminDragOverlay');
-        let adminDragCounter = 0;
-
-        // Prevent default drag behavior on the entire document
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            document.body.addEventListener(eventName, adminPreventDefaults, false);
-        });
-
-        function adminPreventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        // Handle drag enter on chat area
-        adminChatArea.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            adminDragCounter++;
-            if (adminDragCounter === 1) {
-                adminDragOverlay.classList.remove('hidden');
-                adminChatArea.classList.add('drag-active');
+        const chatArea = document.getElementById('chatArea'); const dragOverlay = document.getElementById('dragOverlay'); let dragCounter = 0;
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { document.body.addEventListener(eventName, preventDefaults, false); });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        chatArea.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; if (dragCounter === 1) { dragOverlay.classList.remove('hidden'); chatArea.classList.add('drag-active'); } });
+        chatArea.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+        chatArea.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) { dragOverlay.classList.add('hidden'); chatArea.classList.remove('drag-active'); } });
+        chatArea.addEventListener('drop', (e) => {
+            e.preventDefault(); dragCounter = 0; dragOverlay.classList.add('hidden'); chatArea.classList.remove('drag-active'); const files = e.dataTransfer.files; if (files.length > 0) {
+                const file = files[0]; if (file.size > 50 * 1024 * 1024) { alert('File size must be less than 50MB'); return; }
+                const dataTransfer = new DataTransfer(); dataTransfer.items.add(file); document.getElementById('fileInput').files = dataTransfer.files; const event = new Event('change', { bubbles: true }); document.getElementById('fileInput').dispatchEvent(event);
             }
         });
-
-        // Handle drag over on chat area
-        adminChatArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-        });
-
-        // Handle drag leave on chat area
-        adminChatArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            adminDragCounter--;
-            if (adminDragCounter === 0) {
-                adminDragOverlay.classList.add('hidden');
-                adminChatArea.classList.remove('drag-active');
-            }
-        });
-
-        // Handle drop on chat area
-        adminChatArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            adminDragCounter = 0;
-            adminDragOverlay.classList.add('hidden');
-            adminChatArea.classList.remove('drag-active');
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
-
-                // Validate file size
-                if (file.size > 50 * 1024 * 1024) {
-                    alert('File size must be less than 50MB');
-                    return;
-                }
-
-                // Create a new FileList-like object
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                document.getElementById('adminFileInput').files = dataTransfer.files;
-
-                // Manually trigger the change event
-                const event = new Event('change', { bubbles: true });
-                document.getElementById('adminFileInput').dispatchEvent(event);
-            }
-        });
-
-        // Paste file functionality
         document.addEventListener('paste', (e) => {
-            // Only handle paste if chat area is visible and a conversation is selected
-            if (!adminSelectedReceiverId || adminChatArea.classList.contains('hidden')) return;
-
-            const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    const file = items[i].getAsFile();
-                    if (file) {
-                        // Validate file size
-                        if (file.size > 50 * 1024 * 1024) {
-                            alert('File size must be less than 50MB');
-                            return;
-                        }
-
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(file);
-                        document.getElementById('adminFileInput').files = dataTransfer.files;
-
-                        const event = new Event('change', { bubbles: true });
-                        document.getElementById('adminFileInput').dispatchEvent(event);
-
-                        e.preventDefault();
-                        break;
-                    }
-                }
-            }
+            if (!selectedReceiverId || chatArea.classList.contains('hidden')) return; const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) { if (items[i].type.indexOf('image') !== -1) { const file = items[i].getAsFile(); if (file) {
+                if (file.size > 50 * 1024 * 1024) { alert('File size must be less than 50MB'); return; }
+                const dataTransfer = new DataTransfer(); dataTransfer.items.add(file); document.getElementById('fileInput').files = dataTransfer.files; const event = new Event('change', { bubbles: true }); document.getElementById('fileInput').dispatchEvent(event); e.preventDefault(); break; }
+            }}
         });
     </script>
 </div>
-</body>
-</html>

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -48,4 +49,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     "ORDER BY totalProductsSold DESC, averageRating DESC",
             nativeQuery = true
     )
-    List<Object[]> findReputableSellers();}
+    List<Object[]> findReputableSellers();
+
+    @Query("SELECT u FROM User u WHERE u.isDelete = false AND u.id <> :excludeId ORDER BY LOWER(COALESCE(u.fullName, '')) ASC, u.id ASC")
+    List<User> listUsers(@Param("excludeId") Long excludeId, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.isDelete = false AND u.id <> :excludeId AND (LOWER(COALESCE(u.fullName, '')) LIKE LOWER(CONCAT('%', :kw, '%')) OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :kw, '%'))) ORDER BY LOWER(COALESCE(u.fullName, '')) ASC, u.id ASC")
+    List<User> searchUsers(@Param("kw") String keyword, @Param("excludeId") Long excludeId, Pageable pageable);
+}
