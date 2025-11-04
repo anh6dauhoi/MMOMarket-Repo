@@ -300,11 +300,14 @@ public class ProductService {
         // raw variants from DB
         List<ProductVariant> rawVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId());
 
-        // build DTO list with stock counted from ProductVariantAccount (status = 'Available')
+        // build DTO list with stock and sold counted from ProductVariantAccount
         List<ProductVariantDto> variantsWithStock = new ArrayList<>();
         for (ProductVariant v : rawVariants) {
-            long stock = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Available");
-            variantsWithStock.add(new ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock));
+            long stock = 0L;
+            long sold = 0L;
+            try { stock = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Available"); } catch (Exception ignored) {}
+            try { sold = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Sold"); } catch (Exception ignored) {}
+            variantsWithStock.add(new ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock, sold));
         }
         model.put("variants", variantsWithStock);
 

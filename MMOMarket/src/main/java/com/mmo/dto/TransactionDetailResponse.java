@@ -18,7 +18,8 @@ public class TransactionDetailResponse {
 
     private Long amount;
     private Long commission;
-    private Long coinsUsed;
+    private Long coinAdmin;
+    private Long coinSeller;
     private String status;
     private String escrowReleaseDate;
     private Long deliveredAccountId;
@@ -29,7 +30,7 @@ public class TransactionDetailResponse {
     public TransactionDetailResponse(Long id, Long customerId, String customerName, String customerEmail,
                                      Long sellerId, String sellerName, String sellerEmail,
                                      Long productId, String productTitle, Long variantId, String variantName,
-                                     Long amount, Long commission, Long coinsUsed, String status, String escrowReleaseDate,
+                                     Long amount, Long commission, Long coinAdmin, Long coinSeller, String status, String escrowReleaseDate,
                                      Long deliveredAccountId, String createdAt, String updatedAt) {
         this.id = id;
         this.customerId = customerId;
@@ -44,7 +45,8 @@ public class TransactionDetailResponse {
         this.variantName = variantName;
         this.amount = amount;
         this.commission = commission;
-        this.coinsUsed = coinsUsed;
+        this.coinAdmin = coinAdmin;
+        this.coinSeller = coinSeller;
         this.status = status;
         this.escrowReleaseDate = escrowReleaseDate;
         this.deliveredAccountId = deliveredAccountId;
@@ -66,7 +68,8 @@ public class TransactionDetailResponse {
     public String getVariantName() { return variantName; }
     public Long getAmount() { return amount; }
     public Long getCommission() { return commission; }
-    public Long getCoinsUsed() { return coinsUsed; }
+    public Long getCoinAdmin() { return coinAdmin; }
+    public Long getCoinSeller() { return coinSeller; }
     public String getStatus() { return status; }
     public String getEscrowReleaseDate() { return escrowReleaseDate; }
     public Long getDeliveredAccountId() { return deliveredAccountId; }

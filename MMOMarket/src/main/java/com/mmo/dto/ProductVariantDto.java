@@ -5,12 +5,14 @@ public class ProductVariantDto {
     private String variantName;
     private Long price;
     private Long stock;
+    private Long sold;
 
-    public ProductVariantDto(Long id, String variantName, Long price, Long stock) {
+    public ProductVariantDto(Long id, String variantName, Long price, Long stock, Long sold) {
         this.id = id;
         this.variantName = variantName;
         this.price = price;
         this.stock = stock;
+        this.sold = sold;
     }
 
     // getters (used by Thymeleaf)
@@ -18,5 +20,5 @@ public class ProductVariantDto {
     public String getVariantName() { return variantName; }
     public Long getPrice() { return price; }
     public Long getStock() { return stock; }
+    public Long getSold() { return sold; }
 }
-

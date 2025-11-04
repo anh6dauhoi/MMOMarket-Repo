@@ -1,4 +1,4 @@
-<div th:fragment="content"
+tôi đa<div th:fragment="content"
      th:with="page=${currentPage != null ? currentPage : 0},
               size=${10},
               total=${totalPages != null and totalPages > 0 ? totalPages : 1},
@@ -13,14 +13,14 @@
 
         <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="min-w-full bg-white">
+            <table class="min-w-full bg-white text-sm">
                 <thead class="bg-red-50">
                 <tr>
-                    <th class="py-3 px-4 w-12 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Customer</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Product</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
+                    <th class="py-2 px-3 w-10 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
+                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Customer</th>
+                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller</th>
+                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Product</th>
+                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
                         <a th:with="currentSortVal=${currentSort != null ? currentSort : 'date_desc'},
                                     isAmountAsc=${currentSortVal == 'amount_asc'},
                                     isAmountDesc=${currentSortVal == 'amount_desc'},
@@ -35,37 +35,39 @@
                             </span>
                         </a>
                     </th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Action</th>
+                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
+                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Action</th>
                 </tr>
                 </thead>
 
                 <tbody class="divide-y divide-gray-200">
                 <tr class="hover:bg-gray-50" th:each="tx,iter : ${transactions}">
-                    <td class="py-4 px-4 whitespace-nowrap" th:text="${iter.index + 1}">1</td>
-                    <td class="py-4 px-4 whitespace-nowrap">
-                        <div class="font-medium" th:text="${tx.customer != null ? tx.customer.fullName : 'Unknown'}">Customer Name</div>
-                        <div class="text-sm text-gray-500" th:text="${tx.customer != null ? tx.customer.email : ''}">customer@example.com</div>
+                    <td class="py-2.5 px-3 whitespace-nowrap text-sm" th:text="${iter.index + 1}">1</td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <div class="font-medium text-sm" th:text="${tx.customer != null ? tx.customer.fullName : 'Unknown'}">Customer Name</div>
+                        <div class="text-xs text-gray-500" th:text="${tx.customer != null ? tx.customer.email : ''}">customer@example.com</div>
                     </td>
-                    <td class="py-4 px-4 whitespace-nowrap">
-                        <div class="font-medium" th:text="${tx.seller != null ? tx.seller.fullName : 'Unknown'}">Seller Name</div>
-                        <div class="text-sm text-gray-500" th:text="${tx.seller != null ? tx.seller.email : ''}">seller@example.com</div>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <div class="font-medium text-sm" th:text="${tx.seller != null ? tx.seller.fullName : 'Unknown'}">Seller Name</div>
+                        <div class="text-xs text-gray-500" th:text="${tx.seller != null ? tx.seller.email : ''}">seller@example.com</div>
                     </td>
-                    <td class="py-4 px-4 whitespace-nowrap" th:text="${tx.product != null ? tx.product.name : ''}">Product Title</td>
-                    <td class="py-4 px-4 whitespace-nowrap" th:text="${tx.amount}">100000</td>
-                    <td class="py-4 px-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                    <td class="py-2.5 px-3 whitespace-nowrap text-sm" th:text="${tx.product != null ? tx.product.name : ''}">Product Title</td>
+                    <td class="py-2.5 px-3 whitespace-nowrap text-sm font-medium">
+                        <span class="format-amount" th:attr="data-amount=${tx.amount}">100.000</span>
+                    </td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full"
                               th:with="raw=${tx.status != null ? tx.status : ''}, up=${#strings.toUpperCase(raw)}, isCompleted=${#strings.contains(up,'COMPLETED') or #strings.contains(up,'DELIVERED') or #strings.contains(up,'APPROVED')}, isPending=${#strings.contains(up,'PENDING')}, isRejected=${#strings.contains(up,'REJECTED')}, disp=${isCompleted ? 'Completed' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(raw))))}"
                               th:classappend="${isCompleted} ? 'bg-green-100 text-green-800' : (isPending ? 'bg-yellow-100 text-yellow-800' : (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
                               th:text="${disp}">Status</span>
                     </td>
-                    <td class="py-4 px-4 whitespace-nowrap">
-                        <button type="button" class="text-sm text-blue-600 hover:text-blue-800" th:attr="data-id=${tx.id}" onclick="openTransactionModal(this)">View Detail</button>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <button type="button" class="text-xs text-blue-600 hover:text-blue-800 font-medium" th:attr="data-id=${tx.id}" onclick="openTransactionModal(this)">View detail</button>
                     </td>
                 </tr>
 
                 <tr th:if="${#lists.isEmpty(transactions)}">
-                    <td class="text-center py-10 text-gray-500" colspan="7">No transactions found.</td>
+                    <td class="text-center py-8 text-gray-500 text-sm" colspan="7">No transactions found.</td>
                 </tr>
                 </tbody>
             </table>
@@ -152,7 +154,7 @@
                             </span>
                             <div>
                                 <p class="font-semibold text-gray-500 text-xs">Amount</p>
-                                <p id="t-amount" class="text-base sm:text-lg font-medium"></p>
+                                <p id="t-amount" class="text-base sm:text-lg font-medium format-amount"></p>
                             </div>
                         </div>
 
@@ -161,8 +163,18 @@
                                 <i class="fas fa-coins"></i>
                             </span>
                             <div>
-                                <p class="font-semibold text-gray-500 text-xs">Coins Used</p>
-                                <p id="t-coins" class="text-base sm:text-lg font-medium"></p>
+                                <p class="font-semibold text-gray-500 text-xs">Coin Admin</p>
+                                <p id="t-coin-admin" class="text-base sm:text-lg font-medium format-amount"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-purple-100 text-purple-500 shadow">
+                                <i class="fas fa-wallet"></i>
+                            </span>
+                            <div>
+                                <p class="font-semibold text-gray-500 text-xs">Coin Seller</p>
+                                <p id="t-coin-seller" class="text-base sm:text-lg font-medium format-amount"></p>
                             </div>
                         </div>
 
@@ -183,7 +195,7 @@
 
                         <div>
                             <p class="text-xs text-gray-500">Commission</p>
-                            <p id="t-commission" class="font-medium"></p>
+                            <p id="t-commission" class="font-medium format-amount"></p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-500">Escrow Release</p>
@@ -210,6 +222,27 @@
         </div>
 
         <script>
+            // Format number with dots (xxx.xxx)
+            function formatAmount(num) {
+                if (!num && num !== 0) return '0';
+                const number = typeof num === 'string' ? parseInt(num.replace(/\D/g, '')) : num;
+                return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            // Format all elements with format-amount class
+            function applyAmountFormatting(container) {
+                const elements = (container || document).querySelectorAll('.format-amount');
+                elements.forEach(el => {
+                    const amount = el.getAttribute('data-amount') || el.textContent;
+                    el.textContent = formatAmount(amount);
+                });
+            }
+
+            // Apply formatting on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                applyAmountFormatting();
+            });
+
             window.openTransactionModal = function(btn) {
                 const modal = document.getElementById('txModal');
                 const modalContent = document.getElementById('txModalContent');
@@ -242,7 +275,7 @@
             function renderTransactionModal(data, id) {
                 console.log('Rendering modal with data:', data, 'and id:', id);
                 const $ = (el) => document.getElementById(el);
-                const tx = $('t-transactionId'), c = $('t-customer-name'), s = $('t-seller-name'), amt = $('t-amount'), coins = $('t-coins'), st = $('t-status'), stx = $('t-status-text'), icoWrap = $('t-status-icon'), dyn = $('t-dynamic-area'), prod = $('t-product'), comm = $('t-commission'), escrow = $('t-escrow'), tcreated = $('t-created'), tupd = $('t-updated');
+                const tx = $('t-transactionId'), c = $('t-customer-name'), s = $('t-seller-name'), amt = $('t-amount'), coinAdmin = $('t-coin-admin'), coinSeller = $('t-coin-seller'), st = $('t-status'), stx = $('t-status-text'), icoWrap = $('t-status-icon'), dyn = $('t-dynamic-area'), prod = $('t-product'), comm = $('t-commission'), escrow = $('t-escrow'), tcreated = $('t-created'), tupd = $('t-updated');
 
                 if (!tx || !c || !s) {
                     console.error('Required modal elements not found');
@@ -252,12 +285,28 @@
                 tx.textContent = id ? '#' + id : (data.id || '');
                 c.textContent = data.customerName || 'N/A';
                 s.textContent = data.sellerName || 'N/A';
-                amt.textContent = data.amount || '0';
-                coins.textContent = data.coinsUsed || '0';
+
+                // Format all amounts and coins
+                if (amt) {
+                    amt.setAttribute('data-amount', data.amount || '0');
+                    amt.textContent = formatAmount(data.amount);
+                }
+                if (coinAdmin) {
+                    coinAdmin.setAttribute('data-amount', data.coinAdmin || '0');
+                    coinAdmin.textContent = formatAmount(data.coinAdmin);
+                }
+                if (coinSeller) {
+                    coinSeller.setAttribute('data-amount', data.coinSeller || '0');
+                    coinSeller.textContent = formatAmount(data.coinSeller);
+                }
+                if (comm) {
+                    comm.setAttribute('data-amount', data.commission || '0');
+                    comm.textContent = formatAmount(data.commission);
+                }
+
                 st.textContent = data.status || 'Unknown';
                 stx.textContent = data.status || 'Unknown';
                 prod.textContent = (data.productTitle || 'N/A') + (data.variantName ? (' / ' + data.variantName) : '');
-                comm.textContent = data.commission || '0';
                 escrow.textContent = data.escrowReleaseDate || 'N/A';
                 tcreated.textContent = data.createdAt || 'N/A';
                 tupd.textContent = data.updatedAt || 'N/A';
