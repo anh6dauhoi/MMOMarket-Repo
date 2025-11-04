@@ -1,12 +1,11 @@
 package com.mmo.controller;
 
-import com.mmo.dto.ProcessWithdrawalRequest;
-import com.mmo.dto.AdminWithdrawalResponse;
-import com.mmo.dto.WithdrawalDetailResponse;
-import com.mmo.dto.CoinDepositDetailResponse;
+import com.mmo.dto.*;
+import com.mmo.entity.Category;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
 import com.mmo.entity.CoinDeposit;
+import jakarta.persistence.TypedQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -43,7 +42,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import com.mmo.dto.ConversationSummaryDto;
 import com.mmo.service.ChatService;
 import com.mmo.service.AuthService;
 
@@ -51,6 +49,8 @@ import com.mmo.service.AuthService;
 @RequestMapping("/admin")
 @SuppressWarnings("unchecked")
 public class AdminController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AdminController.class);
 
     @Autowired
     private com.mmo.service.NotificationService notificationService;
@@ -63,6 +63,9 @@ public class AdminController {
 
     @Autowired
     private com.mmo.service.SystemConfigurationService systemConfigurationService;
+
+    @Autowired
+    private com.mmo.service.CategoryService categoryService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -633,4 +636,364 @@ public class AdminController {
         model.addAttribute("body", "admin/chat");
         return "admin/layout";
     }
+
+    // ==================== CATEGORY MANAGEMENT ====================
+
+    @GetMapping("/categories")
+    @Transactional(readOnly = true)
+    public String categoriesManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                       @RequestParam(name = "search", defaultValue = "") String search,
+                                       @RequestParam(name = "type", defaultValue = "") String type,
+                                       @RequestParam(name = "sort", defaultValue = "") String sort,
+                                       Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+
+        // Build dynamic query WITHOUT JOIN FETCH for better performance
+        StringBuilder jpql = new StringBuilder("SELECT c FROM Category c WHERE c.isDelete = false");
+
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
+        }
+
+        if (type != null && !type.trim().isEmpty()) {
+            jpql.append(" AND LOWER(c.type) = LOWER(:type)");
+        }
+
+        // Add sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("products_asc")) {
+                jpql.append(" ORDER BY SIZE(c.products) ASC");
+            } else if (sort.equals("products_desc")) {
+                jpql.append(" ORDER BY SIZE(c.products) DESC");
+            }
+        }
+
+        // Create query
+        TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
+
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+
+        if (type != null && !type.trim().isEmpty()) {
+            query.setParameter("type", type.trim());
+        }
+
+        // Get all results first (needed for total count and sorting)
+        List<Category> allResults = query.getResultList();
+        int total = allResults.size();
+
+        // Apply pagination manually
+        int start = page * 10;
+        int end = Math.min(start + 10, total);
+        List<Category> categories = allResults.subList(start, end);
+
+        // Efficiently load product counts for the current page only
+        if (!categories.isEmpty()) {
+            List<Long> categoryIds = categories.stream().map(Category::getId).toList();
+            List<Object[]> counts = entityManager.createQuery(
+                    "SELECT p.category.id, COUNT(p) FROM Product p WHERE p.category.id IN :ids GROUP BY p.category.id",
+                    Object[].class
+            ).setParameter("ids", categoryIds).getResultList();
+
+            // Map counts to categories
+            java.util.Map<Long, Long> countMap = counts.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> (Long) row[1]
+                    ));
+
+            // Set cached counts
+            for (Category category : categories) {
+                Long count = countMap.getOrDefault(category.getId(), 0L);
+                category.setProductCountCache(count.intValue());
+            }
+        }
+
+        Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
+
+        model.addAttribute("categories", categoryPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentType", type);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", categoryPage.getTotalPages());
+        model.addAttribute("pageTitle", "Categories Management");
+        model.addAttribute("body", "admin/categories");
+        return "admin/layout";
+    }
+
+    @PostMapping("/categories")
+    @ResponseBody
+    public ResponseEntity<?> createCategory(@RequestBody CreateCategoryRequest request, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.createCategory(request, admin.getId());
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/categories/{id}")
+    @ResponseBody
+    public ResponseEntity<?> getCategoryById(@PathVariable Long id) {
+        try {
+            Category category = categoryService.getCategoryById(id);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/categories/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateCategory(@PathVariable Long id,
+                                            @RequestBody UpdateCategoryRequest request,
+                                            Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.updateCategory(id, request);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/categories/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteCategory(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            categoryService.deleteCategory(id, admin.getId());
+            return ResponseEntity.ok().body("Category deleted successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/categories/{id}/toggle-status")
+    @ResponseBody
+    public ResponseEntity<?> toggleCategoryStatus(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.toggleCategoryStatus(id);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/categories/deleted")
+    @Transactional(readOnly = true)
+    public String deletedCategories(@RequestParam(name = "page", defaultValue = "0") int page,
+                                    @RequestParam(name = "search", defaultValue = "") String search,
+                                    @RequestParam(name = "type", defaultValue = "") String type,
+                                    @RequestParam(name = "sort", defaultValue = "") String sort,
+                                    Model model) {
+        logger.info("=== ENTERED deletedCategories METHOD ===");
+        logger.info("Parameters - page: {}, search: {}, type: {}, sort: {}", page, search, type, sort);
+
+        try {
+            logger.info("Step 1: Creating pageable");
+            Pageable pageable = PageRequest.of(page, 10);
+
+            logger.info("Step 2: Building query");
+            // Simple query - load only category data
+            StringBuilder jpql = new StringBuilder("SELECT c FROM Category c WHERE c.isDelete = true");
+
+            if (search != null && !search.trim().isEmpty()) {
+                jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
+            }
+
+            if (type != null && !type.trim().isEmpty()) {
+                jpql.append(" AND LOWER(c.type) = LOWER(:type)");
+            }
+
+            jpql.append(" ORDER BY c.updatedAt DESC");
+
+            logger.info("Step 3: Query built: {}", jpql);
+
+            // Create query
+            TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
+
+            if (search != null && !search.trim().isEmpty()) {
+                query.setParameter("search", "%" + search.trim() + "%");
+            }
+
+            if (type != null && !type.trim().isEmpty()) {
+                query.setParameter("type", type.trim());
+            }
+
+            logger.info("Step 4: Executing query");
+            // Get all results first
+            List<Category> allResults = query.getResultList();
+            logger.info("Step 5: Found {} deleted categories", allResults.size());
+
+            int total = allResults.size();
+
+            // Apply pagination manually
+            int start = page * 10;
+            int end = Math.min(start + 10, total);
+            List<Category> categories = start < total ? allResults.subList(start, end) : new java.util.ArrayList<>();
+
+            logger.info("Step 6: Paginated {} categories (from {} to {})", categories.size(), start, end);
+
+            logger.info("Step 7: Loading lazy relationships");
+            // Eager load relationships for the paginated results within transaction
+            for (int i = 0; i < categories.size(); i++) {
+                Category cat = categories.get(i);
+                logger.debug("Loading details for category {}/{}: id={}, name={}", i+1, categories.size(), cat.getId(), cat.getName());
+                try {
+                    // Force load products collection to calculate count
+                    if (cat.getProducts() != null) {
+                        int productCount = cat.getProducts().size(); // This will trigger lazy load within transaction
+                        logger.debug("Category {} has {} products", cat.getId(), productCount);
+                    } else {
+                        logger.debug("Category {} has null products collection", cat.getId());
+                    }
+
+                    // Load deletedByUser if exists
+                    if (cat.getDeletedBy() != null) {
+                        logger.debug("Loading deletedByUser for category {} (deletedBy={})", cat.getId(), cat.getDeletedBy());
+                        User deletedByUser = entityManager.find(User.class, cat.getDeletedBy());
+                        if (deletedByUser != null) {
+                            cat.setDeletedByUser(deletedByUser);
+                            logger.debug("Loaded deletedByUser: {}", deletedByUser.getEmail());
+                        } else {
+                            logger.warn("DeletedByUser not found for ID: {}", cat.getDeletedBy());
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to load details for category {}: {}", cat.getId(), e.getMessage(), e);
+                }
+            }
+
+            logger.info("Step 8: Creating page object");
+            Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
+
+            logger.info("Step 9: Adding attributes to model");
+            model.addAttribute("categories", categoryPage.getContent());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentType", type);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", categoryPage.getTotalPages());
+            model.addAttribute("pageTitle", "Deleted Categories");
+            model.addAttribute("body", "admin/deleted-categories");
+
+            logger.info("Step 10: Returning view - admin/layout");
+            return "admin/layout";
+        } catch (Exception ex) {
+            logger.error("=== ERROR in deletedCategories ===", ex);
+            logger.error("Exception class: {}", ex.getClass().getName());
+            logger.error("Exception message: {}", ex.getMessage());
+            if (ex.getCause() != null) {
+                logger.error("Cause: {}", ex.getCause().getMessage());
+            }
+
+            model.addAttribute("categories", new java.util.ArrayList<>());
+            model.addAttribute("currentPage", 0);
+            model.addAttribute("totalPages", 0);
+            model.addAttribute("currentSearch", "");
+            model.addAttribute("currentType", "");
+            model.addAttribute("currentSort", "");
+            model.addAttribute("pageTitle", "Deleted Categories");
+            model.addAttribute("body", "admin/deleted-categories");
+            model.addAttribute("errorMessage", "Failed to load deleted categories: " + ex.getMessage());
+            return "admin/layout";
+        }
+    }
+
+    @GetMapping("/categories/deleted/list")
+    @ResponseBody
+    public ResponseEntity<?> getDeletedCategoriesList() {
+        try {
+            Pageable pageable = PageRequest.of(0, 100);
+            Page<Category> categoryPage = categoryService.getDeletedCategories(pageable);
+            return ResponseEntity.ok(categoryPage.getContent());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping("/categories/{id}/restore")
+    @ResponseBody
+    public ResponseEntity<?> restoreCategory(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            Category category = categoryService.restoreCategory(id);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
 }
