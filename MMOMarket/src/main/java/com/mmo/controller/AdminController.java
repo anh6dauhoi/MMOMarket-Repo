@@ -42,6 +42,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import com.mmo.service.ChatService;
 import com.mmo.service.AuthService;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin")
@@ -1962,6 +1963,66 @@ public class AdminController {
         } catch (Exception ex) {
             logger.error("Error unbanning user {}: {}", id, ex.getMessage(), ex);
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // ==================== CHANGE PASSWORD ====================
+
+    @GetMapping("/change-password")
+    public String changePasswordPage(Model model) {
+        model.addAttribute("pageTitle", "Change Password");
+        model.addAttribute("body", "admin/change-password");
+        return "admin/layout";
+    }
+
+    @PostMapping("/change-password")
+    @Transactional
+    public String changePassword(@ModelAttribute com.mmo.dto.ChangePasswordRequest request,
+                                 Authentication auth,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "You must be logged in");
+                return "redirect:/authen/login";
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Access denied");
+                return "redirect:/";
+            }
+
+            // Validate current password
+            if (!org.springframework.security.crypto.bcrypt.BCrypt.checkpw(
+                    request.getCurrentPassword(), admin.getPassword())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Current password is incorrect");
+                return "redirect:/admin/change-password";
+            }
+
+            // Validate new password
+            if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password must be at least 6 characters");
+                return "redirect:/admin/change-password";
+            }
+
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password and confirm password do not match");
+                return "redirect:/admin/change-password";
+            }
+
+            // Update password
+            admin.setPassword(org.springframework.security.crypto.bcrypt.BCrypt.hashpw(
+                    request.getNewPassword(), org.springframework.security.crypto.bcrypt.BCrypt.gensalt()));
+            entityManager.merge(admin);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Password changed successfully!");
+            return "redirect:/admin/change-password";
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to change password: " + ex.getMessage());
+            return "redirect:/admin/change-password";
         }
     }
 
