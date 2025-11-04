@@ -2002,13 +2002,32 @@ public class AdminController {
                 return "redirect:/admin/change-password";
             }
 
-            // Validate new password
-            if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            // Validate new password strength: min 6 chars, uppercase, number, special character
+            String newPassword = request.getNewPassword();
+            if (newPassword == null || newPassword.length() < 6) {
                 redirectAttributes.addFlashAttribute("errorMessage", "New password must be at least 6 characters");
                 return "redirect:/admin/change-password";
             }
 
-            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            // Check for uppercase letter
+            if (!newPassword.matches(".*[A-Z].*")) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password must include at least one uppercase letter");
+                return "redirect:/admin/change-password";
+            }
+
+            // Check for number
+            if (!newPassword.matches(".*\\d.*")) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password must include at least one number");
+                return "redirect:/admin/change-password";
+            }
+
+            // Check for special character
+            if (!newPassword.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+                redirectAttributes.addFlashAttribute("errorMessage", "New password must include at least one special character");
+                return "redirect:/admin/change-password";
+            }
+
+            if (!newPassword.equals(request.getConfirmPassword())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "New password and confirm password do not match");
                 return "redirect:/admin/change-password";
             }

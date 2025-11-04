@@ -45,7 +45,7 @@ public class AccountController {
     private EntityManager entityManager;
 
     @GetMapping("/account/settings")
-    public String accountSettings(Model model, Authentication authentication) {
+    public String accountSettings(Model model, Authentication authentication, @RequestParam(required = false) String tab) {
         if (authentication != null && authentication.isAuthenticated()) {
             String email = authentication.getName();
             if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
@@ -56,6 +56,9 @@ public class AccountController {
             Optional<User> userOpt = userRepository.findByEmail(email);
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
+                model.addAttribute("currentUser", user);
+                model.addAttribute("displayName", user.getFullName() != null ? user.getFullName() : email);
+
                 boolean active = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
                 if (active) {
                     ShopInfo shop = entityManager.createQuery(
@@ -72,6 +75,13 @@ public class AccountController {
                 }
             }
         }
+
+        // Set active tab based on tab parameter
+        if (tab != null && !tab.isEmpty()) {
+            model.addAttribute("activeTab", tab);
+        }
+        // If no tab specified, don't set activeTab - let the view show Register Seller by default
+
         if (!model.containsAttribute("sellerRegistration") && !model.containsAttribute("registration")) {
             model.addAttribute("sellerRegistration", new SellerRegistrationForm());
         }

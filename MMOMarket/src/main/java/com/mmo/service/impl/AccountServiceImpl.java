@@ -85,10 +85,25 @@ public class AccountServiceImpl implements AccountService {
             throw new IllegalArgumentException("New password and confirmation do not match");
         }
 
-        // Validate new password strength (same rules as registration)
-        if (request.getNewPassword().length() < 8 ||
-                !request.getNewPassword().matches("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")) {
-            throw new IllegalArgumentException("New password must be at least 8 characters and include letters and numbers");
+        // Validate new password strength: min 6 chars, uppercase, number, special character
+        String newPassword = request.getNewPassword();
+        if (newPassword.length() < 6) {
+            throw new IllegalArgumentException("New password must be at least 6 characters");
+        }
+
+        // Check for uppercase letter
+        if (!newPassword.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("New password must include at least one uppercase letter");
+        }
+
+        // Check for number
+        if (!newPassword.matches(".*\\d.*")) {
+            throw new IllegalArgumentException("New password must include at least one number");
+        }
+
+        // Check for special character
+        if (!newPassword.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+            throw new IllegalArgumentException("New password must include at least one special character");
         }
 
         // For OAuth users (Google login), password might be null
