@@ -326,6 +326,7 @@ CREATE TABLE IF NOT EXISTS Blogs (
     title VARCHAR(255) NOT NULL, -- Tiêu đề
     content TEXT NOT NULL, -- Nội dung
     image VARCHAR(255), -- Đường dẫn ảnh
+    status TINYINT(1) DEFAULT 1, -- Trạng thái blog: 1=Active, 0=Inactive
     author_id BIGINT NOT NULL, -- Mã tác giả
     views BIGINT DEFAULT 0, -- Lượt xem
     likes BIGINT DEFAULT 0, -- Số lượt thích

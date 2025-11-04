@@ -28,6 +28,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,6 +67,9 @@ public class AdminController {
 
     @Autowired
     private com.mmo.service.CategoryService categoryService;
+
+    @Autowired
+    private com.mmo.service.BlogService blogService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -989,6 +993,203 @@ public class AdminController {
 
             Category category = categoryService.restoreCategory(id);
             return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // ==================== BLOG MANAGEMENT ====================
+
+    @GetMapping("/blogs")
+    @Transactional(readOnly = true)
+    public String blogsManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                  @RequestParam(name = "search", defaultValue = "") String search,
+                                  @RequestParam(name = "status", defaultValue = "All") String status,
+                                  @RequestParam(name = "sort", defaultValue = "") String sort,
+                                  Model model) {
+        Pageable pageable = PageRequest.of(page, 10);
+
+        // Build dynamic query
+        StringBuilder jpql = new StringBuilder("SELECT b FROM Blog b WHERE b.isDelete = false");
+
+        // Filter by search keyword
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" AND (LOWER(b.title) LIKE LOWER(:search) OR LOWER(b.content) LIKE LOWER(:search))");
+        }
+
+        // Filter by status (Active/Inactive)
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("All")) {
+            if (status.equalsIgnoreCase("Active")) {
+                jpql.append(" AND b.status = true");
+            } else if (status.equalsIgnoreCase("Inactive")) {
+                jpql.append(" AND b.status = false");
+            }
+        }
+
+        // Add sorting
+        if (sort != null && !sort.isEmpty()) {
+            if (sort.equals("likes_asc")) {
+                jpql.append(" ORDER BY b.likes ASC");
+            } else if (sort.equals("likes_desc")) {
+                jpql.append(" ORDER BY b.likes DESC");
+            } else if (sort.equals("views_asc")) {
+                jpql.append(" ORDER BY b.views ASC");
+            } else if (sort.equals("views_desc")) {
+                jpql.append(" ORDER BY b.views DESC");
+            } else if (sort.equals("date_asc")) {
+                jpql.append(" ORDER BY b.createdAt ASC");
+            } else if (sort.equals("date_desc")) {
+                jpql.append(" ORDER BY b.createdAt DESC");
+            } else {
+                jpql.append(" ORDER BY b.createdAt DESC");
+            }
+        } else {
+            jpql.append(" ORDER BY b.createdAt DESC");
+        }
+
+        // Separate COUNT query for better performance
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(b) FROM Blog b WHERE b.isDelete = false");
+        if (search != null && !search.trim().isEmpty()) {
+            countJpql.append(" AND (LOWER(b.title) LIKE LOWER(:search) OR LOWER(b.content) LIKE LOWER(:search))");
+        }
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("All")) {
+            if (status.equalsIgnoreCase("Active")) {
+                countJpql.append(" AND b.status = true");
+            } else if (status.equalsIgnoreCase("Inactive")) {
+                countJpql.append(" AND b.status = false");
+            }
+        }
+
+        TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+        if (search != null && !search.trim().isEmpty()) {
+            countQuery.setParameter("search", "%" + search.trim() + "%");
+        }
+        long total = countQuery.getSingleResult();
+
+        // Get paginated results
+        TypedQuery<com.mmo.entity.Blog> query = entityManager.createQuery(jpql.toString(), com.mmo.entity.Blog.class);
+
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim() + "%");
+        }
+
+
+        query.setFirstResult(page * 10);
+        query.setMaxResults(10);
+        List<com.mmo.entity.Blog> blogs = query.getResultList();
+
+        Page<com.mmo.entity.Blog> blogPage = new PageImpl<>(blogs, pageable, total);
+
+        model.addAttribute("blogs", blogPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentStatus", status);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", blogPage.getTotalPages());
+        model.addAttribute("pageTitle", "Blogs Management");
+        model.addAttribute("body", "admin/blogs");
+        return "admin/layout";
+    }
+
+    @PostMapping("/blogs")
+    @ResponseBody
+    public ResponseEntity<?> createBlog(@RequestBody com.mmo.dto.CreateBlogRequest request, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.createBlog(request, admin.getId());
+            return ResponseEntity.ok(blog);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/blogs/{id}")
+    @ResponseBody
+    public ResponseEntity<?> getBlog(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.getBlogById(id);
+            long commentsCount = blogService.getCommentsCount(id);
+            com.mmo.dto.BlogResponse response = com.mmo.dto.BlogResponse.fromEntity(blog, commentsCount);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/blogs/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateBlog(@PathVariable Long id,
+                                        @RequestBody com.mmo.dto.UpdateBlogRequest request,
+                                        Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+            com.mmo.entity.Blog blog = blogService.updateBlog(id, request);
+            return ResponseEntity.ok(blog);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PutMapping("/blogs/{id}/toggle-status")
+    @ResponseBody
+    public ResponseEntity<?> toggleBlogStatus(@PathVariable Long id, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            com.mmo.entity.Blog blog = blogService.toggleBlogStatus(id);
+            String message = blog.isStatus() ? "Blog activated successfully" : "Blog deactivated successfully";
+            return ResponseEntity.ok().body(Map.of("message", message, "status", blog.isStatus()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception ex) {
