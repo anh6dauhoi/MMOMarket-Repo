@@ -81,8 +81,18 @@ body {
 .btn-chat {
   background: linear-gradient(90deg, #fff 60%, #ffe2e0 100%); color: var(--primary-color); width: 100%; margin-top: 14px;
   border: 1.5px solid var(--primary-color); font-weight: 700; border-radius: 10px; box-shadow: 0 2px 8px rgba(245,62,50,0.03);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease;
 }
-.btn-chat:hover { background: linear-gradient(90deg, #ffe2e0 60%, #fff 100%); color: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-chat:hover {
+  background: linear-gradient(90deg, #ffe2e0 60%, #fff 100%);
+  color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245,62,50,0.15);
+}
+.btn-chat i {
+  font-size: 1.1em;
+}
 
 /* Sections */
 .section { margin-bottom: 48px; background: var(--white-color); padding: 36px 32px; border-radius: 18px; box-shadow: var(--shadow); }
@@ -163,3 +173,348 @@ body {
   .related-products-grid { grid-template-columns: 1fr; }
 }
 
+/* ============================================ */
+/* Additional Styles (Toast, Modal, etc.)      */
+/* ============================================ */
+
+/* Toast Notification Styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    min-width: 300px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid;
+}
+
+.toast.success {
+    border-left-color: #10b981;
+}
+
+.toast.error {
+    border-left-color: #ef4444;
+}
+
+.toast.info {
+    border-left-color: #3b82f6;
+}
+
+.toast-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toast.success .toast-icon {
+    background: #dcfce7;
+    color: #10b981;
+}
+
+.toast.error .toast-icon {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.toast.info .toast-icon {
+    background: #dbeafe;
+    color: #3b82f6;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.toast-message {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.toast-close:hover {
+    color: #4b5563;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.toast.removing {
+    animation: slideOut 0.3s ease-out forwards;
+}
+
+/* Login Modal Styles */
+.login-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+    padding: 20px;
+}
+
+.login-modal {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    max-width: 440px;
+    width: 100%;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    position: relative;
+}
+
+.login-modal-header {
+    padding: 32px 32px 24px;
+    text-align: center;
+    position: relative;
+}
+
+.login-modal-icon-wrapper {
+    display: inline-flex;
+    margin-bottom: 16px;
+}
+
+.login-modal-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+}
+
+.login-modal-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.login-modal-subtitle {
+    font-size: 15px;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.login-modal-body {
+    padding: 0 32px 32px;
+}
+
+.login-modal-message {
+    font-size: 15px;
+    color: #374151;
+    line-height: 1.7;
+    margin: 0;
+    text-align: center;
+    background: #f9fafb;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.login-modal-features {
+    margin-top: 20px;
+    padding: 0;
+    list-style: none;
+}
+
+.login-modal-features li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.login-modal-features li i {
+    color: #10b981;
+    font-size: 16px;
+}
+
+.login-modal-footer {
+    padding: 0 32px 32px;
+    display: flex;
+    gap: 12px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.modal-btn-cancel {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+.modal-btn-cancel:hover {
+    background: #e5e7eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.modal-btn-cancel:active {
+    transform: translateY(0);
+}
+
+.modal-btn-primary {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.modal-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+}
+
+.modal-btn-primary:active {
+    transform: translateY(0);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(40px) scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-closing {
+    animation: fadeOut 0.25s ease-out forwards;
+}
+
+.modal-closing .login-modal {
+    animation: slideDown 0.25s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(40px) scale(0.95);
+        opacity: 0;
+    }
+}
+
+/* Mobile Modal Adjustments */
+@media (max-width: 640px) {
+    .login-modal {
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        animation: slideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .login-modal-header,
+    .login-modal-body,
+    .login-modal-footer {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
+    .modal-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+
+    @keyframes slideUpMobile {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: translateY(0);
+        }
+    }
+}
