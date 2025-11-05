@@ -14,6 +14,7 @@ import com.mmo.service.EmailService;
 import com.mmo.service.NotificationService;
 import com.mmo.service.SellerBankInfoService;
 import com.mmo.service.SystemConfigurationService;
+import com.mmo.util.Bank;
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -359,8 +360,8 @@ public class SellerController {
 
         // Load all bank infos for the user
         model.addAttribute("bankInfos", sellerBankInfoService.findAllByUser(user));
-        // Supported banks list
-        model.addAttribute("supportedBanks", defaultBanks());
+        // Supported banks list - use Bank.listAll() to get all 60 banks
+        model.addAttribute("supportedBanks", Bank.listAll());
         // Load existing bank info (robust to different mappings)
         SellerBankInfo bankInfo = findBankInfoForOwner(user);
         Map<String, Object> bank = new HashMap<>();
@@ -1168,20 +1169,6 @@ public class SellerController {
         private final String displayName;
         BankOption(String displayName) { this.displayName = displayName; }
         public String getDisplayName() { return displayName; }
-    }
-    private List<BankOption> defaultBanks() {
-        return Arrays.asList(
-                new BankOption("Vietcombank"),
-                new BankOption("Techcombank"),
-                new BankOption("VietinBank"),
-                new BankOption("BIDV"),
-                new BankOption("Agribank"),
-                new BankOption("MB Bank"),
-                new BankOption("ACB"),
-                new BankOption("Sacombank"),
-                new BankOption("TPBank"),
-                new BankOption("VPBank")
-        );
     }
 
     @PostMapping("/withdrawals/{id}/update-bank")

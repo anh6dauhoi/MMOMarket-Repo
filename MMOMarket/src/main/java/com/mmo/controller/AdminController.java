@@ -600,7 +600,7 @@ public class AdminController {
                 if (authentication.getAuthorities() != null) {
                     for (GrantedAuthority ga : authentication.getAuthorities()) {
                         String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
-                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
+                        if ("ADMIN".equalsIgnoreCase(a)) {
                             hasAdminAuthority = true;
                             break;
                         }
