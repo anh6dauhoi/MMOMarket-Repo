@@ -4,9 +4,12 @@ import com.mmo.dto.ProcessWithdrawalRequest;
 import com.mmo.dto.AdminWithdrawalResponse;
 import com.mmo.dto.WithdrawalDetailResponse;
 import com.mmo.dto.CoinDepositDetailResponse;
+import com.mmo.dto.TransactionDetailResponse;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
 import com.mmo.entity.CoinDeposit;
+import com.mmo.entity.Transaction;
+
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -104,6 +107,9 @@ public class AdminController {
 
     @Autowired
     private com.mmo.repository.UserRepository userRepository;
+
+    @Autowired
+    private com.mmo.service.SystemConfigurationService systemConfigurationService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -230,9 +236,9 @@ public class AdminController {
     @ResponseBody
     @Transactional
     public ResponseEntity<?> processWithdrawalMultipart(@PathVariable Long id,
-                                                         @RequestParam(required = false, name = "status") String status,
-                                                         @RequestPart(value = "proof", required = false) MultipartFile proof,
-                                                         Authentication auth) {
+                                                        @RequestParam(required = false, name = "status") String status,
+                                                        @RequestPart(value = "proof", required = false) MultipartFile proof,
+                                                        Authentication auth) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -656,6 +662,89 @@ public class AdminController {
         }
     }
 
+
+    @GetMapping("/transactions")
+    public String transactionManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                        @RequestParam(name = "search", defaultValue = "") String search,
+                                        @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
+                                        Model model) {
+        try {
+            final int pageSize = 10;
+
+            // Build WHERE clause and parameters once
+            String where = " WHERE t.isDelete = false" +
+                    (search != null && !search.isBlank()
+                            ? " AND (LOWER(c.fullName) LIKE LOWER(:search) OR LOWER(s.fullName) LIKE LOWER(:search) OR LOWER(p.title) LIKE LOWER(:search) OR CAST(t.id AS string) LIKE :search)"
+                            : "");
+
+            // Determine ORDER BY clause based on sort parameter
+            String orderBy;
+            if (sort != null && sort.startsWith("amount_")) {
+                orderBy = sort.endsWith("asc") ? " ORDER BY t.amount ASC" : " ORDER BY t.amount DESC";
+            } else {
+                orderBy = " ORDER BY t.createdAt DESC";
+            }
+
+            // 1) Count query (no FETCH joins)
+            StringBuilder countSb = new StringBuilder(
+                    "SELECT COUNT(t) FROM Transaction t " +
+                            "LEFT JOIN t.customer c " +
+                            "LEFT JOIN t.seller s " +
+                            "LEFT JOIN t.product p " +
+                            "LEFT JOIN t.variant v"
+            );
+            countSb.append(where);
+            jakarta.persistence.Query countQuery = entityManager.createQuery(countSb.toString());
+            if (search != null && !search.isBlank()) {
+                countQuery.setParameter("search", "%" + search + "%");
+            }
+            long total = (long) countQuery.getSingleResult();
+
+            // Compute total pages and clamp current page
+            int totalPages = (int) Math.ceil(total / (double) pageSize);
+            if (page < 0) page = 0;
+            if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+
+            // 2) Paged select query with FETCH joins for view rendering
+            StringBuilder listSb = new StringBuilder(
+                    "SELECT t FROM Transaction t " +
+                            "LEFT JOIN FETCH t.customer c " +
+                            "LEFT JOIN FETCH t.seller s " +
+                            "LEFT JOIN FETCH t.product p " +
+                            "LEFT JOIN FETCH t.variant v"
+            );
+            listSb.append(where);
+            listSb.append(orderBy);
+
+            jakarta.persistence.TypedQuery<Transaction> listQuery = entityManager.createQuery(listSb.toString(), Transaction.class);
+            if (search != null && !search.isBlank()) {
+                listQuery.setParameter("search", "%" + search + "%");
+            }
+            listQuery.setFirstResult(page * pageSize);
+            listQuery.setMaxResults(pageSize);
+            List<Transaction> pageList = listQuery.getResultList();
+
+            model.addAttribute("transactions", pageList);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("pageSize", pageSize);
+            model.addAttribute("pageTitle", "Transaction Management");
+            model.addAttribute("body", "admin/transaction-management");
+            return "admin/layout";
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            model.addAttribute("transactions", new java.util.ArrayList<>());
+            model.addAttribute("currentPage", 0);
+            model.addAttribute("currentSearch", "");
+            model.addAttribute("totalPages", 1);
+            model.addAttribute("pageTitle", "Transaction Management");
+            model.addAttribute("body", "admin/transaction-management");
+        }
+        return "admin/layout";
+    }
+
     // ==================== CATEGORY MANAGEMENT ====================
 
     @GetMapping("/categories")
@@ -666,18 +755,18 @@ public class AdminController {
                                        @RequestParam(name = "sort", defaultValue = "") String sort,
                                        Model model) {
         Pageable pageable = PageRequest.of(page, 10);
-        
+
         // Build dynamic query WITHOUT JOIN FETCH for better performance
         StringBuilder jpql = new StringBuilder("SELECT c FROM Category c WHERE c.isDelete = false");
-        
+
         if (search != null && !search.trim().isEmpty()) {
             jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
         }
-        
+
         if (type != null && !type.trim().isEmpty()) {
             jpql.append(" AND LOWER(c.type) = LOWER(:type)");
         }
-        
+
         // Add sorting
         if (sort != null && !sort.isEmpty()) {
             if (sort.equals("products_asc")) {
@@ -686,49 +775,49 @@ public class AdminController {
                 jpql.append(" ORDER BY SIZE(c.products) DESC");
             }
         }
-        
+
         // Create query
         TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
-        
+
         if (search != null && !search.trim().isEmpty()) {
             query.setParameter("search", "%" + search.trim() + "%");
         }
-        
+
         if (type != null && !type.trim().isEmpty()) {
             query.setParameter("type", type.trim());
         }
-        
+
         // Get all results first (needed for total count and sorting)
         List<Category> allResults = query.getResultList();
         int total = allResults.size();
-        
+
         // Apply pagination manually
         int start = page * 10;
         int end = Math.min(start + 10, total);
         List<Category> categories = allResults.subList(start, end);
-        
+
         // Efficiently load product counts for the current page only
         if (!categories.isEmpty()) {
             List<Long> categoryIds = categories.stream().map(Category::getId).toList();
             List<Object[]> counts = entityManager.createQuery(
-                "SELECT p.category.id, COUNT(p) FROM Product p WHERE p.category.id IN :ids GROUP BY p.category.id",
-                Object[].class
+                    "SELECT p.category.id, COUNT(p) FROM Product p WHERE p.category.id IN :ids GROUP BY p.category.id",
+                    Object[].class
             ).setParameter("ids", categoryIds).getResultList();
-            
+
             // Map counts to categories
             java.util.Map<Long, Long> countMap = counts.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    row -> (Long) row[0],
-                    row -> (Long) row[1]
-                ));
-            
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> (Long) row[1]
+                    ));
+
             // Set cached counts
             for (Category category : categories) {
                 Long count = countMap.getOrDefault(category.getId(), 0L);
                 category.setProductCountCache(count.intValue());
             }
         }
-        
+
         Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
 
         model.addAttribute("categories", categoryPage.getContent());
@@ -783,8 +872,8 @@ public class AdminController {
     @PutMapping("/categories/{id}")
     @ResponseBody
     public ResponseEntity<?> updateCategory(@PathVariable Long id,
-                                           @RequestBody UpdateCategoryRequest request,
-                                           Authentication auth) {
+                                            @RequestBody UpdateCategoryRequest request,
+                                            Authentication auth) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -866,52 +955,52 @@ public class AdminController {
                                     Model model) {
         logger.info("=== ENTERED deletedCategories METHOD ===");
         logger.info("Parameters - page: {}, search: {}, type: {}, sort: {}", page, search, type, sort);
-        
+
         try {
             logger.info("Step 1: Creating pageable");
             Pageable pageable = PageRequest.of(page, 10);
-            
+
             logger.info("Step 2: Building query");
             // Simple query - load only category data
             StringBuilder jpql = new StringBuilder("SELECT c FROM Category c WHERE c.isDelete = true");
-            
+
             if (search != null && !search.trim().isEmpty()) {
                 jpql.append(" AND LOWER(c.name) LIKE LOWER(:search)");
             }
-            
+
             if (type != null && !type.trim().isEmpty()) {
                 jpql.append(" AND LOWER(c.type) = LOWER(:type)");
             }
-            
+
             jpql.append(" ORDER BY c.updatedAt DESC");
-            
+
             logger.info("Step 3: Query built: {}", jpql);
 
             // Create query
             TypedQuery<Category> query = entityManager.createQuery(jpql.toString(), Category.class);
-            
+
             if (search != null && !search.trim().isEmpty()) {
                 query.setParameter("search", "%" + search.trim() + "%");
             }
-            
+
             if (type != null && !type.trim().isEmpty()) {
                 query.setParameter("type", type.trim());
             }
-            
+
             logger.info("Step 4: Executing query");
             // Get all results first
             List<Category> allResults = query.getResultList();
             logger.info("Step 5: Found {} deleted categories", allResults.size());
-            
+
             int total = allResults.size();
-            
+
             // Apply pagination manually
             int start = page * 10;
             int end = Math.min(start + 10, total);
             List<Category> categories = start < total ? allResults.subList(start, end) : new java.util.ArrayList<>();
-            
+
             logger.info("Step 6: Paginated {} categories (from {} to {})", categories.size(), start, end);
-            
+
             logger.info("Step 7: Loading lazy relationships");
             // Eager load relationships for the paginated results within transaction
             for (int i = 0; i < categories.size(); i++) {
@@ -925,7 +1014,7 @@ public class AdminController {
                     } else {
                         logger.debug("Category {} has null products collection", cat.getId());
                     }
-                    
+
                     // Load deletedByUser if exists
                     if (cat.getDeletedBy() != null) {
                         logger.debug("Loading deletedByUser for category {} (deletedBy={})", cat.getId(), cat.getDeletedBy());
@@ -941,7 +1030,7 @@ public class AdminController {
                     logger.error("Failed to load details for category {}: {}", cat.getId(), e.getMessage(), e);
                 }
             }
-            
+
             logger.info("Step 8: Creating page object");
             Page<Category> categoryPage = new PageImpl<>(categories, pageable, total);
 
@@ -954,7 +1043,7 @@ public class AdminController {
             model.addAttribute("totalPages", categoryPage.getTotalPages());
             model.addAttribute("pageTitle", "Deleted Categories");
             model.addAttribute("body", "admin/deleted-categories");
-            
+
             logger.info("Step 10: Returning view - admin/layout");
             return "admin/layout";
         } catch (Exception ex) {
@@ -964,7 +1053,7 @@ public class AdminController {
             if (ex.getCause() != null) {
                 logger.error("Cause: {}", ex.getCause().getMessage());
             }
-            
+
             model.addAttribute("categories", new java.util.ArrayList<>());
             model.addAttribute("currentPage", 0);
             model.addAttribute("totalPages", 0);
@@ -974,7 +1063,92 @@ public class AdminController {
             model.addAttribute("pageTitle", "Deleted Categories");
             model.addAttribute("body", "admin/deleted-categories");
             model.addAttribute("errorMessage", "Failed to load deleted categories: " + ex.getMessage());
+
             return "admin/layout";
+        }
+    }
+
+
+    @GetMapping(value = "/transactions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTransactionDetail(@PathVariable Long id, Authentication auth) {
+        try {
+            Authentication authentication = auth;
+            if (authentication == null || !authentication.isAuthenticated()) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            boolean hasAdminAuthority = false;
+            try {
+                if (authentication.getAuthorities() != null) {
+                    for (GrantedAuthority ga : authentication.getAuthorities()) {
+                        String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
+                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
+                            hasAdminAuthority = true;
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            User admin = null;
+            try {
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", authentication.getName())
+                        .getResultStream().findFirst().orElse(null);
+            } catch (Exception ignored) {}
+
+            boolean okAdmin = hasAdminAuthority;
+            if (!okAdmin && admin != null && admin.getRole() != null) {
+                String role = admin.getRole().trim();
+                if (role.toUpperCase().startsWith("ROLE_")) role = role.substring(5);
+                okAdmin = "ADMIN".equalsIgnoreCase(role);
+            }
+            if (!okAdmin) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+
+            Transaction tx = entityManager.createQuery("SELECT t FROM Transaction t " +
+                            "LEFT JOIN FETCH t.customer LEFT JOIN FETCH t.seller LEFT JOIN FETCH t.product LEFT JOIN FETCH t.variant " +
+                            "WHERE t.id = :id", Transaction.class)
+                    .setParameter("id", id)
+                    .getResultStream().findFirst().orElse(null);
+            if (tx == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Transaction not found");
+
+            String customerName = tx.getCustomer() != null ? tx.getCustomer().getFullName() : "";
+            String customerEmail = tx.getCustomer() != null ? tx.getCustomer().getEmail() : "";
+            String sellerName = tx.getSeller() != null ? tx.getSeller().getFullName() : "";
+            String sellerEmail = tx.getSeller() != null ? tx.getSeller().getEmail() : "";
+            String productTitle = tx.getProduct() != null ? tx.getProduct().getName() : "";
+            String variantName = tx.getVariant() != null ? tx.getVariant().getVariantName() : "";
+
+            TransactionDetailResponse resp = new TransactionDetailResponse(
+                    tx.getId(),
+                    tx.getCustomer() != null ? tx.getCustomer().getId() : null,
+                    customerName,
+                    customerEmail,
+                    tx.getSeller() != null ? tx.getSeller().getId() : null,
+                    sellerName,
+                    sellerEmail,
+                    tx.getProduct() != null ? tx.getProduct().getId() : null,
+                    productTitle,
+                    tx.getVariant() != null ? tx.getVariant().getId() : null,
+                    variantName,
+                    tx.getAmount(),
+                    tx.getCommission(),
+                    tx.getCoinAdmin(),
+                    tx.getCoinSeller(),
+                    tx.getStatus(),
+                    tx.getEscrowReleaseDate() != null ? tx.getEscrowReleaseDate().toString() : "",
+                    tx.getDeliveredAccount() != null ? tx.getDeliveredAccount().getId() : null,
+                    tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "",
+                    tx.getUpdatedAt() != null ? tx.getUpdatedAt().toString() : ""
+            );
+
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
 
@@ -1025,14 +1199,14 @@ public class AdminController {
                                   @RequestParam(name = "sort", defaultValue = "") String sort,
                                   Model model) {
         Pageable pageable = PageRequest.of(page, 10);
-        
+
         // Build dynamic query
         StringBuilder jpql = new StringBuilder("SELECT b FROM Blog b WHERE b.isDelete = false");
-        
+
         if (search != null && !search.trim().isEmpty()) {
             jpql.append(" AND LOWER(b.title) LIKE LOWER(:search)");
         }
-        
+
         if (status != null && !status.trim().isEmpty()) {
             if (status.equals("popular")) {
                 jpql.append(" AND b.likes >= 100");
@@ -1040,7 +1214,7 @@ public class AdminController {
                 jpql.append(" AND b.createdAt >= :sevenDaysAgo");
             }
         }
-        
+
         // Add sorting - avoid SIZE() for comments as it's slow
         if (sort != null && !sort.isEmpty()) {
             if (sort.equals("likes_asc")) {
@@ -1061,7 +1235,7 @@ public class AdminController {
         } else {
             jpql.append(" ORDER BY b.createdAt DESC");
         }
-        
+
         // Separate COUNT query for better performance
         StringBuilder countJpql = new StringBuilder("SELECT COUNT(b) FROM Blog b WHERE b.isDelete = false");
         if (search != null && !search.trim().isEmpty()) {
@@ -1074,7 +1248,7 @@ public class AdminController {
                 countJpql.append(" AND b.createdAt >= :sevenDaysAgo");
             }
         }
-        
+
         TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
         if (search != null && !search.trim().isEmpty()) {
             countQuery.setParameter("search", "%" + search.trim() + "%");
@@ -1085,24 +1259,24 @@ public class AdminController {
             countQuery.setParameter("sevenDaysAgo", cal.getTime());
         }
         long total = countQuery.getSingleResult();
-        
+
         // Get paginated results
         TypedQuery<com.mmo.entity.Blog> query = entityManager.createQuery(jpql.toString(), com.mmo.entity.Blog.class);
-        
+
         if (search != null && !search.trim().isEmpty()) {
             query.setParameter("search", "%" + search.trim() + "%");
         }
-        
+
         if (status != null && status.equals("new")) {
             java.util.Calendar cal = java.util.Calendar.getInstance();
             cal.add(java.util.Calendar.DAY_OF_MONTH, -7);
             query.setParameter("sevenDaysAgo", cal.getTime());
         }
-        
+
         query.setFirstResult(page * 10);
         query.setMaxResults(10);
         List<com.mmo.entity.Blog> blogs = query.getResultList();
-        
+
         Page<com.mmo.entity.Blog> blogPage = new PageImpl<>(blogs, pageable, total);
 
         model.addAttribute("blogs", blogPage.getContent());
@@ -1171,8 +1345,8 @@ public class AdminController {
     @PutMapping("/blogs/{id}")
     @ResponseBody
     public ResponseEntity<?> updateBlog(@PathVariable Long id,
-                                       @RequestBody com.mmo.dto.UpdateBlogRequest request,
-                                       Authentication auth) {
+                                        @RequestBody com.mmo.dto.UpdateBlogRequest request,
+                                        Authentication auth) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -1226,40 +1400,40 @@ public class AdminController {
     @GetMapping("/shops")
     @Transactional(readOnly = true)
     public String shops(@RequestParam(name = "page", defaultValue = "0") int page,
-                       @RequestParam(name = "search", defaultValue = "") String search,
-                       @RequestParam(name = "sort", defaultValue = "") String sort,
-                       Model model) {
+                        @RequestParam(name = "search", defaultValue = "") String search,
+                        @RequestParam(name = "sort", defaultValue = "") String sort,
+                        Model model) {
         Pageable pageable = PageRequest.of(page, 10);
-        
+
         // For rating sort, we need a different approach with subquery
         boolean isRatingSort = sort != null && (sort.equals("rating_asc") || sort.equals("rating_desc"));
-        
+
         if (isRatingSort) {
             // Use optimized rating sort with single query
             String direction = sort.equals("rating_asc") ? "ASC" : "DESC";
             String jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user " +
-                         "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
-                         "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
-            
+                    "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
+                    "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
+
             if (search != null && !search.trim().isEmpty()) {
                 jpql = "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user " +
-                      "WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search)) " +
-                      "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
-                      "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
+                        "WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search)) " +
+                        "ORDER BY (SELECT COALESCE(AVG(CAST(r.rating AS double)), 0.0) " +
+                        "FROM Review r WHERE r.product.seller.id = s.user.id) " + direction;
             }
-            
+
             // Get total count
             StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s");
             if (search != null && !search.trim().isEmpty()) {
                 countJpql.append(" WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
             }
-            
+
             TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
             if (search != null && !search.trim().isEmpty()) {
                 countQuery.setParameter("search", "%" + search.trim() + "%");
             }
             long total = countQuery.getSingleResult();
-            
+
             // Get paginated results
             TypedQuery<ShopInfo> query = entityManager.createQuery(jpql, ShopInfo.class);
             if (search != null && !search.trim().isEmpty()) {
@@ -1268,12 +1442,12 @@ public class AdminController {
             query.setFirstResult(page * 10);
             query.setMaxResults(10);
             List<ShopInfo> shopInfos = query.getResultList();
-            
+
             // Build response with batch-loaded data
             List<com.mmo.dto.ShopResponse> shops = buildShopResponses(shopInfos);
-            
+
             Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
-            
+
             model.addAttribute("shops", shopPage.getContent());
             model.addAttribute("currentPage", page);
             model.addAttribute("currentSearch", search);
@@ -1283,16 +1457,16 @@ public class AdminController {
             model.addAttribute("body", "admin/shops");
             return "admin/layout";
         }
-        
+
         // Normal sort (commission, or default by ID)
         StringBuilder jpql = new StringBuilder(
-            "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user"
+                "SELECT DISTINCT s FROM ShopInfo s LEFT JOIN FETCH s.user"
         );
-        
+
         if (search != null && !search.trim().isEmpty()) {
             jpql.append(" WHERE (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(s.user.fullName) LIKE LOWER(:search))");
         }
-        
+
         // Add simple sorting
         if (sort != null && !sort.isEmpty()) {
             if (sort.equals("commission_asc")) {
@@ -1305,18 +1479,18 @@ public class AdminController {
         } else {
             jpql.append(" ORDER BY s.id DESC");
         }
-        
+
         // Get total count efficiently with separate COUNT query
         StringBuilder countJpql = new StringBuilder("SELECT COUNT(s) FROM ShopInfo s");
         if (search != null && !search.trim().isEmpty()) {
         }
-        
+
         TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
         if (search != null && !search.trim().isEmpty()) {
             countQuery.setParameter("search", "%" + search.trim() + "%");
         }
         long total = countQuery.getSingleResult();
-        
+
         // Get paginated results
         TypedQuery<ShopInfo> query = entityManager.createQuery(jpql.toString(), ShopInfo.class);
         if (search != null && !search.trim().isEmpty()) {
@@ -1325,10 +1499,10 @@ public class AdminController {
         query.setFirstResult(page * 10);
         query.setMaxResults(10);
         List<ShopInfo> shopInfos = query.getResultList();
-        
+
         // Build response with batch-loaded data
         List<com.mmo.dto.ShopResponse> shops = buildShopResponses(shopInfos);
-        
+
         Page<com.mmo.dto.ShopResponse> shopPage = new PageImpl<>(shops, pageable, total);
 
         model.addAttribute("shops", shopPage.getContent());
@@ -1340,39 +1514,39 @@ public class AdminController {
         model.addAttribute("body", "admin/shops");
         return "admin/layout";
     }
-    
+
     // Helper method to build shop responses with batch-loaded data
     private List<com.mmo.dto.ShopResponse> buildShopResponses(List<ShopInfo> shopInfos) {
         List<com.mmo.dto.ShopResponse> shops = new java.util.ArrayList<>();
         if (!shopInfos.isEmpty()) {
             List<Long> sellerIds = shopInfos.stream()
-                .map(s -> s.getUser().getId())
-                .collect(java.util.stream.Collectors.toList());
-            
+                    .map(s -> s.getUser().getId())
+                    .collect(java.util.stream.Collectors.toList());
+
             // Batch query for product counts
             List<Object[]> productCounts = entityManager.createQuery(
-                "SELECT p.seller.id, COUNT(p) FROM Product p WHERE p.seller.id IN :ids GROUP BY p.seller.id",
-                Object[].class
+                    "SELECT p.seller.id, COUNT(p) FROM Product p WHERE p.seller.id IN :ids GROUP BY p.seller.id",
+                    Object[].class
             ).setParameter("ids", sellerIds).getResultList();
-            
+
             java.util.Map<Long, Long> countMap = productCounts.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    row -> (Long) row[0],
-                    row -> (Long) row[1]
-                ));
-            
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> (Long) row[1]
+                    ));
+
             // Batch query for ratings
             List<Object[]> ratings = entityManager.createQuery(
-                "SELECT r.product.seller.id, AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id IN :ids GROUP BY r.product.seller.id",
-                Object[].class
+                    "SELECT r.product.seller.id, AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id IN :ids GROUP BY r.product.seller.id",
+                    Object[].class
             ).setParameter("ids", sellerIds).getResultList();
-            
+
             java.util.Map<Long, Double> ratingMap = ratings.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    row -> (Long) row[0],
-                    row -> (Double) row[1]
-                ));
-            
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> (Double) row[1]
+                    ));
+
             // Build response with cached data
             for (ShopInfo shop : shopInfos) {
                 Long sellerId = shop.getUser().getId();
@@ -1387,8 +1561,8 @@ public class AdminController {
     @PutMapping("/shops/{id}/commission")
     @ResponseBody
     public ResponseEntity<?> updateCommission(@PathVariable Long id,
-                                             @RequestBody com.mmo.dto.UpdateCommissionRequest request,
-                                             Authentication auth) {
+                                              @RequestBody com.mmo.dto.UpdateCommissionRequest request,
+                                              Authentication auth) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -1406,10 +1580,12 @@ public class AdminController {
             return ResponseEntity.ok().body("Commission updated successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
 
     @GetMapping("/shops/{id}/detail")
     @ResponseBody
@@ -1424,17 +1600,17 @@ public class AdminController {
 
             // Get product count using seller_id
             Long productCount = entityManager.createQuery(
-                "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", 
-                Long.class)
-                .setParameter("sellerId", shop.getUser().getId())
-                .getSingleResult();
+                            "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false",
+                            Long.class)
+                    .setParameter("sellerId", shop.getUser().getId())
+                    .getSingleResult();
 
             // Get average rating - Review -> Product -> Seller
             Double avgRating = entityManager.createQuery(
-                "SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = :sellerId AND r.isDelete = false", 
-                Double.class)
-                .setParameter("sellerId", shop.getUser().getId())
-                .getSingleResult();
+                            "SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.product.seller.id = :sellerId AND r.isDelete = false",
+                            Double.class)
+                    .setParameter("sellerId", shop.getUser().getId())
+                    .getSingleResult();
 
             // Build response
             java.util.Map<String, Object> response = new java.util.HashMap<>();
@@ -1499,9 +1675,9 @@ public class AdminController {
 
             // Find the shop by id
             ShopInfo shop = entityManager.createQuery(
-                "SELECT s FROM ShopInfo s WHERE s.id = :id", ShopInfo.class)
-                .setParameter("id", id)
-                .getSingleResult();
+                            "SELECT s FROM ShopInfo s WHERE s.id = :id", ShopInfo.class)
+                    .setParameter("id", id)
+                    .getSingleResult();
 
             // Toggle the isDelete status
             boolean currentIsDelete = shop.isDelete();
@@ -1588,8 +1764,8 @@ public class AdminController {
     @PostMapping("/change-password")
     @Transactional
     public String changePassword(@ModelAttribute com.mmo.dto.ChangePasswordRequest request,
-                                Authentication auth,
-                                RedirectAttributes redirectAttributes) {
+                                 Authentication auth,
+                                 RedirectAttributes redirectAttributes) {
         try {
             if (auth == null || !auth.isAuthenticated()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "You must be logged in");
@@ -1635,5 +1811,6 @@ public class AdminController {
             return "redirect:/admin/change-password";
         }
     }
+
 }
 
