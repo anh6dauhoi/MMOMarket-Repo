@@ -1,5 +1,6 @@
 package com.mmo.service;
 
+import com.mmo.entity.Complaint;
 import com.mmo.entity.Transaction;
 import com.mmo.repository.ComplaintRepository;
 import com.mmo.repository.TransactionRepository;
@@ -35,7 +36,7 @@ public class EscrowReleaseScheduler {
     // Run hourly
     @Transactional
     @Scheduled(cron = "0 0 * * * *")
-//    @Scheduled(cron = "0 */2 * * * *")
+//    @Scheduled(cron = "0 */1 * * * *")
     public void releaseEscrow() {
         Date now = new Date();
         List<Transaction> due = transactionRepository.findByStatusAndEscrowReleaseDateBefore("ESCROW", now);
@@ -44,9 +45,13 @@ public class EscrowReleaseScheduler {
         for (Transaction tx : due) {
             try {
                 // Skip if there is an open complaint linked to this transaction
+                // Check for complaints with status: NEW, IN_PROGRESS, PENDING_CONFIRMATION, or ESCALATED
                 boolean hasOpenComplaint = false;
                 try {
-                    hasOpenComplaint = complaintRepository.existsByTransactionIdAndStatusIgnoreCase(tx.getId(), "Open");
+                    hasOpenComplaint = complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.NEW)
+                            || complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.IN_PROGRESS)
+                            || complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.PENDING_CONFIRMATION)
+                            || complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.ESCALATED);
                 } catch (Exception ignored) {}
                 if (hasOpenComplaint) {
                     log.info("Skipping tx {} due to open complaint", tx.getId());
