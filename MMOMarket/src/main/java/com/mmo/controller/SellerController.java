@@ -1803,4 +1803,83 @@ public class SellerController {
     private static String safeString(Object s) {
         return s == null ? "" : s.toString();
     }
+
+    // ==================== REVIEWS MANAGEMENT ====================
+    @GetMapping("/reviews")
+    public String sellerReviews(@RequestParam(name = "page", defaultValue = "0") int page,
+                                @RequestParam(name = "search", defaultValue = "") String search,
+                                @RequestParam(name = "sort", defaultValue = "rating_desc") String sort,
+                                Authentication authentication,
+                                Model model) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/authen/login";
+        }
+
+        User seller = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                .setParameter("email", authentication.getName())
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+
+        if (seller == null) {
+            return "redirect:/authen/login";
+        }
+
+        // Build JPQL query to get reviews for seller's products
+        StringBuilder sb = new StringBuilder(
+            "SELECT r FROM Review r " +
+            "LEFT JOIN FETCH r.product p " +
+            "LEFT JOIN FETCH r.user u " +
+            "WHERE r.isDelete = false AND p.seller.id = :sellerId"
+        );
+
+        if (search != null && !search.isBlank()) {
+            sb.append(" AND (LOWER(p.name) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(u.id AS string) LIKE :search OR CAST(r.id AS string) LIKE :search)");
+        }
+
+        // Determine ordering
+        String orderField = "r.rating";
+        String orderDir = "DESC";
+        if (sort != null) {
+            String s = sort.trim().toLowerCase();
+            if ("rating_asc".equals(s)) {
+                orderField = "r.rating";
+                orderDir = "ASC";
+            } else if ("rating_desc".equals(s)) {
+                orderField = "r.rating";
+                orderDir = "DESC";
+            } else if ("date_asc".equals(s)) {
+                orderField = "r.createdAt";
+                orderDir = "ASC";
+            } else if ("date_desc".equals(s)) {
+                orderField = "r.createdAt";
+                orderDir = "DESC";
+            }
+        }
+        sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
+
+        jakarta.persistence.TypedQuery<com.mmo.entity.Review> query = entityManager.createQuery(sb.toString(), com.mmo.entity.Review.class);
+        query.setParameter("sellerId", seller.getId());
+
+        if (search != null && !search.isBlank()) {
+            query.setParameter("search", "%" + search + "%");
+        }
+
+        List<com.mmo.entity.Review> all = query.getResultList();
+        int total = all.size();
+        int totalPages = (int) Math.ceil((double) total / 10);
+        List<com.mmo.entity.Review> pageList = all.stream()
+                .skip((long) page * 10)
+                .limit(10)
+                .toList();
+
+        model.addAttribute("reviews", pageList);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageTitle", "Reviews Management");
+
+        return "seller/reviews";
+    }
 }
