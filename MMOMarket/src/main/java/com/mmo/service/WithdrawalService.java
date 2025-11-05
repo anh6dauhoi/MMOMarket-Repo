@@ -35,7 +35,7 @@ public class WithdrawalService {
         String approveDate = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date());
         String proofFile = wd.getProofFile();
         if (email != null && !email.isBlank()) {
-            String subject = "[MMOMarket] Yêu cầu rút tiền đã được duyệt";
+            String subject = "[MMOMarket] The withdrawal request has been approved";
             String html = com.mmo.util.EmailTemplate.withdrawalApprovedEmail(userName, amount, bankInfo, approveDate, proofFile);
             log.info("Queue email to {} for withdrawal id={} subject={}", email, id, subject);
             emailService.sendEmailAsync(email, subject, html);
@@ -82,7 +82,7 @@ public class WithdrawalService {
             String amount = wd.getAmount() != null ? wd.getAmount().toString() : "";
             String bankInfo = wd.getBankName() + " - " + wd.getAccountNumber();
             String approveDate = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date());
-            String subject = "[MMOMarket] Yêu cầu rút tiền đã được duyệt";
+            String subject = "[MMOMarket] The withdrawal request has been approved";
             String html = com.mmo.util.EmailTemplate.withdrawalApprovedEmail(userName, amount, bankInfo, approveDate, proofFile);
             if (email != null && !email.isBlank()) {
                 log.info("Queue email to {} for withdrawal id={} subject={}", email, id, subject);

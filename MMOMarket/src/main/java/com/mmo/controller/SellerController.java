@@ -3,15 +3,18 @@ package com.mmo.controller;
 import com.mmo.dto.CreateWithdrawalRequest;
 import com.mmo.dto.SellerRegistrationForm;
 import com.mmo.dto.SellerWithdrawalResponse;
+import com.mmo.dto.SellerTransactionListItem;
 import com.mmo.entity.SellerBankInfo;
 import com.mmo.entity.ShopInfo;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
+import com.mmo.entity.Transaction;
 import com.mmo.repository.UserRepository;
 import com.mmo.service.EmailService;
 import com.mmo.service.NotificationService;
 import com.mmo.service.SellerBankInfoService;
 import com.mmo.service.SystemConfigurationService;
+import com.mmo.util.Bank;
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -357,8 +360,8 @@ public class SellerController {
 
         // Load all bank infos for the user
         model.addAttribute("bankInfos", sellerBankInfoService.findAllByUser(user));
-        // Supported banks list
-        model.addAttribute("supportedBanks", defaultBanks());
+        // Supported banks list - use Bank.listAll() to get all 60 banks
+        model.addAttribute("supportedBanks", Bank.listAll());
         // Load existing bank info (robust to different mappings)
         SellerBankInfo bankInfo = findBankInfoForOwner(user);
         Map<String, Object> bank = new HashMap<>();
@@ -667,6 +670,235 @@ public class SellerController {
         return ResponseEntity.ok(data);
     }
 
+    // NEW: Seller Transactions list page with search, filter, sort, pagination
+    @GetMapping("/transactions")
+    public String listSellerTransactions(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "sortBy", defaultValue = "date") String sortBy,
+            @RequestParam(name = "sortDir", defaultValue = "desc") String sortDir,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+        User seller = userRepository.findByEmail(email).orElse(null);
+        if (seller == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+        boolean activeShop = seller.getShopStatus() != null && seller.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
+        // Build dynamic query with filters
+        StringBuilder jpql = new StringBuilder(
+                "select new com.mmo.dto.SellerTransactionListItem(t.id, p.name, v.variantName, t.quantity, t.coinSeller, t.status, t.createdAt) " +
+                "from Transaction t join t.product p join t.variant v " +
+                "where t.seller.id = :sid and t.isDelete = false");
+
+        // Add search filter
+        if (search != null && !search.trim().isEmpty()) {
+            jpql.append(" and (lower(p.name) like :search or lower(v.variantName) like :search)");
+        }
+
+        // Add status filter
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+            jpql.append(" and upper(t.status) = :status");
+        }
+
+        // Add sorting
+        if ("coins".equalsIgnoreCase(sortBy)) {
+            jpql.append(" order by t.coinSeller ").append(sortDir.equalsIgnoreCase("asc") ? "asc" : "desc");
+        } else {
+            jpql.append(" order by t.createdAt ").append(sortDir.equalsIgnoreCase("asc") ? "asc" : "desc");
+        }
+
+        var query = entityManager.createQuery(jpql.toString(), SellerTransactionListItem.class)
+            .setParameter("sid", seller.getId());
+
+        if (search != null && !search.trim().isEmpty()) {
+            query.setParameter("search", "%" + search.trim().toLowerCase() + "%");
+        }
+
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+            query.setParameter("status", status.toUpperCase());
+        }
+
+        // Get all items for stats calculation
+        List<SellerTransactionListItem> allItems = query.getResultList();
+
+        // Pagination: 5 items per page
+        int pageSize = 5;
+        int totalItems = allItems.size();
+        int totalPages = (int) Math.ceil((double) totalItems / pageSize);
+        page = Math.max(0, Math.min(page, totalPages - 1));
+
+        int startIndex = page * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, totalItems);
+        List<SellerTransactionListItem> items = allItems.subList(startIndex, endIndex);
+
+        model.addAttribute("transactions", items);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalItems", totalItems);
+        model.addAttribute("search", search);
+        model.addAttribute("status", status);
+        model.addAttribute("sortBy", sortBy);
+        model.addAttribute("sortDir", sortDir);
+
+        // Quick stats from all filtered items
+        long totalEarned = 0L;
+        long completedEarned = 0L;
+        int escrow = 0, disputed = 0, completed = 0, cancelled = 0;
+        for (SellerTransactionListItem it : allItems) {
+            if (it.getCoinSeller() != null) totalEarned += it.getCoinSeller();
+            String st = it.getStatus() == null ? "" : it.getStatus().toUpperCase();
+            switch (st) {
+                case "ESCROW" -> escrow++;
+                case "DISPUTED" -> disputed++;
+                case "COMPLETED" -> {
+                    completed++;
+                    if (it.getCoinSeller() != null) completedEarned += it.getCoinSeller();
+                }
+                case "CANCELLED", "REFUNDED" -> cancelled++;
+                default -> {}
+            }
+        }
+        model.addAttribute("totalEarned", totalEarned);
+        model.addAttribute("completedEarned", completedEarned);
+        model.addAttribute("escrowCount", escrow);
+        model.addAttribute("disputedCount", disputed);
+        model.addAttribute("completedCount", completed);
+        model.addAttribute("cancelledCount", cancelled);
+        return "seller/transactions";
+    }
+
+    // NEW: Transaction detail (JSON) for modal
+    @GetMapping(path = "/transactions/{id}/json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTransactionDetailJson(@PathVariable("id") Long id, Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            Transaction tx = entityManager.find(Transaction.class, id);
+            if (tx == null || tx.isDelete() || tx.getSeller() == null || !tx.getSeller().getId().equals(seller.getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", tx.getId());
+            data.put("status", safeString(tx.getStatus()));
+            data.put("createdAt", tx.getCreatedAt());
+            data.put("escrowReleaseDate", tx.getEscrowReleaseDate());
+            data.put("quantity", tx.getQuantity());
+            data.put("amount", tx.getAmount());
+            data.put("commission", tx.getCommission());
+            data.put("coinSeller", tx.getCoinSeller());
+
+            String productName = null, categoryName = null, variantName = null; Long variantPrice = null; Long productId = null, variantId = null;
+            if (tx.getProduct() != null) {
+                productName = tx.getProduct().getName();
+                productId = tx.getProduct().getId();
+                if (tx.getProduct().getCategory() != null) {
+                    categoryName = tx.getProduct().getCategory().getName();
+                }
+            }
+            if (tx.getVariant() != null) {
+                variantName = tx.getVariant().getVariantName();
+                variantPrice = tx.getVariant().getPrice();
+                variantId = tx.getVariant().getId();
+            }
+            data.put("productId", productId);
+            data.put("productName", productName);
+            data.put("categoryName", categoryName);
+            data.put("variantId", variantId);
+            data.put("variantName", variantName);
+            data.put("variantPrice", variantPrice);
+
+            // FIX: Query accounts from ProductVariantAccount instead of using deliveredAccount (always null)
+            // Get all accounts associated with this transaction
+            try {
+                List<com.mmo.entity.ProductVariantAccount> accounts = entityManager
+                    .createQuery("SELECT a FROM ProductVariantAccount a WHERE a.transaction.id = :txId AND a.isDelete = false",
+                                com.mmo.entity.ProductVariantAccount.class)
+                    .setParameter("txId", tx.getId())
+                    .getResultList();
+
+                if (accounts != null && !accounts.isEmpty()) {
+                    // Build account data string with all accounts
+                    StringBuilder accountDataBuilder = new StringBuilder();
+                    for (int i = 0; i < accounts.size(); i++) {
+                        com.mmo.entity.ProductVariantAccount acc = accounts.get(i);
+                        if (i > 0) {
+                            accountDataBuilder.append("\n\n");
+                            accountDataBuilder.append("═══════════════════════════════════════\n\n");
+                        }
+                        accountDataBuilder.append("Account #").append(i + 1).append(":\n");
+                        accountDataBuilder.append(acc.getAccountData() != null ? acc.getAccountData() : "No data available");
+                    }
+                    data.put("deliveredAccountData", accountDataBuilder.toString());
+                } else {
+                    data.put("deliveredAccountData", "No account data available");
+                }
+            } catch (Exception e) {
+                data.put("deliveredAccountData", "Error loading account data: " + e.getMessage());
+            }
+
+            String status = safeString(tx.getStatus());
+            String statusExplain;
+            switch (status.toUpperCase()) {
+                case "ESCROW" -> statusExplain = "Funds are held in escrow for 3 days to ensure transaction security.";
+                case "DISPUTED" -> statusExplain = "Funds are frozen due to customer dispute. Please contact support.";
+                case "COMPLETED" -> statusExplain = "Funds have been added to your wallet (coins).";
+                case "CANCELLED", "REFUNDED" -> statusExplain = "Transaction has been cancelled or refunded.";
+                default -> statusExplain = "";
+            }
+            data.put("statusExplain", statusExplain);
+
+            boolean escrowReleased = false;
+            if (tx.getEscrowReleaseDate() != null) {
+                escrowReleased = new Date().after(tx.getEscrowReleaseDate());
+            }
+            data.put("escrowReleased", escrowReleased);
+
+            return ResponseEntity.ok(data);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
     // Helpers to tolerate different SellerBankInfo mappings without adding new dependencies
     private Long tryResolveOwnerId(SellerBankInfo bankInfo) {
         try {
@@ -937,20 +1169,6 @@ public class SellerController {
         private final String displayName;
         BankOption(String displayName) { this.displayName = displayName; }
         public String getDisplayName() { return displayName; }
-    }
-    private List<BankOption> defaultBanks() {
-        return Arrays.asList(
-                new BankOption("Vietcombank"),
-                new BankOption("Techcombank"),
-                new BankOption("VietinBank"),
-                new BankOption("BIDV"),
-                new BankOption("Agribank"),
-                new BankOption("MB Bank"),
-                new BankOption("ACB"),
-                new BankOption("Sacombank"),
-                new BankOption("TPBank"),
-                new BankOption("VPBank")
-        );
     }
 
     @PostMapping("/withdrawals/{id}/update-bank")

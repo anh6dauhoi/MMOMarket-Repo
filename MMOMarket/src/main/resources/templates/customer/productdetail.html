@@ -772,6 +772,7 @@
                     container.innerHTML = html;
                     enhanceFormatPrices(container);
                     attachModalDismissHandlers(container);
+                    attachModalPurchaseHandlers(container);
                 } catch (e) {
                     console.error('Failed to load preview', e);
                     showToast('Failed to load purchase preview. Please try again.', 'error');
@@ -922,6 +923,136 @@
         });
     }
 
+    function attachModalPurchaseHandlers(root){
+        const btn = root.querySelector('#confirmPurchaseBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            // guard if disabled
+            if (btn.disabled) return;
+            const productId = btn.getAttribute('data-product-id');
+            const variantId = btn.getAttribute('data-variant-id');
+            const quantity = btn.getAttribute('data-quantity') || '1';
+            if (!productId || !variantId) return;
+
+            const paramName = document.querySelector('meta[name="_csrf_parameter"]')?.content;
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+            const formData = new URLSearchParams();
+            formData.set('productId', productId);
+            formData.set('variantId', variantId);
+            formData.set('quantity', String(quantity));
+            if (paramName && token) formData.set(paramName, token);
+
+            btn.disabled = true;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>';
+            try {
+                const res = await fetch('/buy/place', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        ...(header && token ? { [header]: token } : {})
+                    },
+                    body: formData.toString()
+                });
+                if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data && data.ok && data.orderId) {
+                        // Close buy modal
+                        const container = document.getElementById('buyModalContainer');
+                        if (container) container.innerHTML = '';
+
+                        // Show processing toast and start polling
+                        showToast('Order created. Processing payment...', 'info');
+                        startOrderStatusPolling(data.orderId);
+                        return;
+                    }
+                    showToast('Unexpected response from server.', 'error');
+                } else {
+                    const text = await res.text();
+                    showToast(text || 'Could not create order. Please try again.', 'error');
+                }
+            } catch (err) {
+                console.error('Place order error', err);
+                showToast('An error occurred while placing your order.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // Elegant success modal (modern, accessible)
+    function showPurchaseSuccessModal(orderId){
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm';
+        overlay.setAttribute('role','dialog');
+        overlay.setAttribute('aria-modal','true');
+
+        const card = document.createElement('div');
+        card.className = 'relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden';
+
+        const header = document.createElement('div');
+        header.className = 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 px-6 py-6';
+        header.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <i class="fa-solid fa-bag-shopping text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Payment Successful</h3>
+                <p class="text-white/90 text-sm">Your order has been created and is being processed</p>
+              </div>
+            </div>`;
+
+        const body = document.createElement('div');
+        body.className = 'px-6 py-6 space-y-4';
+        body.innerHTML = `
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+              <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5"></i>
+              <div class="text-sm text-emerald-800">
+                <div class="font-semibold">Order placed successfully</div>
+                <div class="mt-0.5">You can view details, download accounts, and activate them from the order page.</div>
+              </div>
+            </div>`;
+
+        const footer = document.createElement('div');
+        footer.className = 'px-6 py-5 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-5 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm';
+        cancelBtn.textContent = 'Close';
+        cancelBtn.addEventListener('click', () => { overlay.remove(); });
+
+        const viewBtn = document.createElement('a');
+        viewBtn.className = 'px-6 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-md';
+        viewBtn.textContent = 'View Order Details';
+        viewBtn.href = `/account/orders/${orderId}`;
+
+        footer.appendChild(cancelBtn);
+        footer.appendChild(viewBtn);
+
+        const closeX = document.createElement('button');
+        closeX.className = 'absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 text-gray-600';
+        closeX.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        closeX.addEventListener('click', () => overlay.remove());
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+        card.appendChild(closeX);
+
+        overlay.appendChild(card);
+
+        // Click outside to close
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        // ESC to close
+        const esc = (e) => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
+
+        document.body.appendChild(overlay);
+    }
 
     // New: Login modal functions
     function showLoginModal() {
@@ -995,6 +1126,54 @@
             }, 300);
         }, 4000);
     }
+
+    // New: Poll order status after placing order
+    function startOrderStatusPolling(orderId) {
+        let pollCount = 0;
+        const maxPolls = 30; // Poll for max 30 seconds (30 * 1000ms)
+        const pollInterval = 1000; // Check every 1 second
+
+        const pollTimer = setInterval(async () => {
+            pollCount++;
+
+            try {
+                const response = await fetch(`/api/orders/${orderId}/status`);
+                if (!response.ok) {
+                    clearInterval(pollTimer);
+                    showToast('Failed to check order status. Please check My Orders page.', 'error');
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'COMPLETED') {
+                    clearInterval(pollTimer);
+                    // Show success toast message
+                    const productName = data.productName || 'Product';
+                    const quantity = data.quantity || 1;
+                    showToast(`Purchase successful! ${quantity} x ${productName} ready in My Orders.`, 'success');
+                    // Also show success modal
+                    showPurchaseSuccessModal(orderId);
+                } else if (data.status === 'FAILED') {
+                    clearInterval(pollTimer);
+                    const errorMsg = data.errorMessage || 'Purchase failed. Please try again.';
+                    showToast(errorMsg, 'error');
+                } else if (pollCount >= maxPolls) {
+                    // Timeout - stop polling but inform user
+                    clearInterval(pollTimer);
+                    showToast('Order is still processing. Check My Orders for updates.', 'info');
+                }
+                // If status is PENDING or PROCESSING, continue polling
+            } catch (error) {
+                console.error('Error polling order status:', error);
+                if (pollCount >= 5) { // Give up after 5 failed attempts
+                    clearInterval(pollTimer);
+                    showToast('Unable to check order status. Please check My Orders page.', 'error');
+                }
+            }
+        }, pollInterval);
+    }
 </script>
 </body>
 </html>
+

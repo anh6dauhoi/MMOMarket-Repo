@@ -52,9 +52,9 @@
 
 /* Chat container - cố định chiều cao theo viewport */
 .chat-container {
-    height: calc(100vh - 200px);
-    max-height: 800px;
-    min-height: 500px;
+    height: calc(100vh - 150px);
+    max-height: 900px;
+    min-height: 600px;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
 }

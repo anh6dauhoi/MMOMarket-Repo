@@ -45,22 +45,6 @@ public class EmailTemplate {
                 "</div>";
     }
 
-    public static String sellerRegistrationSuccessEmail(String userName) {
-        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
-                "<div style=\"max-width:480px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden;\">" +
-                "<div style=\"background:linear-gradient(90deg,#ef4444 0,#f59e42 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
-                "<h2 style=\"color:#fff;font-size:24px;font-weight:700;margin:0;letter-spacing:1px;\">Seller Registration Successful</h2>" +
-                "</div>" +
-                "<div style=\"padding:32px 24px 24px 24px;\">" +
-                "<p style=\"font-size:17px;color:#222;margin-bottom:18px;\">Hello <b>" + userName + "</b>,</p>" +
-                "<p style=\"font-size:16px;color:#444;margin-bottom:18px;\">Congratulations! You have successfully registered as a Seller at <b>MMOMarket</b>! Please wait for the administrator to verify your information.</p>" +
-                "<p style=\"font-size:15px;color:#666;margin-bottom:24px;\">You will receive an email notification when your account is approved or if additional information is required.</p>" +
-                "</div>" +
-                "<div style=\"background:#f7f7f9;color:#aaa;font-size:13px;text-align:center;padding:16px 8px;border-radius:0 0 16px 16px;\">&copy; 2024 MMOMarket. All rights reserved.</div>" +
-                "</div>" +
-                "</div>";
-    }
-
     public static String sellerVerificationEmail(String userName, String verifyLink) {
         return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
                 "<div style=\"max-width:480px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden;\">" +
@@ -197,6 +181,37 @@ public class EmailTemplate {
     private static String escape(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    /**
+     * Template for seller account activation email (after fee deduction and instant activation)
+     */
+    public static String sellerAccountActivatedEmail(String userName, String shopName, long registrationFee) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#22c55e 0,#38bdf8 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:24px;font-weight:700;margin:0;letter-spacing:1px;\">🎉 Seller Account Activated!</h2>" +
+                "</div>" +
+                "<div style=\"padding:32px 24px 24px 24px;\">" +
+                "<p style=\"font-size:17px;color:#222;margin-bottom:18px;\">Hello <b>" + escape(userName) + "</b>,</p>" +
+                "<p style=\"font-size:16px;color:#444;margin-bottom:18px;\">Congratulations! Your seller account has been <b>successfully activated</b> at <b>MMOMarket</b>. You can now start selling your products!</p>" +
+                "<div style=\"background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px;margin:20px 0;\">" +
+                "<p style=\"font-size:15px;color:#15803d;margin:0 0 8px;\"><b>✓ Shop Information:</b></p>" +
+                "<ul style=\"font-size:14px;color:#166534;margin:0;padding-left:20px;\">" +
+                "<li><b>Shop name:</b> " + escape(shopName) + "</li>" +
+                "<li><b>Status:</b> <span style='color:#22c55e;font-weight:600;'>Active</span></li>" +
+                "<li><b>Registration fee:</b> " + String.format("%,d", registrationFee) + " coins</li>" +
+                "</ul>" +
+                "</div>" +
+                "<p style=\"font-size:15px;color:#666;margin-bottom:18px;\">The registration fee of <b>" + String.format("%,d", registrationFee) + " coins</b> has been deducted from your account balance.</p>" +
+                "<p style=\"font-size:15px;color:#666;margin-bottom:24px;\">Start managing your shop now by accessing the Seller Dashboard. If you need any assistance, feel free to contact our support team.</p>" +
+                "<div style=\"text-align:center;margin:24px 0 8px;\">" +
+                "<a href='http://localhost:8080/seller/dashboard' style='display:inline-block;background:#22c55e;color:#fff;font-weight:700;padding:12px 32px;border-radius:8px;text-decoration:none;font-size:16px;box-shadow:0 3px 10px rgba(34,197,94,0.2);'>Go to Seller Dashboard</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:13px;text-align:center;padding:16px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
     }
 
     public static String contactFormEmail(String name, String email, String message) {
