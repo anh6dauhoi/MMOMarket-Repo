@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS Categories (
     name VARCHAR(100) NOT NULL, -- Tên danh mục
     description VARCHAR(500), -- Mô tả
     type ENUM('Common', 'Warning') NOT NULL DEFAULT 'Common',
+    status TINYINT(1) DEFAULT 1, -- Trạng thái hoạt động: 1 - Active, 0 - Inactive
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -339,6 +340,7 @@ CREATE TABLE IF NOT EXISTS Blogs (
     title VARCHAR(255) NOT NULL, -- Tiêu đề
     content TEXT NOT NULL, -- Nội dung
     image VARCHAR(255), -- Đường dẫn ảnh
+    status TINYINT(1) DEFAULT 1, -- Trạng thái blog: 1=Active, 0=Inactive
     author_id BIGINT NOT NULL, -- Mã tác giả
     views BIGINT DEFAULT 0, -- Lượt xem
     likes BIGINT DEFAULT 0, -- Số lượt thích

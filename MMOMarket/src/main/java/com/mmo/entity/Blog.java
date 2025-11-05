@@ -29,6 +29,9 @@ public class Blog {
     @Column(name = "image", length = 255)
     private String image;
 
+    @Column(name = "status", columnDefinition = "TINYINT(1) DEFAULT 1")
+    private boolean status = true;
+
     @ManyToOne
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
@@ -67,4 +70,31 @@ public class Blog {
 
     @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
     private Set<BlogComment> comments;
+
+    // Transient getters for template compatibility
+    @Transient
+    public Long getLikeCount() {
+        return likes != null ? likes : 0L;
+    }
+
+    @Transient
+    public Long getViewCount() {
+        return views != null ? views : 0L;
+    }
+
+    @Transient
+    public Integer getCommentCount() {
+        return comments != null ? comments.size() : 0;
+    }
+
+    @Transient
+    public boolean isVisible() {
+        return status;
+    }
+
+    @Transient
+    public boolean isHidden() {
+        return !status;
+    }
+
 }
