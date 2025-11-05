@@ -41,6 +41,7 @@ import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.Calendar;
 
 @Controller
 @RequestMapping("/seller")
@@ -314,7 +315,128 @@ public class SellerController {
     }
 
     @GetMapping("/my-shop")
-    public String showMyShop(Model model) {
+    public String showMyShop(Model model, RedirectAttributes redirectAttributes) {
+        // Get current logged-in user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+
+        // Check if shop is active
+        boolean activeShop = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
+        // Calculate statistics
+        Long sellerId = user.getId();
+
+        // Total revenue
+        Long totalRevenue = transactionRepository.getTotalRevenueBySellerId(sellerId);
+        if (totalRevenue == null) totalRevenue = 0L;
+
+        // Total orders
+        Long totalOrders = transactionRepository.getTotalOrdersBySellerId(sellerId);
+        if (totalOrders == null) totalOrders = 0L;
+
+        // Total products
+        Long totalProducts = productRepository.countBySellerId(sellerId);
+        if (totalProducts == null) totalProducts = 0L;
+
+        // Calculate last month's statistics for comparison
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.MONTH, -1);
+        Date lastMonth = cal.getTime();
+
+        Long lastMonthRevenue = transactionRepository.getRevenueBySellerIdAndDate(sellerId, lastMonth);
+        if (lastMonthRevenue == null) lastMonthRevenue = 0L;
+
+        Long lastMonthOrders = transactionRepository.getOrdersBySellerIdAndDate(sellerId, lastMonth);
+        if (lastMonthOrders == null) lastMonthOrders = 0L;
+
+        // Calculate percentage changes
+        double revenueChange = 0.0;
+        double ordersChange = 0.0;
+
+        if (totalRevenue > 0 && lastMonthRevenue > 0) {
+            revenueChange = ((double)(totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+        }
+
+        if (totalOrders > 0 && lastMonthOrders > 0) {
+            ordersChange = ((double)(totalOrders - lastMonthOrders) / lastMonthOrders) * 100;
+        }
+
+        // Get recent transactions (limit to 10)
+        List<com.mmo.entity.Transaction> recentTransactions = transactionRepository.findRecentTransactionsBySeller(sellerId);
+        if (recentTransactions.size() > 10) {
+            recentTransactions = recentTransactions.subList(0, 10);
+        }
+
+        // Get top selling products (limit to 5)
+        List<com.mmo.entity.Product> topProducts = productRepository.findTopSellingProductsBySeller(
+            sellerId,
+            org.springframework.data.domain.PageRequest.of(0, 5)
+        );
+
+        // Calculate sales count and percentage for each product
+        List<com.mmo.dto.TopProductDto> topProductDtos = new ArrayList<>();
+        long totalSales = topProducts.stream()
+            .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
+            .sum();
+
+        for (com.mmo.entity.Product product : topProducts) {
+            Long salesCount = productRepository.countSalesForProduct(product.getId());
+            if (salesCount == null) salesCount = 0L;
+
+            double percentage = 0.0;
+            if (totalSales > 0) {
+                percentage = ((double) salesCount / totalSales) * 100;
+            }
+
+            com.mmo.dto.TopProductDto dto = new com.mmo.dto.TopProductDto(
+                product.getId(),
+                product.getName(),
+                product.getImage(),
+                salesCount,
+                percentage
+            );
+            topProductDtos.add(dto);
+        }
+
+        // Add statistics to model
+        model.addAttribute("totalRevenue", totalRevenue);
+        model.addAttribute("totalOrders", totalOrders);
+        model.addAttribute("totalProducts", totalProducts);
+        model.addAttribute("revenueChange", String.format("%.1f", Math.abs(revenueChange)));
+        model.addAttribute("revenueChangePositive", revenueChange >= 0);
+        model.addAttribute("ordersChange", String.format("%.1f", Math.abs(ordersChange)));
+        model.addAttribute("ordersChangePositive", ordersChange >= 0);
+        model.addAttribute("recentTransactions", recentTransactions);
+        model.addAttribute("topProducts", topProductDtos);
+
         return "seller/my-shop";
     }
 
