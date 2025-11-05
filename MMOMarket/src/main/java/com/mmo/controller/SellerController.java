@@ -315,7 +315,9 @@ public class SellerController {
     }
 
     @GetMapping("/my-shop")
-    public String showMyShop(Model model, RedirectAttributes redirectAttributes) {
+    public String showMyShop(Model model,
+                             RedirectAttributes redirectAttributes,
+                             @RequestParam(required = false, defaultValue = "month") String timeFilter) {
         // Get current logged-in user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = null;
@@ -354,39 +356,76 @@ public class SellerController {
         // Calculate statistics
         Long sellerId = user.getId();
 
-        // Total revenue
-        Long totalRevenue = transactionRepository.getTotalRevenueBySellerId(sellerId);
+        // Determine time range based on filter
+        Calendar cal = Calendar.getInstance();
+        Calendar previousCal = Calendar.getInstance();
+
+        switch (timeFilter.toLowerCase()) {
+            case "day":
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                previousCal.setTime(cal.getTime());
+                previousCal.add(Calendar.DAY_OF_MONTH, -1);
+                break;
+            case "year":
+                cal.set(Calendar.DAY_OF_YEAR, 1);
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                previousCal.setTime(cal.getTime());
+                previousCal.add(Calendar.YEAR, -1);
+                break;
+            case "month":
+            default:
+                cal.set(Calendar.DAY_OF_MONTH, 1);
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                previousCal.setTime(cal.getTime());
+                previousCal.add(Calendar.MONTH, -1);
+                break;
+        }
+
+        Date startDate = cal.getTime();
+        Date previousStartDate = previousCal.getTime();
+
+        // Total revenue for current period
+        Long totalRevenue = transactionRepository.getRevenueBySellerIdAndDateAfter(sellerId, startDate);
         if (totalRevenue == null) totalRevenue = 0L;
 
-        // Total orders
-        Long totalOrders = transactionRepository.getTotalOrdersBySellerId(sellerId);
+        // Total orders for current period
+        Long totalOrders = transactionRepository.getOrdersBySellerIdAndDateAfter(sellerId, startDate);
         if (totalOrders == null) totalOrders = 0L;
 
-        // Total products
+        // Total products (not filtered by time)
         Long totalProducts = productRepository.countBySellerId(sellerId);
         if (totalProducts == null) totalProducts = 0L;
 
-        // Calculate last month's statistics for comparison
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.MONTH, -1);
-        Date lastMonth = cal.getTime();
+        // Calculate previous period's statistics for comparison
+        Long previousRevenue = transactionRepository.getRevenueBySellerIdBetweenDates(sellerId, previousStartDate, startDate);
+        if (previousRevenue == null) previousRevenue = 0L;
 
-        Long lastMonthRevenue = transactionRepository.getRevenueBySellerIdAndDate(sellerId, lastMonth);
-        if (lastMonthRevenue == null) lastMonthRevenue = 0L;
-
-        Long lastMonthOrders = transactionRepository.getOrdersBySellerIdAndDate(sellerId, lastMonth);
-        if (lastMonthOrders == null) lastMonthOrders = 0L;
+        Long previousOrders = transactionRepository.getOrdersBySellerIdBetweenDates(sellerId, previousStartDate, startDate);
+        if (previousOrders == null) previousOrders = 0L;
 
         // Calculate percentage changes
         double revenueChange = 0.0;
         double ordersChange = 0.0;
 
-        if (totalRevenue > 0 && lastMonthRevenue > 0) {
-            revenueChange = ((double)(totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+        if (previousRevenue > 0) {
+            revenueChange = ((double)(totalRevenue - previousRevenue) / previousRevenue) * 100;
+        } else if (totalRevenue > 0) {
+            revenueChange = 100.0;
         }
 
-        if (totalOrders > 0 && lastMonthOrders > 0) {
-            ordersChange = ((double)(totalOrders - lastMonthOrders) / lastMonthOrders) * 100;
+        if (previousOrders > 0) {
+            ordersChange = ((double)(totalOrders - previousOrders) / previousOrders) * 100;
+        } else if (totalOrders > 0) {
+            ordersChange = 100.0;
         }
 
         // Get recent transactions (limit to 10)
@@ -436,6 +475,23 @@ public class SellerController {
         model.addAttribute("ordersChangePositive", ordersChange >= 0);
         model.addAttribute("recentTransactions", recentTransactions);
         model.addAttribute("topProducts", topProductDtos);
+        model.addAttribute("timeFilter", timeFilter);
+
+        // Add comparison label based on filter
+        String comparisonLabel;
+        switch (timeFilter.toLowerCase()) {
+            case "day":
+                comparisonLabel = "vs yesterday";
+                break;
+            case "year":
+                comparisonLabel = "vs last year";
+                break;
+            case "month":
+            default:
+                comparisonLabel = "vs last month";
+                break;
+        }
+        model.addAttribute("comparisonLabel", comparisonLabel);
 
         return "seller/my-shop";
     }

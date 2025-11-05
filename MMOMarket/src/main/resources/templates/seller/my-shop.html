@@ -72,7 +72,22 @@
                         <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
                         <p class="text-gray-500 mt-1">Welcome back to your shop management</p>
                     </div>
-                    <div class="mt-4 md:mt-0">
+                    <div class="mt-4 md:mt-0 flex items-center gap-3">
+                        <!-- Time Filter Dropdown -->
+                        <div class="relative">
+                            <select id="timeFilter"
+                                    onchange="window.location.href='/seller/my-shop?timeFilter=' + this.value"
+                                    class="appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all cursor-pointer">
+                                <option value="day" th:selected="${timeFilter == 'day'}">Today</option>
+                                <option value="month" th:selected="${timeFilter == 'month' or timeFilter == null}">This Month</option>
+                                <option value="year" th:selected="${timeFilter == 'year'}">This Year</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                                </svg>
+                            </div>
+                        </div>
                         <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-md transition-colors flex items-center space-x-2">
                             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"
                                  xmlns="http://www.w3.org/2000/svg">
@@ -119,7 +134,7 @@
                                     <path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" stroke-linecap="round"
                                           stroke-linejoin="round" stroke-width="2"/>
                                 </svg>
-                                <span th:text="${revenueChange} + '% vs last month'">0% vs last month</span>
+                                <span th:text="${revenueChange} + '% ' + ${comparisonLabel}">0% vs last month</span>
                             </span>
                         </div>
                     </div>
@@ -153,7 +168,7 @@
                                     <path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" stroke-linecap="round"
                                           stroke-linejoin="round" stroke-width="2"/>
                                 </svg>
-                                <span th:text="${ordersChange} + '% vs last month'">0% vs last month</span>
+                                <span th:text="${ordersChange} + '% ' + ${comparisonLabel}">0% vs last month</span>
                             </span>
                         </div>
                     </div>
@@ -282,7 +297,7 @@
                             </table>
                         </div>
                         <div class="mt-4 text-right">
-                            <a class="text-sm font-medium text-primary-600 hover:text-primary-500" href="/seller/orders">View all
+                            <a class="text-sm font-medium text-primary-600 hover:text-primary-500" href="/account/orders">View all
                                 orders →</a>
                         </div>
                     </div>
