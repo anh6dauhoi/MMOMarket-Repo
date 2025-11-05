@@ -307,7 +307,7 @@ public class ProductService {
             long sold = 0L;
             try { stock = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Available"); } catch (Exception ignored) {}
             try { sold = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Sold"); } catch (Exception ignored) {}
-            variantsWithStock.add(new ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock, sold));
+            variantsWithStock.add(new ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock, sold, v.isDelete()));
         }
         model.put("variants", variantsWithStock);
 

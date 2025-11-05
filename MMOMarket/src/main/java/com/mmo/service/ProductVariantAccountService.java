@@ -27,7 +27,7 @@ public class ProductVariantAccountService {
     // Preview upload: parse file, mark duplicates/invalid, return summary rows (limited)
     public PreviewResult previewUpload(User user, ProductVariant variant, MultipartFile file, boolean dedupe) throws IOException {
         List<AccountRow> normalized = parseAndNormalize(file);
-        markDuplicates(normalized, variant.getId());
+        markDuplicatesByUsername(normalized, variant.getId());
         int invalidCount = 0;
         for (AccountRow r : normalized) if (r.invalid) invalidCount++;
         int max = Math.min(300, normalized.size());
@@ -47,27 +47,29 @@ public class ProductVariantAccountService {
     // Confirm upload: persist ProductVariantAccount entries (skip duplicates if dedupe). Block if invalid rows exist.
     public UploadResult confirmUpload(User user, ProductVariant variant, MultipartFile file, boolean dedupe) throws IOException {
         List<AccountRow> normalized = parseAndNormalize(file);
-        markDuplicates(normalized, variant.getId());
+        markDuplicatesByUsername(normalized, variant.getId());
         // Validate: both username and password are required per row
         long invalidCount = normalized.stream().filter(r -> r.invalid).count();
         if (invalidCount > 0) {
             throw new IllegalArgumentException("File has " + invalidCount + " invalid row(s) where Account or Password is missing. Please fix and try again.");
         }
-        Set<String> existing = loadExistingAccountKeys(variant.getId());
+        // Load existing usernames for the variant
+        Set<String> existingUsernames = loadExistingUsernames(variant.getId());
         int created = 0;
         int skipped = 0;
         for (AccountRow r : normalized) {
-            String key = accountKey(r);
-            boolean isDup = r.duplicate || existing.contains(key);
+            String uname = usernameKey(r);
+            boolean isDup = r.duplicate || existingUsernames.contains(uname);
             if (dedupe && isDup) { skipped++; continue; }
             ProductVariantAccount acc = new ProductVariantAccount();
             acc.setVariant(variant);
-            acc.setAccountData(key);
+            acc.setAccountData(buildAccountData(r)); // store as username:password
             acc.setStatus("Available");
             acc.setDelete(false);
             acc.setCreatedBy(user.getId());
             entityManager.persist(acc);
             created++;
+            existingUsernames.add(uname); // avoid re-creating same username again in same batch
         }
         return new UploadResult(created, skipped);
     }
@@ -89,25 +91,39 @@ public class ProductVariantAccountService {
             nr.invalid = (u == null || u.isEmpty()) ^ (p == null || p.isEmpty());
             normalized.add(nr);
         }
-        // mark duplicates within file itself
-        Set<String> seen = new HashSet<>();
+        // mark duplicates within file itself (by username)
+        Set<String> seenUsernames = new HashSet<>();
         for (AccountRow r : normalized) {
-            if (!seen.add(accountKey(r))) r.duplicate = true;
+            String uname = usernameKey(r);
+            if (uname.isEmpty()) continue; // invalid or empty, already flagged above
+            if (!seenUsernames.add(uname)) r.duplicate = true;
         }
         return normalized;
     }
 
-    private void markDuplicates(List<AccountRow> rows, Long variantId) {
-        Set<String> existing = loadExistingAccountKeys(variantId);
-        for (AccountRow r : rows) if (existing.contains(accountKey(r))) r.duplicate = true;
+    private void markDuplicatesByUsername(List<AccountRow> rows, Long variantId) {
+        Set<String> existingUsernames = loadExistingUsernames(variantId);
+        for (AccountRow r : rows) {
+            String uname = usernameKey(r);
+            if (!uname.isEmpty() && existingUsernames.contains(uname)) r.duplicate = true;
+        }
     }
 
-    private Set<String> loadExistingAccountKeys(Long variantId) {
+    private Set<String> loadExistingUsernames(Long variantId) {
         try {
             List<String> list = entityManager.createQuery(
                     "select a.accountData from ProductVariantAccount a where a.variant.id = :vid and a.isDelete = false",
                     String.class).setParameter("vid", variantId).getResultList();
-            return new HashSet<>(list);
+            Set<String> usernames = new HashSet<>();
+            if (list != null) {
+                for (String s : list) {
+                    if (s == null) continue;
+                    int idx = s.indexOf(':');
+                    String u = idx >= 0 ? s.substring(0, idx) : s;
+                    if (u != null) usernames.add(u.trim());
+                }
+            }
+            return usernames;
         } catch (Exception e) {
             return new HashSet<>();
         }
@@ -153,7 +169,8 @@ public class ProductVariantAccountService {
 
     private static String nullToEmpty(String s) { return s == null ? "" : s; }
     private static String safeTrim(String s) { return s == null ? null : s.trim(); }
-    private static String accountKey(AccountRow r){ String u = r.username==null? "" : r.username.trim(); String p = r.password==null? "" : r.password.trim(); return u + ":" + p; }
+    private static String usernameKey(AccountRow r){ return r.username==null? "" : r.username.trim(); }
+    private static String buildAccountData(AccountRow r){ String u = r.username==null? "" : r.username.trim(); String p = r.password==null? "" : r.password.trim(); return u + ":" + p; }
 
     // Header normalization and matching (accept Account|Seri and Password|PIN)
     private String normalizeHeader(String s) {

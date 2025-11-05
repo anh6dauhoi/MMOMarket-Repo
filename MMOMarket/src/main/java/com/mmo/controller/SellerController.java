@@ -1240,10 +1240,10 @@ public class SellerController {
             return "redirect:/seller/register";
         }
 
-        // Normalize status: default 'active' to preserve previous behavior
-        String statusNorm = status == null ? "active" : status.trim().toLowerCase();
+        // Normalize status: default 'all' to show all products
+        String statusNorm = status == null ? "all" : status.trim().toLowerCase();
         if (!(statusNorm.equals("active") || statusNorm.equals("hidden") || statusNorm.equals("all"))) {
-            statusNorm = "active";
+            statusNorm = "all";
         }
 
         // Pagination defaults
@@ -1305,8 +1305,8 @@ public class SellerController {
             }
             row.put("image", displayImage);
 
-            // Variants + lowest price
-            java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId());
+            // Variants + lowest price (include ALL variants including hidden ones for seller management)
+            java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductId(p.getId());
             row.put("variantCount", variants != null ? variants.size() : 0);
             Long lowest = (variants == null || variants.isEmpty()) ? 0L : variants.stream().map(com.mmo.entity.ProductVariant::getPrice).filter(java.util.Objects::nonNull).min(Long::compareTo).orElse(0L);
             row.put("lowestPrice", lowest);
@@ -1400,6 +1400,20 @@ public class SellerController {
         }
         data.put("image", displayImage);
         data.put("isDelete", p.isDelete());
+
+        // Fetch ShopInfo via HQL like shop-info to ensure correct level
+        try {
+            ShopInfo shop = entityManager.createQuery(
+                    "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                .setParameter("u", user)
+                .getResultStream().findFirst().orElse(null);
+            if (shop != null) {
+                try { entityManager.refresh(shop); } catch (Exception ignored) {}
+                data.put("shopLevel", shop.getShopLevel() != null ? shop.getShopLevel() : 0);
+                data.put("shopPoints", shop.getPoints() != null ? shop.getPoints() : 0);
+            }
+        } catch (Exception ignored) {}
+
         return ResponseEntity.ok(data);
     }
 
@@ -1432,6 +1446,17 @@ public class SellerController {
         }
         model.addAttribute("productId", p.getId());
         model.addAttribute("productName", p.getName());
+        // Fetch ShopInfo via HQL like shop-info to ensure correct level
+        try {
+            ShopInfo shop = entityManager.createQuery(
+                    "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                .setParameter("u", user)
+                .getResultStream().findFirst().orElse(null);
+            if (shop != null) {
+                try { entityManager.refresh(shop); } catch (Exception ignored) {}
+                model.addAttribute("shop", shop);
+            }
+        } catch (Exception ignored) {}
         return "seller/product-detail";
     }
 
@@ -1790,7 +1815,11 @@ public class SellerController {
         }
         ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
         if (shop == null) {
-            return ResponseEntity.ok(Map.of("ok", false, "message", "Shop not found."));
+            return ResponseEntity.ok(Map.of(
+                "level", 0,
+                "maxPrice", 50_000L,
+                "message", "Shop not found. Default limit applies."
+            ));
         }
         long currentPoints = shop.getPoints() == null ? 0L : shop.getPoints();
         short currentLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
@@ -1828,6 +1857,21 @@ public class SellerController {
             case 6 -> 40_000_000L;
             case 7 -> 50_000_000L;
             default -> 0L;
+        };
+    }
+
+    // Get maximum price limit based on shop level
+    private long getMaxPriceByLevel(short level) {
+        return switch (level) {
+            case 0 -> 50_000L;        // Level 0: max 50k
+            case 1 -> 100_000L;       // Level 1: max 100k
+            case 2 -> 300_000L;       // Level 2: max 300k
+            case 3 -> 500_000L;       // Level 3: max 500k
+            case 4 -> 1_000_000L;     // Level 4: max 1M
+            case 5 -> 2_000_000L;     // Level 5: max 2M
+            case 6 -> 4_000_000L;     // Level 6: max 4M
+            case 7 -> Long.MAX_VALUE; // Level 7: unlimited
+            default -> 50_000L;       // Default: max 50k
         };
     }
 
@@ -1910,6 +1954,59 @@ public class SellerController {
         }
     }
 
+    // Get shop price limit info
+    @GetMapping(path = "/shop/price-limit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getShopPriceLimit(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+        }
+
+        // Fetch ShopInfo via HQL to ensure consistent lookup
+        ShopInfo shop = null;
+        try {
+            shop = entityManager.createQuery(
+                    "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                .setParameter("u", user)
+                .getResultStream().findFirst().orElse(null);
+        } catch (Exception ignored) {}
+        if (shop == null) {
+            return ResponseEntity.ok(Map.of(
+                "level", 0,
+                "maxPrice", 50_000L,
+                "message", "Shop not found. Default limit applies."
+            ));
+        }
+
+        // Refresh from database to get latest shop_level (updated by DB trigger)
+        try { entityManager.refresh(shop); } catch (Exception ignored) {}
+        short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        long maxPrice = getMaxPriceByLevel(shopLevel);
+        long currentPoints = shop.getPoints() == null ? 0L : shop.getPoints();
+        long nextLevelThreshold = shopLevel < 7 ? levelThreshold(shopLevel + 1) : 0L;
+        long nextLevelMaxPrice = shopLevel < 7 ? getMaxPriceByLevel((short) (shopLevel + 1)) : Long.MAX_VALUE;
+
+        return ResponseEntity.ok(Map.of(
+            "level", shopLevel,
+            "maxPrice", maxPrice,
+            "currentPoints", currentPoints,
+            "nextLevel", shopLevel < 7 ? (shopLevel + 1) : 7,
+            "nextLevelThreshold", nextLevelThreshold,
+            "nextLevelMaxPrice", nextLevelMaxPrice,
+            "pointsToNextLevel", Math.max(0L, nextLevelThreshold - currentPoints)
+        ));
+    }
+
     // List variants for a product (JSON)
     @GetMapping(path = "/products/{id}/variants", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -1926,7 +2023,10 @@ public class SellerController {
         if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
         com.mmo.entity.Product p = opt.get();
         if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-        java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId());
+
+        // Get ALL variants including hidden ones (seller should see all their variants)
+        java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductId(p.getId());
+
         java.util.List<com.mmo.dto.ProductVariantDto> dtos = new java.util.ArrayList<>();
         for (com.mmo.entity.ProductVariant v : variants) {
             long stock = 0L;
@@ -1939,7 +2039,7 @@ public class SellerController {
                 // sold accounts = status 'Sold'
                 sold = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Sold");
             } catch (Exception ignored) {}
-            dtos.add(new com.mmo.dto.ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock, sold));
+            dtos.add(new com.mmo.dto.ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock,sold, v.isDelete()));
         }
         return ResponseEntity.ok(dtos);
     }
@@ -1957,16 +2057,42 @@ public class SellerController {
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        // Get shop info to check level
+        ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
+        if (shop == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Shop not found"));
+        }
+        // Refresh from database to get latest shop_level (updated by DB trigger)
+        entityManager.refresh(shop);
+        short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        long maxPrice = getMaxPriceByLevel(shopLevel);
+
         java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
         com.mmo.entity.Product p = opt.get();
-        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
 
         String variantName = body.get("variantName") != null ? body.get("variantName").toString().trim() : null;
         Long price = null;
-        try { if (body.get("price") instanceof Number n) price = ((Number) n).longValue(); else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString()); } catch (Exception ignored) {}
-        if (variantName == null || variantName.isBlank()) return ResponseEntity.badRequest().body(Map.of("message", "Variant name is required"));
-        if (price == null || price < 0) return ResponseEntity.badRequest().body(Map.of("message", "Invalid price"));
+        try { if (body.get("price") instanceof Number n) price = n.longValue(); else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString()); } catch (Exception ignored) {}
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
+        if (price == null) fieldErrors.put("price", "Price is required");
+        else if (price < 0) fieldErrors.put("price", "Invalid price");
+        if (!fieldErrors.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+
+        // Check price limit based on shop level
+        if (price > maxPrice) {
+            String formattedMax = String.format("%,d", maxPrice);
+            return ResponseEntity.badRequest().body(Map.of(
+                "message", "Price exceeds your shop level limit. Your level " + shopLevel + " allows max price: " + formattedMax + " Coins",
+                "fieldErrors", Map.of("price", "Price exceeds your shop level limit. Max: " + formattedMax + " Coins"),
+                "maxPrice", maxPrice,
+                "currentLevel", shopLevel
+            ));
+        }
 
         com.mmo.entity.ProductVariant v = new com.mmo.entity.ProductVariant();
         v.setProduct(p);
@@ -1991,39 +2117,77 @@ public class SellerController {
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        // Get shop info to check level
+        ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
+        if (shop == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Shop not found"));
+        }
+        // Refresh from database to get latest shop_level (updated by DB trigger)
+        entityManager.refresh(shop);
+        short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        long maxPrice = getMaxPriceByLevel(shopLevel);
+
         com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
-        if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
+        if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
 
         String variantName = body.get("variantName") != null ? body.get("variantName").toString().trim() : null;
         Long price = null;
-        try { if (body.get("price") instanceof Number n) price = ((Number) n).longValue(); else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString()); } catch (Exception ignored) {}
-        if (variantName != null && !variantName.isBlank()) v.setVariantName(variantName);
-        if (price != null && price >= 0) v.setPrice(price);
+        try { if (body.get("price") instanceof Number n) price = n.longValue(); else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString()); } catch (Exception ignored) {}
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
+        if (price == null) fieldErrors.put("price", "Price is required");
+        else if (price < 0) fieldErrors.put("price", "Invalid price");
+        if (!fieldErrors.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+
+        // Check price limit
+        if (price > maxPrice) {
+            String formattedMax = String.format("%,d", maxPrice);
+            return ResponseEntity.badRequest().body(Map.of(
+                "message", "Price exceeds your shop level limit. Your level " + shopLevel + " allows max price: " + formattedMax + " Coins",
+                "fieldErrors", Map.of("price", "Price exceeds your shop level limit. Max: " + formattedMax + " Coins"),
+                "maxPrice", maxPrice,
+                "currentLevel", shopLevel
+            ));
+        }
+
+        v.setVariantName(variantName);
+        v.setPrice(price);
         entityManager.merge(v);
         return ResponseEntity.ok(Map.of("message", "Updated"));
     }
 
-    // Soft delete variant
-    @DeleteMapping(path = "/products/variants/{variantId}")
+
+    // Toggle hide/show variant (soft delete toggle)
+    @PostMapping(path = "/products/variants/{variantId}/toggle-hide", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @Transactional
-    public ResponseEntity<?> deleteVariant(@PathVariable Long variantId, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+    public ResponseEntity<?> toggleHideVariant(@PathVariable Long variantId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
         String email = authentication.getName();
         if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
         else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-            Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
         com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
-        if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-        v.setDelete(true);
-        v.setDeletedBy(user.getId());
+        if (v == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Variant not found");
+        if (v.getProduct() == null || v.getProduct().getSeller() == null ||
+            !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+        boolean next = !v.isDelete();
+        v.setDelete(next);
+        v.setDeletedBy(next ? user.getId() : null);
         entityManager.merge(v);
-        return ResponseEntity.ok(Map.of("message", "Deleted"));
+        return ResponseEntity.ok(Map.of("id", v.getId(), "hidden", next));
     }
 
     private void sendWithdrawalOtpForUser(User user) {
@@ -2196,6 +2360,7 @@ public class SellerController {
                 try { p.getClass().getMethod("setImage", String.class).invoke(p, image); } catch (Exception ignored) { p.setImage(image); }
             }
             entityManager.persist(p);
+            entityManager.flush(); // Force immediate database insert
 
             Map<String, Object> res = new HashMap<>();
             res.put("message", "Created successfully");
@@ -2205,6 +2370,93 @@ public class SellerController {
             res.put("image", image);
             res.put("description", p.getDescription());
             return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Update product via JSON (used by Product Management modal)
+    @PutMapping(path = "/products/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateProductJson(@PathVariable Long id,
+                                               @RequestBody Map<String, Object> body,
+                                               Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+
+            com.mmo.entity.Product p = entityManager.find(com.mmo.entity.Product.class, id);
+            if (p == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Product not found"));
+            }
+            if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), seller.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "You are not authorized to edit this product"));
+            }
+
+            String name = body.get("name") != null ? body.get("name").toString().trim() : null;
+            String description = body.get("description") != null ? body.get("description").toString().trim() : null;
+            String image = body.get("image") != null ? body.get("image").toString().trim() : null;
+            Long categoryId = null;
+            if (body.get("categoryId") instanceof Number n) categoryId = n.longValue();
+            else if (body.get("categoryId") != null) { try { categoryId = Long.parseLong(body.get("categoryId").toString()); } catch (Exception ignored) {} }
+
+            Map<String, String> fieldErrors = new HashMap<>();
+            if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
+            else if (name.length() < 3) fieldErrors.put("name", "Name must be at least 3 characters");
+            else if (name.length() > 255) fieldErrors.put("name", "Name must be at most 255 characters");
+            Category cat = null;
+            if (categoryId == null) fieldErrors.put("categoryId", "Category is required");
+            else {
+                cat = entityManager.find(Category.class, categoryId);
+                if (cat == null || cat.isDelete()) fieldErrors.put("categoryId", "Invalid category");
+            }
+            if (description != null && description.length() > 5000) fieldErrors.put("description", "Description must be at most 5000 characters");
+            if (image != null && !image.isBlank()) {
+                if (image.length() > 255) fieldErrors.put("image", "Image URL must be at most 255 characters");
+                String lower = image.toLowerCase();
+                boolean okPrefix = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
+                boolean okExt = lower.matches(".*\\.(png|jpe?g|webp)(\\?.*)?$");
+                if (!okPrefix || !okExt) fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
+            }
+            if (!fieldErrors.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+            }
+
+            // Update fields
+            p.setName(name);
+            p.setDescription(description);
+            p.setCategory(cat);
+
+            // Update image: if key exists in body, update it (even if null/empty to clear)
+            // If key doesn't exist, keep existing image
+            if (body.containsKey("image")) {
+                p.setImage(image != null && !image.isBlank() ? image : null);
+            }
+
+            // Persist changes
+            entityManager.merge(p);
+            entityManager.flush();
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("message", "Updated successfully");
+            res.put("id", p.getId());
+            res.put("name", p.getName());
+            res.put("categoryName", p.getCategory() != null ? p.getCategory().getName() : null);
+            res.put("image", p.getImage());
+            res.put("description", p.getDescription());
+            return ResponseEntity.ok(res);
         } catch (Exception ex) {
             return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
         }

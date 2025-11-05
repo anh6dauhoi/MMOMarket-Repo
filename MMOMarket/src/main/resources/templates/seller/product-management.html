@@ -9,12 +9,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .table-wrap { overflow-x: auto; }
-        .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
-        .badge-sm { padding: 2px 6px; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .badge-sm { padding: 2px 8px; }
         .cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tn { font-variant-numeric: tabular-nums; }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .product-img {
+            border-radius: 8px;
+            border: 2px solid #e0e7ff;
+            transition: all 0.2s ease;
+        }
+        .product-img:hover {
+            border-color: #6366f1;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
     </style>
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
@@ -30,46 +75,50 @@
 
             <!-- Main Content -->
             <div class="lg:col-span-3 space-y-6">
-                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-lg p-6 md:p-8 animate-fade-in">
                     <!-- Header: Title left, Add Product right -->
-                    <div class="flex items-center justify-between mb-4">
-                        <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 flex items-center">
-                            <i class="fas fa-boxes-stacked mr-3 text-red-600"></i>
-                            Product Management
-                        </h1>
-                        <button type="button" id="addProductBtn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow">
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-primary-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                                <i class="fas fa-boxes-stacked text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-primary-900">Product Management</h1>
+                                <p class="text-sm text-gray-500 mt-1">Manage your products and inventory</p>
+                            </div>
+                        </div>
+                        <button type="button" id="addProductBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 font-medium">
                             <i class="fa-solid fa-plus"></i>
                             <span>Add Product</span>
                         </button>
                     </div>
 
                     <!-- Filters bar under title -->
-                    <div class="mb-5 p-3 rounded-xl border border-red-100 bg-red-50/50">
-                        <div class="flex flex-col gap-3">
-                            <div class="w-full sm:w-96">
+                    <div class="mb-6 p-4 rounded-xl border-2 border-primary-200 bg-gradient-to-r from-primary-50 to-purple-50">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1">
                                 <label class="sr-only" for="pmSearch">Search products</label>
                                 <div class="relative">
-                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-red-400"></i>
-                                    <input id="pmSearch" type="text" placeholder="Search products..." class="w-full pl-10 pr-3 py-2 rounded-xl border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" oninput="filterProducts()"/>
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-primary-400"></i>
+                                    <input id="pmSearch" type="text" placeholder="Search products..." class="w-full pl-10 pr-3 py-2.5 rounded-lg border-2 border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-all" oninput="filterProducts()"/>
                                 </div>
                             </div>
-
+                            <div class="w-full sm:w-48">
+                                <label for="statusFilter" class="sr-only">Status</label>
+                                <select id="statusFilter" class="w-full px-3 py-2.5 rounded-lg border-2 border-primary-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-medium transition-all" onchange="applyStatusFilter()" th:value="${status}">
+                                    <option value="all" th:selected="${status}=='all' or status==null or status==''">All</option>
+                                    <option value="active" th:selected="${status}=='active'">Active</option>
+                                    <option value="hidden" th:selected="${status}=='hidden'">Hidden</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="w-full sm:w-64">
-                        <label for="statusFilter" class="sr-only">Status</label>
-                        <select id="statusFilter" class="w-full px-3 py-2 rounded-xl border border-red-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500" onchange="applyStatusFilter()" th:value="${status}">
-                            <option value="active" th:selected="${status}=='active'">Active</option>
-                            <option value="hidden" th:selected="${status}=='hidden'">Hidden</option>
-                            <option value="all" th:selected="${status}=='all'">All</option>
-                        </select>
                     </div>
 
                     <!-- Flash area -->
-                    <div id="alertBox" class="hidden mb-4 p-3 rounded border"></div>
+                    <div id="alertBox" class="hidden mb-4 p-4 rounded-xl border-2"></div>
 
-                    <div class="table-wrap">
-                        <table class="table-auto w-full bg-white border border-gray-200 rounded-lg text-sm">
+                    <div class="table-wrap border-2 border-primary-200 rounded-xl overflow-hidden shadow-sm">
+                        <table class="table-auto w-full bg-white text-xs">
                             <colgroup>
                                 <col> <!-- Product takes remaining space -->
                                 <col style="width:1%"> <!-- Category minimal -->
@@ -80,113 +129,126 @@
                                 <col style="width:1%"> <!-- Actions minimal -->
                             </colgroup>
                             <thead>
-                            <tr class="bg-gradient-to-r from-red-500 to-rose-600 text-white">
-                                <th class="px-2 py-2 h-10 whitespace-nowrap text-left text-xs font-semibold align-middle">Product</th>
-                                <th class="px-2 py-2 h-10 whitespace-nowrap text-left text-xs font-semibold align-middle">Category</th>
-                                <th class="px-2 py-2 h-10 whitespace-nowrap text-center text-xs font-semibold align-middle">Variants</th>
-                                <th class="px-6 py-2 h-10 whitespace-nowrap text-right text-xs font-semibold align-middle">
+                            <tr class="bg-gradient-to-r from-primary-600 to-purple-600 text-white">
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-left text-xs font-bold align-middle uppercase tracking-tight">Product</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-left text-xs font-bold align-middle uppercase tracking-tight">Category</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-center text-xs font-bold align-middle uppercase tracking-tight">Variants</th>
+                                <th class="px-3 py-2 h-10 whitespace-nowrap text-right text-xs font-bold align-middle uppercase tracking-tight">
                                     <a th:with="isPriceAsc=${sortPrice}=='asc',
                                                 isPriceDesc=${sortPrice}=='desc',
                                                 nextSort=${isPriceAsc} ? 'desc' : 'asc',
                                                 sortUrl=@{'/seller/product-management'(sortPrice=${nextSort}, status=${status})}"
                                        th:href="${sortUrl}"
-                                       class="inline-flex items-center gap-1 hover:text-white cursor-pointer">
+                                       class="inline-flex items-center gap-1 hover:text-white cursor-pointer transition-colors">
                                         <span>Price</span>
                                         <span class="inline-flex flex-col text-xs leading-none">
-                                            <i class="fas fa-caret-up" th:classappend="${isPriceAsc} ? ' text-white' : ' text-white/80'"></i>
-                                            <i class="fas fa-caret-down -mt-1" th:classappend="${isPriceDesc} ? ' text-white' : ' text-white/80'"></i>
+                                            <i class="fas fa-caret-up" th:classappend="${isPriceAsc} ? ' text-white' : ' text-white/70'"></i>
+                                            <i class="fas fa-caret-down -mt-1" th:classappend="${isPriceDesc} ? ' text-white' : ' text-white/70'"></i>
                                         </span>
                                     </a>
                                 </th>
-                                <th class="pl-2 pr-3 py-2 h-10 whitespace-nowrap text-right text-xs font-semibold align-middle">Sold</th>
-                                <th class="px-2 py-2 h-10 whitespace-nowrap text-center text-xs font-semibold align-middle">Status</th>
-                                <th class="px-7 py-2 h-10 whitespace-nowrap text-right text-xs font-semibold align-middle">Actions</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-right text-xs font-bold align-middle uppercase tracking-tight">Sold</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-center text-xs font-bold align-middle uppercase tracking-tight">Status</th>
+                                <th class="px-6 py-2 h-10 whitespace-nowrap text-right text-xs font-bold align-middle uppercase tracking-tight">Actions</th>
                             </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100" id="productTbody">
-                            <tr th:each="p : ${products}" th:classappend="${p.isDelete} ? 'opacity-60' : ''" th:attr="data-id=${p.id}">
+                            <tbody class="divide-y divide-primary-100" id="productTbody">
+                            <tr th:each="p : ${products}" th:classappend="${p.isDelete} ? 'opacity-60' : ''" th:attr="data-id=${p.id}" class="hover:bg-primary-50 transition-colors duration-150">
                                 <td class="px-2 py-2 align-middle">
                                     <div class="flex items-center gap-2">
-                                        <img th:src="${p.image != null ? p.image : '/images/default-avatar.svg'}" alt="thumb" class="w-10 h-10 object-cover rounded border"/>
+                                        <img th:src="${p.image != null ? p.image : '/images/default-avatar.svg'}" alt="thumb" class="w-10 h-10 object-cover rounded-lg product-img"/>
                                         <div class="min-w-0" th:title="${p.name}">
-                                            <div class="font-semibold text-gray-900 truncate" th:text="${p.name}">Product name</div>
+                                            <div class="font-semibold text-gray-900 truncate text-xs" th:text="${p.name}">Product name</div>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-2 py-2 cell align-middle" th:title="${p.category != null ? p.category.name : '—'}">
-                                    <span class="text-sm" th:text="${p.category != null ? p.category.name : '—'}">—</span>
+                                    <span class="text-xs font-medium text-gray-700" th:text="${p.category != null ? p.category.name : '—'}">—</span>
                                 </td>
                                 <td class="px-2 py-2 text-center align-middle whitespace-nowrap">
-                                    <span class="text-xs font-semibold inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                                        <i class="fa-solid fa-layer-group"></i>
+                                    <span class="text-xs font-semibold inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200">
+                                        <i class="fa-solid fa-layer-group text-xs"></i>
                                         <span th:text="${p.variantCount}">0</span>
                                     </span>
                                 </td>
-                                <td class="pl-2 pr-3 py-2 text-right align-middle whitespace-nowrap" th:title="${#numbers.formatInteger(p.lowestPrice, 0, 'COMMA')}">
-                                    <span class="text-sm font-semibold text-emerald-600 tn" th:text="${#numbers.formatInteger(p.lowestPrice, 0, 'COMMA') }">0</span>
+                                <td class="px-2 py-2 text-right align-middle whitespace-nowrap" th:title="${#numbers.formatInteger(p.lowestPrice, 0, 'COMMA')}">
+                                    <span class="text-xs font-bold text-emerald-600 tn" th:text="${#numbers.formatInteger(p.lowestPrice, 0, 'COMMA') }">0</span>
                                 </td>
-                                <td class="pl-2 pr-3 py-2 text-right align-middle whitespace-nowrap" th:title="${#numbers.formatInteger(p.totalSold, 0, 'COMMA')}">
-                                    <span class="text-sm tn" th:text="${#numbers.formatInteger(p.totalSold, 0, 'COMMA')}">0</span>
+                                <td class="px-2 py-2 text-right align-middle whitespace-nowrap" th:title="${#numbers.formatInteger(p.totalSold, 0, 'COMMA')}">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 text-xs font-semibold">
+                                        <i class="fa-solid fa-cart-shopping text-xs"></i>
+                                        <span class="tn" th:text="${#numbers.formatInteger(p.totalSold, 0, 'COMMA')}">0</span>
+                                    </span>
                                 </td>
                                 <td class="px-2 py-2 text-center align-middle whitespace-nowrap">
-                                    <span th:classappend="${!p.isDelete} ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'" class="badge badge-sm">
-                                        <i th:classappend="${!p.isDelete} ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'"></i>
+                                    <span th:classappend="${!p.isDelete} ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200' : 'bg-gray-200 text-gray-700 border border-gray-300'" class="badge badge-sm text-xs">
+                                        <i th:classappend="${!p.isDelete} ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'" class="text-xs"></i>
                                         <span th:text="${!p.isDelete} ? 'Active' : 'Hidden'">Active</span>
                                     </span>
                                 </td>
                                 <td class="px-2 py-2 text-right whitespace-nowrap align-middle">
-                                    <div class="inline-flex items-center gap-1.5">
-                                        <!-- Link to seller product detail page (opens within seller area) -->
-                                        <a class="p-1.5 rounded hover:bg-red-50 text-red-600 inline-flex items-center" th:href="@{'/seller/products/' + ${p.id} + '/detail'}" title="Details">
-                                            <i class="fa-regular fa-eye"></i>
+                                    <div class="inline-flex items-center gap-1">
+                                        <!-- Link to seller product detail page -->
+                                        <a class="p-1.5 rounded-lg hover:bg-primary-100 text-primary-600 inline-flex items-center transition-colors" th:href="@{'/seller/products/' + ${p.id} + '/detail'}" title="Details">
+                                            <i class="fa-regular fa-eye text-sm"></i>
                                         </a>
-                                        <button type="button" class="p-1.5 rounded hover:bg-red-50 text-red-600" th:attr="data-id=${p.id}" onclick="openEditModal(this)" title="Edit">
-                                            <i class="fa-regular fa-pen-to-square"></i>
+                                        <button type="button" class="p-1.5 rounded-lg hover:bg-primary-100 text-primary-600 transition-colors" th:attr="data-id=${p.id}" onclick="openEditModal(this)" title="Edit">
+                                            <i class="fa-regular fa-pen-to-square text-sm"></i>
                                         </button>
-                                        <button type="button" class="p-1.5 rounded hover:bg-gray-100 text-gray-700" th:attr="data-id=${p.id}" onclick="toggleHide(this)" title="Hide/Show">
-                                            <i class="fa-solid fa-eye-slash"></i>
+                                        <button type="button" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" th:attr="data-id=${p.id}" onclick="toggleHide(this)" title="Hide/Show">
+                                            <i class="fa-solid fa-eye-slash text-sm"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                             <tr th:if="${products == null or #lists.isEmpty(products)}">
-                                <td colspan="7" class="px-3 py-6 text-center text-gray-500">No products yet</td>
+                                <td colspan="7" class="px-4 py-8 text-center">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i class="fa-solid fa-inbox text-4xl text-gray-300"></i>
+                                        <span class="text-gray-500 font-medium text-sm">No products yet</span>
+                                    </div>
+                                </td>
                             </tr>
                             </tbody>
                         </table>
                     </div>
 
                     <!-- Pagination (transaction-management style) -->
-                    <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0"
+                    <div class="flex flex-col sm:flex-row justify-between items-center mt-6 pt-6 border-t-2 border-primary-100 space-y-3 sm:space-y-0"
                          th:with="sortParam=${sortPrice != null and sortPrice != '' ? '&sortPrice=' + sortPrice : ''},
                                   statusParam=${status != null and status != '' ? '&status=' + status : ''},
                                   page0=${currentPage != null ? currentPage - 1 : 0},
                                   total=${totalPages != null and totalPages > 0 ? totalPages : 1}">
 
-                        <div class="text-sm text-gray-700 text-center sm:text-left">
+                        <div class="text-sm text-primary-900 font-medium text-center sm:text-left bg-primary-50 px-4 py-2 rounded-lg border border-primary-200">
                             <span th:with="s=${startItem != null ? startItem : (totalItems > 0 ? 1 : 0)}, e=${endItem != null ? endItem : (totalItems > 0 ? (pageSize != null ? ( (currentPage != null ? ((currentPage -1) * pageSize + 1) : 1) + ( (totalItems < pageSize) ? (totalItems -1) : (pageSize -1) ) ) : totalItems) : 0)}">
+                                <i class="fa-solid fa-list-check text-primary-600 mr-1"></i>
                                 <span th:text="${totalItems == 0 ? 'Showing 0 of 0 results' : 'Showing ' + s + ' to ' + e + ' of ' + totalItems + ' results'}">Showing 0 to 0 of 0 results</span>
                             </span>
                         </div>
 
-                        <div class="flex space-x-1 flex-wrap justify-center">
-                            <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                        <div class="flex space-x-2 flex-wrap justify-center">
+                            <a class="px-3 sm:px-4 py-2 border-2 border-primary-200 rounded-lg hover:bg-primary-50 hover:border-primary-300 font-medium text-primary-700 transition-all"
                                th:with="url='/seller/product-management?page=' + ${currentPage > 1 ? (currentPage - 1) : 1} + ${statusParam} + ${sortParam}"
                                th:href="${url}"
-                               th:if="${currentPage > 1}">Previous</a>
+                               th:if="${currentPage > 1}">
+                                <i class="fa-solid fa-chevron-left mr-1"></i>Previous
+                            </a>
 
-                            <a class="px-2 sm:px-3 py-1 border rounded-md"
+                            <a class="px-3 sm:px-4 py-2 border-2 rounded-lg font-medium transition-all"
                                th:each="i : ${#numbers.sequence(0, total - 1)}"
                                th:with="url='/seller/product-management?page=' + (${i} + 1) + ${statusParam} + ${sortParam}"
                                th:href="${url}"
                                th:if="${i == 0 or i == page0 or i == page0 - 1 or i == page0 + 1 or i == total - 1}"
-                               th:classappend="${i == page0} ? 'bg-green-500 text-white' : 'hover:bg-gray-100'"
+                               th:classappend="${i == page0} ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white border-primary-600 shadow-md' : 'border-primary-200 text-primary-700 hover:bg-primary-50 hover:border-primary-300'"
                                th:text="${i + 1}">1</a>
 
-                            <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
+                            <a class="px-3 sm:px-4 py-2 border-2 border-primary-200 rounded-lg hover:bg-primary-50 hover:border-primary-300 font-medium text-primary-700 transition-all"
                                th:with="url='/seller/product-management?page=' + (${currentPage < total ? (currentPage + 1) : total}) + ${statusParam} + ${sortParam}"
                                th:href="${url}"
-                               th:if="${currentPage < total}">Next</a>
+                               th:if="${currentPage < total}">
+                                Next<i class="fa-solid fa-chevron-right ml-1"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -203,48 +265,64 @@
 <div th:replace="~{fragments/footer :: footer}"></div>
 
 <!-- Edit Product Modal -->
-<div id="editModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col">
-        <div class="px-6 py-4 border-b flex items-center justify-between">
-            <h3 class="text-lg font-bold text-gray-900">
-                <i class="fa-regular fa-pen-to-square text-red-500 mr-2"></i>
+<div id="editModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
+        <div class="px-6 py-4 bg-gradient-to-r from-primary-600 to-purple-600 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </div>
                 <span id="epTitleText">Add Product</span>
             </h3>
-            <button class="text-2xl leading-none text-gray-400 hover:text-red-500" onclick="closeEditModal()">&times;</button>
+            <button class="text-2xl leading-none text-white/80 hover:text-white transition-colors" onclick="closeEditModal()">
+                <i class="fa-solid fa-times"></i>
+            </button>
         </div>
         <div class="p-6 flex-1 overflow-y-auto">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-sm font-semibold text-gray-700" for="epName">Name</label>
-                    <input id="epName" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Product name"/>
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epName">
+                        <i class="fa-solid fa-tag text-primary-600 mr-1"></i>Product Name
+                    </label>
+                    <input id="epName" type="text" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all" placeholder="Enter product name"/>
                 </div>
                 <div>
-                    <label class="text-sm font-semibold text-gray-700" for="epCategory">Category</label>
-                    <select id="epCategory" class="mt-1 w-full border rounded-lg px-3 py-2">
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epCategory">
+                        <i class="fa-solid fa-folder text-primary-600 mr-1"></i>Category
+                    </label>
+                    <select id="epCategory" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all">
                         <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
                     </select>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-sm font-semibold text-gray-700" for="epDesc">Description</label>
-                    <textarea id="epDesc" rows="5" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Product description..."></textarea>
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epDesc">
+                        <i class="fa-solid fa-align-left text-primary-600 mr-1"></i>Description
+                    </label>
+                    <textarea id="epDesc" rows="5" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all" placeholder="Product description..."></textarea>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-sm font-semibold text-gray-700" for="epImageFile">Upload image</label>
-                    <input id="epImageFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="mt-1 w-full border rounded-lg px-3 py-2"/>
-                    <p class="text-xs text-gray-500 mt-1">PNG, JPG, JPEG, WEBP. Max 10MB.</p>
-                    <img id="epPreview" src="" alt="preview" class="w-full h-56 object-contain rounded border bg-gray-50 mt-3 hidden"/>
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epImageFile">
+                        <i class="fa-solid fa-image text-primary-600 mr-1"></i>Upload Image
+                    </label>
+                    <input id="epImageFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition-all"/>
+                    <div class="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                        <i class="fa-solid fa-info-circle text-primary-500"></i>
+                        <span>PNG, JPG, JPEG, WEBP. Maximum 10MB.</span>
+                    </div>
+                    <img id="epPreview" src="" alt="preview" class="w-full h-56 object-contain rounded-lg border-2 border-primary-200 bg-gradient-to-br from-primary-50 to-purple-50 mt-3 hidden"/>
                 </div>
                 <!-- Hidden image URL field: store final image URL here -->
                 <input id="epImageUrl" type="hidden" />
-                <div class="md:col-span-2 flex items-center justify-end">
-                    <!-- keep layout consistent (no separate upload button) -->
-                </div>
             </div>
-            <div id="epMsg" class="mt-3 text-sm"></div>
+            <div id="epMsg" class="mt-4 text-sm"></div>
         </div>
-        <div class="px-6 py-4 border-t flex items-center justify-end gap-2">
-            <button type="button" class="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200" onclick="closeEditModal()">Cancel</button>
-            <button type="button" id="epSaveBtn" class="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white">Save</button>
+        <div class="px-6 py-4 bg-gray-50 border-t-2 border-primary-100 flex items-center justify-end gap-3">
+            <button type="button" class="px-5 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 font-medium text-gray-700 transition-all" onclick="closeEditModal()">
+                <i class="fa-solid fa-times mr-1"></i>Cancel
+            </button>
+            <button type="button" id="epSaveBtn" class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white font-medium shadow-md hover:shadow-lg transition-all">
+                <i class="fa-solid fa-save mr-1"></i>Save
+            </button>
         </div>
     </div>
 </div>
@@ -446,8 +524,9 @@
                 const prev = document.getElementById('epPreview'); if (prev) { prev.src = upPayload.url; prev.classList.remove('hidden'); }
             }
 
-            const url = editingId ? ('/seller/products/' + encodeURIComponent(editingId) + '/edit') : '/seller/products';
-            const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload), credentials: 'same-origin' });
+            const url = editingId ? ('/seller/products/' + encodeURIComponent(editingId)) : '/seller/products';
+            const method = editingId ? 'PUT' : 'POST';
+            const res = await fetch(url, { method: method, headers, body: JSON.stringify(payload), credentials: 'same-origin' });
             const text = await res.text();
             let data = null; try { data = JSON.parse(text); } catch(_){ }
             if (!res.ok) {
@@ -511,6 +590,19 @@
                     }
                 }
             }
+
+            // Adjust status filter and URL to keep this product visible after refresh
+            const sel = document.getElementById('statusFilter');
+            const newFilter = data.hidden ? 'hidden' : 'active';
+            if (sel) sel.value = newFilter;
+            const params = new URLSearchParams(window.location.search);
+            params.set('status', newFilter);
+            // Preserve existing sort/page params
+            const newUrl = window.location.pathname + '?' + params.toString();
+            if (newUrl !== window.location.href) {
+                window.history.replaceState(null, '', newUrl);
+            }
+
             showToast('Product status updated', 'success');
         } catch (e) { showToast('Network error', 'error'); }
     }

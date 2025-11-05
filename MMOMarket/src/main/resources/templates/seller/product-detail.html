@@ -10,24 +10,140 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
-    <style> body { font-family: 'Inter', sans-serif; } .thumb { width:100%; height:320px; object-fit:contain; background:#f8fafc; border-radius:12px; }</style>
+    <!-- Expose current shop level from server just like shop-info.html -->
+    <meta name="shop-level" th:content="${shop != null && shop.shopLevel != null ? shop.shopLevel : 0}" />
     <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+        .thumb {
+            width:100%;
+            height:320px;
+            object-fit:contain;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius:16px;
+            border: 3px solid #e0e7ff;
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.1);
+        }
+        .thumb-small {
+            border-radius: 8px;
+            border: 2px solid #e0e7ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .thumb-small:hover {
+            border-color: #6366f1;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
         /* Base styles */
-        .card { border: 1px solid #eef2f7; border-radius: 12px; background: #fff; }
-        .sticky-th { position: sticky; top: 0; z-index: 5; }
+        .card {
+            border: 2px solid #e0e7ff;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+        }
+        .sticky-th { position: sticky; top: 0; z-index: 5; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .tn { font-variant-numeric: tabular-nums; }
-        .btn { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border-radius:.5rem; }
-        .btn-primary { background:#2563eb; color:#fff; }
-        .btn-primary:hover { background:#1d4ed8; }
-        .btn-success { background:#16a34a; color:#fff; }
-        .btn-success:hover { background:#15803d; }
-        .btn-light { background:#f3f4f6; }
-        .btn-light:hover { background:#e5e7eb; }
-        .badge { display:inline-flex; align-items:center; gap:.35rem; padding:.15rem .5rem; border-radius:9999px; font-size:.75rem; font-weight:600; }
-        .badge-blue { background:#eff6ff; color:#1d4ed8; }
-        .badge-amber { background:#fffbeb; color:#b45309; }
-        .badge-emerald { background:#ecfdf5; color:#059669; }
-        .btn-ic { width: 32px; height: 32px; padding: 0; }
+        .btn {
+            display:inline-flex;
+            align-items:center;
+            gap:.5rem;
+            padding:.5rem .75rem;
+            border-radius:.5rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color:#fff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color:#fff;
+            border: none;
+        }
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-light {
+            background:#f3f4f6;
+            border: 1px solid #e5e7eb;
+        }
+        .btn-light:hover {
+            background:#e5e7eb;
+            border-color: #d1d5db;
+        }
+        .badge {
+            display:inline-flex;
+            align-items:center;
+            gap:.35rem;
+            padding:.25rem .65rem;
+            border-radius:9999px;
+            font-size:.75rem;
+            font-weight:600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .badge-blue { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color:#1e40af; }
+        .badge-amber { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color:#92400e; }
+        .badge-emerald { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color:#065f46; }
+        .btn-ic {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Toast */
+        .toast { position: fixed; right: 1rem; top: 1rem; z-index: 9999; min-width: 280px; }
+        .toast-item { border-radius: 12px; padding: .75rem 1rem; margin-bottom: .5rem; border: 2px solid; box-shadow: 0 6px 16px rgba(0,0,0,0.12); display:flex; align-items: flex-start; gap:.5rem; }
+        .toast-success { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #10b981; color:#065f46; }
+        .toast-error { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-color: #ef4444; color:#7f1d1d; }
+        .toast-info { background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #3b82f6; color:#1e3a8a; }
+
+        /* Status Filter Buttons */
+        .pd-status-filter {
+            color: #6b7280;
+        }
+        .pd-status-filter:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: #4f46e5;
+        }
+        .pd-status-filter.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-gray-800">
@@ -37,13 +153,22 @@
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div th:replace="~{seller/sidebar :: sidebar}"></div>
             <div class="lg:col-span-3">
-                <div class="bg-white rounded-2xl shadow p-6">
-                    <div class="flex items-start justify-between mb-6">
-                        <div>
-                            <h1 id="pdTitleRoot" class="text-2xl font-bold" th:text="${productName}">Product name</h1>
+                <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-lg p-6 md:p-8 animate-fade-in">
+                    <div class="flex items-start justify-between mb-6 pb-4 border-b-2 border-primary-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                                <i class="fa-solid fa-box text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h1 id="pdTitleRoot" class="text-2xl font-bold text-primary-900" th:text="${productName}">Product name</h1>
+                                <p class="text-sm text-gray-500 mt-1">Manage product details and variants</p>
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="/seller/product-management" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">Back</a>
+                            <a href="/seller/product-management" class="px-4 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-all duration-200 hover:shadow-md flex items-center gap-2">
+                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>Back</span>
+                            </a>
                         </div>
                     </div>
 
@@ -62,33 +187,74 @@
                         <div class="md:col-span-2">
                             <div class="grid grid-cols-1 gap-4">
 
-                                <div class="prose text-sm text-gray-700" id="pdDescRoot">Description will show here</div>
+                                <div class="bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200 rounded-xl p-4">
+                                    <h3 class="font-semibold text-primary-900 mb-2 flex items-center gap-2">
+                                        <i class="fa-solid fa-info-circle text-primary-600"></i>
+                                        <span>Description</span>
+                                    </h3>
+                                    <div class="prose text-sm text-gray-700" id="pdDescRoot">Description will show here</div>
+                                </div>
 
                                 <div class="mt-4">
-                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-                                        <h3 class="text-lg font-semibold flex items-center gap-2">
-                                            <i class="fa-solid fa-layer-group text-blue-600"></i>
-                                            <span>Variants</span>
-                                            <span class="badge badge-blue"><i class="fa-solid fa-list"></i><span id="pdVariantCount">0</span></span>
-                                            <span class="badge badge-emerald"><i class="fa-solid fa-box"></i><span id="pdTotalStock">0</span> stock</span>
-                                            <span class="badge badge-amber"><i class="fa-solid fa-cart-shopping"></i><span id="pdTotalSold">0</span> sold</span>
-                                        </h3>
-                                        <div class="flex items-center gap-2 w-full md:w-auto">
-                                            <button type="button" onclick="showAddVariantForm()" class="btn btn-success">
+                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4 bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200 rounded-xl p-4">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-primary-200">
+                                                <i class="fa-solid fa-layer-group text-primary-600"></i>
+                                                <span class="font-semibold text-primary-900">Variants</span>
+                                            </div>
+                                            <span class="badge badge-blue">
+                                                <i class="fa-solid fa-list"></i>
+                                                <span id="pdVariantCount">0</span>
+                                            </span>
+                                            <span class="badge badge-emerald">
+                                                <i class="fa-solid fa-box"></i>
+                                                <span id="pdTotalStock">0</span> stock
+                                            </span>
+                                            <span class="badge badge-amber">
+                                                <i class="fa-solid fa-cart-shopping"></i>
+                                                <span id="pdTotalSold">0</span> sold
+                                            </span>
+                                            <button type="button" onclick="showAddVariantForm()" class="btn btn-success w-full md:w-auto">
                                                 <i class="fa-solid fa-plus"></i><span>Add variant</span>
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="overflow-auto border rounded-xl">
+                                    <div class="flex items-center gap-2 w-full md:w-auto">
+                                        <!-- Status Filter -->
+                                        <div class="flex bg-gray-100 rounded-lg p-1">
+                                            <button type="button" onclick="pd_filterVariantsByStatus('all')"
+                                                    class="pd-status-filter px-3 py-1.5 rounded text-sm font-medium transition-all active"
+                                                    data-status="all">
+                                                All
+                                            </button>
+                                            <button type="button" onclick="pd_filterVariantsByStatus('active')"
+                                                    class="pd-status-filter px-3 py-1.5 rounded text-sm font-medium transition-all"
+                                                    data-status="active">
+                                                Active
+                                            </button>
+                                            <button type="button" onclick="pd_filterVariantsByStatus('hidden')"
+                                                    class="pd-status-filter px-3 py-1.5 rounded text-sm font-medium transition-all"
+                                                    data-status="hidden">
+                                                Hidden
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="overflow-auto border-2 border-primary-200 rounded-xl shadow-sm">
                                         <table id="variantsTable" class="w-full text-left text-sm border-collapse">
-                                            <thead class="bg-gray-50 text-xs text-gray-600">
+                                            <thead class="bg-gradient-to-r from-primary-600 to-purple-600 text-xs text-white">
                                                 <tr class="sticky-th">
-                                                    <th class="px-3 py-2">#</th>
-                                                    <th class="px-3 py-2">Name</th>
-                                                    <th class="px-3 py-2">Price</th>
-                                                    <th class="px-3 py-2">Stock</th>
-                                                    <th class="px-3 py-2">Sold</th>
-                                                    <th class="px-3 py-2">Actions</th>
+                                                    <th class="px-2 py-2">#</th>
+                                                    <th class="px-2 py-2">Name</th>
+                                                    <th class="px-2 py-2 cursor-pointer hover:bg-white/10" onclick="pd_sortVariantsByPrice()" title="Click to sort by price">
+                                                        <div class="flex items-center gap-1">
+                                                            <span>Price</span>
+                                                            <i id="pdPriceSortIcon" class="fa-solid fa-sort text-white/60"></i>
+                                                        </div>
+                                                    </th>
+                                                    <th class="px-2 py-2">Stock</th>
+                                                    <th class="px-2 py-2">Sold</th>
+                                                    <th class="px-2 py-2">Status</th>
+                                                    <th class="px-2 py-2">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody></tbody>
@@ -96,21 +262,45 @@
                                     </div>
 
                                     <!-- Inline variant form -->
-                                    <div id="variantFormWrap" class="mt-4 hidden bg-white border rounded p-4">
-                                        <h4 id="vfTitle" class="font-semibold mb-2">Add Variant</h4>
+                                    <div id="variantFormWrap" class="mt-4 hidden bg-gradient-to-r from-primary-50 to-purple-50 border-2 border-primary-300 rounded-xl p-5 shadow-md">
+                                        <div class="flex items-center gap-2 mb-4">
+                                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                                                <i class="fa-solid fa-edit text-white text-sm"></i>
+                                            </div>
+                                            <h4 id="vfTitle" class="font-bold text-primary-900">Add Variant</h4>
+                                        </div>
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                             <div class="md:col-span-2">
-                                                <label for="vfName" class="block text-xs text-gray-600">Name</label>
-                                                <input id="vfName" name="vfName" type="text" class="mt-1 w-full border rounded px-2 py-2" />
+                                                <label for="vfName" class="block text-xs font-semibold text-primary-700 mb-1">Variant Name</label>
+                                                <input id="vfName" name="vfName" type="text" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all" placeholder="e.g., Basic, Premium, VIP" />
+                                                <div id="vfNameError" class="hidden mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+                                                    <i class="fa-solid fa-exclamation-circle"></i>
+                                                    <span></span>
+                                                </div>
                                             </div>
                                             <div>
-                                                <label for="vfPrice" class="block text-xs text-gray-600">Price</label>
-                                                <input id="vfPrice" name="vfPrice" type="number" class="mt-1 w-full border rounded px-2 py-2" />
+                                                <label for="vfPrice" class="block text-xs font-semibold text-primary-700 mb-1">
+                                                    Price (points)
+                                                    <span id="vfPriceLimit" class="text-primary-600 font-normal"></span>
+                                                </label>
+                                                <input id="vfPrice" name="vfPrice" type="number" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all" placeholder="0" />
+                                                <div id="vfPriceError" class="hidden mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+                                                    <i class="fa-solid fa-exclamation-circle"></i>
+                                                    <span></span>
+                                                </div>
+                                                <div id="vfPriceHelp" class="hidden mt-1 text-xs text-blue-600 font-medium flex items-center gap-1">
+                                                    <i class="fa-solid fa-info-circle"></i>
+                                                    <span></span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="mt-3 flex justify-end gap-2">
-                                            <button onclick="pd_hideVariantForm();return false;" class="px-3 py-1 bg-gray-100 rounded">Cancel</button>
-                                            <button id="vfSaveBtn" onclick="pd_onSaveVariant();return false;" class="px-3 py-1 bg-blue-600 text-white rounded">Save</button>
+                                        <div class="mt-4 flex justify-end gap-2">
+                                            <button onclick="pd_hideVariantForm();return false;" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-gray-700 transition-all">
+                                                <i class="fa-solid fa-times mr-1"></i>Cancel
+                                            </button>
+                                            <button id="vfSaveBtn" onclick="pd_onSaveVariant();return false;" class="btn btn-primary">
+                                                <i class="fa-solid fa-save"></i>Save
+                                            </button>
                                         </div>
                                     </div>
 
@@ -125,6 +315,8 @@
     </div>
 </main>
 <div th:replace="~{fragments/footer :: footer}"></div>
+
+<div id="pdToastRoot" class="toast" aria-live="polite" aria-atomic="true"></div>
 
 <script th:inline="javascript">
     /* Product Detail page JS (pd_ prefix) - uses endpoints under /seller/products */
@@ -143,9 +335,176 @@
     }
     function csrfHeaders() { var c = getCsrf(); var h = {}; if (c.value) { h[c.headerName] = c.value; h['X-CSRF-TOKEN'] = c.value; } return h; }
 
+    // Toast notification helper
+    function showToast(message, type = 'info', opts = {}) {
+        if (!message) return;
+        const host = document.getElementById('toastHost');
+        if (!host) return;
+        const theme = {
+            success: { bar:'bg-green-500', icon:'fa-solid fa-circle-check text-green-600', title:'Success' },
+            error:   { bar:'bg-red-500',   icon:'fa-solid fa-triangle-exclamation text-red-600', title:'Error' },
+            warning: { bar:'bg-amber-500', icon:'fa-solid fa-circle-exclamation text-amber-600', title:'Warning' },
+            info:    { bar:'bg-blue-500',  icon:'fa-solid fa-circle-info text-blue-600', title:'Info' }
+        }[type] || { bar:'bg-gray-500', icon:'fa-regular fa-bell text-gray-600', title:'Notice' };
+        const wrap = document.createElement('div');
+        wrap.className = 'pointer-events-auto flex items-start gap-3 bg-white shadow-xl rounded-xl border border-gray-100 relative overflow-hidden transform transition-all duration-300 translate-x-4 opacity-0';
+        const bar = document.createElement('div'); bar.className = 'w-1 ' + theme.bar; wrap.appendChild(bar);
+        const inner = document.createElement('div'); inner.className = 'p-3 pr-8';
+        inner.innerHTML = `<div class="flex items-start gap-2">
+            <i class="${theme.icon} mt-0.5"></i>
+            <div class="min-w-0">
+                <div class="text-sm font-semibold text-gray-900">${theme.title}</div>
+                <div class="text-sm text-gray-700 break-words">${message}</div>
+            </div>
+        </div>`;
+        wrap.appendChild(inner);
+        const closeBtn = document.createElement('button'); closeBtn.className = 'absolute top-2 right-2 text-gray-400 hover:text-gray-600'; closeBtn.innerHTML = '&times;'; closeBtn.onclick = () => dismiss(); wrap.appendChild(closeBtn);
+        host.appendChild(wrap);
+        requestAnimationFrame(() => { wrap.classList.remove('translate-x-4','opacity-0'); wrap.classList.add('translate-x-0','opacity-100'); });
+        const ttl = opts.ttl || (type === 'error' ? 5000 : 3200);
+        let timer = setTimeout(() => dismiss(), ttl);
+        wrap.addEventListener('mouseenter', () => { if (timer) { clearTimeout(timer); timer = null; } });
+        wrap.addEventListener('mouseleave', () => { if (!timer) { timer = setTimeout(() => dismiss(), 1800); } });
+        function dismiss(){ wrap.classList.add('opacity-0','translate-x-4'); setTimeout(()=>{ try{ host.removeChild(wrap);}catch(_){ } },200); }
+    }
+
     // Local state
     var pd_variantListCache = [];
     var pd_editingVariantId = null;
+    var pd_shopPriceLimit = null; // { level, maxPrice, currentPoints?, nextLevel?, nextLevelThreshold?, nextLevelMaxPrice?, pointsToNextLevel? }
+
+    // Helper: read shop level injected by server (like shop-info)
+    function pd_getShopLevelFromServer() {
+        try {
+            var meta = document.querySelector('meta[name="shop-level"]');
+            if (!meta || meta.content == null || meta.content === '') return null;
+            var lvl = parseInt(meta.content, 10);
+            if (isNaN(lvl)) return null;
+            return Math.max(0, Math.min(7, lvl));
+        } catch (e) { return null; }
+    }
+
+    // Level -> Max price mapping
+    function pd_levelToMaxPrice(level) {
+        switch (Number(level)||0) {
+            case 0: return 50000;           // 50,000 Coins
+            case 1: return 100000;          // 100,000 Coins
+            case 2: return 300000;          // 300,000 Coins
+            case 3: return 500000;          // 500,000 Coins
+            case 4: return 1000000;         // 1,000,000 Coins
+            case 5: return 2000000;         // 2,000,000 Coins
+            case 6: return 4000000;         // 4,000,000 Coins
+            case 7: return Number.MAX_SAFE_INTEGER; // Unlimited
+            default: return 50000;
+        }
+    }
+
+    // Fetch or compute shop price limit
+    function pd_fetchShopPriceLimit() {
+        var lvl = pd_getShopLevelFromServer();
+        if (lvl != null) {
+            pd_shopPriceLimit = { level: lvl, maxPrice: pd_levelToMaxPrice(lvl) };
+            pd_updatePriceLimitDisplay();
+            return; // done using server-provided level
+        }
+        // Fallback to API if meta not available
+        fetch('/seller/shop/price-limit', { credentials: 'same-origin' })
+            .then(function(r){ if(!r.ok) throw r; return r.json(); })
+            .then(function(data){
+                // If backend provides level/max, trust it; otherwise compute from level if present
+                if (data && typeof data === 'object') {
+                    var level = (data.level != null) ? Number(data.level) : null;
+                    var max = (data.maxPrice != null) ? Number(data.maxPrice) : (level != null ? pd_levelToMaxPrice(level) : null);
+                    pd_shopPriceLimit = { level: level != null ? Math.max(0, Math.min(7, level)) : 0, maxPrice: max != null ? max : 50000 };
+                } else {
+                    pd_shopPriceLimit = { level: 0, maxPrice: 50000 };
+                }
+                pd_updatePriceLimitDisplay();
+            })
+            .catch(function(e){
+                console.error('fetch price limit', e);
+                // Set default limit if fetch fails
+                pd_shopPriceLimit = { level: 0, maxPrice: 50000 };
+                pd_updatePriceLimitDisplay();
+            });
+    }
+
+    function pd_updatePriceLimitDisplay() {
+        if (!pd_shopPriceLimit) return;
+        var unlimited = (pd_shopPriceLimit.level >= 7) || (pd_shopPriceLimit.maxPrice === 9223372036854775807) || (pd_shopPriceLimit.maxPrice === Number.MAX_SAFE_INTEGER);
+        var formattedMax = pd_fmtInt(pd_shopPriceLimit.maxPrice);
+
+        var limitSpan = document.getElementById('vfPriceLimit');
+        if (limitSpan) {
+            if (unlimited) {
+                limitSpan.innerHTML = '<span class="text-emerald-600">(Unlimited)</span>';
+            } else {
+                limitSpan.innerHTML = '(Max: <span class="font-semibold">' + formattedMax + '</span> coins - Level ' + pd_shopPriceLimit.level + ')';
+            }
+        }
+
+        // Update shop level badge in variants section
+        var badge = document.getElementById('pdShopLevelBadge');
+        var badgeText = document.getElementById('pdShopLevelText');
+        if (badge && badgeText) {
+            if (unlimited) {
+                badgeText.textContent = 'Level ' + pd_shopPriceLimit.level + ' - Unlimited';
+            } else {
+                badgeText.textContent = 'Level ' + pd_shopPriceLimit.level + ' - Max: ' + formattedMax + ' ';
+            }
+            badge.classList.remove('hidden');
+        }
+    }
+
+    function pd_validatePrice(price) {
+        var helpDiv = document.getElementById('vfPriceHelp');
+        // Always clear generic error first; limit errors will be set below
+        pd_clearPriceError();
+        if (helpDiv) helpDiv.classList.add('hidden');
+        if (price == null || isNaN(price) || price < 0) {
+            pd_setPriceError('Please enter a valid price');
+            return false;
+        }
+        if (!pd_shopPriceLimit) return true;
+        var unlimited = (pd_shopPriceLimit.level >= 7) || (pd_shopPriceLimit.maxPrice === 9223372036854775807) || (pd_shopPriceLimit.maxPrice === Number.MAX_SAFE_INTEGER);
+        if (!unlimited && price > pd_shopPriceLimit.maxPrice) {
+            var formattedMax = pd_fmtInt(pd_shopPriceLimit.maxPrice);
+            pd_setPriceError('Price exceeds your shop level limit (Max: ' + formattedMax + ' pts)');
+            return false;
+        }
+        // Valid
+        pd_clearPriceError();
+        return true;
+    }
+
+    // --- Inline errors helpers ---
+    function pd_setNameError(msg){
+        var div = document.getElementById('vfNameError');
+        var input = document.getElementById('vfName');
+        if (div){
+            if (msg){ div.classList.remove('hidden'); div.querySelector('span').textContent = msg; }
+            else { div.classList.add('hidden'); div.querySelector('span').textContent = ''; }
+        }
+        if (input){
+            if (msg){ input.classList.add('border-red-500'); input.classList.remove('border-primary-200'); }
+            else { input.classList.remove('border-red-500'); input.classList.add('border-primary-200'); }
+        }
+    }
+    function pd_clearNameError(){ pd_setNameError(null); }
+
+    function pd_setPriceError(msg){
+        var div = document.getElementById('vfPriceError');
+        var input = document.getElementById('vfPrice');
+        if (div){
+            if (msg){ div.classList.remove('hidden'); div.querySelector('span').textContent = msg; }
+            else { div.classList.add('hidden'); div.querySelector('span').textContent = ''; }
+        }
+        if (input){
+            if (msg){ input.classList.add('border-red-500'); input.classList.remove('border-primary-200'); }
+            else { input.classList.remove('border-red-500'); input.classList.add('border-primary-200'); }
+        }
+    }
+    function pd_clearPriceError(){ pd_setPriceError(null); }
 
     function pd_loadProductAndVariants(pid) {
         if (!pid) return;
@@ -153,17 +512,32 @@
             .then(function(r){ if(!r.ok) throw r; return r.json(); })
             .then(function(data){
                 document.getElementById('pdTitleRoot').innerText = data.name || 'Product Detail';
-                document.getElementById('pdDescRoot').innerText = data.description || '';
+                document.getElementById('pdDescRoot').innerText = data.description || 'No description available';
                 // set main image if available
-                var img = (data.image && String(data.image).trim() !== '') ? data.image : 'https://via.placeholder.com/600x600?text=No+Image';
-                var main = document.getElementById('pdMainImage'); if (main) main.src = img;
+                var img = (data.image && String(data.image).trim() !== '') ? data.image : '/images/default-avatar.svg';
+                var main = document.getElementById('pdMainImage');
+                if (main) {
+                    main.src = img;
+                    main.onerror = function() {
+                        this.src = '/images/default-avatar.svg';
+                        this.onerror = null;
+                    };
+                }
                 // other fields: lowest/sold may be fetched via separate endpoint or left to variants/table
             })
             .catch(function(e){ console.error('load product json', e); });
 
         fetch('/seller/products/' + pid + '/variants', { credentials: 'same-origin' })
             .then(function(r){ if(!r.ok) throw r; return r.json(); })
-            .then(function(list){ pd_renderVariants(list || []); })
+            .then(function(list){ pd_renderVariants(list || []);
+                // Restore variant status filter from URL (default to 'all')
+                try {
+                    var params = new URLSearchParams(window.location.search);
+                    var vstatus = (params.get('vstatus') || 'all').toLowerCase();
+                    if (vstatus !== 'all' && vstatus !== 'active' && vstatus !== 'hidden') vstatus = 'all';
+                    pd_filterVariantsByStatus(vstatus);
+                } catch(e) { /* ignore */ }
+            })
             .catch(function(e){ console.error('load variants', e); pd_renderVariants([]); });
 
         // optionally fetch aggregated info e.g., totalSold/lowestPrice using product-management style queries
@@ -194,7 +568,9 @@
         var tbody = document.querySelector('#variantsTable tbody'); tbody.innerHTML = '';
         var totalStock = 0, totalSold = 0;
         if (!Array.isArray(list) || list.length === 0) {
-            var tr = document.createElement('tr'); tr.innerHTML = '<td colspan="6" class="px-3 py-3 text-center text-gray-500">No variants</td>'; tbody.appendChild(tr);
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="7" class="px-2 py-4 text-center text-gray-500"><div class="flex flex-col items-center gap-2"><i class="fa-solid fa-inbox text-3xl text-gray-300"></i><span class="text-sm">No variants found</span></div></td>';
+            tbody.appendChild(tr);
             document.getElementById('pdVariantCount').innerText = '0';
             document.getElementById('pdTotalStock').innerText = '0';
             document.getElementById('pdTotalSold').innerText = '0';
@@ -203,17 +579,25 @@
         document.getElementById('pdVariantCount').innerText = String(list.length);
         list.forEach(function(v, idx){
             var stock = Number(v.stock||0); var sold = Number(v.sold||0); totalStock += stock; totalSold += sold;
+            var isHidden = v.delete || v.isDelete || false;
+            var statusBadge = isHidden
+                ? '<span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-eye-slash text-xs"></i><span>Hidden</span></span>'
+                : '<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-eye text-xs"></i><span>Active</span></span>';
             var tr = document.createElement('tr');
-            tr.className = (idx % 2 === 0) ? 'bg-white' : 'bg-gray-50';
-            tr.innerHTML = '<td class="px-3 py-2">'+(idx+1)+'</td>' +
-                '<td class="px-3 py-2">'+pd_escapeHtml(v.variantName||'')+'</td>' +
-                '<td class="px-3 py-2 tn">'+pd_fmtInt(v.price)+'</td>' +
-                '<td class="px-3 py-2 tn">'+pd_fmtInt(stock)+'</td>' +
-                '<td class="px-3 py-2 tn">'+pd_fmtInt(sold)+'</td>' +
-                '<td class="px-3 py-2 whitespace-nowrap">' +
-                '<button onclick="pd_onAddStock('+v.id+')" class="btn btn-success btn-ic" title="Add accounts"><i class="fa-solid fa-file-arrow-up"></i></button> ' +
-                '<button onclick="pd_onEditVariant('+v.id+')" class="btn btn-light btn-ic" title="Edit variant"><i class="fa-regular fa-pen-to-square"></i></button> ' +
-                '<button onclick="pd_onDeleteVariant('+v.id+')" class="btn btn-light btn-ic" title="Delete variant"><i class="fa-regular fa-trash-can"></i></button>' +
+            tr.setAttribute('data-variant-id', v.id);
+            tr.className = (idx % 2 === 0) ? 'bg-white hover:bg-primary-50' : 'bg-gray-50 hover:bg-primary-50';
+            if (isHidden) tr.classList.add('opacity-60');
+            tr.style.transition = 'all 0.2s ease';
+            tr.innerHTML = '<td class="px-2 py-2 font-medium text-gray-500 text-xs">'+(idx+1)+'</td>' +
+                '<td class="px-2 py-2 font-semibold text-gray-900 text-sm">'+pd_escapeHtml(v.variantName||'')+'</td>' +
+                '<td class="px-2 py-2 tn font-medium text-primary-700 text-sm">'+pd_fmtInt(v.price)+'</td>' +
+                '<td class="px-2 py-2 tn"><span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-box text-xs"></i>'+pd_fmtInt(stock)+'</span></td>' +
+                '<td class="px-2 py-2 tn"><span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-cart-shopping text-xs"></i>'+pd_fmtInt(sold)+'</span></td>' +
+                '<td class="px-2 py-2">'+statusBadge+'</td>' +
+                '<td class="px-2 py-2 whitespace-nowrap">' +
+                '<button onclick="pd_onAddStock('+v.id+')" class="btn btn-success btn-ic mr-1 text-xs" title="Add accounts"><i class="fa-solid fa-file-arrow-up text-xs"></i></button> ' +
+                '<button onclick="pd_toggleHideVariant('+v.id+')" class="btn btn-light btn-ic mr-1 text-xs" title="'+(isHidden ? 'Show' : 'Hide')+' variant"><i class="fa-solid fa-eye'+(isHidden ? '' : '-slash')+' text-xs"></i></button> ' +
+                '<button onclick="pd_onEditVariant('+v.id+')" class="btn btn-light btn-ic text-xs" title="Edit variant"><i class="fa-regular fa-pen-to-square text-xs"></i></button>' +
                 '</td>';
             tbody.appendChild(tr);
         });
@@ -223,39 +607,193 @@
 
     function pd_fmtInt(n){ if (n==null || isNaN(n)) return '0'; try { return Number(n).toLocaleString('en-US'); } catch(e){ return String(n); } }
 
+    // Filter variants by status
+    var pd_currentPriceSortOrder = 'none'; // 'none', 'asc', 'desc'
+
+    function pd_sortVariantsByPrice() {
+        // Cycle through sort orders: none -> asc -> desc -> none
+        if (pd_currentPriceSortOrder === 'none') {
+            pd_currentPriceSortOrder = 'asc';
+        } else if (pd_currentPriceSortOrder === 'asc') {
+            pd_currentPriceSortOrder = 'desc';
+        } else {
+            pd_currentPriceSortOrder = 'none';
+        }
+
+        // Update icon
+        var icon = document.getElementById('pdPriceSortIcon');
+        if (icon) {
+            if (pd_currentPriceSortOrder === 'asc') {
+                icon.className = 'fa-solid fa-sort-up text-white';
+            } else if (pd_currentPriceSortOrder === 'desc') {
+                icon.className = 'fa-solid fa-sort-down text-white';
+            } else {
+                icon.className = 'fa-solid fa-sort text-white/60';
+            }
+        }
+
+        // Sort variants
+        if (pd_currentPriceSortOrder === 'none') {
+            // Restore original order
+            pd_renderVariants(pd_variantListCache);
+        } else {
+            // Create sorted copy
+            var sorted = pd_variantListCache.slice().sort(function(a, b) {
+                var priceA = Number(a.price || 0);
+                var priceB = Number(b.price || 0);
+                if (pd_currentPriceSortOrder === 'asc') {
+                    return priceA - priceB;
+                } else {
+                    return priceB - priceA;
+                }
+            });
+            pd_renderVariants(sorted);
+        }
+
+        // Re-apply current status filter if any
+        var activeFilter = document.querySelector('.pd-status-filter.active');
+        if (activeFilter) {
+            var status = activeFilter.getAttribute('data-status');
+            if (status && status !== 'all') {
+                pd_filterVariantsByStatus(status);
+            }
+        }
+    }
+
+    function pd_filterVariantsByStatus(status) {
+        // Update active button
+        var buttons = document.querySelectorAll('.pd-status-filter');
+        buttons.forEach(function(btn) {
+            if (btn.getAttribute('data-status') === status) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Filter table rows
+        var rows = document.querySelectorAll('#variantsTable tbody tr[data-variant-id]');
+        var visibleCount = 0;
+
+        rows.forEach(function(row) {
+            var statusBadge = row.querySelector('td:nth-child(6) span');
+            var isHidden = statusBadge && statusBadge.textContent.includes('Hidden');
+            var show = false;
+
+            if (status === 'all') {
+                show = true;
+            } else if (status === 'active' && !isHidden) {
+                show = true;
+            } else if (status === 'hidden' && isHidden) {
+                show = true;
+            }
+
+            if (show) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update count display
+        document.getElementById('pdVariantCount').innerText = String(visibleCount);
+
+        // Persist current filter in URL so refresh keeps it
+        try {
+            var params = new URLSearchParams(window.location.search);
+            if (status && status !== 'all') params.set('vstatus', status); else params.delete('vstatus');
+            var newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+            if (newUrl !== window.location.href) {
+                window.history.replaceState(null, '', newUrl);
+            }
+        } catch(e) { /* ignore */ }
+    }
+
     // Modal for CSV upload (fixed, CSV only)
     function pd_createUploadModalHtml(){
         if (document.getElementById('pdUploadModal')) return;
         var div = document.createElement('div');
         div.id = 'pdUploadModal';
-        div.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 overflow-auto';
+        div.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 overflow-auto p-4';
         div.innerHTML = `
-            <div class="bg-white rounded-2xl p-6 w-full max-w-3xl mx-4 shadow-xl">
-                <div class="flex items-start justify-between mb-2">
-                    <h3 class="text-lg font-semibold">Upload accounts (CSV)</h3>
-                    <button onclick="pd_closeUploadModal();return false;" class="text-gray-600 hover:text-gray-900">✕</button>
+            <div class="bg-white border-2 border-primary-400 rounded-2xl p-6 md:p-8 w-full max-w-4xl mx-4 shadow-2xl animate-fade-in">
+                <div class="flex items-start justify-between mb-4 pb-4 border-b-2 border-primary-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                            <i class="fa-solid fa-file-csv text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-primary-900">Upload Accounts (CSV)</h3>
+                            <p class="text-sm text-gray-500 mt-1">Import bulk accounts from CSV file</p>
+                        </div>
+                    </div>
+                    <button onclick="pd_closeUploadModal();return false;" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-times text-2xl"></i>
+                    </button>
                 </div>
-                <p class="text-sm text-gray-600 mb-4">Download the template, fill <b>Account|Seri</b> and <b>Password|PIN</b> columns, then preview and confirm upload.</p>
-                <div class="mb-3 flex flex-wrap items-center gap-3">
-                    <a id="pdTemplateLink" class="btn btn-light"><i class="fa-regular fa-file"></i> Download template</a>
-                    <label class="text-sm text-gray-700 flex items-center gap-2">
-                        <input id="pdDedupe" type="checkbox" class="accent-blue-600" checked /> <span>Skip duplicates</span>
-                    </label>
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                        <div class="text-sm text-blue-900">
+                            <p class="font-semibold mb-1">Instructions:</p>
+                            <ol class="list-decimal list-inside space-y-1 text-blue-800">
+                                <li>Download the CSV template below</li>
+                                <li>Fill in <strong>Account|Seri</strong> and <strong>Password|PIN</strong> columns</li>
+                                <li>Preview your data to check for errors</li>
+                                <li>Click Upload & Confirm to complete</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4 flex flex-wrap items-center gap-3">
+                    <a id="pdTemplateLink" class="btn btn-primary">
+                        <i class="fa-solid fa-download"></i> Download Template
+                    </a>
                 </div>
                 <div class="mb-4">
-                    <input id="pdExcelFile" type="file" accept=".csv" class="block w-full" />
-                    <div class="text-xs text-gray-500 mt-1">Only CSV is supported. Max ~5MB recommended.</div>
+                    <label class="block text-sm font-semibold text-primary-700 mb-2">Choose CSV File</label>
+                    <input id="pdExcelFile" type="file" accept=".csv" class="block w-full border-2 border-primary-200 rounded-lg px-3 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition-all" />
+                    <div class="text-xs text-gray-500 mt-2 flex items-center gap-2">
+                        <i class="fa-solid fa-info-circle text-blue-500"></i>
+                        <span>Only CSV format is supported. Duplicate accounts will be automatically skipped.</span>
+                    </div>
                 </div>
                 <div class="mb-4 flex gap-2">
-                    <button id="pdPreviewBtn" onclick="pd_previewExcel();return false;" class="btn btn-light"><i class="fa-regular fa-eye"></i> Preview</button>
-                    <button id="pdConfirmBtn" onclick="pd_confirmUpload();return false;" class="btn btn-primary"><i class="fa-solid fa-upload"></i> Upload & Confirm</button>
+                    <button id="pdPreviewBtn" onclick="pd_previewExcel();return false;" class="btn btn-light">
+                        <i class="fa-regular fa-eye"></i> Preview
+                    </button>
+                    <button id="pdConfirmBtn" onclick="pd_confirmUpload();return false;" class="btn btn-primary">
+                        <i class="fa-solid fa-upload"></i> Upload & Confirm
+                    </button>
                 </div>
+                <div id="pdStatusMsg" class="hidden mb-4 text-sm"></div>
                 <div id="pdPreviewArea" class="mt-4 hidden">
-                    <h4 class="font-semibold mb-2">Preview parsed rows</h4>
-                    <div id="pdPreviewSummary" class="text-sm text-gray-600 mb-2"></div>
-                    <div class="overflow-auto max-h-72 border rounded">
-                        <table id="pdPreviewTable" class="w-full text-sm">
-                            <thead class="bg-gray-50"><tr><th class="px-2 py-1">#</th><th class="px-2 py-1">Username</th><th class="px-2 py-1">Password</th><th class="px-2 py-1">Duplicate</th><th class="px-2 py-1">Invalid</th></tr></thead>
+                    <div class="bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200 rounded-xl p-4 mb-3">
+                        <h4 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-table text-primary-600"></i>
+                            <span>Preview Parsed Rows</span>
+                        </h4>
+                        <div id="pdPreviewSummary" class="text-sm text-primary-800 font-medium"></div>
+                    </div>
+                    <div class="overflow-auto max-h-96 border-2 border-primary-200 rounded-xl shadow-inner">
+                        <table id="pdPreviewTable" class="w-full text-sm table-fixed">
+                            <colgroup>
+                                <col style="width:6%">
+                                <col style="width:34%">
+                                <col style="width:34%">
+                                <col style="width:13%">
+                                <col style="width:13%">
+                            </colgroup>
+                            <thead class="bg-gradient-to-r from-primary-600 to-purple-600 text-white sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2.5 text-left font-semibold">#</th>
+                                    <th class="px-3 py-2.5 text-left font-semibold">Username</th>
+                                    <th class="px-3 py-2.5 text-left font-semibold">Password</th>
+                                    <th class="px-3 py-2.5 text-center font-semibold whitespace-nowrap">Duplicate</th>
+                                    <th class="px-3 py-2.5 text-center font-semibold whitespace-nowrap">Invalid</th>
+                                </tr>
+                            </thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -265,39 +803,122 @@
     }
 
     var pd_currentVariantForUpload = null;
-    function pd_openAddModal(variantId){ pd_createUploadModalHtml(); pd_currentVariantForUpload = variantId; var m = document.getElementById('pdUploadModal'); m.classList.remove('hidden'); m.style.display = 'flex'; var link = document.getElementById('pdTemplateLink'); link.href = '/seller/products/variants/' + variantId + '/template'; document.getElementById('pdExcelFile').value = null; document.getElementById('pdPreviewArea').classList.add('hidden'); document.querySelector('#pdPreviewTable tbody').innerHTML = ''; document.getElementById('pdPreviewSummary').innerText = ''; }
+    function pd_openAddModal(variantId){
+        pd_createUploadModalHtml();
+        pd_currentVariantForUpload = variantId;
+        var m = document.getElementById('pdUploadModal');
+        m.classList.remove('hidden');
+        m.style.display = 'flex';
+        var link = document.getElementById('pdTemplateLink');
+        link.href = '/seller/products/variants/' + variantId + '/template';
+        document.getElementById('pdExcelFile').value = null;
+        document.getElementById('pdPreviewArea').classList.add('hidden');
+        document.querySelector('#pdPreviewTable tbody').innerHTML = '';
+        document.getElementById('pdPreviewSummary').innerText = '';
+        var sm=document.getElementById('pdStatusMsg');
+        if(sm){ sm.className='hidden mb-3 text-sm'; sm.innerText=''; }
+    }
     function pd_closeUploadModal(){ var m = document.getElementById('pdUploadModal'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } pd_currentVariantForUpload = null; }
 
     function pd_previewExcel(){
-        if (!pd_currentVariantForUpload) { alert('Variant not selected'); return; }
-        var f = document.getElementById('pdExcelFile'); if (!f || !f.files || f.files.length === 0) { alert('Please choose a file'); return; }
+        if (!pd_currentVariantForUpload) { return pd_setStatus('No variant selected', 'error'); }
+        var f = document.getElementById('pdExcelFile'); if (!f || !f.files || f.files.length === 0) { return pd_setStatus('Please choose a CSV file before preview', 'error'); }
         var file = f.files[0];
         var fd = new FormData(); fd.append('file', file);
-        var dedupe = document.getElementById('pdDedupe').checked ? 'true' : 'false';
         var headers = csrfHeaders();
-        fetch('/seller/products/variants/' + pd_currentVariantForUpload + '/upload-excel?preview=true&dedupe=' + dedupe, { method: 'POST', body: fd, headers: headers, credentials: 'same-origin' })
-            .then(function(r){ if(!r.ok) return r.text().then(t=>{ throw new Error(t||'Preview failed'); }); return r.json(); })
+        pd_setStatus('Reading file, please wait…', 'info');
+        disableUploadButtons(true);
+        fetch('/seller/products/variants/' + pd_currentVariantForUpload + '/upload-excel?preview=true&dedupe=true', { method: 'POST', body: fd, headers: headers, credentials: 'same-origin' })
+            .then(function(r){
+                if(!r.ok) {
+                    return r.json()
+                        .catch(function(){ return {message: 'Preview failed with status ' + r.status}; })
+                        .then(function(errData){ throw new Error(errData.message || 'Preview failed'); });
+                }
+                return r.json();
+            })
             .then(function(resp){
                 var area = document.getElementById('pdPreviewArea'); area.classList.remove('hidden'); var tbody = document.querySelector('#pdPreviewTable tbody'); tbody.innerHTML = '';
                 var rows = resp.rows || [];
-                rows.forEach(function(row, idx){ var tr = document.createElement('tr'); tr.innerHTML = '<td class="px-2 py-1">'+(idx+1)+'</td><td class="px-2 py-1">'+pd_escapeHtml(row.username||'')+'</td><td class="px-2 py-1">'+pd_escapeHtml(row.password||'')+'</td><td class="px-2 py-1">'+(row.duplicate? 'Yes':'No')+'</td><td class="px-2 py-1">'+(row.invalid? 'Yes':'No')+'</td>'; tbody.appendChild(tr); });
+                rows.forEach(function(row, idx){
+                    var tr = document.createElement('tr');
+                    tr.className = (idx % 2 === 0) ? 'bg-white' : 'bg-gray-50';
+                    var dupClass = row.duplicate ? 'text-amber-600 font-semibold' : 'text-gray-500';
+                    var invClass = row.invalid ? 'text-red-600 font-semibold' : 'text-gray-500';
+                    tr.innerHTML = '<td class="px-3 py-2.5 text-right text-gray-600 font-medium">'+(idx+1)+'</td>'+
+                                   '<td class="px-3 py-2.5 break-all '+(row.invalid ? 'text-red-600' : 'text-gray-900')+'">'+pd_escapeHtml(row.username||'')+'</td>'+
+                                   '<td class="px-3 py-2.5 break-all '+(row.invalid ? 'text-red-600' : 'text-gray-900')+'">'+pd_escapeHtml(row.password||'')+'</td>'+
+                                   '<td class="px-3 py-2.5 text-center whitespace-nowrap '+dupClass+'">'+(row.duplicate? '<i class="fa-solid fa-check-circle"></i> Yes':'<i class="fa-solid fa-times-circle"></i> No')+'</td>'+
+                                   '<td class="px-3 py-2.5 text-center whitespace-nowrap '+invClass+'">'+(row.invalid? '<i class="fa-solid fa-exclamation-triangle"></i> Yes':'<i class="fa-solid fa-check-circle"></i> No')+'</td>';
+                    tbody.appendChild(tr);
+                });
                 var invalid = Number(resp.invalidCount||0), dup = Number(resp.duplicateCount||0), total = Number(resp.count||rows.length);
-                document.getElementById('pdPreviewSummary').innerText = 'Rows: ' + total + ' — duplicates: ' + dup + ' — invalid: ' + invalid + ' (invalid rows have missing username or password)';
+                document.getElementById('pdPreviewSummary').innerText = 'Total rows: ' + total + ' • Duplicates (same username): ' + dup + ' • Invalid rows (missing username or password): ' + invalid;
+                if (invalid > 0) pd_setStatus('⚠️ Found '+invalid+' invalid row(s). Please fix them before uploading.', 'warn'); else pd_setStatus('✅ Preview successful. You can now Upload & Confirm.', 'success');
             })
-            .catch(function(e){ console.error('preview', e); alert('Preview failed: ' + e.message); });
+            .catch(function(e){ console.error('preview', e); pd_setStatus('Preview failed: ' + e.message, 'error'); })
+            .finally(function(){ disableUploadButtons(false); });
     }
 
     function pd_confirmUpload(){
-        if (!pd_currentVariantForUpload) { alert('Variant not selected'); return; }
-        var f = document.getElementById('pdExcelFile'); if (!f || !f.files || f.files.length === 0) { alert('Please choose a file'); return; }
-        if (!confirm('Confirm upload? This will create accounts for this variant.')) return;
+        if (!pd_currentVariantForUpload) { return pd_setStatus('No variant selected', 'error'); }
+        var f = document.getElementById('pdExcelFile'); if (!f || !f.files || f.files.length === 0) { return pd_setStatus('Please choose a CSV file before upload', 'error'); }
         var file = f.files[0]; var fd = new FormData(); fd.append('file', file);
-        var dedupe = document.getElementById('pdDedupe').checked ? 'true' : 'false';
         var headers = csrfHeaders();
-        fetch('/seller/products/variants/' + pd_currentVariantForUpload + '/upload-excel?dedupe=' + dedupe, { method: 'POST', body: fd, headers: headers, credentials: 'same-origin' })
-            .then(function(r){ if(!r.ok) return r.json().catch(()=>({message:'Upload failed'})).then(o=>{ throw new Error(o.message||'Upload failed'); }); return r.json(); })
-            .then(function(resp){ alert('Imported: ' + (resp.created||0) + ' created, ' + (resp.skipped||0) + ' skipped'); pd_closeUploadModal(); pd_loadProductAndVariants(currentProductId); })
-            .catch(function(e){ console.error('upload', e); alert('Upload failed: ' + e.message); });
+        pd_setStatus('Uploading and processing…', 'info');
+        disableUploadButtons(true);
+        fetch('/seller/products/variants/' + pd_currentVariantForUpload + '/upload-excel?dedupe=true', { method: 'POST', body: fd, headers: headers, credentials: 'same-origin' })
+            .then(function(r){
+                if(!r.ok) {
+                    return r.json()
+                        .catch(function(){ return {message: 'Upload failed with status ' + r.status}; })
+                        .then(function(errData){ throw new Error(errData.message || 'Upload failed'); });
+                }
+                return r.json();
+            })
+            .then(function(resp){
+                var message = 'Upload successful! Created: ' + (resp.created||0) + ', Skipped: ' + (resp.skipped||0);
+                showToast(message, 'success');
+                pd_loadProductAndVariants(currentProductId);
+                // Close modal after successful upload
+                setTimeout(function(){ pd_closeUploadModal(); }, 500);
+            })
+            .catch(function(e){
+                console.error('upload', e);
+                pd_setStatus('Upload failed: ' + e.message, 'error');
+                showToast('Upload failed: ' + e.message, 'error');
+            })
+            .finally(function(){ disableUploadButtons(false); });
+    }
+
+    function pd_setStatus(text, type){
+        var box = document.getElementById('pdStatusMsg'); if (!box) return;
+        box.classList.remove('hidden');
+        var base = 'mb-4 text-sm px-4 py-3 rounded-xl border-2 font-medium flex items-start gap-2 ';
+        var icon = '';
+        if (type === 'success') {
+            box.className = base + 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-800 border-emerald-300';
+            icon = '<i class="fa-solid fa-check-circle text-emerald-600 text-lg mt-0.5"></i>';
+        }
+        else if (type === 'error') {
+            box.className = base + 'bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-red-300';
+            icon = '<i class="fa-solid fa-times-circle text-red-600 text-lg mt-0.5"></i>';
+        }
+        else if (type === 'warn') {
+            box.className = base + 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-800 border-amber-300';
+            icon = '<i class="fa-solid fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>';
+        }
+        else {
+            box.className = base + 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 border-blue-300';
+            icon = '<i class="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5"></i>';
+        }
+        box.innerHTML = icon + '<span>' + (text || '') + '</span>';
+    }
+    function disableUploadButtons(disabled){
+        var pv = document.getElementById('pdPreviewBtn'); var cf = document.getElementById('pdConfirmBtn');
+        if (pv) pv.disabled = !!disabled; if (cf) cf.disabled = !!disabled;
+        if (cf) cf.classList[disabled ? 'add' : 'remove']('opacity-60');
+        if (pv) pv.classList[disabled ? 'add' : 'remove']('opacity-60');
     }
 
     // --- Inline Variant Form logic ---
@@ -309,37 +930,116 @@
         var name = document.getElementById('vfName'); var price = document.getElementById('vfPrice');
         if (name) name.value = '';
         if (price) price.value = '';
+        // Clear validation messages
+        pd_clearNameError();
+        pd_clearPriceError();
+        var helpDiv = document.getElementById('vfPriceHelp'); if (helpDiv) helpDiv.classList.add('hidden');
+        // Update price limit display
+        pd_updatePriceLimitDisplay();
+        // Listeners
+        if (price) { price.removeEventListener('input', pd_onPriceInput); price.addEventListener('input', pd_onPriceInput); }
+        if (name) { name.removeEventListener('input', pd_onNameInput); name.addEventListener('input', pd_onNameInput); }
     }
-    function pd_hideVariantForm(){ var wrap = document.getElementById('variantFormWrap'); if (wrap) wrap.classList.add('hidden'); pd_editingVariantId = null; }
+
+    function pd_onPriceInput(e) {
+        var raw = e.target.value;
+        if (raw === '' || raw == null) {
+            // Clear error while typing blank; will enforce on save
+            pd_clearPriceError();
+            return;
+        }
+        var num = Number(raw);
+        pd_validatePrice(num);
+    }
+
+    function pd_onNameInput(e){
+        var v = (e && e.target ? e.target.value : (document.getElementById('vfName')?.value || ''));
+        if (v && v.trim().length > 0) pd_clearNameError();
+    }
+
+    function pd_hideVariantForm(){
+        var wrap = document.getElementById('variantFormWrap');
+        if (wrap) wrap.classList.add('hidden');
+        pd_editingVariantId = null;
+
+        // Clear validation messages
+        var errorDiv = document.getElementById('vfPriceError');
+        var helpDiv = document.getElementById('vfPriceHelp');
+        var priceInput = document.getElementById('vfPrice');
+        if (errorDiv) errorDiv.classList.add('hidden');
+        if (helpDiv) helpDiv.classList.add('hidden');
+        if (priceInput) {
+            priceInput.classList.remove('border-red-500');
+            priceInput.classList.add('border-primary-200');
+        }
+    }
 
     function pd_onSaveVariant(){
         var nameEl = document.getElementById('vfName'); var priceEl = document.getElementById('vfPrice');
         var variantName = nameEl ? nameEl.value.trim() : '';
         var priceVal = priceEl ? priceEl.value : '';
         var price = null; try { price = priceVal === '' ? null : Number(priceVal); } catch(e) { price = null; }
-        if (!variantName) { alert('Please enter variant name'); return; }
-        if (price == null || isNaN(price) || price < 0) { alert('Please enter a valid price'); return; }
+        // Field validations (inline)
+        var ok = true;
+        if (!variantName) { pd_setNameError('Please enter variant name'); if (ok) nameEl && nameEl.focus(); ok = false; }
+        if (priceVal === '') { pd_setPriceError('Price is required'); if (ok) priceEl && priceEl.focus(); ok = false; }
+        else if (!pd_validatePrice(price)) { if (ok) priceEl && priceEl.focus(); ok = false; }
+        if (!ok) return;
         var headers = Object.assign({ 'Content-Type': 'application/json' }, csrfHeaders());
         if (pd_editingVariantId == null) {
             // Create
             fetch('/seller/products/' + currentProductId + '/variants', {
-                method: 'POST',
-                headers: headers,
-                credentials: 'same-origin',
+                method: 'POST', headers: headers, credentials: 'same-origin',
                 body: JSON.stringify({ variantName: variantName, price: price })
-            }).then(function(r){ if(!r.ok) return r.json().catch(()=>({message:'Failed'})).then(o=>{ throw new Error(o.message||'Create failed'); }); return r.json(); })
-              .then(function(){ pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); })
-              .catch(function(e){ alert(e.message||'Create failed'); });
+            }).then(function(r){
+                if(!r.ok) {
+                    return r.json().catch(function(){ return {message:'Failed'}; }).then(function(o){
+                        var fe = o && o.fieldErrors ? o.fieldErrors : null;
+                        if (fe) {
+                            if (fe.variantName) pd_setNameError(fe.variantName);
+                            if (fe.price) pd_setPriceError(fe.price);
+                            return;
+                        }
+                        var msg = (o && o.message) ? o.message : 'Failed';
+                        if (/Variant name is required/i.test(msg)) { pd_setNameError('Variant name is required'); return; }
+                        if (/Invalid price/i.test(msg)) { pd_setPriceError('Invalid price'); return; }
+                        if (/Price exceeds your shop level limit/i.test(msg)) { pd_setPriceError(msg); pd_updatePriceLimitDisplay(); return; }
+                        pd_setPriceError(msg);
+                    });
+                }
+                return r.json();
+            }).then(function(resp){
+                if (!resp) return; // error handled
+                pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId);
+                showToast('Variant created successfully', 'success');
+            }).catch(function(){ /* handled via inline errors */ });
         } else {
             // Update
             fetch('/seller/products/variants/' + pd_editingVariantId, {
-                method: 'PUT',
-                headers: headers,
-                credentials: 'same-origin',
+                method: 'PUT', headers: headers, credentials: 'same-origin',
                 body: JSON.stringify({ variantName: variantName, price: price })
-            }).then(function(r){ if(!r.ok) return r.json().catch(()=>({message:'Failed'})).then(o=>{ throw new Error(o.message||'Update failed'); }); return r.json(); })
-              .then(function(){ pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); })
-              .catch(function(e){ alert(e.message||'Update failed'); });
+            }).then(function(r){
+                if(!r.ok) {
+                    return r.json().catch(function(){ return {message:'Failed'}; }).then(function(o){
+                        var fe = o && o.fieldErrors ? o.fieldErrors : null;
+                        if (fe) {
+                            if (fe.variantName) pd_setNameError(fe.variantName);
+                            if (fe.price) pd_setPriceError(fe.price);
+                            return;
+                        }
+                        var msg = (o && o.message) ? o.message : 'Failed';
+                        if (/Variant name is required/i.test(msg)) { pd_setNameError('Variant name is required'); return; }
+                        if (/Invalid price/i.test(msg)) { pd_setPriceError('Invalid price'); return; }
+                        if (/Price exceeds your shop level limit/i.test(msg)) { pd_setPriceError(msg); pd_updatePriceLimitDisplay(); return; }
+                        pd_setPriceError(msg);
+                    });
+                }
+                return r.json();
+            }).then(function(resp){
+                if (!resp) return; // error handled
+                pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId);
+                showToast('Variant updated successfully', 'success');
+            }).catch(function(){ /* handled via inline errors */ });
         }
     }
 
@@ -351,15 +1051,76 @@
         var name = document.getElementById('vfName'); var price = document.getElementById('vfPrice');
         if (name) name.value = v && v.variantName ? v.variantName : '';
         if (price) price.value = v && v.price != null ? v.price : '';
+        // Clear validation messages
+        pd_clearNameError();
+        pd_clearPriceError();
+        var helpDiv = document.getElementById('vfPriceHelp'); if (helpDiv) helpDiv.classList.add('hidden');
+        // Listeners
+        if (price) { price.removeEventListener('input', pd_onPriceInput); price.addEventListener('input', pd_onPriceInput); }
+        if (name) { name.removeEventListener('input', pd_onNameInput); name.addEventListener('input', pd_onNameInput); }
+        // Update price limit display
+        pd_updatePriceLimitDisplay();
     }
 
-    function pd_onDeleteVariant(variantId){
-        if (!confirm('Delete this variant? This action cannot be undone.')) return;
+    function pd_toggleHideVariant(variantId){
         var headers = csrfHeaders();
-        fetch('/seller/products/variants/' + variantId, { method: 'DELETE', headers: headers, credentials: 'same-origin' })
-            .then(function(r){ if(!r.ok) return r.text().then(t=>{ throw new Error(t||'Delete failed'); }); return r.text(); })
-            .then(function(){ pd_loadProductAndVariants(currentProductId); })
-            .catch(function(e){ alert(e.message||'Delete failed'); });
+        fetch('/seller/products/variants/' + variantId + '/toggle-hide', { method: 'POST', headers: headers, credentials: 'same-origin' })
+            .then(function(r){
+                if(!r.ok) return r.json().catch(function(){ return {message: 'Toggle failed'}; }).then(function(o){ throw new Error(o.message||'Toggle failed'); });
+                return r.json();
+            })
+            .then(function(data){
+                // Update the cache first
+                var cachedVariant = (pd_variantListCache||[]).find(function(v){ return v && Number(v.id) === Number(variantId); });
+                if (cachedVariant) {
+                    cachedVariant.delete = data.hidden;
+                    cachedVariant.isDelete = data.hidden;
+                }
+
+                var tr = document.querySelector('tr[data-variant-id="' + variantId + '"]');
+                if (tr) {
+                    var statusBadge = tr.querySelector('td:nth-child(6) span');
+                    if (statusBadge) {
+                        if (data.hidden) {
+                            statusBadge.className = 'inline-flex items-center gap-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold';
+                            statusBadge.innerHTML = '<i class="fa-solid fa-eye-slash text-xs"></i><span>Hidden</span>';
+                            tr.classList.add('opacity-60');
+                        } else {
+                            statusBadge.className = 'inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold';
+                            statusBadge.innerHTML = '<i class="fa-solid fa-eye text-xs"></i><span>Active</span>';
+                            tr.classList.remove('opacity-60');
+                        }
+                    }
+                    // Update button icon
+                    var toggleBtn = tr.querySelector('button[onclick*="pd_toggleHideVariant"]');
+                    if (toggleBtn) {
+                        var icon = toggleBtn.querySelector('i');
+                        if (icon) {
+                            icon.className = 'fa-solid fa-eye' + (data.hidden ? '' : '-slash');
+                        }
+                        toggleBtn.title = (data.hidden ? 'Show' : 'Hide') + ' variant';
+                    }
+                }
+
+                // Check current filter and switch to 'all' if needed to keep variant visible
+                var activeFilterBtn = document.querySelector('.pd-status-filter.active');
+                var currentFilter = activeFilterBtn ? activeFilterBtn.getAttribute('data-status') : 'all';
+
+                // If current filter would hide this variant, switch to 'all'
+                var shouldSwitchToAll = false;
+                if (currentFilter === 'active' && data.hidden) {
+                    shouldSwitchToAll = true; // Hidden variant won't show in 'active' filter
+                } else if (currentFilter === 'hidden' && !data.hidden) {
+                    shouldSwitchToAll = true; // Active variant won't show in 'hidden' filter
+                }
+
+                if (shouldSwitchToAll) {
+                    pd_filterVariantsByStatus('all');
+                }
+
+                showToast('Variant status updated', 'success');
+            })
+            .catch(function(e){ console.error('toggle variant', e); showToast(e.message||'Toggle failed', 'error'); });
     }
 
     // Replace pd_onAddStock with modal open
@@ -370,13 +1131,20 @@
     window.pd_showAddVariantForm = pd_showAddVariantForm;
     window.pd_hideVariantForm = pd_hideVariantForm;
     window.pd_onSaveVariant = pd_onSaveVariant;
-    window.onEditVariant = pd_onEditVariant; // legacy alias (not used by our markup)
-    window.onDeleteVariant = pd_onDeleteVariant; // legacy alias (not used by our markup)
     window.pd_onEditVariant = pd_onEditVariant;
-    window.pd_onDeleteVariant = pd_onDeleteVariant;
+    window.pd_toggleHideVariant = pd_toggleHideVariant;
+    window.pd_filterVariantsByStatus = pd_filterVariantsByStatus;
+    window.pd_sortVariantsByPrice = pd_sortVariantsByPrice;
 
     // initial load
-    if (currentProductId) pd_loadProductAndVariants(currentProductId);
+    if (currentProductId) {
+        pd_loadProductAndVariants(currentProductId);
+        pd_fetchShopPriceLimit();
+    }
 </script>
+
+<!-- Toast notification container -->
+<div id="toastHost" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm"></div>
+
 </body>
 </html>
