@@ -76,11 +76,15 @@ public class AccountController {
             }
         }
 
-        // Set active tab based on tab parameter
-        if (tab != null && !tab.isEmpty()) {
+        // Set active tab - default to 'profile' if tab param exists but is empty, or if tab is 'profile' or 'password'
+        if (tab != null && (tab.equals("profile") || tab.equals("password"))) {
             model.addAttribute("activeTab", tab);
+        } else if (tab != null && !tab.isEmpty()) {
+            model.addAttribute("activeTab", tab);
+        } else if (tab == null) {
+            // Default behavior when no tab specified
+            model.addAttribute("activeTab", "profile");
         }
-        // If no tab specified, don't set activeTab - let the view show Register Seller by default
 
         if (!model.containsAttribute("sellerRegistration") && !model.containsAttribute("registration")) {
             model.addAttribute("sellerRegistration", new SellerRegistrationForm());

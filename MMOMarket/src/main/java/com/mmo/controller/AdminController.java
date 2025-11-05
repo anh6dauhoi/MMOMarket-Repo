@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1678,6 +1679,7 @@ public class AdminController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
     // ==================== USER MANAGEMENT ====================
 
     @GetMapping("/users")
@@ -2044,5 +2046,4 @@ public class AdminController {
             return "redirect:/admin/change-password";
         }
     }
-
 }
