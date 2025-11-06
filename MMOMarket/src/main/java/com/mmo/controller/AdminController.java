@@ -1587,6 +1587,66 @@ public class AdminController {
         }
     }
 
+    @PostMapping("/blogs/upload-image")
+    @ResponseBody
+    public ResponseEntity<?> uploadBlogImage(@RequestParam("image") org.springframework.web.multipart.MultipartFile file,
+                                            Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || admin.getRole() == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+            }
+
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body("No file uploaded");
+            }
+
+            // Validate file type
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body("Only image files are allowed");
+            }
+
+            // Validate file size (max 5MB)
+            if (file.getSize() > 5 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body("File size must not exceed 5MB");
+            }
+
+            // Create uploads directory if it doesn't exist
+            String uploadDir = "uploads/blogs/";
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
+            if (!java.nio.file.Files.exists(uploadPath)) {
+                java.nio.file.Files.createDirectories(uploadPath);
+            }
+
+            // Generate unique filename
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".")
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : ".jpg";
+            String filename = java.util.UUID.randomUUID().toString() + extension;
+
+            // Save file
+            java.nio.file.Path filePath = uploadPath.resolve(filename);
+            file.transferTo(filePath.toFile());
+
+            // Return URL
+            String imageUrl = "/" + uploadDir + filename;
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return ResponseEntity.status(500).body("Failed to upload image: " + ex.getMessage());
+        }
+    }
+
     // ==================== SHOP MANAGEMENT ====================
 
     @GetMapping("/shops")

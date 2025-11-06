@@ -12,7 +12,7 @@
     // CẤU HÌNH - Thay đổi giá trị này để bật/tắt
     // ============================================
     const CONFIG = {
-        enabled: true,                    // true = bật, false = tắt
+        enabled: false,                    // true = bật, false = tắt
         blockContextMenu: false,           // Chặn chuột phải
         blockKeyboardShortcuts: true,     // Chặn phím tắt (F12, Ctrl+Shift+I, etc)
         detectDevTools: true,             // Phát hiện DevTools đang mở
