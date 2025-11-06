@@ -66,8 +66,9 @@
                 <span>Withdraw</span>
             </a>
 
-            <a class="group flex items-center px-3 py-2.5 rounded-xl font-medium text-sm text-primary-700 hover:bg-primary-50 hover:text-primary-600 transition-all"
-               href="#">
+            <a class="group flex items-center px-3 py-2.5 rounded-xl font-medium text-sm transition-all"
+               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/seller/product-management') ? 'bg-primary-50 text-primary-700 shadow' : 'text-primary-700 hover:bg-primary-50 hover:text-primary-600'}"
+               th:href="@{/seller/product-management}">
                 <svg class="mr-3 h-5 w-5 flex-shrink-0 text-primary-300 group-hover:text-primary-600 transition-colors"
                      fill="none"
                      stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

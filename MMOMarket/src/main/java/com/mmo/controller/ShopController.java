@@ -10,6 +10,7 @@ import com.mmo.repository.ReviewRepository;
 import com.mmo.repository.ShopInfoRepository;
 import com.mmo.repository.UserRepository;
 import com.mmo.repository.CategoryRepository;
+import com.mmo.util.TierNameUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -124,6 +125,11 @@ public class ShopController {
         // expose shop identifier for links/forms (use ShopInfo.id)
         model.addAttribute("sellerId", sellerId);
         model.addAttribute("shopIdentifier", shop.getId());
+
+        // Add shop level and tier name for display
+        short level = shop.getShopLevel() == null ? (short) 0 : shop.getShopLevel();
+        model.addAttribute("shopLevel", level);
+        model.addAttribute("tierName", TierNameUtil.getTierName(level));
 
         // Filters data
         model.addAttribute("categories", categoryRepository.findAll());

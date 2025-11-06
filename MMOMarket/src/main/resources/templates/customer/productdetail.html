@@ -141,12 +141,17 @@
                 <div class="seller-details">
                     <div class="seller-header">
                         <h3 th:text="${shopName}">Shop</h3>
+                        <span th:if="${tierName != null}"
+                              class="badge-verified" style="margin-left:8px;">
+                            <i class="fa-solid fa-award" aria-hidden="true"></i>
+                            <span th:text="${tierName}">Starter</span>
+                        </span>
                     </div>
 
                     <div class="seller-meta">
                         <span class="rating">
                             <i class="fa-solid fa-star" aria-hidden="true"></i>
-                            <span th:text="${#numbers.formatDecimal(sellerRating != null ? sellerRating : avgRating, 1, 1,'POINT')}">4.9</span>
+                            <span th:text="${#numbers.formatDecimal((sellerRating != null ? sellerRating : avgRating), 1, 1, 'POINT')}">4.9</span>
                             <span>/ 5.0</span>
                         </span>
                     </div>
@@ -154,7 +159,7 @@
                     <div class="seller-stats">
                         <span class="stat-pill">
                             <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
-                            <span th:text="'Sold: ' + ${#numbers.formatInteger(shopTotalSold != null ? shopTotalSold : 0, 0)}">Sold: 0</span>
+                            <span th:text="${'Sold: ' + (#numbers.formatInteger((shopTotalSold != null ? shopTotalSold : 0), 0))}">Sold: 0</span>
                         </span>
                     </div>
                 </div>
@@ -174,12 +179,17 @@
                 <div class="seller-details">
                     <div class="seller-header">
                         <h3 th:text="${shopName}">Shop</h3>
+                        <span th:if="${tierName != null}"
+                              class="badge-verified" style="margin-left:8px;">
+                            <i class="fa-solid fa-award" aria-hidden="true"></i>
+                            <span th:text="${tierName}">Starter</span>
+                        </span>
                     </div>
 
                     <div class="seller-meta">
                         <span class="rating">
                             <i class="fa-solid fa-star" aria-hidden="true"></i>
-                            <span th:text="${#numbers.formatDecimal(sellerRating != null ? sellerRating : avgRating, 1, 1,'POINT')}">4.9</span>
+                            <span th:text="${#numbers.formatDecimal((sellerRating != null ? sellerRating : avgRating), 1, 1, 'POINT')}">4.9</span>
                             <span>/ 5.0</span>
                         </span>
                     </div>
@@ -187,7 +197,7 @@
                     <div class="seller-stats">
                         <span class="stat-pill">
                             <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>
-                            <span th:text="'Sold: ' + ${#numbers.formatInteger(shopTotalSold != null ? shopTotalSold : 0, 0)}">Sold: 0</span>
+                            <span th:text="${'Sold: ' + (#numbers.formatInteger((shopTotalSold != null ? shopTotalSold : 0), 0))}">Sold: 0</span>
                         </span>
                     </div>
                 </div>

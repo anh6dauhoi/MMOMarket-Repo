@@ -12,6 +12,7 @@ import com.mmo.dto.ProductVariantDto;
 import com.mmo.service.ShopService;
 import com.mmo.entity.ShopInfo;
 import com.mmo.repository.ShopInfoRepository;
+import com.mmo.util.TierNameUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -163,6 +164,101 @@ public class ProductService {
         }
 
         return result;
+    }
+
+    // New method with pagination support
+    public Map<String, Object> getProductsByCategoryWithPagination(Long categoryId, Long minPrice, Long maxPrice,
+                                                                     String sort, Integer minRating, int page, int size) {
+        // Defaults
+        if (minPrice == null) minPrice = 0L;
+        if (maxPrice == null) maxPrice = 500000L;
+        if (sort == null || sort.isBlank()) sort = "newest";
+        if (minRating == null) minRating = 0;
+
+        // Fetch ALL products first (needed for rating filter and sorting)
+        PageRequest fetchAll = PageRequest.of(0, 1000); // Fetch up to 1000 products
+
+        List<Product> products;
+        if (categoryId == null || categoryId <= 0) {
+            products = productRepository.findAllProducts(minPrice, maxPrice, fetchAll);
+        } else {
+            products = productRepository.findByCategoryId(categoryId, minPrice, maxPrice, fetchAll);
+        }
+
+        // Build result with aggregates
+        List<Map<String, Object>> allResults = new ArrayList<>();
+        for (Product p : products) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("product", p);
+
+            List<ProductVariant> variants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId());
+            Long price = !variants.isEmpty() ? variants.get(0).getPrice() : 0L;
+            map.put("price", price);
+
+            Long totalSold = productRepository.getTotalSoldForProduct(p.getId());
+            map.put("totalSold", totalSold != null ? totalSold : 0);
+
+            Double avgRating = reviewRepository.getAverageRatingByProduct(p.getId());
+            map.put("averageRating", avgRating != null ? avgRating : 0.0);
+
+            map.put("shopName", resolveShopName(p));
+
+            allResults.add(map);
+        }
+
+        // Filter by minimum rating
+        int minRatingVal = (minRating != null) ? minRating : 0;
+        if (minRatingVal > 0) {
+            final int finalMinRating = minRatingVal;
+            allResults.removeIf(item -> ((Double) item.get("averageRating")) < finalMinRating);
+        }
+
+        // In-memory sorting
+        if ("price-low-to-high".equalsIgnoreCase(sort)) {
+            allResults.sort(Comparator.comparingLong(a -> (Long) a.get("price")));
+        } else if ("price-high-to-low".equalsIgnoreCase(sort)) {
+            allResults.sort((a, b) -> Long.compare((Long) b.get("price"), (Long) a.get("price")));
+        } else if ("rating".equalsIgnoreCase(sort)) {
+            allResults.sort((a, b) -> Double.compare((Double) b.get("averageRating"), (Double) a.get("averageRating")));
+        } else { // newest default
+            allResults.sort((a, b) -> {
+                Product pa = (Product) a.get("product");
+                Product pb = (Product) b.get("product");
+                Comparable ca = (Comparable) (pa.getCreatedAt() != null ? pa.getCreatedAt() : 0);
+                Comparable cb = (Comparable) (pb.getCreatedAt() != null ? pb.getCreatedAt() : 0);
+                return cb.compareTo(ca);
+            });
+        }
+
+        // Apply pagination manually
+        int totalElements = allResults.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int startIndex = page * size;
+        int endIndex = Math.min(startIndex + size, totalElements);
+
+        List<Map<String, Object>> pagedResults = new ArrayList<>();
+        if (startIndex < totalElements) {
+            pagedResults = allResults.subList(startIndex, endIndex);
+        }
+
+        // Build response
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", pagedResults);
+        response.put("totalElements", totalElements);
+        response.put("totalPages", totalPages);
+        response.put("currentPage", page);
+        response.put("pageSize", size);
+
+        // Debug logging
+        System.out.println("=== PAGINATION DEBUG ===");
+        System.out.println("Total Elements: " + totalElements);
+        System.out.println("Total Pages: " + totalPages);
+        System.out.println("Current Page: " + page);
+        System.out.println("Page Size: " + size);
+        System.out.println("Paged Results: " + pagedResults.size());
+        System.out.println("========================");
+
+        return response;
     }
 
     public List<Map<String, Object>> getProductsBySeller(Long sellerId) {
@@ -343,6 +439,29 @@ public class ProductService {
             shopTotalSold = (s != null) ? s : 0L;
         }
         model.put("shopTotalSold", shopTotalSold);
+
+        // NEW: shopId, shopLevel, tierName based on seller's ShopInfo
+        if (p.getSeller() != null && p.getSeller().getId() != null) {
+            Long sellerId = p.getSeller().getId();
+            try {
+                Optional<ShopInfo> siOpt = shopInfoRepository.findByUserIdAndIsDeleteFalse(sellerId);
+                if (siOpt == null || siOpt.isEmpty()) {
+                    siOpt = shopInfoRepository.findByUser_Id(sellerId);
+                }
+                if (siOpt != null && siOpt.isPresent()) {
+                    ShopInfo si = siOpt.get();
+                    model.put("shopId", si.getId());
+                    short level = si.getShopLevel() == null ? (short)0 : si.getShopLevel();
+                    model.put("shopLevel", level);
+                    model.put("tierName", TierNameUtil.getTierName(level));
+                }
+            } catch (Exception ignored) {}
+        }
+        // Guarantee defaults if not set by the lookup above
+        if (!model.containsKey("tierName")) {
+            model.put("shopLevel", (short) 0);
+            model.put("tierName", TierNameUtil.getTierName(0));
+        }
 
         return model;
     }

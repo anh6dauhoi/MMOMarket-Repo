@@ -41,8 +41,9 @@ public class CategoryController {
             @RequestParam(value = "maxPrice", required = false) Long maxPrice,
             @RequestParam(value = "minRating", required = false) Integer minRating,
             @RequestParam(value = "sort", required = false) String sort,
+            @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             Model model) {
-        return category(id, maxPrice, minRating, sort, model);
+        return category(id, maxPrice, minRating, sort, page, model);
     }
 
     @GetMapping("/category/{id}")
@@ -51,11 +52,15 @@ public class CategoryController {
             @RequestParam(value = "maxPrice", required = false) Long maxPrice,
             @RequestParam(value = "minRating", required = false) Integer minRating,
             @RequestParam(value = "sort", required = false) String sort,
+            @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             Model model) {
         // Defaults
         if (maxPrice == null) maxPrice = 500000L;
         if (minRating == null) minRating = 0;
         if (sort == null || sort.isBlank()) sort = "newest";
+
+        // Convert page from 1-based to 0-based for internal use
+        int pageIndex = Math.max(0, page - 1);
 
         // Fetch all categories for sidebar
         List<Category> categories = categoryService.findAll();
@@ -72,8 +77,13 @@ public class CategoryController {
         }
         model.addAttribute("selectedCategory", selectedCategoryName);
 
-        // Fetch products by category with filters
-        List<Map<String, Object>> products = productService.getProductsByCategory(effectiveCategoryId, 0L, maxPrice, sort, minRating);
+        // Fetch products by category with pagination (use 0-based pageIndex internally)
+        int pageSize = 12; // 12 products per page
+        Map<String, Object> pageData = productService.getProductsByCategoryWithPagination(
+            effectiveCategoryId, 0L, maxPrice, sort, minRating, pageIndex, pageSize);
+
+        List<Map<String, Object>> products = (List<Map<String, Object>>) pageData.get("content");
+
         // Enrich each product map with shopId if missing
         if (products != null) {
             for (Map<String, Object> it : products) {
@@ -96,6 +106,20 @@ public class CategoryController {
         }
         model.addAttribute("products", products != null ? products : Collections.emptyList());
 
+        // Add pagination info (convert back to 1-based for display)
+        model.addAttribute("currentPage", page);  // 1-based page number for display
+        model.addAttribute("totalPages", pageData.get("totalPages"));
+        model.addAttribute("totalElements", pageData.get("totalElements"));
+
+        // Debug logging
+        System.out.println("=== CATEGORY CONTROLLER DEBUG ===");
+        System.out.println("Current Page (1-based): " + page);
+        System.out.println("Page Index (0-based): " + pageIndex);
+        System.out.println("Total Pages: " + pageData.get("totalPages"));
+        System.out.println("Total Elements: " + pageData.get("totalElements"));
+        System.out.println("Products count: " + (products != null ? products.size() : 0));
+        System.out.println("=================================");
+
         // Add filter state
         model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("minRating", minRating);
@@ -111,11 +135,15 @@ public class CategoryController {
             @RequestParam(value = "maxPrice", required = false) Long maxPrice,
             @RequestParam(value = "minRating", required = false) Integer minRating,
             @RequestParam(value = "sort", required = false) String sort,
+            @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             Model model) {
         // Defaults
         if (maxPrice == null) maxPrice = 500000L;
         if (minRating == null) minRating = 0;
         if (sort == null || sort.isBlank()) sort = "newest";
+
+        // Convert page from 1-based to 0-based for internal use
+        int pageIndex = Math.max(0, page - 1);
 
         // Fetch all categories for sidebar
         List<Category> categories = categoryService.findAll();
@@ -124,8 +152,13 @@ public class CategoryController {
         // Set selected category to "All Products"
         model.addAttribute("selectedCategory", "All Products");
 
-        // Fetch all products
-        List<Map<String, Object>> products = productService.getProductsByCategory(null, 0L, maxPrice, sort, minRating);
+        // Fetch all products with pagination (use 0-based pageIndex internally)
+        int pageSize = 12; // 12 products per page
+        Map<String, Object> pageData = productService.getProductsByCategoryWithPagination(
+            null, 0L, maxPrice, sort, minRating, pageIndex, pageSize);
+
+        List<Map<String, Object>> products = (List<Map<String, Object>>) pageData.get("content");
+
         // Enrich with shopId
         if (products != null) {
             for (Map<String, Object> it : products) {
@@ -147,6 +180,20 @@ public class CategoryController {
             }
         }
         model.addAttribute("products", products != null ? products : Collections.emptyList());
+
+        // Add pagination info (1-based for display)
+        model.addAttribute("currentPage", page);  // 1-based page number for display
+        model.addAttribute("totalPages", pageData.get("totalPages"));
+        model.addAttribute("totalElements", pageData.get("totalElements"));
+
+        // Debug logging
+        System.out.println("=== ALL PRODUCTS CONTROLLER DEBUG ===");
+        System.out.println("Current Page (1-based): " + page);
+        System.out.println("Page Index (0-based): " + pageIndex);
+        System.out.println("Total Pages: " + pageData.get("totalPages"));
+        System.out.println("Total Elements: " + pageData.get("totalElements"));
+        System.out.println("Products count: " + (products != null ? products.size() : 0));
+        System.out.println("=====================================");
 
         // Add filter state
         model.addAttribute("maxPrice", maxPrice);

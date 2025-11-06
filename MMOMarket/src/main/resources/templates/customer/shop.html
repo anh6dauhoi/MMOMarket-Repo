@@ -13,6 +13,8 @@
     <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Add Font Awesome to display the award badge icon consistently with productdetail.html -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" th:href="@{/customer/css/shop.css}">
 </head>
 <body class="bg-gradient-to-br from-[#fff] to-[#fff6f4] text-gray-900">
@@ -39,17 +41,23 @@
                             style="color:#fff; font-size:2.1rem; font-weight:800; letter-spacing:0.5px; text-shadow:0 2px 12px #F53E32cc;">
                             Shop Name
                         </h1>
+                        <span th:if="${tierName != null}"
+                              class="badge-verified" style="margin-left:8px;">
+                            <i class="fa-solid fa-award" aria-hidden="true"></i>
+                            <span th:text="${tierName}">Starter</span>
+                        </span>
                     </div>
                     <p class="text-base mt-1" th:text="${shop != null && shop.description != null ? shop.description : 'Your go-to source for digital resources'}"
                        style="color:#fff; opacity:0.92; font-size:1.08rem;">Shop description</p>
                     <div class="flex items-center gap-6 text-base mt-2">
                         <span style="color:#fff; font-weight:500;">Sold: <b th:text="${#numbers.formatInteger(totalSold, 0)}" style="color:#fff;">0</b></span>
-                        <span style="color:#fff; font-weight:500;">Success rate: <b th:text="${#numbers.formatDecimal(successRate, 0, 'POINT', 0, 'NONE')} + '%'" style="color:#fff;">0%</b></span>
+                        <span style="color:#fff; font-weight:500;">Success rate: <b th:text="${#numbers.formatDecimal((successRate != null ? successRate : 0), 0, 0, 'POINT')} + '%'" style="color:#fff;">0%</b></span>
                         <span class="shop-rating">
                             <span class="star">⭐</span>
-                            <span th:text="${#numbers.formatDecimal(averageRating != null ? averageRating : 0.0, 1, 1,'POINT')}">0.0</span>
+                            <span th:text="${#numbers.formatDecimal((averageRating != null ? averageRating : 0.0), 1, 1, 'POINT')}">0.0</span>
                             <span>/ 5.0</span>
                         </span>
+                        <span th:if="${shopLevel != null}" style="color:#fff; font-weight:600;">Lv. <span th:text="${shopLevel}">0</span></span>
                     </div>
                 </div>
             </div>
@@ -132,7 +140,7 @@
                      class="product-card product-item bg-white rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 cursor-pointer shadow-lg">
                     <a th:href="@{/products(id=${item.product.id})}">
                         <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
-                             alt="Product Image"
+                             th:alt="${item.product.name}"
                              class="w-full h-56 object-cover">
                     </a>
                     <div class="p-5 text-center">

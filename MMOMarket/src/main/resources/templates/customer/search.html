@@ -12,210 +12,210 @@
 </head>
 
 <body class="bg-gray-50 text-gray-900">
-    <!-- header fragment -->
-    <div th:replace="~{fragments/header :: header}"></div>
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div class="flex flex-col lg:flex-row gap-8">
-            <section class="flex-1">
-                <div class="mb-6 relative">
-                    <form th:action="@{/search}" method="get" class="flex items-center">
-                        <input id="search-q" name="q" th:value="${q}"
-                            class="w-full md:w-3/3 lg:w-3/3 pl-4 pr-10 py-3 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                            placeholder="Search products or shops" type="search" aria-label="Search" autocomplete="off" />
-                        <!-- preserve ratingSort -->
-                        <input type="hidden" name="ratingSort" th:value="${ratingSort}"/>
-                        <!-- NEW: preserve productSort -->
-                        <input type="hidden" name="productSort" th:value="${productSort}"/>
-                        <button type="submit"
+<!-- header fragment -->
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex flex-col lg:flex-row gap-8">
+        <section class="flex-1">
+            <div class="mb-6 relative">
+                <form th:action="@{/search}" method="get" class="flex items-center">
+                    <input id="search-q" name="q" th:value="${q}"
+                           class="w-full md:w-3/3 lg:w-3/3 pl-4 pr-10 py-3 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                           placeholder="Search products or shops" type="search" aria-label="Search" autocomplete="off" />
+                    <!-- preserve ratingSort -->
+                    <input type="hidden" name="ratingSort" th:value="${ratingSort}"/>
+                    <!-- NEW: preserve productSort -->
+                    <input type="hidden" name="productSort" th:value="${productSort}"/>
+                    <button type="submit"
                             class="px-4 py-3 bg-red-500 text-white rounded-r-md hover:bg-red-600">
-                            Search
-                        </button>
-                    </form>
+                        Search
+                    </button>
+                </form>
 
-                    <!-- Recent searches removed: feature disabled -->
+                <!-- Recent searches removed: feature disabled -->
+            </div>
+
+            <header class="mb-6">
+                <h1 class="text-2xl font-extrabold">
+                    <span th:if="${q != null and q != ''}">Results for "<span th:text="${q}"></span>"</span>
+                    <span th:unless="${q != null and q != ''}">Search Results</span>
+                </h1>
+
+                <p class="text-sm text-gray-500 mt-1" th:if="${q != null and q != ''}">
+                    Showing results for "<span th:text="${q}"></span>"
+                </p>
+            </header>
+
+            <!-- Shops (one row per shop) -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Shops</h2>
+                    <!-- Only show rating filter if shops exist -->
+                    <form th:if="${shops != null and !#lists.isEmpty(shops)}"
+                          th:action="@{/search}" method="get" class="flex items-center space-x-2">
+                        <input type="hidden" name="q" th:value="${q}"/>
+                        <input type="hidden" name="productSort" th:value="${productSort}"/>
+                        <label for="ratingSort" class="text-sm text-gray-600">Sort by rating</label>
+                        <select id="ratingSort" name="ratingSort"
+                                class="border-gray-300 rounded-md text-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                onchange="this.form.submit()">
+                            <option value="" th:selected="${ratingSort == null or ratingSort == ''}">Default</option>
+                            <option value="desc" th:selected="${ratingSort == 'desc'}">High -> Low</option>
+                            <option value="asc" th:selected="${ratingSort == 'asc'}">Low -> High</option>
+                        </select>
+                    </form>
                 </div>
 
-                <header class="mb-6">
-                    <h1 class="text-2xl font-extrabold">
-                        <span th:if="${q != null and q != ''}">Results for "<span th:text="${q}"></span>"</span>
-                        <span th:unless="${q != null and q != ''}">Search Results</span>
-                    </h1>
-
-                    <p class="text-sm text-gray-500 mt-1" th:if="${q != null and q != ''}">
-                        Showing results for "<span th:text="${q}"></span>"
-                    </p>
-                </header>
-
-                <!-- Shops (one row per shop) -->
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold">Shops</h2>
-                        <!-- Only show rating filter if shops exist -->
-                        <form th:if="${shops != null and !#lists.isEmpty(shops)}"
-                              th:action="@{/search}" method="get" class="flex items-center space-x-2">
-                            <input type="hidden" name="q" th:value="${q}"/>
-                            <input type="hidden" name="productSort" th:value="${productSort}"/>
-                            <label for="ratingSort" class="text-sm text-gray-600">Sort by rating</label>
-                            <select id="ratingSort" name="ratingSort"
-                                    class="border-gray-300 rounded-md text-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                    onchange="this.form.submit()">
-                                <option value="" th:selected="${ratingSort == null or ratingSort == ''}">Default</option>
-                                <option value="desc" th:selected="${ratingSort == 'desc'}">High -> Low</option>
-                                <option value="asc" th:selected="${ratingSort == 'asc'}">Low -> High</option>
-                            </select>
-                        </form>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div th:each="s : ${shops}"
-                             class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm transition transform hover:-translate-y-1 hover:shadow-lg
+                <div class="space-y-4">
+                    <div th:each="s : ${shops}"
+                         class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm transition transform hover:-translate-y-1 hover:shadow-lg
                                     w-full flex flex-row items-center justify-between gap-5 text-left">
-                            <img th:src="${s['avatar'] != null and s['avatar'] != '' ? s['avatar'] : '/images/default-avatar.svg'}"
-                                 alt="Avatar"
-                                 class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border border-gray-200 shadow flex-none shrink-0">
+                        <img th:src="${s['avatar'] != null and s['avatar'] != '' ? s['avatar'] : '/images/default-avatar.svg'}"
+                             alt="Avatar"
+                             class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border border-gray-200 shadow flex-none shrink-0">
 
-                            <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-lg sm:text-xl text-gray-800 truncate"
-                                    th:text="${s['shopName'] != null and s['shopName'] != '' ? s['shopName'] : 'Shop Name'}">Shop Name</h3>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-lg sm:text-xl text-gray-800 truncate"
+                                th:text="${s['shopName'] != null and s['shopName'] != '' ? s['shopName'] : 'Shop Name'}">Shop Name</h3>
 
-                                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                            <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                                     <span class="text-yellow-600 font-medium">
                                         ⭐ <span th:text="${s['ratingAverage'] != null ? #numbers.formatDecimal(s['ratingAverage'], 1, 1, 'POINT') : '0.0'}">0.0</span>/5
                                     </span>
-                                    <span class="text-gray-300 select-none">•</span>
-                                    <span class="text-gray-700">
+                                <span class="text-gray-300 select-none">•</span>
+                                <span class="text-gray-700">
                                         Sold: <span th:text="${s['totalSold'] != null ? s['totalSold'] : 0}">0</span>
                                     </span>
-                                    <span class="text-gray-300 select-none">•</span>
-                                    <span class="text-gray-700"
-                                          th:text="|Success rating: ${s['successRate'] != null ? s['successRate'] : 0}%|">Success rating: 0%</span>
-                                </div>
-                            </div>
-
-                            <div class="flex-none shrink-0">
-                                <!-- Prefer shopId link; fallback to sellerId; final fallback to id -->
-                                <a th:if="${s['shopId'] != null}"
-                                   th:href="@{/shop(id=${s['shopId']})}"
-                                   class="inline-flex items-center justify-center px-5 py-2 rounded-full font-medium shadow-md
-                                          bg-red-500 hover:bg-red-600 text-white transition-colors whitespace-nowrap">
-                                    View Shop
-                                </a>
-                                <a th:if="${s['shopId'] == null and s['sellerId'] != null}"
-                                   th:href="@{/shop/by-seller/{sellerId}(sellerId=${s['sellerId']})}"
-                                   class="inline-flex items-center justify-center px-5 py-2 rounded-full font-medium shadow-md
-                                          bg-red-500 hover:bg-red-600 text-white transition-colors whitespace-nowrap">
-                                    View Shop
-                                </a>
-                                <a th:if="${s['shopId'] == null and (s['sellerId'] == null)}"
-                                   th:href="@{/shop(id=${s['id']})}"
-                                   class="inline-flex items-center justify-center px-5 py-2 rounded-full font-medium shadow-md
-                                          bg-red-500 hover:bg-red-600 text-white transition-colors whitespace-nowrap">
-                                    View Shop
-                                </a>
+                                <span class="text-gray-300 select-none">•</span>
+                                <span class="text-gray-700"
+                                      th:text="|Success rating: ${s['successRate'] != null ? s['successRate'] : 0}%|">Success rating: 0%</span>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="text-gray-500 mt-4" th:if="${shops == null or #lists.isEmpty(shops)}">
-                        No shops found.
+                        <div class="flex-none shrink-0">
+                            <!-- Prefer shopId link; fallback to sellerId; final fallback to id -->
+                            <a th:if="${s['shopId'] != null}"
+                               th:href="@{/shop(id=${s['shopId']})}"
+                               class="inline-flex items-center justify-center px-5 py-2 rounded-full font-medium shadow-md
+                                          bg-red-500 hover:bg-red-600 text-white transition-colors whitespace-nowrap">
+                                View Shop
+                            </a>
+                            <a th:if="${s['shopId'] == null and s['sellerId'] != null}"
+                               th:href="@{/shop/by-seller/{sellerId}(sellerId=${s['sellerId']})}"
+                               class="inline-flex items-center justify-center px-5 py-2 rounded-full font-medium shadow-md
+                                          bg-red-500 hover:bg-red-600 text-white transition-colors whitespace-nowrap">
+                                View Shop
+                            </a>
+                            <a th:if="${s['shopId'] == null and (s['sellerId'] == null)}"
+                               th:href="@{/shop(id=${s['id']})}"
+                               class="inline-flex items-center justify-center px-5 py-2 rounded-full font-medium shadow-md
+                                          bg-red-500 hover:bg-red-600 text-white transition-colors whitespace-nowrap">
+                                View Shop
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Products (now after Shops) -->
-                <div class="mb-8">
-                    <!-- NEW: products sort bar -->
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold">Products</h2>
-                        <!-- Only show product sort if products exist -->
-                        <form th:if="${products != null and !#lists.isEmpty(products)}"
-                              th:action="@{/search}" method="get" class="flex items-center space-x-2">
-                            <input type="hidden" name="q" th:value="${q}"/>
-                            <input type="hidden" name="ratingSort" th:value="${ratingSort}"/>
-                            <label for="productSort" class="text-sm text-gray-600">Sort products</label>
-                            <select id="productSort" name="productSort"
-                                    class="border-gray-300 rounded-md text-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                    onchange="this.form.submit()">
-                                <option value="" th:selected="${productSort == null or productSort == ''}">Default</option>
-                                <option value="priceAsc" th:selected="${productSort == 'priceAsc'}">Price: Low -> High</option>
-                                <option value="priceDesc" th:selected="${productSort == 'priceDesc'}">Price: High -> Low</option>
-                                <option value="ratingDesc" th:selected="${productSort == 'ratingDesc'}">Rating: High -> Low</option>
-                                <option value="ratingAsc" th:selected="${productSort == 'ratingAsc'}">Rating: Low -> High</option>
-                            </select>
-                        </form>
-                    </div>
+                <div class="text-gray-500 mt-4" th:if="${shops == null or #lists.isEmpty(shops)}">
+                    No shops found.
+                </div>
+            </div>
 
-                    <!-- changed grid to 2/3/4/5 cols -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                        <div th:each="p : ${products}"
-                             class="hover-card product-item bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 hover:-translate-y-2">
-                            <div class="block group">
-                                <a th:href="@{/products(id=${p['id']})}">
-                                    <img th:src="${p['image'] != null ? p['image'] : '/images/default.jpg'}"
-                                         alt="Product Image"
-                                         class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105">
-                                </a>
-                                <div class="p-4 text-center">
-                                    <h3 class="font-semibold text-lg text-gray-900 truncate product-title group-hover:text-[#F53E32]">
-                                        <a th:href="@{/products(id=${p['id']})}"
-                                           th:text="${p['name'] != null && p['name'] != '' ? p['name'] : 'Product'}">Product Name</a>
-                                    </h3>
-                                    <!-- use inline style for exact hex color -->
-                                    <p class="font-bold mt-1 product-price" style="color:#F53E32;">
-                                        <span class="format-price" th:attr="data-price=${p['price']}">0</span> coins
-                                    </p>
-                                    <p class="text-gray-500 text-sm"
-                                       th:text="'Sold: ' + ${p['totalSold'] != null ? p['totalSold'] : 0}">Sold: 0</p>
+            <!-- Products (now after Shops) -->
+            <div class="mb-8">
+                <!-- NEW: products sort bar -->
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Products</h2>
+                    <!-- Only show product sort if products exist -->
+                    <form th:if="${products != null and !#lists.isEmpty(products)}"
+                          th:action="@{/search}" method="get" class="flex items-center space-x-2">
+                        <input type="hidden" name="q" th:value="${q}"/>
+                        <input type="hidden" name="ratingSort" th:value="${ratingSort}"/>
+                        <label for="productSort" class="text-sm text-gray-600">Sort products</label>
+                        <select id="productSort" name="productSort"
+                                class="border-gray-300 rounded-md text-sm py-1 px-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                onchange="this.form.submit()">
+                            <option value="" th:selected="${productSort == null or productSort == ''}">Default</option>
+                            <option value="priceAsc" th:selected="${productSort == 'priceAsc'}">Price: Low -> High</option>
+                            <option value="priceDesc" th:selected="${productSort == 'priceDesc'}">Price: High -> Low</option>
+                            <option value="ratingDesc" th:selected="${productSort == 'ratingDesc'}">Rating: High -> Low</option>
+                            <option value="ratingAsc" th:selected="${productSort == 'ratingAsc'}">Rating: Low -> High</option>
+                        </select>
+                    </form>
+                </div>
 
-                                    <!-- Shop link only by shopId; show plain name if missing -->
-                                    <a th:if="${p['shopId'] != null}" th:href="@{/shop(id=${p['shopId']})}"
-                                       class="text-gray-600 text-sm hover:text-red-500 product-shop"
-                                       th:text="'Shop: ' + ${p['shopName']}">Shop: Name</a>
-                                    <span th:if="${p['shopId'] == null}"
-                                          class="text-gray-400 text-sm product-shop"
-                                          th:text="'Shop: ' + ${p['shopName']}">Shop: Name</span>
+                <!-- changed grid to 2/3/4/5 cols -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    <div th:each="p : ${products}"
+                         class="hover-card product-item bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 hover:-translate-y-2">
+                        <div class="block group">
+                            <a th:href="@{/products(id=${p['id']})}">
+                                <img th:src="${p['image'] != null ? p['image'] : '/images/default.jpg'}"
+                                     alt="Product Image"
+                                     class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105">
+                            </a>
+                            <div class="p-4 text-center">
+                                <h3 class="font-semibold text-lg text-gray-900 truncate product-title group-hover:text-[#F53E32]">
+                                    <a th:href="@{/products(id=${p['id']})}"
+                                       th:text="${p['name'] != null && p['name'] != '' ? p['name'] : 'Product'}">Product Name</a>
+                                </h3>
+                                <!-- use inline style for exact hex color -->
+                                <p class="font-bold mt-1 product-price" style="color:#F53E32;">
+                                    <span class="format-price" th:attr="data-price=${p['price']}">0</span> coins
+                                </p>
+                                <p class="text-gray-500 text-sm"
+                                   th:text="'Sold: ' + ${p['totalSold'] != null ? p['totalSold'] : 0}">Sold: 0</p>
 
-                                    <p class="text-yellow-500 text-sm mt-1"
-                                       th:text="'⭐ ' + ${#numbers.formatDecimal(p['averageRating'],1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
-                                </div>
+                                <!-- Shop link only by shopId; show plain name if missing -->
+                                <a th:if="${p['shopId'] != null}" th:href="@{/shop(id=${p['shopId']})}"
+                                   class="text-gray-600 text-sm hover:text-red-500 product-shop"
+                                   th:text="'Shop: ' + ${p['shopName']}">Shop: Name</a>
+                                <span th:if="${p['shopId'] == null}"
+                                      class="text-gray-400 text-sm product-shop"
+                                      th:text="'Shop: ' + ${p['shopName']}">Shop: Name</span>
+
+                                <p class="text-yellow-500 text-sm mt-1"
+                                   th:text="'⭐ ' + ${#numbers.formatDecimal(p['averageRating'],1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                             </div>
                         </div>
                     </div>
-
-                    <div class="text-gray-500 mt-4" th:if="${products == null or #lists.isEmpty(products)}">
-                        No products found.
-                    </div>
                 </div>
-            </section>
-        </div>
-    </main>
 
-    <div th:replace="~{fragments/footer :: footer}"></div>
-    <!-- small JS for accessibility (no heavy dependencies) -->
-    <script>
-        // small enhancement: focus search input if page loaded from a search
-        (function () {
-            try {
-                var inp = document.querySelector('input[name="q"]');
-                if (inp) {
-                    inp.setAttribute('autocomplete', 'off');
-                }
-            } catch (e) { /* ignore */ }
-        })();
+                <div class="text-gray-500 mt-4" th:if="${products == null or #lists.isEmpty(products)}">
+                    No products found.
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
 
-        // Recent search functionality removed (server-side history disabled)
-
-        // Format prices like category.html
-        document.addEventListener('DOMContentLoaded', function () {
-            function formatWithDots(n){
-                const num = Math.round(Number(n) || 0);
-                return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+<div th:replace="~{fragments/footer :: footer}"></div>
+<!-- small JS for accessibility (no heavy dependencies) -->
+<script>
+    // small enhancement: focus search input if page loaded from a search
+    (function () {
+        try {
+            var inp = document.querySelector('input[name="q"]');
+            if (inp) {
+                inp.setAttribute('autocomplete', 'off');
             }
-            document.querySelectorAll('.format-price').forEach(function (el) {
-                var v = el.getAttribute('data-price');
-                if (v != null) el.textContent = formatWithDots(v);
-            });
+        } catch (e) { /* ignore */ }
+    })();
+
+    // Recent search functionality removed (server-side history disabled)
+
+    // Format prices like category.html
+    document.addEventListener('DOMContentLoaded', function () {
+        function formatWithDots(n){
+            const num = Math.round(Number(n) || 0);
+            return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        document.querySelectorAll('.format-price').forEach(function (el) {
+            var v = el.getAttribute('data-price');
+            if (v != null) el.textContent = formatWithDots(v);
         });
-    </script>
+    });
+</script>
 </body>
 
 </html>

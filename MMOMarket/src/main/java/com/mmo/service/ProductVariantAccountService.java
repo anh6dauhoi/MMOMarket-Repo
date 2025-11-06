@@ -24,10 +24,52 @@ public class ProductVariantAccountService {
         return csv.getBytes(StandardCharsets.UTF_8);
     }
 
+    // Generate preview from JSON rows (edited on client)
+    public PreviewResult previewRows(User user, ProductVariant variant, List<SimpleRow> rows) {
+        List<AccountRow> normalized = normalizeRows(rows);
+        markDuplicatesByUsername(normalized, variant);
+        int invalidCount = 0, duplicateCount = 0;
+        List<PreviewRow> out = new ArrayList<>(normalized.size());
+        for (int i = 0; i < normalized.size(); i++) {
+            AccountRow r = normalized.get(i);
+            if (r.invalid) invalidCount++;
+            if (r.duplicate) duplicateCount++;
+            out.add(new PreviewRow(nullToEmpty(r.username), nullToEmpty(r.password), r.duplicate, r.invalid, r.originalIndex));
+        }
+        return new PreviewResult(normalized.size(), duplicateCount, invalidCount, out);
+    }
+
+    // Confirm upload from JSON rows (edited on client)
+    public UploadResult confirmRows(User user, ProductVariant variant, List<SimpleRow> rows, boolean dedupe) {
+        List<AccountRow> normalized = normalizeRows(rows);
+        markDuplicatesByUsername(normalized, variant);
+        long invalidCount = normalized.stream().filter(r -> r.invalid).count();
+        if (invalidCount > 0) {
+            throw new IllegalArgumentException("Data has " + invalidCount + " invalid row(s) where Account or Password is missing. Please fix and try again.");
+        }
+        Set<String> existingUsernames = loadExistingUsernamesForCategory(variant);
+        int created = 0, skipped = 0;
+        for (AccountRow r : normalized) {
+            String uname = usernameKey(r);
+            boolean isDup = r.duplicate || existingUsernames.contains(uname);
+            if (dedupe && isDup) { skipped++; continue; }
+            ProductVariantAccount acc = new ProductVariantAccount();
+            acc.setVariant(variant);
+            acc.setAccountData(buildAccountData(r));
+            acc.setStatus("Available");
+            acc.setDelete(false);
+            acc.setCreatedBy(user.getId());
+            entityManager.persist(acc);
+            created++;
+            existingUsernames.add(uname);
+        }
+        return new UploadResult(created, skipped);
+    }
+
     // Preview upload: parse file, mark duplicates/invalid, return summary rows (limited)
     public PreviewResult previewUpload(User user, ProductVariant variant, MultipartFile file, boolean dedupe) throws IOException {
         List<AccountRow> normalized = parseAndNormalize(file);
-        markDuplicatesByUsername(normalized, variant.getId());
+        markDuplicatesByUsername(normalized, variant);
         int invalidCount = 0;
         for (AccountRow r : normalized) if (r.invalid) invalidCount++;
         int max = Math.min(300, normalized.size());
@@ -47,14 +89,14 @@ public class ProductVariantAccountService {
     // Confirm upload: persist ProductVariantAccount entries (skip duplicates if dedupe). Block if invalid rows exist.
     public UploadResult confirmUpload(User user, ProductVariant variant, MultipartFile file, boolean dedupe) throws IOException {
         List<AccountRow> normalized = parseAndNormalize(file);
-        markDuplicatesByUsername(normalized, variant.getId());
+        markDuplicatesByUsername(normalized, variant);
         // Validate: both username and password are required per row
         long invalidCount = normalized.stream().filter(r -> r.invalid).count();
         if (invalidCount > 0) {
             throw new IllegalArgumentException("File has " + invalidCount + " invalid row(s) where Account or Password is missing. Please fix and try again.");
         }
-        // Load existing usernames for the variant
-        Set<String> existingUsernames = loadExistingUsernames(variant.getId());
+        // Load existing usernames for the entire category
+        Set<String> existingUsernames = loadExistingUsernamesForCategory(variant);
         int created = 0;
         int skipped = 0;
         for (AccountRow r : normalized) {
@@ -101,19 +143,55 @@ public class ProductVariantAccountService {
         return normalized;
     }
 
-    private void markDuplicatesByUsername(List<AccountRow> rows, Long variantId) {
-        Set<String> existingUsernames = loadExistingUsernames(variantId);
+    private List<AccountRow> normalizeRows(List<SimpleRow> rows) {
+        List<AccountRow> normalized = new ArrayList<>();
+        if (rows == null) return normalized;
+        int idx = 1;
+        for (SimpleRow sr : rows) {
+            if (sr == null) { idx++; continue; }
+            String u = safeTrim(sr.getUsername());
+            String p = safeTrim(sr.getPassword());
+            if ((u == null || u.isEmpty()) && (p == null || p.isEmpty())) { idx++; continue; }
+            AccountRow nr = new AccountRow(u, p, idx);
+            nr.invalid = (u == null || u.isEmpty()) ^ (p == null || p.isEmpty());
+            normalized.add(nr);
+            idx++;
+        }
+        // mark duplicates within payload (by username)
+        Set<String> seenUsernames = new HashSet<>();
+        for (AccountRow r : normalized) {
+            String uname = usernameKey(r);
+            if (uname.isEmpty()) continue;
+            if (!seenUsernames.add(uname)) r.duplicate = true;
+        }
+        return normalized;
+    }
+
+    private void markDuplicatesByUsername(List<AccountRow> rows, ProductVariant variant) {
+        Set<String> existingUsernames = loadExistingUsernamesForCategory(variant);
         for (AccountRow r : rows) {
             String uname = usernameKey(r);
             if (!uname.isEmpty() && existingUsernames.contains(uname)) r.duplicate = true;
         }
     }
 
-    private Set<String> loadExistingUsernames(Long variantId) {
+    /**
+     * Load existing usernames across the entire category (all products and variants in the same category)
+     */
+    private Set<String> loadExistingUsernamesForCategory(ProductVariant variant) {
         try {
+            // Get the category ID from the variant's product
+            Long categoryId = variant.getProduct().getCategory().getId();
+
+            // Query all accounts across all variants in the same category
             List<String> list = entityManager.createQuery(
-                    "select a.accountData from ProductVariantAccount a where a.variant.id = :vid and a.isDelete = false",
-                    String.class).setParameter("vid", variantId).getResultList();
+                    "select a.accountData from ProductVariantAccount a " +
+                    "where a.variant.product.category.id = :categoryId " +
+                    "and a.isDelete = false",
+                    String.class)
+                    .setParameter("categoryId", categoryId)
+                    .getResultList();
+
             Set<String> usernames = new HashSet<>();
             if (list != null) {
                 for (String s : list) {
@@ -192,6 +270,8 @@ public class ProductVariantAccountService {
 
     // Data holders
     private static class AccountRow { String username; String password; boolean duplicate; boolean invalid; int originalIndex; AccountRow(String u, String p, int idx){ this.username=u; this.password=p; this.duplicate=false; this.invalid=false; this.originalIndex = idx; } }
+
+    public static class SimpleRow { private String username; private String password; public SimpleRow(){} public SimpleRow(String u,String p){this.username=u;this.password=p;} public String getUsername(){return username;} public String getPassword(){return password;} public void setUsername(String u){this.username=u;} public void setPassword(String p){this.password=p;} }
 
     public static class PreviewRow { private final String username; private final String password; private final boolean duplicate; private final boolean invalid; private final int rowIndex; public PreviewRow(String u,String p, boolean d, boolean inv, int rowIdx){this.username=u;this.password=p;this.duplicate=d;this.invalid=inv;this.rowIndex=rowIdx;} public String getUsername(){return username;} public String getPassword(){return password;} public boolean isDuplicate(){return duplicate;} public boolean isInvalid(){return invalid;} public int getRowIndex(){return rowIndex;} }
     public static class PreviewResult { private final int count; private final int duplicateCount; private final int invalidCount; private final List<PreviewRow> rows; public PreviewResult(int c,int d,int inv,List<PreviewRow> r){this.count=c;this.duplicateCount=d;this.invalidCount=inv;this.rows=r;} public int getCount(){return count;} public int getDuplicateCount(){return duplicateCount;} public int getInvalidCount(){return invalidCount;} public List<PreviewRow> getRows(){return rows;} }

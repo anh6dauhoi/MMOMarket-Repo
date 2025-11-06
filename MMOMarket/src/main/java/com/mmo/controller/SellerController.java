@@ -73,12 +73,18 @@ public class SellerController {
     private EntityManager entityManager;
 
     // Inject repositories used for delete-shop logic
-    @Autowired private com.mmo.repository.ProductRepository productRepository;
-    @Autowired private com.mmo.repository.ProductVariantRepository productVariantRepository;
-    @Autowired private com.mmo.repository.ProductVariantAccountRepository productVariantAccountRepository;
-    @Autowired private com.mmo.repository.ReviewRepository reviewRepository;
-    @Autowired private com.mmo.repository.TransactionRepository transactionRepository;
-    @Autowired private com.mmo.repository.ShopInfoRepository shopInfoRepository;
+    @Autowired
+    private com.mmo.repository.ProductRepository productRepository;
+    @Autowired
+    private com.mmo.repository.ProductVariantRepository productVariantRepository;
+    @Autowired
+    private com.mmo.repository.ProductVariantAccountRepository productVariantAccountRepository;
+    @Autowired
+    private com.mmo.repository.ReviewRepository reviewRepository;
+    @Autowired
+    private com.mmo.repository.TransactionRepository transactionRepository;
+    @Autowired
+    private com.mmo.repository.ShopInfoRepository shopInfoRepository;
 
     // OTP dependencies
     @Autowired
@@ -132,7 +138,8 @@ public class SellerController {
                         null
                 );
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         if (agreementUrl == null || agreementUrl.isBlank()) {
             agreementUrl = "/contracts/seller-contract.pdf"; // default static file
         }
@@ -414,7 +421,8 @@ public class SellerController {
                     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Offload OTP creation + persistence + email to executor; return immediately
         try {
@@ -431,9 +439,11 @@ public class SellerController {
                     String subject = "[MMOMarket] OTP Xác minh rút tiền";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
@@ -549,8 +559,14 @@ public class SellerController {
             if (req == null || req.getOtp() == null || !req.getOtp().matches("\\d{6}")) {
                 int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
                 if (attempts >= 5) {
-                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
-                    try { session.invalidate(); } catch (Exception ignored) {}
+                    try {
+                        new SecurityContextLogoutHandler().logout(request, null, authentication);
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        session.invalidate();
+                    } catch (Exception ignored) {
+                    }
                     redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
                     return "redirect:/authen/login";
                 } else if (attempts >= 3) {
@@ -575,8 +591,14 @@ public class SellerController {
             if (optVerification.isEmpty()) {
                 int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
                 if (attempts >= 5) {
-                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
-                    try { session.invalidate(); } catch (Exception ignored) {}
+                    try {
+                        new SecurityContextLogoutHandler().logout(request, null, authentication);
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        session.invalidate();
+                    } catch (Exception ignored) {
+                    }
                     redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
                     return "redirect:/authen/login";
                 } else if (attempts >= 3) {
@@ -591,8 +613,14 @@ public class SellerController {
             if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
                 int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
                 if (attempts >= 5) {
-                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
-                    try { session.invalidate(); } catch (Exception ignored) {}
+                    try {
+                        new SecurityContextLogoutHandler().logout(request, null, authentication);
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        session.invalidate();
+                    } catch (Exception ignored) {
+                    }
                     redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
                     return "redirect:/authen/login";
                 } else if (attempts >= 3) {
@@ -936,9 +964,16 @@ public class SellerController {
     // Helper DTO for supported bank options (matches template usage: b.displayName)
     private static class BankOption {
         private final String displayName;
-        BankOption(String displayName) { this.displayName = displayName; }
-        public String getDisplayName() { return displayName; }
+
+        BankOption(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
     }
+
     private List<BankOption> defaultBanks() {
         return Arrays.asList(
                 new BankOption("Vietcombank"),
@@ -969,7 +1004,8 @@ public class SellerController {
                 return "redirect:/seller/withdraw-money";
             }
             String email = authentication.getName();
-            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc) email = oidc.getEmail();
+            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc)
+                email = oidc.getEmail();
             else if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) {
                 Object mailAttr = ou.getAttributes().get("email");
                 if (mailAttr != null) email = mailAttr.toString();
@@ -1037,7 +1073,8 @@ public class SellerController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
             }
             String email = authentication.getName();
-            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc) email = oidc.getEmail();
+            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc)
+                email = oidc.getEmail();
             else if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) {
                 Object mailAttr = ou.getAttributes().get("email");
                 if (mailAttr != null) email = mailAttr.toString();
@@ -1050,7 +1087,8 @@ public class SellerController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
             }
             Date createdAt = withdrawal.getCreatedAt();
-            if (createdAt == null) return ResponseEntity.badRequest().body("This withdrawal cannot be edited at this time.");
+            if (createdAt == null)
+                return ResponseEntity.badRequest().body("This withdrawal cannot be edited at this time.");
             long diffMs = System.currentTimeMillis() - createdAt.getTime();
             boolean within24h = diffMs <= 24L * 60L * 60L * 1000L;
             String status = withdrawal.getStatus();
@@ -1118,7 +1156,8 @@ public class SellerController {
                 if (user.getEmail() != null && !user.getEmail().isBlank()) {
                     emailService.sendEmailAsync(user.getEmail(), subject, html);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             Map<String, Object> res = new HashMap<>();
             res.put("message", "Bank info updated successfully");
@@ -1132,6 +1171,176 @@ public class SellerController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
+    // List variant accounts with status filter and simple paging
+    @GetMapping(path = "/products/variants/{variantId}/accounts", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> listVariantAccounts(@PathVariable Long variantId,
+                                                 @RequestParam(name = "status", required = false, defaultValue = "all") String status,
+                                                 @RequestParam(name = "page", required = false, defaultValue = "1") Integer page,
+                                                 @RequestParam(name = "size", required = false, defaultValue = "50") Integer size,
+                                                 @RequestParam(name = "search", required = false) String search,
+                                                 Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            // Load variant and verify ownership
+            ProductVariant variant = entityManager.find(ProductVariant.class, variantId);
+            if (variant == null || variant.getProduct() == null || variant.getProduct().getSeller() == null || !Objects.equals(variant.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+
+            String st = status == null ? "all" : status.trim().toLowerCase(Locale.ROOT);
+            if (!st.equals("all") && !st.equals("available") && !st.equals("sold")) st = "all";
+            int p = (page == null || page < 1) ? 1 : page;
+            int sz = (size == null || size < 1 || size > 200) ? 50 : size; // cap to 200 per page
+            int offset = (p - 1) * sz;
+            String like = (search == null || search.isBlank()) ? null : search.trim().toLowerCase(Locale.ROOT);
+
+            // Build base HQL
+            String base = "FROM ProductVariantAccount a WHERE a.isDelete = false AND a.variant.id = :vid";
+            String baseCount = "SELECT COUNT(a) " + base;
+            if (st.equals("available")) base += " AND a.status = 'Available'";
+            else if (st.equals("sold")) base += " AND a.status = 'Sold'";
+            base += " ORDER BY a.createdAt DESC";
+
+            // Fetch page
+            jakarta.persistence.TypedQuery<ProductVariantAccount> q = entityManager.createQuery("SELECT a " + base, ProductVariantAccount.class)
+                    .setParameter("vid", variantId)
+                    .setFirstResult(offset)
+                    .setMaxResults(sz);
+            java.util.List<ProductVariantAccount> rows = q.getResultList();
+
+            // Total count
+            Long total = entityManager.createQuery(baseCount + (st.equals("available") ? " AND a.status = 'Available'" : st.equals("sold") ? " AND a.status = 'Sold'" : ""), Long.class)
+                    .setParameter("vid", variantId)
+                    .getSingleResult();
+
+            // Map to DTOs and optional search filtering (by username contains)
+            java.util.List<Map<String, Object>> items = new java.util.ArrayList<>();
+            for (ProductVariantAccount a : rows) {
+                String ad = a.getAccountData() == null ? "" : a.getAccountData();
+                String uname = ad;
+                String pass = "";
+                int idx = ad.indexOf(':');
+                if (idx >= 0) {
+                    uname = ad.substring(0, idx);
+                    pass = ad.substring(idx + 1);
+                }
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", a.getId());
+                m.put("username", uname);
+                m.put("password", pass);
+                m.put("status", a.getStatus());
+                m.put("createdAt", a.getCreatedAt());
+                items.add(m);
+            }
+            if (like != null) {
+                items.removeIf(it -> {
+                    Object u = it.get("username");
+                    return u == null || !u.toString().toLowerCase(Locale.ROOT).contains(like);
+                });
+            }
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("items", items);
+            res.put("total", total);
+            res.put("page", p);
+            res.put("size", sz);
+            return ResponseEntity.ok(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Update a single account's username/password when status is Available
+    @PutMapping(path = "/products/variants/accounts/{accountId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateVariantAccount(@PathVariable Long accountId,
+                                                  @RequestBody Map<String, Object> body,
+                                                  Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariantAccount acc = entityManager.find(ProductVariantAccount.class, accountId);
+            if (acc == null || acc.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Account not found"));
+            if (acc.getVariant() == null || acc.getVariant().getProduct() == null || acc.getVariant().getProduct().getSeller() == null || !Objects.equals(acc.getVariant().getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+            // Only allow edit when status is Available
+            String st = acc.getStatus();
+            if (st == null || !st.equalsIgnoreCase("Available")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Only accounts with status 'Available' can be edited"));
+            }
+
+            String username = body.get("username") != null ? body.get("username").toString().trim() : null;
+            String password = body.get("password") != null ? body.get("password").toString().trim() : null;
+            Map<String, String> fieldErrors = new HashMap<>();
+            if (username == null || username.isEmpty()) fieldErrors.put("username", "Username is required");
+            if (password == null || password.isEmpty()) fieldErrors.put("password", "Password is required");
+            if (!fieldErrors.isEmpty())
+                return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+
+            // Duplicate check within the same variant (exclude current account id)
+            Long vid = acc.getVariant().getId();
+            java.util.List<String> list = entityManager.createQuery(
+                    "select a.accountData from ProductVariantAccount a where a.variant.id = :vid and a.isDelete = false and a.id <> :id",
+                    String.class
+            ).setParameter("vid", vid).setParameter("id", acc.getId()).getResultList();
+            java.util.Set<String> usernames = new java.util.HashSet<>();
+            if (list != null) {
+                for (String s : list) {
+                    if (s == null) continue;
+                    int idx = s.indexOf(':');
+                    String u = (idx >= 0 ? s.substring(0, idx) : s);
+                    if (u != null) usernames.add(u.trim());
+                }
+            }
+            if (usernames.contains(username)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Duplicate username detected. This account already exists in this variant.",
+                        "fieldErrors", Map.of("username", "Duplicate username")
+                ));
+            }
+
+            // Update accountData preserving simple format username:password
+            acc.setAccountData(username + ":" + password);
+            entityManager.merge(acc);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Updated successfully",
+                    "id", acc.getId(),
+                    "username", username,
+                    "status", acc.getStatus()
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
     // Upload product image and return public URL
     @PostMapping(path = "/products/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
@@ -1199,6 +1408,7 @@ public class SellerController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
     // NEW: Product management page
     @GetMapping("/product-management")
     public String showProductManagement(Model model, RedirectAttributes redirectAttributes,
@@ -1295,8 +1505,12 @@ public class SellerController {
                 try {
                     var m = p.getClass().getMethod(getter);
                     Object v = m.invoke(p);
-                    if (v instanceof String s && s != null && !s.isBlank()) { displayImage = s; break; }
-                } catch (Exception ignored) {}
+                    if (v instanceof String s && s != null && !s.isBlank()) {
+                        displayImage = s;
+                        break;
+                    }
+                } catch (Exception ignored) {
+                }
             }
             row.put("image", displayImage);
 
@@ -1390,8 +1604,12 @@ public class SellerController {
             try {
                 var m = p.getClass().getMethod(getter);
                 Object v = m.invoke(p);
-                if (v instanceof String s && !s.isBlank()) { displayImage = s; break; }
-            } catch (Exception ignored) {}
+                if (v instanceof String s && !s.isBlank()) {
+                    displayImage = s;
+                    break;
+                }
+            } catch (Exception ignored) {
+            }
         }
         data.put("image", displayImage);
         data.put("isDelete", p.isDelete());
@@ -1403,11 +1621,15 @@ public class SellerController {
                     .setParameter("u", user)
                     .getResultStream().findFirst().orElse(null);
             if (shop != null) {
-                try { entityManager.refresh(shop); } catch (Exception ignored) {}
+                try {
+                    entityManager.refresh(shop);
+                } catch (Exception ignored) {
+                }
                 data.put("shopLevel", shop.getShopLevel() != null ? shop.getShopLevel() : 0);
                 data.put("shopPoints", shop.getPoints() != null ? shop.getPoints() : 0);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         return ResponseEntity.ok(data);
     }
@@ -1422,7 +1644,8 @@ public class SellerController {
         String email = authentication.getName();
         if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
         else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-            Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
@@ -1448,10 +1671,14 @@ public class SellerController {
                     .setParameter("u", user)
                     .getResultStream().findFirst().orElse(null);
             if (shop != null) {
-                try { entityManager.refresh(shop); } catch (Exception ignored) {}
+                try {
+                    entityManager.refresh(shop);
+                } catch (Exception ignored) {
+                }
                 model.addAttribute("shop", shop);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "seller/product-detail";
     }
 
@@ -1483,6 +1710,7 @@ public class SellerController {
         entityManager.merge(p);
         return ResponseEntity.ok(Map.of("id", p.getId(), "hidden", next));
     }
+
     // NEW: Send OTP for shop deletion verification
     @PostMapping(path = "/delete-shop/send-otp")
     @ResponseBody
@@ -1520,7 +1748,8 @@ public class SellerController {
                     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Offload OTP creation + persistence + email to executor; return immediately
         try {
@@ -1537,9 +1766,11 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Shop Cancellation (OTP)";
                     String html = EmailTemplate.deleteShopOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
@@ -1580,9 +1811,9 @@ public class SellerController {
 
             // Business rule a.1: No listed products
             Long remainingProducts = entityManager.createQuery(
-                    "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
-                .setParameter("sellerId", user.getId())
-                .getSingleResult();
+                            "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
+                    .setParameter("sellerId", user.getId())
+                    .getSingleResult();
             if (remainingProducts != null && remainingProducts > 0) {
                 return ResponseEntity.ok(Map.of("ok", false, "message", "You must remove all listed products before deleting your shop."));
             }
@@ -1662,9 +1893,9 @@ public class SellerController {
 
             // Business rule a.1: No listed products — ensure no non-deleted products remain
             Long remainingProducts = entityManager.createQuery(
-                    "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
-                .setParameter("sellerId", user.getId())
-                .getSingleResult();
+                            "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
+                    .setParameter("sellerId", user.getId())
+                    .getSingleResult();
             if (remainingProducts != null && remainingProducts > 0) {
                 return ResponseEntity.badRequest().body("You must remove all listed products before deleting your shop.");
             }
@@ -1718,14 +1949,15 @@ public class SellerController {
             try {
                 user.setShopStatus("Inactive");
                 userRepository.save(user);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             // Create notification for user
             try {
                 notificationService.createNotificationForUser(
-                    user.getId(),
-                    "Shop Registration Cancelled",
-                    "Your shop has been successfully cancelled. You can register a new shop again at any time."
+                        user.getId(),
+                        "Shop Registration Cancelled",
+                        "Your shop has been successfully cancelled. You can register a new shop again at any time."
                 );
             } catch (Exception e) {
                 // Log error but don't fail the operation
@@ -1767,7 +1999,8 @@ public class SellerController {
                     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         try {
             User target = user;
@@ -1783,9 +2016,11 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Points Purchase (OTP)";
                     String html = EmailTemplate.buyPointsOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
 
@@ -1849,6 +2084,7 @@ public class SellerController {
             default -> 0L;
         };
     }
+
     private long getMaxPriceByLevel(short level) {
         return switch (level) {
             case 0 -> 50_000L;        // Level 0: max 50k
@@ -1941,6 +2177,7 @@ public class SellerController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
     // Get shop price limit info
     @GetMapping(path = "/shop/price-limit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -1966,7 +2203,8 @@ public class SellerController {
                             "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
                     .setParameter("u", user)
                     .getResultStream().findFirst().orElse(null);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         if (shop == null) {
             return ResponseEntity.ok(Map.of(
                     "level", 0,
@@ -1976,7 +2214,10 @@ public class SellerController {
         }
 
         // Refresh from database to get latest shop_level (updated by DB trigger)
-        try { entityManager.refresh(shop); } catch (Exception ignored) {}
+        try {
+            entityManager.refresh(shop);
+        } catch (Exception ignored) {
+        }
         short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
         long maxPrice = getMaxPriceByLevel(shopLevel);
         long currentPoints = shop.getPoints() == null ? 0L : shop.getPoints();
@@ -1998,18 +2239,21 @@ public class SellerController {
     @GetMapping(path = "/products/{id}/variants", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<?> listVariants(@PathVariable Long id, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         String email = authentication.getName();
         if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
         else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-            Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
         if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
         com.mmo.entity.Product p = opt.get();
-        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
 
         // Get ALL variants including hidden ones (seller should see all their variants)
         java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductId(p.getId());
@@ -2021,12 +2265,14 @@ public class SellerController {
             try {
                 // available accounts = status 'Available'
                 stock = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Available");
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             try {
                 // sold accounts = status 'Sold'
                 sold = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Sold");
-            } catch (Exception ignored) {}
-            dtos.add(new com.mmo.dto.ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock,sold, v.isDelete()));
+            } catch (Exception ignored) {
+            }
+            dtos.add(new com.mmo.dto.ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock, sold, v.isDelete()));
         }
         return ResponseEntity.ok(dtos);
     }
@@ -2036,11 +2282,13 @@ public class SellerController {
     @ResponseBody
     @Transactional
     public ResponseEntity<?> createVariant(@PathVariable Long id, @RequestBody Map<String, Object> body, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         String email = authentication.getName();
         if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
         else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-            Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -2058,17 +2306,23 @@ public class SellerController {
         java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
         if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
         com.mmo.entity.Product p = opt.get();
-        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
 
         String variantName = body.get("variantName") != null ? body.get("variantName").toString().trim() : null;
         Long price = null;
-        try { if (body.get("price") instanceof Number n) price = n.longValue(); else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString()); } catch (Exception ignored) {}
+        try {
+            if (body.get("price") instanceof Number n) price = n.longValue();
+            else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString());
+        } catch (Exception ignored) {
+        }
 
         Map<String, String> fieldErrors = new HashMap<>();
         if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
         if (price == null) fieldErrors.put("price", "Price is required");
         else if (price < 0) fieldErrors.put("price", "Invalid price");
-        if (!fieldErrors.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+        if (!fieldErrors.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
 
         // Check price limit based on shop level
         if (price > maxPrice) {
@@ -2096,11 +2350,13 @@ public class SellerController {
     @ResponseBody
     @Transactional
     public ResponseEntity<?> updateVariant(@PathVariable Long variantId, @RequestBody Map<String, Object> body, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         String email = authentication.getName();
         if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
         else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-            Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
         }
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -2116,18 +2372,25 @@ public class SellerController {
         long maxPrice = getMaxPriceByLevel(shopLevel);
 
         com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
-        if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
-        if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+        if (v == null || v.isDelete())
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
+        if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
 
         String variantName = body.get("variantName") != null ? body.get("variantName").toString().trim() : null;
         Long price = null;
-        try { if (body.get("price") instanceof Number n) price = n.longValue(); else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString()); } catch (Exception ignored) {}
+        try {
+            if (body.get("price") instanceof Number n) price = n.longValue();
+            else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString());
+        } catch (Exception ignored) {
+        }
 
         Map<String, String> fieldErrors = new HashMap<>();
         if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
         if (price == null) fieldErrors.put("price", "Price is required");
         else if (price < 0) fieldErrors.put("price", "Invalid price");
-        if (!fieldErrors.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+        if (!fieldErrors.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
 
         // Check price limit
         if (price > maxPrice) {
@@ -2194,10 +2457,13 @@ public class SellerController {
                     String subject = "[MMOMarket] OTP Xác minh rút tiền";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
+
     private void sendDeleteShopOtpForUser(User user) {
         try {
             if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
@@ -2214,10 +2480,13 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Shop Cancellation (OTP)";
                     String html = EmailTemplate.deleteShopOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
+
     private void sendBuyPointsOtpForUser(User user) {
         try {
             if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
@@ -2234,17 +2503,24 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Points Purchase (OTP)";
                     String html = EmailTemplate.buyPointsOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
+
     private ResponseEntity<String> handleOtpFailForWithdraw(HttpSession session, HttpServletRequest request, Authentication authentication, User user, Long uid, String action, String baseMessage) {
         int attempts = incSellerOtpAttempts(session, uid, action);
         if (attempts >= 5) {
             try {
                 new SecurityContextLogoutHandler().logout(request, null, authentication);
-            } catch (Exception ignored) { }
-            try { session.invalidate(); } catch (Exception ignored) { }
+            } catch (Exception ignored) {
+            }
+            try {
+                session.invalidate();
+            } catch (Exception ignored) {
+            }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Too many OTP failures. You have been logged out. Please sign in again.");
         } else if (attempts >= 3) {
             try {
@@ -2257,7 +2533,8 @@ public class SellerController {
                 } else {
                     sendWithdrawalOtpForUser(user);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             return ResponseEntity.badRequest().body(baseMessage + " A new OTP has been sent to your email. Please use the latest OTP.");
         } else {
             return ResponseEntity.badRequest().body(baseMessage);
@@ -2268,6 +2545,7 @@ public class SellerController {
     private String sellerOtpAttemptsKey(Long uid, String action) {
         return "sellerOtpAttempts:" + uid + ":" + action;
     }
+
     private int incSellerOtpAttempts(HttpSession session, Long uid, String action) {
         String key = sellerOtpAttemptsKey(uid, action);
         Integer cur = (Integer) session.getAttribute(key);
@@ -2275,12 +2553,15 @@ public class SellerController {
         session.setAttribute(key, next);
         return next;
     }
+
     private void clearSellerOtpAttempts(HttpSession session, Long uid, String action) {
         session.removeAttribute(sellerOtpAttemptsKey(uid, action));
     }
+
     private static String safeString(Object s) {
         return s == null ? "" : s.toString();
     }
+
     // Create product via JSON (used by Product Management modal)
     @PostMapping(path = "/products", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -2311,7 +2592,12 @@ public class SellerController {
             String image = body.get("image") != null ? body.get("image").toString().trim() : null;
             Long categoryId = null;
             if (body.get("categoryId") instanceof Number n) categoryId = n.longValue();
-            else if (body.get("categoryId") != null) { try { categoryId = Long.parseLong(body.get("categoryId").toString()); } catch (Exception ignored) {} }
+            else if (body.get("categoryId") != null) {
+                try {
+                    categoryId = Long.parseLong(body.get("categoryId").toString());
+                } catch (Exception ignored) {
+                }
+            }
 
             Map<String, String> fieldErrors = new HashMap<>();
             if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
@@ -2323,13 +2609,22 @@ public class SellerController {
                 cat = entityManager.find(Category.class, categoryId);
                 if (cat == null || cat.isDelete()) fieldErrors.put("categoryId", "Invalid category");
             }
-            if (description != null && description.length() > 5000) fieldErrors.put("description", "Description must be at most 5000 characters");
-            if (image != null && !image.isBlank()) {
+            // Require description for creation
+            if (description == null || description.isBlank()) {
+                fieldErrors.put("description", "Description is required");
+            } else if (description.length() > 5000) {
+                fieldErrors.put("description", "Description must be at most 5000 characters");
+            }
+            // Require image URL for creation and validate format
+            if (image == null || image.isBlank()) {
+                fieldErrors.put("image", "Image is required");
+            } else {
                 if (image.length() > 255) fieldErrors.put("image", "Image URL must be at most 255 characters");
                 String lower = image.toLowerCase();
                 boolean okPrefix = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
                 boolean okExt = lower.matches(".*\\.(png|jpe?g|webp)(\\?.*)?$");
-                if (!okPrefix || !okExt) fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
+                if (!okPrefix || !okExt)
+                    fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
             }
             if (!fieldErrors.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
@@ -2343,7 +2638,11 @@ public class SellerController {
             p.setDelete(false);
             p.setCreatedBy(seller.getId());
             if (image != null && !image.isBlank()) {
-                try { p.getClass().getMethod("setImage", String.class).invoke(p, image); } catch (Exception ignored) { p.setImage(image); }
+                try {
+                    p.getClass().getMethod("setImage", String.class).invoke(p, image);
+                } catch (Exception ignored) {
+                    p.setImage(image);
+                }
             }
             entityManager.persist(p);
             entityManager.flush(); // Force immediate database insert
@@ -2396,7 +2695,12 @@ public class SellerController {
             String image = body.get("image") != null ? body.get("image").toString().trim() : null;
             Long categoryId = null;
             if (body.get("categoryId") instanceof Number n) categoryId = n.longValue();
-            else if (body.get("categoryId") != null) { try { categoryId = Long.parseLong(body.get("categoryId").toString()); } catch (Exception ignored) {} }
+            else if (body.get("categoryId") != null) {
+                try {
+                    categoryId = Long.parseLong(body.get("categoryId").toString());
+                } catch (Exception ignored) {
+                }
+            }
 
             Map<String, String> fieldErrors = new HashMap<>();
             if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
@@ -2408,13 +2712,22 @@ public class SellerController {
                 cat = entityManager.find(Category.class, categoryId);
                 if (cat == null || cat.isDelete()) fieldErrors.put("categoryId", "Invalid category");
             }
-            if (description != null && description.length() > 5000) fieldErrors.put("description", "Description must be at most 5000 characters");
-            if (image != null && !image.isBlank()) {
+            // Require description on update
+            if (description == null || description.isBlank()) {
+                fieldErrors.put("description", "Description is required");
+            } else if (description.length() > 5000) {
+                fieldErrors.put("description", "Description must be at most 5000 characters");
+            }
+            // Require image URL for creation and validate format
+            if (image == null || image.isBlank()) {
+                fieldErrors.put("image", "Image is required");
+            } else {
                 if (image.length() > 255) fieldErrors.put("image", "Image URL must be at most 255 characters");
                 String lower = image.toLowerCase();
                 boolean okPrefix = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
                 boolean okExt = lower.matches(".*\\.(png|jpe?g|webp)(\\?.*)?$");
-                if (!okPrefix || !okExt) fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
+                if (!okPrefix || !okExt)
+                    fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
             }
             if (!fieldErrors.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
@@ -2458,7 +2771,8 @@ public class SellerController {
             String email = authentication.getName();
             if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
             else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-                Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
             }
             User user = userRepository.findByEmail(email).orElse(null);
             if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -2494,12 +2808,15 @@ public class SellerController {
             String email = authentication.getName();
             if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
             else if (authentication.getPrincipal() instanceof OAuth2User ou) {
-                Object mailAttr = ou.getAttributes().get("email"); if (mailAttr != null) email = mailAttr.toString();
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
             }
             User user = userRepository.findByEmail(email).orElse(null);
-            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
             com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
-            if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (v == null || v.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
             if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
             }
@@ -2509,14 +2826,15 @@ public class SellerController {
 
             if (preview) {
                 var pr = productVariantAccountService.previewUpload(user, v, file, dedupe);
-                java.util.List<java.util.Map<String,Object>> rows = new java.util.ArrayList<>();
-                for (var r : pr.getRows()) rows.add(Map.of(
-                        "username", r.getUsername(),
-                        "password", r.getPassword(),
-                        "duplicate", r.isDuplicate(),
-                        "invalid", r.isInvalid(),
-                        "rowIndex", r.getRowIndex()
-                ));
+                java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+                for (var r : pr.getRows())
+                    rows.add(Map.of(
+                            "username", r.getUsername(),
+                            "password", r.getPassword(),
+                            "duplicate", r.isDuplicate(),
+                            "invalid", r.isInvalid(),
+                            "rowIndex", r.getRowIndex()
+                    ));
                 return ResponseEntity.ok(Map.of(
                         "count", pr.getCount(),
                         "duplicateCount", pr.getDuplicateCount(),
@@ -2534,6 +2852,214 @@ public class SellerController {
             }
         } catch (org.springframework.web.multipart.MultipartException mex) {
             return ResponseEntity.badRequest().body(Map.of("message", "Upload error: " + mex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Preview edited rows from JSON (supports inline edit/delete during preview) with pagination
+    @PostMapping(path = "/products/variants/{variantId}/upload-json/preview", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> previewVariantAccountsJson(@PathVariable Long variantId,
+                                                        @RequestBody Map<String, Object> body,
+                                                        Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariant variant = entityManager.find(ProductVariant.class, variantId);
+            if (variant == null || variant.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (variant.getProduct() == null || variant.getProduct().getSeller() == null || !Objects.equals(variant.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+
+            // Parse rows from body
+            Object rowsObj = body.get("rows");
+            if (!(rowsObj instanceof List<?> rawList)) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Invalid payload: rows must be an array"));
+            }
+            List<ProductVariantAccountService.SimpleRow> simple = new ArrayList<>();
+            int idx = 1;
+            for (Object o : rawList) {
+                if (!(o instanceof Map)) {
+                    idx++;
+                    continue;
+                }
+                Map<?, ?> m = (Map<?, ?>) o;
+                boolean deleted = false;
+                Object del = m.get("deleted");
+                if (del instanceof Boolean b) deleted = b;
+                else if (del != null) {
+                    deleted = Boolean.parseBoolean(del.toString());
+                }
+                if (!deleted) {
+                    String u = m.get("username") != null ? m.get("username").toString() : null;
+                    String p = m.get("password") != null ? m.get("password").toString() : null;
+                    simple.add(new ProductVariantAccountService.SimpleRow(u, p));
+                }
+                idx++;
+            }
+            var pr = productVariantAccountService.previewRows(user, variant, simple);
+
+            // Pagination parameters
+            int pageSize = 10;
+            int offset = 0;
+            try {
+                Object ps = body.get("pageSize");
+                if (ps instanceof Number n) pageSize = Math.max(1, Math.min(200, n.intValue()));
+                else if (ps != null) pageSize = Math.max(1, Math.min(200, Integer.parseInt(ps.toString())));
+            } catch (Exception ignored) {
+            }
+            try {
+                Object of = body.get("offset");
+                if (of instanceof Number n) offset = Math.max(0, n.intValue());
+                else if (of != null) offset = Math.max(0, Integer.parseInt(of.toString()));
+            } catch (Exception ignored) {
+            }
+
+            List<ProductVariantAccountService.PreviewRow> all = pr.getRows();
+            int to = Math.min(all.size(), offset + pageSize);
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (int i = offset; i < to; i++) {
+                var r = all.get(i);
+                items.add(Map.of(
+                        "username", r.getUsername(),
+                        "password", r.getPassword(),
+                        "duplicate", r.isDuplicate(),
+                        "invalid", r.isInvalid(),
+                        "rowIndex", r.getRowIndex()
+                ));
+            }
+            return ResponseEntity.ok(Map.of(
+                    "count", pr.getCount(),
+                    "duplicateCount", pr.getDuplicateCount(),
+                    "invalidCount", pr.getInvalidCount(),
+                    "items", items,
+                    "offset", offset,
+                    "pageSize", pageSize
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Confirm edited rows from JSON (skip rows flagged as deleted; validate and dedupe)
+    @PostMapping(path = "/products/variants/{variantId}/upload-json/confirm", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> confirmVariantAccountsJson(@PathVariable Long variantId,
+                                                        @RequestBody Map<String, Object> body,
+                                                        Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariant variant = entityManager.find(ProductVariant.class, variantId);
+            if (variant == null || variant.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (variant.getProduct() == null || variant.getProduct().getSeller() == null || !Objects.equals(variant.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+
+            Object rowsObj = body.get("rows");
+            if (!(rowsObj instanceof List<?> rawList)) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Invalid payload: rows must be an array"));
+            }
+            boolean dedupe = true;
+            try {
+                Object d = body.get("dedupe");
+                if (d instanceof Boolean b) dedupe = b;
+                else if (d != null) dedupe = Boolean.parseBoolean(d.toString());
+            } catch (Exception ignored) {
+            }
+
+            List<ProductVariantAccountService.SimpleRow> simple = new ArrayList<>();
+            for (Object o : rawList) {
+                if (!(o instanceof Map)) continue;
+                Map<?, ?> m = (Map<?, ?>) o;
+                boolean deleted = false;
+                Object del = m.get("deleted");
+                if (del instanceof Boolean b) deleted = b;
+                else if (del != null) {
+                    deleted = Boolean.parseBoolean(del.toString());
+                }
+                if (deleted) continue; // skip rows flagged as deleted
+                String u = m.get("username") != null ? m.get("username").toString() : null;
+                String p = m.get("password") != null ? m.get("password").toString() : null;
+                simple.add(new ProductVariantAccountService.SimpleRow(u, p));
+            }
+
+            try {
+                var ur = productVariantAccountService.confirmRows(user, variant, simple, dedupe);
+                return ResponseEntity.ok(Map.of("created", ur.getCreated(), "skipped", ur.getSkipped()));
+            } catch (IllegalArgumentException iae) {
+                return ResponseEntity.badRequest().body(Map.of("message", iae.getMessage()));
+            }
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Delete a single account (soft delete) when status is Available
+    @DeleteMapping(path = "/products/variants/accounts/{accountId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> deleteVariantAccount(@PathVariable Long accountId,
+                                                  Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariantAccount acc = entityManager.find(ProductVariantAccount.class, accountId);
+            if (acc == null || acc.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Account not found"));
+            if (acc.getVariant() == null || acc.getVariant().getProduct() == null || acc.getVariant().getProduct().getSeller() == null || !Objects.equals(acc.getVariant().getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+            // Only allow delete when status is Available
+            String st = acc.getStatus();
+            if (st == null || !st.equalsIgnoreCase("Available")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Only accounts with status 'Available' can be deleted"));
+            }
+
+            acc.setDelete(true);
+            acc.setDeletedBy(user.getId());
+            entityManager.merge(acc);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Deleted successfully",
+                    "id", acc.getId()
+            ));
         } catch (Exception ex) {
             return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
         }
