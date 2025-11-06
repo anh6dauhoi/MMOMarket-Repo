@@ -46,6 +46,7 @@ import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.Calendar;
 
 @Controller
 @RequestMapping("/seller")
@@ -319,7 +320,184 @@ public class SellerController {
     }
 
     @GetMapping("/my-shop")
-    public String showMyShop(Model model) {
+    public String showMyShop(Model model,
+                             RedirectAttributes redirectAttributes,
+                             @RequestParam(required = false, defaultValue = "month") String timeFilter) {
+        // Get current logged-in user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+
+        // Check if shop is active
+        boolean activeShop = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
+        // Calculate statistics
+        Long sellerId = user.getId();
+
+        // Determine time range based on filter
+        Calendar cal = Calendar.getInstance();
+        Calendar previousCal = Calendar.getInstance();
+
+        switch (timeFilter.toLowerCase()) {
+            case "day":
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                previousCal.setTime(cal.getTime());
+                previousCal.add(Calendar.DAY_OF_MONTH, -1);
+                break;
+            case "year":
+                cal.set(Calendar.DAY_OF_YEAR, 1);
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                previousCal.setTime(cal.getTime());
+                previousCal.add(Calendar.YEAR, -1);
+                break;
+            case "month":
+            default:
+                cal.set(Calendar.DAY_OF_MONTH, 1);
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                previousCal.setTime(cal.getTime());
+                previousCal.add(Calendar.MONTH, -1);
+                break;
+        }
+
+        Date startDate = cal.getTime();
+        Date previousStartDate = previousCal.getTime();
+
+        // Total revenue for current period
+        Long totalRevenue = transactionRepository.getRevenueBySellerIdAndDateAfter(sellerId, startDate);
+        if (totalRevenue == null) totalRevenue = 0L;
+
+        // Total orders for current period
+        Long totalOrders = transactionRepository.getOrdersBySellerIdAndDateAfter(sellerId, startDate);
+        if (totalOrders == null) totalOrders = 0L;
+
+        // Total products (not filtered by time)
+        Long totalProducts = productRepository.countBySellerId(sellerId);
+        if (totalProducts == null) totalProducts = 0L;
+
+        // Calculate previous period's statistics for comparison
+        Long previousRevenue = transactionRepository.getRevenueBySellerIdBetweenDates(sellerId, previousStartDate, startDate);
+        if (previousRevenue == null) previousRevenue = 0L;
+
+        Long previousOrders = transactionRepository.getOrdersBySellerIdBetweenDates(sellerId, previousStartDate, startDate);
+        if (previousOrders == null) previousOrders = 0L;
+
+        // Calculate percentage changes
+        double revenueChange = 0.0;
+        double ordersChange = 0.0;
+
+        if (previousRevenue > 0) {
+            revenueChange = ((double)(totalRevenue - previousRevenue) / previousRevenue) * 100;
+        } else if (totalRevenue > 0) {
+            revenueChange = 100.0;
+        }
+
+        if (previousOrders > 0) {
+            ordersChange = ((double)(totalOrders - previousOrders) / previousOrders) * 100;
+        } else if (totalOrders > 0) {
+            ordersChange = 100.0;
+        }
+
+        // Get recent transactions (limit to 10)
+        List<com.mmo.entity.Transaction> recentTransactions = transactionRepository.findRecentTransactionsBySeller(sellerId);
+        if (recentTransactions.size() > 10) {
+            recentTransactions = recentTransactions.subList(0, 10);
+        }
+
+        // Get top selling products (limit to 5)
+        List<com.mmo.entity.Product> topProducts = productRepository.findTopSellingProductsBySeller(
+            sellerId,
+            org.springframework.data.domain.PageRequest.of(0, 5)
+        );
+
+        // Calculate sales count and percentage for each product
+        List<com.mmo.dto.TopProductDTO> topProductDTO = new ArrayList<>();
+        long totalSales = topProducts.stream()
+            .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
+            .sum();
+
+        for (com.mmo.entity.Product product : topProducts) {
+            Long salesCount = productRepository.countSalesForProduct(product.getId());
+            if (salesCount == null) salesCount = 0L;
+
+            double percentage = 0.0;
+            if (totalSales > 0) {
+                percentage = ((double) salesCount / totalSales) * 100;
+            }
+
+           com.mmo.dto.TopProductDTO dto = new com.mmo.dto.TopProductDTO(
+                product.getId(),
+                product.getName(),
+                product.getImage(),
+                salesCount,
+                percentage
+            );
+            topProductDTO.add(dto);
+        }
+
+        // Add statistics to model
+        model.addAttribute("totalRevenue", totalRevenue);
+        model.addAttribute("totalOrders", totalOrders);
+        model.addAttribute("totalProducts", totalProducts);
+        model.addAttribute("revenueChange", String.format("%.1f", Math.abs(revenueChange)));
+        model.addAttribute("revenueChangePositive", revenueChange >= 0);
+        model.addAttribute("ordersChange", String.format("%.1f", Math.abs(ordersChange)));
+        model.addAttribute("ordersChangePositive", ordersChange >= 0);
+        model.addAttribute("recentTransactions", recentTransactions);
+        model.addAttribute("topProducts", topProductDTO);
+        model.addAttribute("timeFilter", timeFilter);
+
+        // Add comparison label based on filter
+        String comparisonLabel;
+        switch (timeFilter.toLowerCase()) {
+            case "day":
+                comparisonLabel = "vs yesterday";
+                break;
+            case "year":
+                comparisonLabel = "vs last year";
+                break;
+            case "month":
+            default:
+                comparisonLabel = "vs last month";
+                break;
+        }
+        model.addAttribute("comparisonLabel", comparisonLabel);
+
         return "seller/my-shop";
     }
 
@@ -2104,5 +2282,84 @@ public class SellerController {
     }
     private static String safeString(Object s) {
         return s == null ? "" : s.toString();
+    }
+
+    // ==================== REVIEWS MANAGEMENT ====================
+    @GetMapping("/reviews")
+    public String sellerReviews(@RequestParam(name = "page", defaultValue = "0") int page,
+                                @RequestParam(name = "search", defaultValue = "") String search,
+                                @RequestParam(name = "sort", defaultValue = "rating_desc") String sort,
+                                Authentication authentication,
+                                Model model) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/authen/login";
+        }
+
+        User seller = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                .setParameter("email", authentication.getName())
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+
+        if (seller == null) {
+            return "redirect:/authen/login";
+        }
+
+        // Build JPQL query to get reviews for seller's products
+        StringBuilder sb = new StringBuilder(
+            "SELECT r FROM Review r " +
+            "LEFT JOIN FETCH r.product p " +
+            "LEFT JOIN FETCH r.user u " +
+            "WHERE r.isDelete = false AND p.seller.id = :sellerId"
+        );
+
+        if (search != null && !search.isBlank()) {
+            sb.append(" AND (LOWER(p.name) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(u.id AS string) LIKE :search OR CAST(r.id AS string) LIKE :search)");
+        }
+
+        // Determine ordering
+        String orderField = "r.rating";
+        String orderDir = "DESC";
+        if (sort != null) {
+            String s = sort.trim().toLowerCase();
+            if ("rating_asc".equals(s)) {
+                orderField = "r.rating";
+                orderDir = "ASC";
+            } else if ("rating_desc".equals(s)) {
+                orderField = "r.rating";
+                orderDir = "DESC";
+            } else if ("date_asc".equals(s)) {
+                orderField = "r.createdAt";
+                orderDir = "ASC";
+            } else if ("date_desc".equals(s)) {
+                orderField = "r.createdAt";
+                orderDir = "DESC";
+            }
+        }
+        sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
+
+        jakarta.persistence.TypedQuery<com.mmo.entity.Review> query = entityManager.createQuery(sb.toString(), com.mmo.entity.Review.class);
+        query.setParameter("sellerId", seller.getId());
+
+        if (search != null && !search.isBlank()) {
+            query.setParameter("search", "%" + search + "%");
+        }
+
+        List<com.mmo.entity.Review> all = query.getResultList();
+        int total = all.size();
+        int totalPages = (int) Math.ceil((double) total / 10);
+        List<com.mmo.entity.Review> pageList = all.stream()
+                .skip((long) page * 10)
+                .limit(10)
+                .toList();
+
+        model.addAttribute("reviews", pageList);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageTitle", "Reviews Management");
+
+        return "seller/reviews";
     }
 }

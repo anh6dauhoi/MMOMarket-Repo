@@ -67,8 +67,9 @@
                             <span class="font-semibold text-lg" th:text="${displayName}">customer</span>
                         </div>
                         <nav class="space-y-2">
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                               href="#">
+                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
+                               th:classappend="${activeTab == 'profile' or activeTab == 'password' ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
+                               th:href="@{/account/settings(tab='profile')}">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                                           stroke-linecap="round" stroke-linejoin="round"
@@ -133,6 +134,155 @@
                 </div>
             </div>
             <div class="lg:col-span-3">
+<!-- My Profile & Change Password Section -->
+<div th:if="${activeTab == 'profile' or activeTab == 'password'}">
+    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <!-- Tab Headers -->
+        <div class="flex border-b mb-6">
+            <button
+                class="px-6 py-3 font-semibold transition-colors relative"
+                th:classappend="${activeTab == 'profile' or activeTab == null or activeTab == '' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700'}"
+                onclick="window.location.href='/account/settings?tab=profile'">
+                My Profile
+            </button>
+            <button
+                class="px-6 py-3 font-semibold transition-colors relative"
+                th:classappend="${activeTab == 'password' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700'}"
+                onclick="window.location.href='/account/settings?tab=password'">
+                Change Password
+            </button>
+        </div>
+
+        <!-- Success/Error Messages -->
+        <div th:if="${successMessage}" class="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+            <p th:text="${successMessage}"></p>
+        </div>
+        <div th:if="${errorMessage}" class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+            <p th:text="${errorMessage}"></p>
+        </div>
+
+        <!-- My Profile Tab Content -->
+        <div th:if="${activeTab != 'password'}">
+            <h2 class="text-2xl font-bold mb-6">Update Profile</h2>
+            <form th:action="@{/account/update-profile}" method="post" class="space-y-6">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="email" name="email"
+                           th:value="${#authentication.principal instanceof T(org.springframework.security.oauth2.core.user.OAuth2User) ? #authentication.principal.getAttribute('email') : #authentication.name}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                           readonly disabled>
+                    <p class="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+                </div>
+
+                <div>
+                    <label for="fullName" class="block text-sm font-medium text-gray-700 mb-2">Full Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="fullName" name="fullName"
+                           th:value="${currentUser?.fullName}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                           required>
+                </div>
+
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" id="phone" name="phone"
+                           th:value="${currentUser?.phone}"
+                           placeholder="0xxxxxxxxx (10 digits)"
+                           pattern="0[0-9]{9}"
+                           maxlength="10"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                           oninput="validatePhone(this)">
+                    <p id="phoneValidationMessage" class="mt-1 text-xs hidden"></p>
+                    <p class="mt-1 text-xs text-gray-500">Phone must be 10 digits and start with 0</p>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit"
+                            class="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        Update Profile
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Change Password Tab Content -->
+        <div th:if="${activeTab == 'password'}">
+            <h2 class="text-2xl font-bold mb-6">Change Password</h2>
+            <form th:action="@{/account/change-password}" method="post" class="space-y-6" id="changePasswordForm">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+                <div>
+                    <label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-2">Current Password <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="currentPassword" name="currentPassword"
+                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                               required>
+                        <button type="button" onclick="togglePasswordVisibility('currentPassword')"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="currentPasswordMessage" class="mt-1 text-xs hidden"></p>
+                </div>
+
+                <div>
+                    <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-2">New Password <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="newPassword" name="newPassword"
+                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                               required minlength="6"
+                               oninput="validateNewPassword(this)">
+                        <button type="button" onclick="togglePasswordVisibility('newPassword')"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="newPasswordMessage" class="mt-1 text-xs hidden"></p>
+                    <p class="mt-1 text-xs text-gray-500">Password must be at least 6 characters, include uppercase, number, and special character</p>
+                </div>
+
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="confirmPassword" name="confirmPassword"
+                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                               required minlength="6"
+                               oninput="validateConfirmPassword(this)">
+                        <button type="button" onclick="togglePasswordVisibility('confirmPassword')"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="confirmPasswordMessage" class="mt-1 text-xs hidden"></p>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit"
+                            class="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        Change Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div th:if="${activeTab != null and activeTab == 'wishlist'}">
     <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <div class="flex items-center justify-between mb-4">
@@ -225,7 +375,7 @@
     </div>
 </div>
 
-<div th:if="${activeTab == null or activeTab != 'wishlist'}">
+<div th:if="${activeTab != 'wishlist' and activeTab != 'profile' and activeTab != 'password'}">
     <div th:if="${registration == null || registration.id == null || !#strings.toUpperCase(registration.status).contains('ACTIVE')}">
         <div th:replace="~{customer/register-seller :: content}"></div>
     </div>
@@ -237,9 +387,6 @@
         </div>
     </div>
 </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
@@ -248,6 +395,179 @@
 <div th:insert="~{fragments/footer :: footer}"></div>
 
 <script>
+    // Toggle password visibility
+    function togglePasswordVisibility(fieldId) {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            if (field.type === 'password') {
+                field.type = 'text';
+            } else {
+                field.type = 'password';
+            }
+        }
+    }
+
+    // Phone number validation with real-time feedback
+    function validatePhone(input) {
+        const value = input.value.trim();
+        const messageEl = document.getElementById('phoneValidationMessage');
+
+        if (!messageEl) return;
+
+        // Clear previous state
+        input.classList.remove('border-red-500', 'border-green-500');
+        messageEl.classList.add('hidden');
+        messageEl.classList.remove('text-red-600', 'text-green-600');
+
+        // If empty, don't show error (phone is optional)
+        if (value === '') {
+            return;
+        }
+
+        // Check if contains only numbers
+        if (!/^\d*$/.test(value)) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Phone number must contain only digits';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Check if starts with 0
+        if (value.length > 0 && !value.startsWith('0')) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Phone number must start with 0';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Check length
+        if (value.length > 0 && value.length < 10) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Phone number must be exactly 10 digits (' + value.length + '/10)';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        if (value.length > 10) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Phone number must be exactly 10 digits (max exceeded)';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Valid phone number
+        if (value.length === 10 && value.startsWith('0')) {
+            input.classList.add('border-green-500');
+            messageEl.textContent = '✅ Valid phone number';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-green-600');
+        }
+    }
+
+    // New Password validation with real-time feedback
+    function validateNewPassword(input) {
+        const value = input.value;
+        const messageEl = document.getElementById('newPasswordMessage');
+
+        if (!messageEl) return;
+
+        // Clear previous state
+        input.classList.remove('border-red-500', 'border-green-500');
+        messageEl.classList.add('hidden');
+        messageEl.classList.remove('text-red-600', 'text-green-600');
+
+        // If empty, don't show validation (will be caught by required)
+        if (value === '') {
+            return;
+        }
+
+        // Check minimum length (6 characters)
+        if (value.length < 6) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Password must be at least 6 characters (' + value.length + '/6)';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Check for uppercase letter
+        if (!/[A-Z]/.test(value)) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Password must include at least one uppercase letter';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Check for number
+        if (!/[0-9]/.test(value)) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Password must include at least one number';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Check for special character
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value)) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Password must include at least one special character (!@#$%^&*...)';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // All validations passed
+        input.classList.add('border-green-500');
+        messageEl.textContent = '✅ Strong password';
+        messageEl.classList.remove('hidden');
+        messageEl.classList.add('text-green-600');
+
+        // Also validate confirm password if it has a value
+        const confirmInput = document.getElementById('confirmPassword');
+        if (confirmInput && confirmInput.value) {
+            validateConfirmPassword(confirmInput);
+        }
+    }
+
+    // Confirm Password validation with real-time feedback
+    function validateConfirmPassword(input) {
+        const value = input.value;
+        const newPassword = document.getElementById('newPassword')?.value;
+        const messageEl = document.getElementById('confirmPasswordMessage');
+
+        if (!messageEl) return;
+
+        // Clear previous state
+        input.classList.remove('border-red-500', 'border-green-500');
+        messageEl.classList.add('hidden');
+        messageEl.classList.remove('text-red-600', 'text-green-600');
+
+        // If empty, don't show validation
+        if (value === '') {
+            return;
+        }
+
+        // Check if matches new password
+        if (value !== newPassword) {
+            input.classList.add('border-red-500');
+            messageEl.textContent = '❌ Passwords do not match';
+            messageEl.classList.remove('hidden');
+            messageEl.classList.add('text-red-600');
+            return;
+        }
+
+        // Passwords match
+        input.classList.add('border-green-500');
+        messageEl.textContent = '✅ Passwords match';
+        messageEl.classList.remove('hidden');
+        messageEl.classList.add('text-green-600');
+    }
+
     // Auto-hide each toast after 2.2s (do not remove the container)
     document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('toast-container');
@@ -316,6 +636,111 @@
                 }, 220);
             }, {passive: false});
         });
+    });
+
+    // Password validation for Change Password form
+    document.addEventListener('DOMContentLoaded', () => {
+        // Profile form validation
+        const profileForm = document.querySelector('form[action*="update-profile"]');
+        if (profileForm) {
+            profileForm.addEventListener('submit', function(e) {
+                const phoneInput = document.getElementById('phone');
+                if (phoneInput) {
+                    const phoneValue = phoneInput.value.trim();
+
+                    // If phone is provided, validate it
+                    if (phoneValue !== '') {
+                        // Check if contains only numbers
+                        if (!/^\d+$/.test(phoneValue)) {
+                            e.preventDefault();
+                            alert('Phone number must contain only digits!');
+                            phoneInput.focus();
+                            return false;
+                        }
+
+                        // Check if starts with 0
+                        if (!phoneValue.startsWith('0')) {
+                            e.preventDefault();
+                            alert('Phone number must start with 0!');
+                            phoneInput.focus();
+                            return false;
+                        }
+
+                        // Check if exactly 10 digits
+                        if (phoneValue.length !== 10) {
+                            e.preventDefault();
+                            alert('Phone number must be exactly 10 digits!');
+                            phoneInput.focus();
+                            return false;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Change Password form validation
+        const changePasswordForm = document.querySelector('form[action*="change-password"]');
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', function(e) {
+                const currentPassword = document.getElementById('currentPassword')?.value;
+                const newPassword = document.getElementById('newPassword')?.value;
+                const confirmPassword = document.getElementById('confirmPassword')?.value;
+
+                // Validate current password is provided
+                if (!currentPassword || currentPassword.trim() === '') {
+                    e.preventDefault();
+                    alert('Please enter your current password!');
+                    document.getElementById('currentPassword')?.focus();
+                    return false;
+                }
+
+                // Validate new password strength
+                if (!newPassword || newPassword.length < 6) {
+                    e.preventDefault();
+                    alert('New password must be at least 6 characters!');
+                    document.getElementById('newPassword')?.focus();
+                    return false;
+                }
+
+                // Check for uppercase letter
+                if (!/[A-Z]/.test(newPassword)) {
+                    e.preventDefault();
+                    alert('New password must include at least one uppercase letter!');
+                    document.getElementById('newPassword')?.focus();
+                    return false;
+                }
+
+                // Check for number
+                if (!/[0-9]/.test(newPassword)) {
+                    e.preventDefault();
+                    alert('New password must include at least one number!');
+                    document.getElementById('newPassword')?.focus();
+                    return false;
+                }
+
+                // Check for special character
+                if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)) {
+                    e.preventDefault();
+                    alert('New password must include at least one special character (!@#$%^&*...)!');
+                    document.getElementById('newPassword')?.focus();
+                    return false;
+                }
+
+                // Validate passwords match
+                if (newPassword !== confirmPassword) {
+                    e.preventDefault();
+                    alert('New password and confirmation password do not match!');
+                    document.getElementById('confirmPassword')?.focus();
+                    return false;
+                }
+
+                if (newPassword && newPassword.length < 6) {
+                    e.preventDefault();
+                    alert('Password must be at least 6 characters long!');
+                    return false;
+                }
+            });
+        }
     });
 </script>
 </body>

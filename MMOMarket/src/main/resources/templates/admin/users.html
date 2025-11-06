@@ -1,0 +1,712 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null and totalPages > 0 ? totalPages : 1},
+              userCount=${users != null ? #lists.size(users) : 0}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+
+        <!-- Toast Notification -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Title & Stats Row -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-6 space-y-4 md:space-y-0">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">User Management</h1>
+                <p class="text-sm text-gray-500">Manage system users and their permissions</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a th:href="@{/admin/users/banned}"
+                   class="px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition shadow-md flex items-center text-sm">
+                    <i class="fas fa-ban mr-2"></i>Banned Users
+                </a>
+                <span class="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-300">
+                    <i class="fas fa-users mr-1"></i>
+                    <span th:text="${total * size}">0</span> Total
+                </span>
+            </div>
+        </div>
+
+        <!-- Compact Search & Filter Controls -->
+        <div class="mb-6 bg-red-50 p-4 rounded-lg border border-red-300 shadow-sm">
+            <form method="get" action="/admin/users">
+                <div class="flex flex-wrap items-end gap-3">
+                    <!-- Search Input -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-search text-red-600 mr-1"></i>Search
+                        </label>
+                        <input name="search"
+                               class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white shadow-sm text-sm"
+                               placeholder="Search by name or email..."
+                               type="text"
+                               th:value="${currentSearch != null ? currentSearch : ''}">
+                    </div>
+
+                    <!-- Role Filter -->
+                    <div class="w-40">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-user-tag text-red-600 mr-1"></i>Role
+                        </label>
+                        <select name="role" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="" th:selected="${currentRole == null or currentRole == ''}">All Roles</option>
+                            <option value="CUSTOMER" th:selected="${currentRole == 'CUSTOMER'}">Customer</option>
+                            <option value="SELLER" th:selected="${currentRole == 'SELLER'}">Seller</option>
+                            <option value="ADMIN" th:selected="${currentRole == 'ADMIN'}">Admin</option>
+                        </select>
+                    </div>
+
+                    <!-- Shop Status Filter -->
+                    <div class="w-40">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-store text-red-600 mr-1"></i>Shop Status
+                        </label>
+                        <select name="shopStatus" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="" th:selected="${currentShopStatus == null or currentShopStatus == ''}">All Status</option>
+                            <option value="Active" th:selected="${currentShopStatus == 'Active'}">Active</option>
+                            <option value="Inactive" th:selected="${currentShopStatus == 'Inactive'}">Inactive</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="w-44">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-sort text-red-600 mr-1"></i>Sort By
+                        </label>
+                        <select name="sort" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="name_asc" th:selected="${currentSort == null or currentSort == 'name_asc'}">Name A-Z</option>
+                            <option value="name_desc" th:selected="${currentSort == 'name_desc'}">Name Z-A</option>
+                            <option value="role_asc" th:selected="${currentSort == 'role_asc'}">Role ↑</option>
+                            <option value="role_desc" th:selected="${currentSort == 'role_desc'}">Role ↓</option>
+                            <option value="coins_desc" th:selected="${currentSort == 'coins_desc'}">Coins ↓</option>
+                            <option value="coins_asc" th:selected="${currentSort == 'coins_asc'}">Coins ↑</option>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-md text-sm whitespace-nowrap">
+                            <i class="fas fa-filter mr-1.5"></i>Apply
+                        </button>
+                        <a th:href="@{/admin/users}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200 text-sm whitespace-nowrap">
+                            <i class="fas fa-redo mr-1.5"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-lg border border-red-200 shadow-sm">
+            <table class="min-w-full bg-white">
+                <!-- Header: red theme matching transactions -->
+                <thead class="bg-red-600">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">User Info</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Email</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Role</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Shop Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Coins</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+
+                <tr class="hover:bg-red-50 transition duration-150" th:each="user,iter : ${users}">
+                    <td class="py-3 px-4 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${page * size + iter.index + 1}">1</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-red-400 to-rose-500 rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                                <span class="text-white font-semibold text-sm" th:text="${user.fullName != null ? #strings.substring(user.fullName, 0, 1).toUpperCase() : 'U'}">U</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${user.fullName}">Full Name</div>
+                                <div class="text-xs text-gray-500" th:text="${user.phone != null ? user.phone : 'No phone'}">Phone</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="text-sm text-gray-900" th:text="${user.email}">email@example.com</span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span th:if="${user.role == 'ADMIN'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                            <i class="fas fa-crown mr-1"></i>Admin
+                        </span>
+                        <span th:if="${user.role == 'SELLER'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                            <i class="fas fa-store mr-1"></i>Seller
+                        </span>
+                        <span th:if="${user.role == 'CUSTOMER'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                            <i class="fas fa-user mr-1"></i>Customer
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span th:if="${user.shopStatus == 'Active'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            <i class="fas fa-check-circle mr-1"></i>Active
+                        </span>
+                        <span th:if="${user.shopStatus == 'Inactive'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                            <i class="fas fa-times-circle mr-1"></i>Inactive
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-gray-900">
+                            <i class="fas fa-coins text-yellow-500 mr-1"></i>
+                            <span th:text="${user.coins != null ? #numbers.formatInteger(user.coins, 0, 'COMMA') : '0'}">0</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span th:if="${user.verified}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            <i class="fas fa-check-circle mr-1"></i>Verified
+                        </span>
+                        <span th:unless="${user.verified}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300">
+                            <i class="fas fa-clock mr-1"></i>Unverified
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-2">
+                            <button class="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    onclick="viewUserDetail(this)"
+                                    th:attr="data-id=${user.id}">
+                                <i class="fas fa-eye mr-1.5"></i>View
+                            </button>
+                            <button class="inline-flex items-center px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    onclick="banUser(this)"
+                                    th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                                <i class="fas fa-ban mr-1.5"></i>Ban
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(users)}">
+                    <td class="text-center py-16 text-gray-400" colspan="8">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">No users found</p>
+                        <p class="text-sm">Try adjusting your filters or search criteria</p>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition duration-150" th:each="user,iter : ${users}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-500 mr-2" th:text="${page * size + iter.index + 1}">1</span>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gradient-to-br from-red-400 to-rose-500 rounded-lg flex items-center justify-center mr-2 shadow-sm">
+                                <span class="text-white font-semibold text-xs" th:text="${user.fullName != null ? #strings.substring(user.fullName, 0, 1).toUpperCase() : 'U'}">U</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 text-sm" th:text="${user.fullName}">Full Name</h3>
+                                <p class="text-xs text-gray-500" th:text="${user.email}">email@example.com</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs">Role:</p>
+                        <span th:if="${user.role == 'ADMIN'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                            <i class="fas fa-crown mr-0.5"></i>Admin
+                        </span>
+                        <span th:if="${user.role == 'SELLER'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                            <i class="fas fa-store mr-0.5"></i>Seller
+                        </span>
+                        <span th:if="${user.role == 'CUSTOMER'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                            <i class="fas fa-user mr-0.5"></i>Customer
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Shop Status:</p>
+                        <span th:if="${user.shopStatus == 'Active'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            <i class="fas fa-check-circle mr-0.5"></i>Active
+                        </span>
+                        <span th:if="${user.shopStatus == 'Inactive'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                            <i class="fas fa-times-circle mr-0.5"></i>Inactive
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Coins:</p>
+                        <p class="font-bold text-sm">
+                            <i class="fas fa-coins text-yellow-500 mr-1"></i>
+                            <span th:text="${user.coins != null ? #numbers.formatInteger(user.coins, 0, 'COMMA') : '0'}">0</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Status:</p>
+                        <span th:if="${user.verified}"
+                              class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            <i class="fas fa-check-circle mr-0.5"></i>Verified
+                        </span>
+                        <span th:unless="${user.verified}"
+                              class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300">
+                            <i class="fas fa-clock mr-0.5"></i>Unverified
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button class="flex-1 py-2 bg-blue-50 text-blue-500 hover:bg-blue-100 rounded font-medium text-sm"
+                            onclick="viewUserDetail(this)"
+                            th:attr="data-id=${user.id}">
+                        <i class="fas fa-eye mr-1"></i>View
+                    </button>
+                    <button class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            onclick="banUser(this)"
+                            th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                        <i class="fas fa-ban mr-1"></i>Ban
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-center py-16 text-gray-400" th:if="${#lists.isEmpty(users)}">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p class="text-lg font-medium">No users found</p>
+                <p class="text-sm">Try adjusting your filters or search criteria</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-sm text-gray-600">
+                Showing <span class="font-semibold text-gray-900" th:text="${userCount > 0 ? (page * size + 1) : 0}">0</span>
+                to <span class="font-semibold text-gray-900" th:text="${page * size + userCount}">0</span>
+                of <span class="font-semibold text-gray-900" th:text="${total * size}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 text-sm font-medium transition duration-150"
+                   th:with="url='/admin/users?page=' + ${page - 1}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                           + (${currentRole != null and !currentRole.isEmpty()} ? '&role=' + ${currentRole} : '')
+                           + (${currentShopStatus != null and !currentShopStatus.isEmpty()} ? '&shopStatus=' + ${currentShopStatus} : '')
+                           + (${currentSort != null} ? '&sort=' + ${currentSort} : '')"
+                   th:href="${url}" th:if="${page > 0}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+
+                <a class="px-3 py-2 border rounded-lg text-sm font-medium transition duration-150"
+                   th:classappend="${i == page} ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-50'"
+                   th:each="i : ${#numbers.sequence(0, total - 1)}"
+                   th:with="url='/admin/users?page=' + ${i}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                           + (${currentRole != null and !currentRole.isEmpty()} ? '&role=' + ${currentRole} : '')
+                           + (${currentShopStatus != null and !currentShopStatus.isEmpty()} ? '&shopStatus=' + ${currentShopStatus} : '')
+                           + (${currentSort != null} ? '&sort=' + ${currentSort} : '')"
+                   th:href="${url}"
+                   th:if="${i == 0 or i == page or i == page - 1 or i == page + 1 or i == total - 1}"
+                   th:text="${i + 1}">1</a>
+
+                <a class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 text-sm font-medium transition duration-150"
+                   th:with="url='/admin/users?page=' + ${page + 1}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                           + (${currentRole != null and !currentRole.isEmpty()} ? '&role=' + ${currentRole} : '')
+                           + (${currentShopStatus != null and !currentShopStatus.isEmpty()} ? '&shopStatus=' + ${currentShopStatus} : '')
+                           + (${currentSort != null} ? '&sort=' + ${currentSort} : '')"
+                   th:href="${url}" th:if="${page < total - 1}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- View User Detail Modal -->
+    <div id="viewUserModal"
+         class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full transform transition-all duration-300 ease-out scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-red-600 rounded-t-2xl sticky top-0 z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-full flex items-center justify-center bg-white shadow-md">
+                        <i class="fas fa-user text-red-600 text-base"></i>
+                    </div>
+                    <h3 id="modal-title" class="text-lg font-bold text-white">User Details</h3>
+                </div>
+                <button class="text-white hover:text-red-100 transition duration-150"
+                        onclick="closeViewModal()">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="px-5 py-4">
+                <form id="userDetailForm" onsubmit="submitUserEdit(event)">
+                    <input type="hidden" id="detail-userId">
+
+                    <div class="space-y-6">
+                        <!-- Personal Info -->
+                        <div class="border-b pb-4">
+                            <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                                <i class="fas fa-id-card text-red-600 mr-2"></i>Personal Information
+                            </h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Full Name</p>
+                                    <p id="detail-fullName-text" class="text-base font-medium text-gray-900 edit-mode-hidden">-</p>
+                                    <input type="text" id="detail-fullName-input" required aria-label="Full Name"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent edit-mode-visible hidden">
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Email</p>
+                                    <p id="detail-email-text" class="text-base text-gray-900">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Phone</p>
+                                    <p id="detail-phone-text" class="text-base text-gray-900 edit-mode-hidden">-</p>
+                                    <input type="text" id="detail-phone-input" pattern="^0\d{9}$" aria-label="Phone"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent edit-mode-visible hidden"
+                                           placeholder="Format: 10 digits starting with 0">
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Role</p>
+                                    <div id="detail-role-text" class="edit-mode-hidden">
+                                        <span class="px-2 py-1 text-xs rounded-full">-</span>
+                                    </div>
+                                    <select id="detail-role-input" required aria-label="Role"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent edit-mode-visible hidden">
+                                        <option value="CUSTOMER">Customer</option>
+                                        <option value="SELLER">Seller</option>
+                                        <option value="ADMIN">Admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Info -->
+                        <div class="border-b pb-4">
+                            <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                                <i class="fas fa-cog text-red-600 mr-2"></i>Account Information
+                            </h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Shop Status</p>
+                                    <div id="detail-shopStatus">
+                                        <span class="px-2 py-1 text-xs rounded-full">-</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Coins</p>
+                                    <p id="detail-coins-text" class="text-base font-medium text-gray-900 edit-mode-hidden">-</p>
+                                    <input type="number" id="detail-coins-input" min="0" step="1" aria-label="Coins"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent edit-mode-visible hidden">
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Verification Status</p>
+                                    <div id="detail-verified">
+                                        <span class="px-2 py-1 text-xs rounded-full">-</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 mb-1">Created At</p>
+                                    <p id="detail-createdAt" class="text-base text-gray-900">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="flex space-x-3 mt-6 pt-4 border-t">
+                        <!-- View mode buttons -->
+                        <div id="view-mode-buttons" class="flex space-x-3 w-full">
+                            <button type="button" onclick="enableEditMode()"
+                                    class="flex-1 px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-semibold rounded-lg shadow-md transition-all duration-200">
+                                <i class="fas fa-edit mr-2"></i>Edit
+                            </button>
+                            <button type="button" onclick="closeViewModal()"
+                                    class="flex-1 px-6 py-2.5 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-200">
+                                <i class="fas fa-times mr-2"></i>Close
+                            </button>
+                        </div>
+
+                        <!-- Edit mode buttons -->
+                        <div id="edit-mode-buttons" class="flex space-x-3 w-full hidden">
+                            <button type="submit"
+                                    class="flex-1 px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-semibold rounded-lg shadow-md transition-all duration-200">
+                                <i class="fas fa-save mr-2"></i>Save
+                            </button>
+                            <button type="button" onclick="cancelEditMode()"
+                                    class="flex-1 px-6 py-2.5 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-200">
+                                <i class="fas fa-times mr-2"></i>Cancel
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+        let currentUserId = null;
+        let originalUserData = {};
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            toast.classList.remove('hidden');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('opacity-100');
+            }, 3000);
+        }
+
+        async function viewUserDetail(button) {
+            const id = button.dataset.id;
+            currentUserId = id;
+            const modal = document.getElementById('viewUserModal');
+            const modalContent = modal.querySelector('.bg-white');
+
+            try {
+                const response = await fetch(`/admin/users/${id}`);
+                if (response.ok) {
+                    const user = await response.json();
+                    originalUserData = { ...user }; // Store original data
+
+                    // Set text values
+                    document.getElementById('detail-fullName-text').textContent = user.fullName || '-';
+                    document.getElementById('detail-email-text').textContent = user.email || '-';
+                    document.getElementById('detail-phone-text').textContent = user.phone || 'Not provided';
+                    document.getElementById('detail-coins-text').textContent = user.coins ? user.coins.toLocaleString() : '0';
+                    document.getElementById('detail-createdAt').textContent = user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+
+                    // Set input values
+                    document.getElementById('detail-userId').value = id;
+                    document.getElementById('detail-fullName-input').value = user.fullName || '';
+                    document.getElementById('detail-phone-input').value = user.phone || '';
+                    document.getElementById('detail-role-input').value = user.role || 'CUSTOMER';
+                    document.getElementById('detail-coins-input').value = user.coins || 0;
+
+                    // Role badge
+                    const roleElement = document.getElementById('detail-role-text');
+                    let roleBadge;
+                    if (user.role === 'ADMIN') {
+                        roleBadge = '<span class="px-2.5 py-1 text-xs rounded-full bg-purple-100 text-purple-800 border border-purple-300"><i class="fas fa-crown mr-1"></i>Admin</span>';
+                    } else if (user.role === 'SELLER') {
+                        roleBadge = '<span class="px-2.5 py-1 text-xs rounded-full bg-blue-100 text-blue-800 border border-blue-300"><i class="fas fa-store mr-1"></i>Seller</span>';
+                    } else {
+                        roleBadge = '<span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-800 border border-gray-300"><i class="fas fa-user mr-1"></i>Customer</span>';
+                    }
+                    roleElement.innerHTML = roleBadge;
+
+                    // Shop Status
+                    const shopStatusElement = document.getElementById('detail-shopStatus');
+                    shopStatusElement.innerHTML = user.shopStatus === 'Active'
+                        ? '<span class="px-2.5 py-1 text-xs rounded-full bg-green-100 text-green-800 border border-green-300"><i class="fas fa-check-circle mr-1"></i>Active</span>'
+                        : '<span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-800 border border-gray-300"><i class="fas fa-times-circle mr-1"></i>Inactive</span>';
+
+                    // Verified status
+                    const verifiedElement = document.getElementById('detail-verified');
+                    verifiedElement.innerHTML = user.verified
+                        ? '<span class="px-2.5 py-1 text-xs rounded-full bg-green-100 text-green-800 border border-green-300"><i class="fas fa-check-circle mr-1"></i>Verified</span>'
+                        : '<span class="px-2.5 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300"><i class="fas fa-clock mr-1"></i>Unverified</span>';
+
+                    // Reset to view mode
+                    setViewMode();
+
+                    // Show modal with animation
+                    modal.classList.remove('hidden');
+                    setTimeout(() => {
+                        modalContent.classList.remove('scale-95', 'opacity-0');
+                        modalContent.classList.add('scale-100', 'opacity-100');
+                    }, 10);
+                } else {
+                    showToast('Failed to load user details', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to load user details', true);
+            }
+        }
+
+        function setViewMode() {
+            // Hide edit elements
+            document.querySelectorAll('.edit-mode-visible').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.edit-mode-hidden').forEach(el => el.classList.remove('hidden'));
+
+            // Show/hide button groups
+            document.getElementById('view-mode-buttons').classList.remove('hidden');
+            document.getElementById('edit-mode-buttons').classList.add('hidden');
+        }
+
+        function setEditMode() {
+            // Show edit elements
+            document.querySelectorAll('.edit-mode-visible').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.edit-mode-hidden').forEach(el => el.classList.add('hidden'));
+
+            // Show/hide button groups
+            document.getElementById('view-mode-buttons').classList.add('hidden');
+            document.getElementById('edit-mode-buttons').classList.remove('hidden');
+
+            // Disable role select if user is admin
+            const roleSelect = document.getElementById('detail-role-input');
+            if (originalUserData.role === 'ADMIN') {
+                roleSelect.disabled = true;
+                roleSelect.classList.add('bg-gray-100', 'cursor-not-allowed');
+            } else {
+                roleSelect.disabled = false;
+                roleSelect.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            }
+        }
+
+        function enableEditMode() {
+            setEditMode();
+        }
+
+        function cancelEditMode() {
+            // Reset input values to original data
+            document.getElementById('detail-fullName-input').value = originalUserData.fullName || '';
+            document.getElementById('detail-phone-input').value = originalUserData.phone || '';
+            document.getElementById('detail-role-input').value = originalUserData.role || 'CUSTOMER';
+            document.getElementById('detail-coins-input').value = originalUserData.coins || 0;
+
+            setViewMode();
+        }
+
+        async function submitUserEdit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('detail-userId').value;
+            const fullName = document.getElementById('detail-fullName-input').value;
+            const phone = document.getElementById('detail-phone-input').value;
+            const role = document.getElementById('detail-role-input').value;
+            const coins = document.getElementById('detail-coins-input').value;
+
+            try {
+                const response = await fetch(`/admin/users/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    },
+                    body: JSON.stringify({ fullName, phone, role, coins })
+                });
+
+                if (response.ok) {
+                    showToast('User updated successfully!');
+
+                    // Update original data and display
+                    originalUserData.fullName = fullName;
+                    originalUserData.phone = phone;
+                    originalUserData.role = role;
+                    originalUserData.coins = parseInt(coins);
+
+                    // Update text displays
+                    document.getElementById('detail-fullName-text').textContent = fullName || '-';
+                    document.getElementById('detail-phone-text').textContent = phone || 'Not provided';
+                    document.getElementById('detail-coins-text').textContent = coins ? parseInt(coins).toLocaleString() : '0';
+
+                    // Update role badge
+                    const roleElement = document.getElementById('detail-role-text');
+                    let roleBadge;
+                    if (role === 'ADMIN') {
+                        roleBadge = '<span class="px-2.5 py-1 text-xs rounded-full bg-purple-100 text-purple-800 border border-purple-300"><i class="fas fa-crown mr-1"></i>Admin</span>';
+                    } else if (role === 'SELLER') {
+                        roleBadge = '<span class="px-2.5 py-1 text-xs rounded-full bg-blue-100 text-blue-800 border border-blue-300"><i class="fas fa-store mr-1"></i>Seller</span>';
+                    } else {
+                        roleBadge = '<span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-800 border border-gray-300"><i class="fas fa-user mr-1"></i>Customer</span>';
+                    }
+                    roleElement.innerHTML = roleBadge;
+
+                    setViewMode();
+
+                    // Reload page after 1 second to update table
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to update user', true);
+            }
+        }
+
+        function closeViewModal() {
+            const modal = document.getElementById('viewUserModal');
+            const modalContent = modal.querySelector('.bg-white');
+
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+
+            currentUserId = null;
+            originalUserData = {};
+            setViewMode();
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('DOMContentLoaded', function () {
+            const viewModal = document.getElementById('viewUserModal');
+
+            if (viewModal) {
+                viewModal.addEventListener('click', function (e) {
+                    if (e.target === viewModal) {
+                        closeViewModal();
+                    }
+                });
+            }
+        });
+
+        async function banUser(button) {
+            const userId = button.dataset.id;
+            const userName = button.dataset.name;
+
+            if (!confirm(`Are you sure you want to ban user "${userName}"? This will restrict their access to the system.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/users/${userId}/ban`, {
+                    method: 'PUT',
+                    headers: {
+                        [csrfHeader]: csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('User banned successfully');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to ban user', true);
+            }
+        }
+        /*]]>*/
+    </script>
+</div>
+
+</html>
