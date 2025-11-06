@@ -263,21 +263,23 @@
                         </div>
 
                         <!-- File upload button -->
-                        <button type="button" onclick="document.getElementById('fileInput').click()" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="Attach file">
+                        <button type="button" onclick="document.getElementById('fileInput').click()" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0 self-end" title="Attach file">
                             <i class="fas fa-paperclip text-xl"></i>
                         </button>
 
-                        <!-- Message input -->
-                        <input type="text"
+                        <!-- Message textarea -->
+                        <textarea
                                id="messageInput"
-                               placeholder="Type a message..."
-                               class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
+                               placeholder="Type a message... (Shift+Enter for new line)"
+                               rows="1"
+                               class="flex-1 px-4 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none overflow-y-auto"
+                               style="max-height: 120px; min-height: 40px;"></textarea>
 
                         <!-- Send button -->
                         <button type="submit"
-                                class="bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0"
+                                class="bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0 self-end"
                                 id="sendButton"
-                                title="Send message">
+                                title="Send message (Enter)">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </form>
@@ -552,7 +554,7 @@
                 <div class="flex justify-end" data-msg-id="${msg.id}">
                     <div class="max-w-[70%]">
                         <div class="bg-red-500 text-white rounded-2xl rounded-tr-none px-4 py-2 shadow">
-                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="break-words">${escapeHtml(msg.message)}</p>` : ''}
+                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="break-words whitespace-pre-line">${escapeHtml(msg.message)}</p>` : ''}
                             ${fileContent}
                         </div>
                         <div class="text-xs text-gray-500 mt-1 mr-2 text-right">${time}</div>
@@ -567,10 +569,10 @@
                     </div>
                     <div>
                         <div class="bg-white rounded-2xl rounded-tl-none px-4 py-2 shadow">
-                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="text-gray-800 break-words">${escapeHtml(msg.message)}</p>` : ''}
+                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="text-gray-800 break-words whitespace-pre-line">${escapeHtml(msg.message)}</p>` : ''}
                             ${fileContent}
                         </div>
-                        <span class="text-xs text-gray-500 mt-1 ml-2">${time}</span>
+                        <div class="text-xs text-gray-500 mt-1 ml-2">${time}</div>
                     </div>
                 </div>
             `;
@@ -673,6 +675,7 @@
 
                 if (response.ok) {
                     messageInput.value = '';
+                    messageInput.style.height = 'auto'; // Reset height
                     cancelFileUpload();
                 } else {
                     const err = await response.json().catch(() => ({}));
@@ -688,6 +691,7 @@
 
                 if (response.ok) {
                     messageInput.value = '';
+                    messageInput.style.height = 'auto'; // Reset height
                 } else {
                     const err = await response.json().catch(() => ({}));
                     alert(err.error || 'Cannot send message');
@@ -698,6 +702,7 @@
             alert('Failed to send message. Please try again.');
         } finally {
             sendButton.disabled = false;
+            messageInput.focus(); // Focus back on input
         }
     });
 
@@ -711,6 +716,11 @@
     document.addEventListener('DOMContentLoaded', () => {
         const sellerId = /*[[${sellerId}]]*/ null;
         ensureSseConnected();
+
+        // Check for complaint success parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const complaintSuccess = urlParams.get('complaintSuccess');
+
         if (sellerId) {
             const sellerConv = document.querySelector(`.conversation-item[data-partner-id="${sellerId}"]`);
             if (sellerConv) {
@@ -718,11 +728,47 @@
             } else {
                 createNewConversation(sellerId);
             }
+
+            // Show success notification after a short delay
+            if (complaintSuccess === 'true') {
+                setTimeout(() => {
+                    showComplaintSuccessNotification();
+                    // Scroll to bottom to show the complaint message
+                    setTimeout(scrollToBottom, 500);
+                }, 1000);
+            }
         } else {
             const firstConv = document.querySelector('.conversation-item');
             if (firstConv) selectConversation(firstConv);
         }
     });
+
+    function showComplaintSuccessNotification() {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl z-50 animate-slide-in max-w-md';
+        notification.innerHTML = `
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
+                <div class="ml-3 flex-1">
+                    <h3 class="font-bold text-lg mb-1">Complaint Submitted Successfully!</h3>
+                    <p class="text-sm text-green-100">Your complaint has been sent to the seller. You can continue the conversation here.</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-green-100 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+
+        // Auto remove after 8 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => notification.remove(), 300);
+        }, 8000);
+    }
 
     function createNewConversation(sellerId) {
         selectedReceiverId = sellerId;
@@ -744,10 +790,27 @@
             });
     }
 
-    document.getElementById('messageInput').addEventListener('keydown', (e) => {
+    // Textarea auto-resize functionality
+    const messageInput = document.getElementById('messageInput');
+
+    function autoResizeTextarea() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    }
+
+    // Auto-resize on input
+    messageInput.addEventListener('input', autoResizeTextarea);
+
+    // Handle Enter/Shift+Enter
+    messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
+            // Enter without Shift: Send message
             e.preventDefault();
             document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+        } else if (e.key === 'Enter' && e.shiftKey) {
+            // Shift+Enter: Allow new line (default behavior)
+            // No need to prevent default, let it create new line
+            setTimeout(autoResizeTextarea, 0);
         }
     });
 

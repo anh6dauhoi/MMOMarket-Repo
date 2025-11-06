@@ -118,9 +118,11 @@
                                         <button class="btn-disabled inline-flex items-center space-x-1" disabled title="Coming soon">
                                             <i class="fas fa-star"></i>
                                         </button>
-                                        <button class="btn-disabled inline-flex items-center space-x-1" disabled title="Coming soon">
+                                        <a class="inline-flex items-center space-x-1 px-2 py-1 text-xs font-semibold rounded bg-red-500 hover:bg-red-600 text-white transition-colors"
+                                           th:href="@{/account/orders/{id}(id=${o['id']})}"
+                                           title="File complaint">
                                             <i class="fas fa-exclamation-circle"></i>
-                                        </button>
+                                        </a>
                                     </div>
                                 </td>
                             </tr>

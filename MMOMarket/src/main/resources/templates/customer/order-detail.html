@@ -229,7 +229,8 @@
                             <i class="fas fa-star"></i>
                             <span>Leave Feedback</span>
                         </button>
-                        <button class="btn-disabled inline-flex items-center space-x-2" disabled>
+                        <button onclick="openComplaintModal()"
+                                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg inline-flex items-center space-x-2 transition-colors">
                             <i class="fas fa-exclamation-circle"></i>
                             <span>File Complaint</span>
                         </button>
@@ -285,6 +286,185 @@
     function qs(sel){return document.querySelector(sel);}
     function openActivationModal(){ qs('#activation-modal').classList.remove('hidden'); qs('#activation-modal').classList.add('flex'); }
     function closeActivationModal(){ const m = qs('#activation-modal'); if(!m) return; m.classList.add('hidden'); m.classList.remove('flex'); }
+
+    // Complaint modal functions
+    function openComplaintModal() {
+        // First validate eligibility (including activation check)
+        const orderId = /*[[${order.id}]]*/ '0';
+        const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+        // Show loading indicator on the button
+        const complaintBtn = document.querySelector('button[onclick="openComplaintModal()"]');
+        if (complaintBtn) {
+            complaintBtn.disabled = true;
+            complaintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Checking...';
+        }
+
+        fetch(`/account/orders/${orderId}/complaint/validate`, {
+            method: 'POST',
+            headers: {
+                [header]: token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => Promise.reject(text));
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Reset button
+            if (complaintBtn) {
+                complaintBtn.disabled = false;
+                complaintBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>File Complaint</span>';
+            }
+
+            if (data.valid) {
+                // Open modal if validation passes
+                const modal = document.getElementById('complaint-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+            } else {
+                // Show error message inline (not in modal)
+                showInlineComplaintError(data.message || 'Cannot file complaint at this time');
+            }
+        })
+        .catch(error => {
+            // Reset button
+            if (complaintBtn) {
+                complaintBtn.disabled = false;
+                complaintBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>File Complaint</span>';
+            }
+            showInlineComplaintError(typeof error === 'string' ? error : 'Failed to validate complaint eligibility');
+        });
+    }
+
+    function showInlineComplaintError(message) {
+        // Create or update error message div near the complaint button
+        let errorDiv = document.getElementById('complaintButtonError');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.id = 'complaintButtonError';
+            errorDiv.className = 'mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded';
+
+            const complaintBtn = document.querySelector('button[onclick="openComplaintModal()"]');
+            if (complaintBtn && complaintBtn.parentElement) {
+                complaintBtn.parentElement.parentElement.appendChild(errorDiv);
+            }
+        }
+
+        errorDiv.innerHTML = `
+            <div class="flex items-start">
+                <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-3"></i>
+                <div class="flex-1">
+                    <p class="text-sm text-red-700 font-semibold">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        // Scroll to error
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            if (errorDiv && errorDiv.parentElement) {
+                errorDiv.remove();
+            }
+        }, 10000);
+    }
+
+    function closeComplaintModal() {
+        const modal = document.getElementById('complaint-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        // Reset checkbox
+        const checkbox = document.getElementById('agreeComplaintPolicy');
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+        // Reset error message
+        const errorDiv = document.getElementById('complaintModalError');
+        if (errorDiv) {
+            errorDiv.classList.add('hidden');
+            const textElement = errorDiv.querySelector('p');
+            if (textElement) {
+                textElement.textContent = '';
+            }
+        }
+        // Reset button state
+        updateComplaintConfirmButton();
+    }
+
+    function updateComplaintConfirmButton() {
+        const checkbox = document.getElementById('agreeComplaintPolicy');
+        const confirmBtn = document.getElementById('confirmComplaintBtn');
+
+        if (checkbox && confirmBtn) {
+            if (checkbox.checked) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+                confirmBtn.classList.add('bg-red-600', 'hover:bg-red-700', 'cursor-pointer');
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
+                confirmBtn.classList.remove('bg-red-600', 'hover:bg-red-700', 'cursor-pointer');
+            }
+        }
+    }
+
+    function confirmComplaint() {
+        const checkbox = document.getElementById('agreeComplaintPolicy');
+        const errorDiv = document.getElementById('complaintModalError');
+
+        // Clear previous errors
+        if (errorDiv) {
+            errorDiv.classList.add('hidden');
+            const textElement = errorDiv.querySelector('p');
+            if (textElement) {
+                textElement.textContent = '';
+            }
+        }
+
+        if (!checkbox || !checkbox.checked) {
+            showComplaintError('Please confirm that you have read and understood the complaint policy.');
+            return;
+        }
+
+        // Redirect to complaint form (validation already done)
+        const orderId = /*[[${order.id}]]*/ '0';
+        window.location.href = `/account/orders/${orderId}/complaint`;
+    }
+
+    function showComplaintError(message) {
+        const errorDiv = document.getElementById('complaintModalError');
+        if (errorDiv) {
+            const textElement = errorDiv.querySelector('p');
+            if (textElement) {
+                textElement.textContent = message;
+            }
+            errorDiv.classList.remove('hidden');
+            // Scroll to error message
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    // Initialize checkbox listener
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkbox = document.getElementById('agreeComplaintPolicy');
+        if (checkbox) {
+            checkbox.addEventListener('change', updateComplaintConfirmButton);
+        }
+    });
+
     let selectedAccId = null;
     function openActivationModalFor(accId){ selectedAccId = accId; openActivationModal(); }
     function confirmActivation(){
@@ -484,6 +664,148 @@
         }, 100);
     });
 </script>
+
+<!-- Complaint Policy Modal -->
+<div id="complaint-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 hidden">
+    <div class="bg-white rounded-xl max-w-3xl w-full shadow-2xl overflow-hidden" style="max-height: 90vh;">
+        <div class="px-4 py-3 bg-gradient-to-r from-red-500 via-red-600 to-orange-500 text-white flex items-center justify-between">
+            <h3 class="text-base font-bold flex items-center">
+                <i class="fas fa-file-contract mr-2 text-sm"></i>
+                Complaint Policy
+            </h3>
+            <button class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 transition-colors" onclick="closeComplaintModal()">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="px-4 py-4 overflow-y-auto" style="max-height: calc(90vh - 140px);">
+            <!-- PDF Viewer or Text Policy -->
+            <div th:if="${complaintPolicyUrl != null and !#strings.isEmpty(complaintPolicyUrl)}"
+                 class="border rounded-lg overflow-hidden" style="height: 450px;">
+                <iframe id="complaintPolicyFrame"
+                        style="width: 100%; height: 100%; border: none;"
+                        th:src="${complaintPolicyUrl}">
+                </iframe>
+            </div>
+
+            <!-- Fallback: Display text policy when PDF is not available -->
+            <div th:unless="${complaintPolicyUrl != null and !#strings.isEmpty(complaintPolicyUrl)}"
+                 class="border rounded-lg p-4 bg-gray-50 overflow-y-auto" style="max-height: 450px;">
+                <div class="prose prose-sm max-w-none text-sm">
+                    <h3 class="text-base font-bold text-red-600 mb-3">COMPLAINT POLICY - MMO MARKET</h3>
+
+                    <h4 class="font-bold text-gray-800 mt-3 mb-1 text-sm">ARTICLE 1: GENERAL PRINCIPLES</h4>
+                    <p class="mb-1.5 text-xs"><strong>1.1. Good Faith Principle:</strong> All complaints must be made honestly, in good faith, and based on actual issues arising from the transaction.</p>
+
+                    <p class="mb-1.5 text-xs"><strong>1.2. Complaint Deadline:</strong> The deadline varies by product category:</p>
+                    <ul class="list-disc ml-5 mb-2 text-xs space-y-0.5">
+                        <li><strong>Warning Category Products</strong> (Game keys, codes, giftcards): Complaint deadline is <strong class="text-red-600">3 days</strong> from successful transaction. This is the escrow period during which the system holds Coins.</li>
+                        <li><strong>Common Category Products</strong> (Educational accounts, streaming accounts with validity period): Complaint deadline is from successful transaction <strong>until product expiration</strong> as described.</li>
+                        <li><em>Note:</em> After 3 days for Warning products, Coins are transferred to the Seller. Complaints after this period will be supported based on Seller's reputation and evidence provided, but 100% refund is not guaranteed.</li>
+                    </ul>
+
+                    <p class="mb-1.5 text-xs"><strong>1.3. Resolution Process:</strong> Complaints follow a two-step process:</p>
+                    <ol class="list-decimal ml-5 mb-2 text-xs space-y-0.5">
+                        <li>Buyer resolves with Seller directly</li>
+                        <li>Request Admin intervention if parties cannot reach agreement</li>
+                    </ol>
+
+                    <h4 class="font-bold text-gray-800 mt-3 mb-1 text-sm">ARTICLE 2: MANDATORY EVIDENCE REQUIREMENTS</h4>
+                    <p class="text-xs text-gray-700 mb-2">This is the most important clause. A valid complaint MUST include corresponding evidence based on product type.</p>
+
+                    <p class="mb-1.5 text-xs"><strong>2.1. For Warning Category Products:</strong></p>
+                    <ul class="list-disc ml-5 mb-2 text-xs space-y-0.5">
+                        <li><strong>Applicable products:</strong> Game keys, software keys, codes, giftcards, high-value game/software accounts, or digital products that can only be activated once.</li>
+                        <li><strong class="text-red-600">MANDATORY evidence requirement:</strong> Buyer must provide ONE continuous video, without cuts/pauses or screen obscuration, recording the entire usage process from start.</li>
+                        <li><strong>Video content must clearly show:</strong>
+                            <ol class="list-decimal ml-5 mt-1 text-xs space-y-0.5">
+                                <li>Start recording from when you receive product information on MMO Market transaction detail page and activate the product</li>
+                                <li>Clearly show copying (copy) product information (key, account, password...)</li>
+                                <li>Clearly show switching screen to activation platform (e.g., Steam, Epic Games, software website...)</li>
+                                <li>Clearly show pasting (paste) or entering product information into that platform</li>
+                                <li>Clearly show the result and error message displayed on the activation platform screen</li>
+                            </ol>
+                        </li>
+                        <li><strong>Reason:</strong> This is the only way to prove the product code/account was defective from the start and has not been used by the Buyer.</li>
+                    </ul>
+
+                    <p class="mb-1.5 text-xs"><strong>2.2. For Common Category Products:</strong></p>
+                    <ul class="list-disc ml-5 mb-2 text-xs space-y-0.5">
+                        <li><strong>Applicable products:</strong> Common accounts (education, streaming), documents, tools, and other digital products not in Warning Category.</li>
+                        <li><strong>MANDATORY evidence requirement:</strong> Buyer must provide valid evidence in video OR clear image format, without editing, proving the issue encountered.</li>
+                        <li><strong>Valid evidence examples:</strong>
+                            <ul class="list-circle ml-5 mt-1 text-xs space-y-0.5">
+                                <li>Screenshot showing login error (e.g., "Wrong password", "Account does not exist")</li>
+                                <li>Short video recording login process and unsuccessful result</li>
+                                <li>Screenshot showing account features not matching Seller's description (e.g., downgraded plan)</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-800 mt-3 mb-1 text-sm">ARTICLE 3: CASES NOT SUPPORTED FOR RESOLUTION</h4>
+                    <p class="mb-1.5 text-xs">MMO Market will refuse to process complaints if they fall into one of the following cases:</p>
+                    <ul class="list-disc ml-5 mb-2 text-xs space-y-0.5">
+                        <li>3.1. Not providing evidence or evidence not valid according to Article 2 regulations</li>
+                        <li>3.2. Complaint does not comply with deadline specified in Article 1.2 for each product category</li>
+                        <li>3.3. Error caused by Buyer (e.g., self-modifying account information and losing access, violating third-party platform policy leading to account lock)</li>
+                        <li>3.4. Buyer complaining about product features not described or committed by Seller</li>
+                        <li>3.5. Cases of changing mind, no longer wanting to buy product after transaction completed</li>
+                    </ul>
+
+                    <div class="mt-3 p-2 bg-yellow-50 border border-yellow-300 rounded">
+                        <p class="text-xs text-yellow-800"><strong>Note:</strong> PDF version of this policy will be uploaded by Admin. This is the text fallback version.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 mt-0.5 mr-2 text-sm"></i>
+                    <div class="text-xs text-yellow-800">
+                        <p class="font-bold mb-1">Important Reminders:</p>
+                        <ul class="list-disc ml-4 space-y-0.5">
+                            <li>Complaint deadline:
+                                <strong th:if="${categoryType == 'warning'}">3 days</strong>
+                                <strong th:if="${categoryType == 'common'}">Until product expiration</strong>
+                                from transaction completion
+                            </li>
+                            <li th:if="${categoryType == 'warning'}">
+                                <strong class="text-red-600">Warning category requires video evidence</strong> showing the entire activation process without cuts
+                            </li>
+                            <li>After confirming, you will be redirected to the complaint form to provide details and evidence</li>
+                            <li>Complaints without proper evidence will not be processed</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-start space-x-2 mt-3">
+                <input type="checkbox" id="agreeComplaintPolicy" class="mt-1">
+                <label for="agreeComplaintPolicy" class="text-xs text-gray-700">
+                    I have read and understood the complaint policy. I confirm that I will provide complete and accurate evidence as required.
+                </label>
+            </div>
+
+            <!-- Error Message Display -->
+            <div id="complaintModalError" class="hidden mt-3 p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-2 text-sm"></i>
+                    <p class="text-xs text-red-700 font-semibold"></p>
+                </div>
+            </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 border-t flex items-center justify-between">
+            <button class="px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors" onclick="closeComplaintModal()">
+                Cancel
+            </button>
+            <button id="confirmComplaintBtn"
+                    class="px-4 py-2 text-sm rounded-lg bg-gray-300 text-white font-semibold cursor-not-allowed"
+                    disabled
+                    onclick="confirmComplaint()">
+                I Understand - Proceed
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Activation Modal -->
 <div id="activation-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 hidden">
