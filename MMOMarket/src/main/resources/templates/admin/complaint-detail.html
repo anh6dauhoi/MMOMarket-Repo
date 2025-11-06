@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="content">
+    <div class="bg-white rounded-lg shadow-lg w-full">
+
+        <!-- Toast Notification -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-200">
+            <!-- Back Button -->
+            <div class="mb-4">
+                <a th:href="@{/admin/complaints}" class="inline-flex items-center text-red-600 hover:text-red-700 font-semibold text-sm">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span>Back to Complaint Management</span>
+                </a>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+                        <i class="fas fa-exclamation-circle text-red-600 mr-2"></i>Complaint Details
+                    </h1>
+                    <p class="text-gray-500">Complaint ID: <span class="font-bold text-red-600">#<span th:text="${complaint.id}">1</span></span></p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        Created: <span th:text="${complaint.createdAt != null ? #dates.format(complaint.createdAt,'yyyy-MM-dd HH:mm') : ''}">2024-01-01 12:00</span>
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1" th:if="${complaint.respondedAt != null}">
+                        <i class="fas fa-reply mr-1"></i>
+                        Seller Responded: <span th:text="${#dates.format(complaint.respondedAt,'yyyy-MM-dd HH:mm')}">2024-01-01 14:30</span>
+                    </p>
+                </div>
+                <div class="flex flex-col items-start md:items-end gap-2">
+                    <!-- Status Badge -->
+                    <th:block th:switch="${complaint.status != null ? complaint.status.name() : 'NEW'}">
+                        <span th:case="'NEW'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-blue-100 text-blue-800 border-2 border-blue-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>New
+                        </span>
+                        <span th:case="'IN_PROGRESS'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-yellow-100 text-yellow-800 border-2 border-yellow-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>In Progress
+                        </span>
+                        <span th:case="'PENDING_CONFIRMATION'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-orange-100 text-orange-800 border-2 border-orange-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>Pending Confirmation
+                        </span>
+                        <span th:case="'ESCALATED'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-red-100 text-red-800 border-2 border-red-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>Escalated
+                        </span>
+                        <span th:case="'RESOLVED'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-green-100 text-green-800 border-2 border-green-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>Resolved
+                        </span>
+                        <span th:case="'CLOSED_BY_ADMIN'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-gray-100 text-gray-800 border-2 border-gray-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>Closed by Admin
+                        </span>
+                        <span th:case="'CANCELLED'" class="px-4 py-2 text-sm font-bold rounded-lg inline-flex items-center bg-gray-100 text-gray-800 border-2 border-gray-300">
+                            <i class="fas fa-circle mr-2 text-xs"></i>Cancelled
+                        </span>
+                    </th:block>
+                    <!-- Action Button for Escalated Cases -->
+                    <button th:if="${complaint.status != null and complaint.status.name() == 'ESCALATED'}"
+                            type="button"
+                            onclick="openAdminResolveModal()"
+                            class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-lg inline-flex items-center">
+                        <i class="fas fa-gavel mr-2"></i>Make Decision
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column: Details & Chat -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Status Information Banner -->
+                    <div th:if="${complaint.status != null and complaint.status.name() == 'ESCALATED'}" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-xl mr-3 mt-1"></i>
+                            <div>
+                                <h3 class="font-bold text-red-800 text-lg mb-1">⚠️ Escalated to Admin</h3>
+                                <p class="text-red-700 text-sm">This complaint requires your attention and decision. Please review all evidence and chat history carefully before making a final decision.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Complaint Information -->
+                    <div class="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl shadow-md p-6 border border-red-200">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-info-circle text-red-600 mr-2"></i>Complaint Information
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Type:</span>
+                                <th:block th:switch="${complaint.complaintType != null ? complaint.complaintType.name() : 'OTHER'}">
+                                    <span th:case="'ITEM_NOT_WORKING'" class="px-3 py-1 text-xs font-bold rounded-full inline-flex items-center bg-orange-100 text-orange-800 border border-orange-300">
+                                        <i class="fas fa-tools mr-1"></i>Item Not Working
+                                    </span>
+                                    <span th:case="'ITEM_NOT_AS_DESCRIBED'" class="px-3 py-1 text-xs font-bold rounded-full inline-flex items-center bg-purple-100 text-purple-800 border border-purple-300">
+                                        <i class="fas fa-file-alt mr-1"></i>Not As Described
+                                    </span>
+                                    <span th:case="'FRAUD_SUSPICION'" class="px-3 py-1 text-xs font-bold rounded-full inline-flex items-center bg-red-100 text-red-800 border border-red-300">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>Fraud Suspicion
+                                    </span>
+                                    <span th:case="'OTHER'" class="px-3 py-1 text-xs font-bold rounded-full inline-flex items-center bg-gray-100 text-gray-800 border border-gray-300">
+                                        <i class="fas fa-question mr-1"></i>Other
+                                    </span>
+                                </th:block>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Transaction:</span>
+                                <span class="text-sm text-gray-600" th:text="'#' + ${transaction != null ? transaction.id : (complaint.transactionId != null ? complaint.transactionId : 'N/A')}">Transaction ID</span>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Description:</span>
+                                <p class="text-sm text-gray-600 flex-1" th:text="${complaint.description}">Complaint description</p>
+                            </div>
+                            <div th:if="${complaint.evidence != null and !#strings.isEmpty(complaint.evidence)}" class="flex flex-col sm:flex-row sm:items-start gap-2">
+                                <span class="text-sm font-semibold text-gray-700 sm:w-32 flex-shrink-0">Evidence:</span>
+                                <div class="flex-1">
+                                    <div id="evidence-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                                        <!-- Evidence will be rendered by JavaScript -->
+                                        <span class="text-xs text-gray-500">Loading evidence...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <script th:if="${complaint.evidence != null and !#strings.isEmpty(complaint.evidence)}" th:inline="javascript">
+                                /*<![CDATA[*/
+                                (function() {
+                                    try {
+                                        const evidenceData = /*[[${complaint.evidence}]]*/ '';
+                                        const container = document.getElementById('evidence-container');
+
+                                        if (!container) return;
+
+                                        let evidenceArray = [];
+
+                                        // Try to parse as JSON array
+                                        try {
+                                            evidenceArray = JSON.parse(evidenceData);
+                                            if (!Array.isArray(evidenceArray)) {
+                                                evidenceArray = [evidenceData];
+                                            }
+                                        } catch (e) {
+                                            // If not JSON, try comma-separated
+                                            if (evidenceData.includes(',')) {
+                                                evidenceArray = evidenceData.split(',').map(s => s.trim()).filter(s => s);
+                                            } else {
+                                                evidenceArray = [evidenceData];
+                                            }
+                                        }
+
+                                        if (evidenceArray.length === 0) {
+                                            container.innerHTML = '<span class="text-xs text-gray-400 col-span-full">No evidence attached</span>';
+                                            return;
+                                        }
+
+                                        // Render evidence items with preview
+                                        container.innerHTML = evidenceArray.map((url, index) => {
+                                            const cleanUrl = url.trim();
+                                            if (!cleanUrl) return '';
+
+                                            const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(cleanUrl);
+                                            const isVideo = /\.(mp4|webm|ogg|mov|avi)$/i.test(cleanUrl);
+                                            const isPDF = /\.pdf$/i.test(cleanUrl);
+
+                                            if (isImage) {
+                                                return `
+                                                    <div class="group relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition cursor-pointer aspect-square">
+                                                        <img src="${cleanUrl}"
+                                                             alt="Evidence ${index + 1}"
+                                                             class="w-full h-full object-cover"
+                                                             onclick="openImageLightbox('${cleanUrl}')"
+                                                             onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full\\\'><i class=\\'fas fa-image-slash text-gray-400 text-2xl\\'></i></div>'">
+                                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition flex items-center justify-center">
+                                                            <i class="fas fa-search-plus text-white opacity-0 group-hover:opacity-100 text-2xl transition"></i>
+                                                        </div>
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                                            <span class="text-white text-xs font-medium">Image ${index + 1}</span>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            } else if (isVideo) {
+                                                return `
+                                                    <div class="group relative bg-gray-900 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition aspect-square">
+                                                        <video class="w-full h-full object-cover"
+                                                               controls
+                                                               preload="metadata"
+                                                               onclick="event.stopPropagation()">
+                                                            <source src="${cleanUrl}" type="video/mp4">
+                                                            Your browser does not support the video tag.
+                                                        </video>
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pointer-events-none">
+                                                            <span class="text-white text-xs font-medium flex items-center">
+                                                                <i class="fas fa-video mr-1"></i>Video ${index + 1}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            } else if (isPDF) {
+                                                return `
+                                                    <a href="${cleanUrl}" target="_blank"
+                                                       class="flex flex-col items-center justify-center bg-red-50 rounded-lg border-2 border-red-200 hover:border-red-400 transition p-4 aspect-square">
+                                                        <i class="fas fa-file-pdf text-red-500 text-4xl mb-2"></i>
+                                                        <span class="text-xs font-medium text-gray-700 text-center">PDF Document ${index + 1}</span>
+                                                    </a>
+                                                `;
+                                            } else {
+                                                return `
+                                                    <a href="${cleanUrl}" target="_blank"
+                                                       class="flex flex-col items-center justify-center bg-gray-100 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition p-4 aspect-square">
+                                                        <i class="fas fa-file text-gray-500 text-4xl mb-2"></i>
+                                                        <span class="text-xs font-medium text-gray-700 text-center">File ${index + 1}</span>
+                                                    </a>
+                                                `;
+                                            }
+                                        }).join('');
+                                    } catch (error) {
+                                        console.error('Error rendering evidence:', error);
+                                        document.getElementById('evidence-container').innerHTML =
+                                            '<span class="text-xs text-red-500 col-span-full">Error loading evidence</span>';
+                                    }
+                                })();
+                                /*]]>*/
+                            </script>
+                        </div>
+                    </div>
+
+                    <!-- Seller Response (if any) -->
+                    <div th:if="${complaint.sellerFinalResponse != null and !#strings.isEmpty(complaint.sellerFinalResponse)}"
+                         class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-md p-6 border border-green-200">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-reply text-green-600 mr-2"></i>Seller Response
+                        </h2>
+                        <div class="space-y-3">
+                            <!-- Derive action from status -->
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Action:</span>
+                                <span th:if="${complaint.status != null and complaint.status.name() == 'IN_PROGRESS'}"
+                                      class="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                                    Approved
+                                </span>
+                                <span th:if="${complaint.status == null or complaint.status.name() != 'IN_PROGRESS'}"
+                                      class="px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                                    Rejected/Proposed Solution
+                                </span>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Response:</span>
+                                <p class="text-sm text-gray-600 flex-1 whitespace-pre-wrap" th:text="${complaint.sellerFinalResponse}">Seller response text</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Responded At:</span>
+                                <span class="text-sm text-gray-600" th:text="${complaint.updatedAt != null ? #dates.format(complaint.updatedAt,'yyyy-MM-dd HH:mm') : ''}">Date</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Escalation Reason (if escalated) -->
+                    <div th:if="${complaint.escalationReason != null and !#strings.isEmpty(complaint.escalationReason)}"
+                         class="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl shadow-md p-6 border border-orange-300">
+                        <h2 class="text-lg font-bold text-orange-800 mb-4 flex items-center">
+                            <i class="fas fa-exclamation-triangle text-orange-600 mr-2"></i>Escalation Reason
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-orange-700 w-32">Reason:</span>
+                                <p class="text-sm text-orange-900 flex-1 whitespace-pre-wrap" th:text="${complaint.escalationReason}">Escalation reason</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Decision (if closed) -->
+                    <div th:if="${complaint.status != null and complaint.status.name() == 'CLOSED_BY_ADMIN' and complaint.adminDecisionNotes != null and !#strings.isEmpty(complaint.adminDecisionNotes)}"
+                         class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl shadow-md p-6 border border-gray-300">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-gavel text-gray-600 mr-2"></i>Admin Decision
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Decision Notes:</span>
+                                <p class="text-sm text-gray-600 flex-1 whitespace-pre-wrap" th:text="${complaint.adminDecisionNotes}">Admin decision notes</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Handler:</span>
+                                <span class="text-sm text-gray-600" th:text="${complaint.adminHandler != null ? complaint.adminHandler.fullName : 'N/A'}">Admin Name</span>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Decided At:</span>
+                                <span class="text-sm text-gray-600" th:text="${complaint.updatedAt != null ? #dates.format(complaint.updatedAt,'yyyy-MM-dd HH:mm') : ''}">Date</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat/Communication History - View Only -->
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white">
+                            <h2 class="text-lg font-bold flex items-center">
+                                <i class="fas fa-comments mr-2"></i>Communication History
+                            </h2>
+                            <p class="text-sm text-blue-100 mt-1">Messages exchanged between customer and seller (Read-only)</p>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 max-h-96 overflow-y-auto">
+
+                            <!-- No messages state -->
+                            <div th:if="${messages == null or #lists.isEmpty(messages)}" class="text-center py-12">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 mb-3">
+                                    <i class="fas fa-comment-slash text-2xl text-gray-400"></i>
+                                </div>
+                                <p class="text-gray-500 font-medium">No communication history</p>
+                                <p class="text-sm text-gray-400 mt-1">No messages were exchanged for this complaint</p>
+                            </div>
+
+                            <!-- Chat messages -->
+                            <div th:if="${messages != null and !#lists.isEmpty(messages)}" class="space-y-3">
+                                <th:block th:each="chat : ${messages}">
+                                    <!-- Message from customer (left side) -->
+                                    <div th:if="${chat.sender != null and complaint.customer != null and chat.sender.id == complaint.customer.id}"
+                                         class="flex items-start space-x-3">
+                                        <div class="flex-shrink-0">
+                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow">
+                                                <span th:text="${chat.sender.fullName != null and !#strings.isEmpty(chat.sender.fullName) ? #strings.substring(chat.sender.fullName, 0, 1).toUpperCase() : 'C'}">C</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 max-w-lg">
+                                            <div class="flex items-center space-x-2 mb-1">
+                                                <span class="font-semibold text-blue-700 text-sm" th:text="${chat.sender.fullName != null ? chat.sender.fullName : 'Customer'}">Customer</span>
+                                                <span class="text-xs text-gray-400" th:text="${chat.createdAt != null ? #dates.format(chat.createdAt,'HH:mm dd/MM/yyyy') : ''}">Time</span>
+                                            </div>
+                                            <div class="bg-white rounded-lg rounded-tl-none shadow p-3 border border-blue-100">
+                                                <p class="text-sm text-gray-700 whitespace-pre-wrap" th:text="${chat.message}">Message</p>
+                                                <!-- File attachment -->
+                                                <div th:if="${chat.filePath != null and !#strings.isEmpty(chat.filePath)}" class="mt-2 pt-2 border-t border-gray-100">
+                                                    <a th:href="${chat.filePath}" target="_blank"
+                                                       class="inline-flex items-center text-xs text-blue-600 hover:text-blue-700 font-medium">
+                                                        <i class="fas fa-paperclip mr-1"></i>
+                                                        <span th:text="${chat.fileName != null ? chat.fileName : 'Attachment'}">File</span>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Message from seller (right side) -->
+                                    <div th:if="${chat.sender != null and complaint.seller != null and chat.sender.id == complaint.seller.id}"
+                                         class="flex items-start space-x-3 justify-end">
+                                        <div class="flex-1 max-w-lg flex flex-col items-end">
+                                            <div class="flex items-center space-x-2 mb-1">
+                                                <span class="text-xs text-gray-400" th:text="${chat.createdAt != null ? #dates.format(chat.createdAt,'HH:mm dd/MM/yyyy') : ''}">Time</span>
+                                                <span class="font-semibold text-green-700 text-sm" th:text="${chat.sender.fullName != null ? chat.sender.fullName : 'Seller'}">Seller</span>
+                                            </div>
+                                            <div class="bg-green-50 rounded-lg rounded-tr-none shadow p-3 border border-green-100">
+                                                <p class="text-sm text-gray-700 whitespace-pre-wrap" th:text="${chat.message}">Message</p>
+                                                <!-- File attachment -->
+                                                <div th:if="${chat.filePath != null and !#strings.isEmpty(chat.filePath)}" class="mt-2 pt-2 border-t border-green-100">
+                                                    <a th:href="${chat.filePath}" target="_blank"
+                                                       class="inline-flex items-center text-xs text-green-600 hover:text-green-700 font-medium">
+                                                        <i class="fas fa-paperclip mr-1"></i>
+                                                        <span th:text="${chat.fileName != null ? chat.fileName : 'Attachment'}">File</span>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-shrink-0">
+                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-sm shadow">
+                                                <span th:text="${chat.sender.fullName != null and !#strings.isEmpty(chat.sender.fullName) ? #strings.substring(chat.sender.fullName, 0, 1).toUpperCase() : 'S'}">S</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </th:block>
+                            </div>
+                        </div>
+
+                        <!-- Footer note -->
+                        <div class="bg-gray-100 px-4 py-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 text-center">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                This is a read-only view of messages up to the complaint submission time
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: Party Information -->
+                <div class="space-y-6">
+                    <!-- Customer Info -->
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-6 border border-blue-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-user text-blue-600 mr-2"></i>Customer
+                        </h3>
+                        <div class="flex items-center mb-4">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl mr-4">
+                                <span th:text="${complaint.customer != null and complaint.customer.fullName != null and !#strings.isEmpty(complaint.customer.fullName) ? #strings.substring(complaint.customer.fullName, 0, 1).toUpperCase() : 'C'}">C</span>
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-800" th:text="${complaint.customer != null and complaint.customer.fullName != null ? complaint.customer.fullName : 'N/A'}">Customer Name</p>
+                                <p class="text-sm text-gray-600" th:text="${complaint.customer != null and complaint.customer.email != null ? complaint.customer.email : 'N/A'}">email@example.com</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Phone:</span>
+                                <span class="font-medium text-gray-800" th:text="${complaint.customer != null and complaint.customer.phone != null ? complaint.customer.phone : 'N/A'}">Phone</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Role:</span>
+                                <span class="px-2 py-0.5 bg-blue-200 text-blue-800 rounded-full text-xs font-semibold">Customer</span>
+                            </div>
+                        </div>
+                        <button th:if="${complaint.customer != null}"
+                                type="button"
+                                onclick="openUserModal(this)"
+                                th:attr="data-user-id=${complaint.customer.id}"
+                                class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition text-sm">
+                            <i class="fas fa-user-circle mr-2"></i>View Profile
+                        </button>
+                    </div>
+
+                    <!-- Seller Info -->
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-6 border border-green-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-store text-green-600 mr-2"></i>Seller
+                        </h3>
+                        <div class="flex items-center mb-4">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-xl mr-4">
+                                <span th:text="${complaint.seller != null and complaint.seller.fullName != null and !#strings.isEmpty(complaint.seller.fullName) ? #strings.substring(complaint.seller.fullName, 0, 1).toUpperCase() : 'S'}">S</span>
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-800" th:text="${complaint.seller != null and complaint.seller.fullName != null ? complaint.seller.fullName : 'N/A'}">Seller Name</p>
+                                <p class="text-sm text-gray-600" th:text="${complaint.seller != null and complaint.seller.email != null ? complaint.seller.email : 'N/A'}">email@example.com</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Phone:</span>
+                                <span class="font-medium text-gray-800" th:text="${complaint.seller != null and complaint.seller.phone != null ? complaint.seller.phone : 'N/A'}">Phone</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Role:</span>
+                                <span class="px-2 py-0.5 bg-green-200 text-green-800 rounded-full text-xs font-semibold">Seller</span>
+                            </div>
+                        </div>
+                        <button th:if="${complaint.seller != null}"
+                                type="button"
+                                onclick="openUserModal(this)"
+                                th:attr="data-user-id=${complaint.seller.id}"
+                                class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition text-sm">
+                            <i class="fas fa-user-circle mr-2"></i>View Profile
+                        </button>
+                    </div>
+
+                    <!-- Transaction Info -->
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-md p-6 border border-purple-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-exchange-alt text-purple-600 mr-2"></i>Transaction
+                        </h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">ID:</span>
+                                <span class="font-bold text-purple-700">
+                                    <span th:if="${transaction != null}">#<span th:text="${transaction.id}">ID</span></span>
+                                    <span th:if="${transaction == null and complaint.transactionId != null}">#<span th:text="${complaint.transactionId}">ID</span></span>
+                                    <span th:if="${transaction == null and complaint.transactionId == null}">N/A</span>
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Amount:</span>
+                                <span class="font-bold text-gray-800">
+                                    <span th:if="${transaction != null and transaction.amount != null}" th:text="${#numbers.formatDecimal(transaction.amount, 0, 'POINT', 0, 'COMMA')} + ' ₫'">Amount</span>
+                                    <span th:if="${transaction == null or transaction.amount == null}">N/A</span>
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Date:</span>
+                                <span class="text-gray-800">
+                                    <span th:if="${transaction != null and transaction.createdAt != null}" th:text="${#dates.format(transaction.createdAt,'yyyy-MM-dd')}">Date</span>
+                                    <span th:if="${transaction == null or transaction.createdAt == null}">N/A</span>
+                                </span>
+                            </div>
+                        </div>
+                        <button th:if="${transaction != null}"
+                                type="button"
+                                onclick="openTransactionModal(this)"
+                                th:attr="data-transaction-id=${transaction.id}"
+                                class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition text-sm">
+                            <i class="fas fa-eye mr-2"></i>View Transaction
+                        </button>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-history text-gray-600 mr-2"></i>Timeline
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500 mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-800">Complaint Created</p>
+                                    <p class="text-xs text-gray-500" th:text="${complaint.createdAt != null ? #dates.format(complaint.createdAt,'yyyy-MM-dd HH:mm') : ''}">Date</p>
+                                </div>
+                            </div>
+                            <div th:if="${complaint.sellerFinalResponse != null and !#strings.isEmpty(complaint.sellerFinalResponse)}" class="flex items-start">
+                                <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-green-500 mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-800">Seller Responded</p>
+                                    <p class="text-xs text-gray-500" th:text="${complaint.updatedAt != null ? #dates.format(complaint.updatedAt,'yyyy-MM-dd HH:mm') : ''}">Date</p>
+                                </div>
+                            </div>
+                            <div th:if="${complaint.status != null and complaint.status.name() == 'CLOSED_BY_ADMIN'}" class="flex items-start">
+                                <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-gray-500 mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-800">Admin Closed</p>
+                                    <p class="text-xs text-gray-500" th:text="${complaint.updatedAt != null ? #dates.format(complaint.updatedAt,'yyyy-MM-dd HH:mm') : ''}">Date</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Admin Resolve Modal -->
+    <div id="adminResolveModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-red-600 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
+                <h3 class="text-xl font-bold">
+                    <i class="fas fa-gavel mr-2"></i>Make Final Decision
+                </h3>
+                <button onclick="closeAdminResolveModal()" class="text-white hover:text-gray-200 transition">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <form id="adminResolveForm" onsubmit="handleAdminResolveSubmit(event)">
+                    <input type="hidden" id="complaintId" name="complaintId" th:value="${complaint.id}">
+
+                    <!-- Decision Type -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-balance-scale text-red-600 mr-2"></i>Your Decision <span class="text-red-500">*</span>
+                        </label>
+                        <select name="decision" id="adminDecisionType" required
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                            <option value="">-- Select Your Decision --</option>
+                            <option value="FAVOR_CUSTOMER">Favor Customer (Issue Refund/Compensation)</option>
+                            <option value="FAVOR_SELLER">Favor Seller (Reject Complaint)</option>
+                            <option value="NEUTRAL">Neutral (Partial Resolution)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">This decision is final and cannot be changed</p>
+                    </div>
+
+                    <!-- Decision Notes -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-file-alt text-red-600 mr-2"></i>Decision Notes <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="notes" id="adminDecisionNotes" rows="6" required
+                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                  placeholder="Provide detailed explanation of your decision. This will be visible to both customer and seller. Be clear and professional."
+                                  oninput="updateCharacterCount()"></textarea>
+                        <div class="flex items-center justify-between mt-1">
+                            <p class="text-xs text-gray-500">Minimum 30 characters. Be thorough and professional.</p>
+                            <p class="text-xs font-semibold" id="charCount">
+                                <span id="currentCount">0</span> / <span class="text-gray-500">30 minimum</span>
+                                <span id="countStatus" class="ml-2"></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Action Items -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-tasks text-red-600 mr-2"></i>Action Items
+                        </label>
+                        <div class="space-y-2 bg-gray-50 p-4 rounded-lg">
+                            <label class="flex items-center">
+                                <input type="checkbox" name="refund" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700">Issue Refund to Customer</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="warningSeller" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700">Send Warning to Seller</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="compensate" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700">Provide Compensation Points</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="banSeller" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-red-700 font-semibold">Ban Seller (Serious Cases Only)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Confirmation -->
+                    <div class="mb-4 bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                        <label class="flex items-start">
+                            <input type="checkbox" id="confirmDecision" required class="form-checkbox h-4 w-4 text-red-600 rounded mt-1">
+                            <span class="ml-2 text-sm text-gray-700">
+                                <strong>I confirm that I have reviewed all evidence and messages carefully.</strong>
+                                I understand that this decision is final and will be sent to both parties.
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex space-x-3 pt-4 border-t">
+                        <button type="button" onclick="closeAdminResolveModal()"
+                                class="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit"
+                                class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-lg">
+                            <i class="fas fa-check mr-2"></i>Submit Final Decision
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="userProfileModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform transition-all duration-300 ease-out">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-2xl flex-shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-md">
+                        <i class="fas fa-user text-blue-600 text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">User Profile</h3>
+                        <p class="text-sm font-medium text-blue-100">View user information</p>
+                    </div>
+                </div>
+                <button onclick="closeUserModal()" class="text-white hover:text-blue-100 transition duration-150">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="overflow-y-auto flex-1 px-6 py-5" style="scrollbar-width: thin;">
+                <!-- User Avatar & Basic Info -->
+                <div class="flex items-center space-x-4 mb-6 pb-6 border-b border-gray-200">
+                    <div id="user-avatar" class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                        U
+                    </div>
+                    <div class="flex-1">
+                        <h4 id="user-fullName" class="text-2xl font-bold text-gray-800 mb-1">Loading...</h4>
+                        <p id="user-email" class="text-sm text-gray-600 mb-2">email@example.com</p>
+                        <div id="user-role-badge" class="inline-block"></div>
+                    </div>
+                </div>
+
+                <!-- User Details Grid -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <p class="text-xs text-blue-600 font-semibold uppercase mb-1">Phone</p>
+                        <p id="user-phone" class="text-base font-bold text-blue-900">-</p>
+                    </div>
+                    <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                        <p class="text-xs text-yellow-600 font-semibold uppercase mb-1">Coins</p>
+                        <p id="user-coins" class="text-base font-bold text-yellow-900">
+                            <i class="fas fa-coins text-yellow-500 mr-1"></i>0
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Status Information -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+                    <h5 class="text-sm font-bold text-gray-700 uppercase mb-3 flex items-center">
+                        <i class="fas fa-info-circle text-blue-600 mr-2"></i>Status Information
+                    </h5>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Shop Status</span>
+                            <span id="user-shopStatus"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Verification</span>
+                            <span id="user-verified"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Member Since</span>
+                            <span id="user-createdAt" class="text-sm font-medium text-gray-900">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-end flex-shrink-0">
+                <button onclick="closeUserModal()"
+                        class="px-5 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition duration-150 text-sm">
+                    <i class="fas fa-times mr-2"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div id="transactionModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 ease-out">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-purple-700 rounded-t-2xl flex-shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div id="tx-status-icon" class="w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-md">
+                        <i class="fas fa-question text-purple-600 text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Transaction Details</h3>
+                        <p id="tx-status-text" class="text-sm font-medium text-purple-100"></p>
+                    </div>
+                </div>
+                <button onclick="closeTransactionModal()" class="text-white hover:text-purple-100 transition duration-150">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="overflow-y-auto flex-1 px-6 py-5" style="scrollbar-width: thin;">
+                <!-- Summary Cards Row -->
+                <div class="grid grid-cols-3 gap-3 mb-5">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div class="text-xs text-blue-600 font-semibold uppercase mb-1">Transaction ID</div>
+                        <div id="tx-id" class="text-base font-bold text-blue-900">#-</div>
+                    </div>
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <div class="text-xs text-purple-600 font-semibold uppercase mb-1">Order ID</div>
+                        <div id="tx-order-id" class="text-base font-bold text-purple-900">#-</div>
+                    </div>
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div class="text-xs text-green-600 font-semibold uppercase mb-1">Amount</div>
+                        <div id="tx-amount" class="text-base font-bold text-green-900">0 ₫</div>
+                    </div>
+                </div>
+
+                <!-- Product & Parties Section -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+                    <h4 class="text-xs font-bold text-gray-700 uppercase mb-3 flex items-center">
+                        <i class="fas fa-shopping-bag text-purple-600 mr-2"></i>Product Information
+                    </h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1">Product</p>
+                            <p id="tx-product" class="font-semibold text-gray-900 text-sm">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1">Quantity</p>
+                            <p id="tx-quantity" class="font-semibold text-gray-900 text-sm">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buyer & Seller Cards -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <h4 class="text-xs font-bold text-blue-700 uppercase mb-2 flex items-center">
+                            <i class="fas fa-user text-blue-600 mr-1"></i>Buyer
+                        </h4>
+                        <p id="tx-buyer" class="font-semibold text-gray-900 mb-1 text-sm">-</p>
+                        <p id="tx-buyer-email" class="text-xs text-gray-600">-</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                        <h4 class="text-xs font-bold text-green-700 uppercase mb-2 flex items-center">
+                            <i class="fas fa-store text-green-600 mr-1"></i>Seller
+                        </h4>
+                        <p id="tx-seller" class="font-semibold text-gray-900 mb-1 text-sm">-</p>
+                        <p id="tx-seller-email" class="text-xs text-gray-600">-</p>
+                    </div>
+                </div>
+
+                <!-- Financial Breakdown -->
+                <div class="bg-amber-50 rounded-lg p-4 mb-4 border border-amber-200">
+                    <h4 class="text-xs font-bold text-amber-800 uppercase mb-3 flex items-center">
+                        <i class="fas fa-coins text-amber-600 mr-2"></i>Financial Distribution
+                    </h4>
+                    <div class="grid grid-cols-4 gap-2">
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Commission</p>
+                            <p id="tx-commission" class="font-bold text-gray-900 text-sm">0 ₫</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Seller Coin</p>
+                            <p id="tx-coin-seller" class="font-bold text-green-700 text-sm">0 ₫</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Admin Coin</p>
+                            <p id="tx-coin-admin" class="font-bold text-amber-700 text-sm">0 ₫</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Total Amount</p>
+                            <p id="tx-amount-copy" class="font-bold text-blue-700 text-sm">0 ₫</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Details -->
+                <div class="bg-purple-50 rounded-lg p-4 mb-4 border border-purple-200">
+                    <h4 class="text-xs font-bold text-purple-700 uppercase mb-3 flex items-center">
+                        <i class="fas fa-clipboard-list text-purple-600 mr-2"></i>Order Details
+                    </h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Request ID</p>
+                            <p id="tx-order-request" class="font-mono text-xs text-gray-900 break-all">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Order Status</p>
+                            <p id="tx-order-status" class="font-semibold text-gray-900 text-sm">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Processed At</p>
+                            <p id="tx-processed" class="text-xs text-gray-900">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 mb-1">Escrow Release</p>
+                            <p id="tx-escrow" class="text-xs text-gray-900">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timestamps -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="flex items-start space-x-2">
+                        <i class="fas fa-clock text-gray-400 mt-1 text-xs"></i>
+                        <div>
+                            <p class="text-xs text-gray-500">Created At</p>
+                            <p id="tx-created" class="text-xs font-medium text-gray-900">-</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-2">
+                        <i class="fas fa-sync-alt text-gray-400 mt-1 text-xs"></i>
+                        <div>
+                            <p class="text-xs text-gray-500">Updated At</p>
+                            <p id="tx-updated" class="text-xs font-medium text-gray-900">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Message (if any) -->
+                <div id="tx-error-container" class="hidden bg-red-50 border-l-4 border-red-500 rounded-lg p-4">
+                    <h4 class="text-xs font-bold text-red-700 uppercase mb-2 flex items-center">
+                        <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>Error Message
+                    </h4>
+                    <p id="tx-error" class="text-xs text-red-800 whitespace-pre-wrap"></p>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-end flex-shrink-0">
+                <button onclick="closeTransactionModal()"
+                        class="px-5 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition duration-150 text-sm">
+                    <i class="fas fa-times mr-2"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imageLightbox" class="fixed inset-0 bg-black bg-opacity-95 hidden items-center justify-center z-[60] p-2 sm:p-4" onclick="closeImageLightbox()">
+        <div class="relative max-w-7xl max-h-[95vh] w-full h-full flex items-center justify-center">
+            <!-- Close button -->
+            <button onclick="closeImageLightbox()" class="absolute top-2 right-2 sm:top-4 sm:right-4 text-white hover:text-gray-300 transition z-10 w-10 h-10 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
+                <i class="fas fa-times text-xl sm:text-2xl"></i>
+            </button>
+
+            <!-- Loading indicator -->
+            <div id="lightboxLoader" class="absolute inset-0 flex items-center justify-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
+            </div>
+
+            <!-- Image container -->
+            <div class="relative w-full h-full flex items-center justify-center" onclick="event.stopPropagation()">
+                <img id="lightboxImage"
+                     src=""
+                     alt="Evidence"
+                     class="max-w-full max-h-full object-contain rounded-lg shadow-2xl hidden"
+                     onload="document.getElementById('lightboxLoader').style.display='none'; this.classList.remove('hidden');">
+
+                <!-- Download button -->
+                <a id="lightboxDownload"
+                   href=""
+                   download
+                   target="_blank"
+                   class="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 px-3 py-2 sm:px-4 sm:py-2 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-lg transition shadow-lg flex items-center text-xs sm:text-sm">
+                    <i class="fas fa-download mr-1 sm:mr-2"></i><span class="hidden sm:inline">Download</span><span class="sm:hidden">Save</span>
+                </a>
+
+                <!-- Image info -->
+                <div class="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 px-3 py-2 bg-black bg-opacity-70 text-white rounded-lg text-xs sm:text-sm">
+                    <i class="fas fa-info-circle mr-1"></i>Click outside to close
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<script th:inline="javascript">
+    // Character counter for Decision Notes
+    function updateCharacterCount() {
+        const textarea = document.getElementById('adminDecisionNotes');
+        const currentCount = document.getElementById('currentCount');
+        const charCount = document.getElementById('charCount');
+        const countStatus = document.getElementById('countStatus');
+
+        const length = textarea.value.length;
+        currentCount.textContent = length;
+
+        // Update color and status based on character count
+        if (length === 0) {
+            charCount.className = 'text-xs font-semibold text-gray-500';
+            countStatus.textContent = '';
+        } else if (length < 30) {
+            charCount.className = 'text-xs font-semibold text-red-600';
+            countStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Too short';
+        } else if (length >= 30 && length < 50) {
+            charCount.className = 'text-xs font-semibold text-yellow-600';
+            countStatus.innerHTML = '<i class="fas fa-check-circle"></i> Minimum met';
+        } else {
+            charCount.className = 'text-xs font-semibold text-green-600';
+            countStatus.innerHTML = '<i class="fas fa-check-circle"></i> Good';
+        }
+    }
+
+    // Initialize character count on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCharacterCount();
+    });
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        toastMessage.textContent = message;
+
+        if (type === 'success') {
+            toast.classList.remove('bg-red-500');
+            toast.classList.add('bg-green-500');
+        } else {
+            toast.classList.remove('bg-green-500');
+            toast.classList.add('bg-red-500');
+        }
+
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3000);
+    }
+
+    // Open admin resolve modal
+    function openAdminResolveModal() {
+        document.getElementById('adminResolveModal').classList.remove('hidden');
+        document.getElementById('adminResolveModal').classList.add('flex');
+    }
+
+    // Close admin resolve modal
+    function closeAdminResolveModal() {
+        document.getElementById('adminResolveModal').classList.add('hidden');
+        document.getElementById('adminResolveModal').classList.remove('flex');
+        document.getElementById('adminResolveForm').reset();
+    }
+
+    // Handle admin resolve form submission
+    function handleAdminResolveSubmit(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const complaintId = formData.get('complaintId');
+        const decision = formData.get('decision');
+        const notes = formData.get('notes');
+
+        if (!decision || !notes || notes.length < 30) {
+            showToast('Please fill in all required fields correctly (minimum 30 characters for notes)', 'error');
+            return;
+        }
+
+        if (!document.getElementById('confirmDecision').checked) {
+            showToast('Please confirm that you have reviewed all evidence', 'error');
+            return;
+        }
+
+        // Get CSRF token
+        const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+        // Prepare data
+        const data = {
+            decision: decision,
+            notes: notes,
+            refund: formData.get('refund') === 'true',
+            warningSeller: formData.get('warningSeller') === 'true',
+            compensate: formData.get('compensate') === 'true',
+            banSeller: formData.get('banSeller') === 'true'
+        };
+
+        // Send request
+        fetch(`/admin/complaints/${complaintId}/resolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [header]: token
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Failed to resolve complaint');
+        })
+        .then(data => {
+            showToast('Complaint resolved successfully. Parties have been notified.', 'success');
+            closeAdminResolveModal();
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error resolving complaint. Please try again.', 'error');
+        });
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('adminResolveModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAdminResolveModal();
+        }
+    });
+
+    // ===== User Profile Modal Functions =====
+    function openUserModal(button) {
+        const userId = button.dataset.userId;
+        if (!userId) return;
+
+        const modal = document.getElementById('userProfileModal');
+        if (!modal) return;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Fetch user data
+        fetch(`/admin/users/${userId}`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to load user data');
+            return response.json();
+        })
+        .then(user => {
+            // Set avatar initial
+            const avatarDiv = document.getElementById('user-avatar');
+            avatarDiv.textContent = user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U';
+
+            // Set basic info
+            document.getElementById('user-fullName').textContent = user.fullName || 'N/A';
+            document.getElementById('user-email').textContent = user.email || '-';
+            document.getElementById('user-phone').textContent = user.phone || 'Not provided';
+            document.getElementById('user-coins').innerHTML = `<i class="fas fa-coins text-yellow-500 mr-1"></i>${user.coins ? user.coins.toLocaleString() : '0'}`;
+
+            // Role badge
+            if (user.role === 'ADMIN') {
+                document.getElementById('user-role-badge').innerHTML = '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-300"><i class="fas fa-crown mr-1"></i>Admin</span>';
+            } else if (user.role === 'SELLER') {
+                document.getElementById('user-role-badge').innerHTML = '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-300"><i class="fas fa-store mr-1"></i>Seller</span>';
+            } else {
+                document.getElementById('user-role-badge').innerHTML = '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-300"><i class="fas fa-user mr-1"></i>Customer</span>';
+            }
+
+            // Shop status
+            document.getElementById('user-shopStatus').innerHTML = user.shopStatus === 'Active'
+                ? '<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-300"><i class="fas fa-check-circle mr-1"></i>Active</span>'
+                : '<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-300"><i class="fas fa-times-circle mr-1"></i>Inactive</span>';
+
+            // Verified status
+            document.getElementById('user-verified').innerHTML = user.verified
+                ? '<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-300"><i class="fas fa-check-circle mr-1"></i>Verified</span>'
+                : '<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300"><i class="fas fa-clock mr-1"></i>Unverified</span>';
+
+            // Created date
+            if (user.createdAt) {
+                const date = new Date(user.createdAt);
+                document.getElementById('user-createdAt').textContent = date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to load user profile', 'error');
+            closeUserModal();
+        });
+    }
+
+    function closeUserModal() {
+        const modal = document.getElementById('userProfileModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('userProfileModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeUserModal();
+        }
+    });
+
+    // ===== Transaction Detail Modal Functions =====
+    function formatVnd(x) {
+        const n = Number(x);
+        if (!isFinite(n)) return x ?? '';
+        return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n) + ' ₫';
+    }
+
+    function openTransactionModal(button) {
+        const transactionId = button.dataset.transactionId;
+        if (!transactionId) return;
+
+        const modal = document.getElementById('transactionModal');
+        if (!modal) return;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Fetch transaction data
+        fetch(`/admin/transactions/${transactionId}`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to load transaction data');
+            return response.json();
+        })
+        .then(data => {
+            // Set transaction ID
+            document.getElementById('tx-id').textContent = '#' + (transactionId || data.id || '');
+            document.getElementById('tx-order-id').textContent = data.orderId ? '#' + data.orderId : 'N/A';
+            document.getElementById('tx-amount').textContent = formatVnd(data.amount);
+            document.getElementById('tx-amount-copy').textContent = formatVnd(data.amount);
+
+            // Product info
+            const productName = [data.productName, data.variantName].filter(Boolean).join(' - ');
+            document.getElementById('tx-product').textContent = productName || '-';
+            document.getElementById('tx-quantity').textContent = data.quantity || '0';
+
+            // Buyer & Seller
+            document.getElementById('tx-buyer').textContent = data.customerName || '-';
+            document.getElementById('tx-buyer-email').textContent = data.customerEmail || '-';
+            document.getElementById('tx-seller').textContent = data.sellerName || '-';
+            document.getElementById('tx-seller-email').textContent = data.sellerEmail || '-';
+
+            // Financial breakdown
+            document.getElementById('tx-commission').textContent = formatVnd(data.commission);
+            document.getElementById('tx-coin-seller').textContent = formatVnd(data.coinSeller);
+            document.getElementById('tx-coin-admin').textContent = formatVnd(data.coinAdmin);
+
+            // Order details
+            document.getElementById('tx-order-request').textContent = data.orderRequestId || 'N/A';
+            document.getElementById('tx-order-status').textContent = data.orderStatus || 'N/A';
+            document.getElementById('tx-processed').textContent = data.processedAt || 'N/A';
+            document.getElementById('tx-escrow').textContent = data.escrowReleaseDate || 'N/A';
+
+            // Timestamps
+            document.getElementById('tx-created').textContent = data.createdAt || '-';
+            document.getElementById('tx-updated').textContent = data.updatedAt || '-';
+
+            // Error message
+            const errContainer = document.getElementById('tx-error-container');
+            const errText = document.getElementById('tx-error');
+            if (data.errorMessage && data.errorMessage.trim()) {
+                errText.textContent = data.errorMessage;
+                errContainer.classList.remove('hidden');
+            } else {
+                errContainer.classList.add('hidden');
+            }
+
+            // Status icon and text
+            const status = (data.status || '').toUpperCase();
+            const iconWrap = document.getElementById('tx-status-icon');
+            const icon = iconWrap.querySelector('i');
+            iconWrap.className = 'w-10 h-10 rounded-full flex items-center justify-center shadow-md';
+            icon.className = 'fas text-lg';
+            const statusText = document.getElementById('tx-status-text');
+
+            if (status.includes('COMPLETED')) {
+                iconWrap.classList.add('bg-white');
+                icon.classList.add('fa-check-circle', 'text-green-600');
+                statusText.textContent = 'Transaction Completed';
+            } else if (status.includes('PENDING') || status.includes('ESCROW')) {
+                iconWrap.classList.add('bg-white');
+                icon.classList.add('fa-clock', 'text-yellow-600');
+                statusText.textContent = 'Transaction Pending';
+            } else if (status.includes('CANCEL') || status.includes('FAILED') || status.includes('DISPUTED')) {
+                iconWrap.classList.add('bg-white');
+                icon.classList.add('fa-times-circle', 'text-red-600');
+                statusText.textContent = 'Transaction Cancelled';
+            } else {
+                iconWrap.classList.add('bg-white');
+                icon.classList.add('fa-question', 'text-gray-600');
+                statusText.textContent = data.status || 'Unknown Status';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to load transaction details', 'error');
+            closeTransactionModal();
+        });
+    }
+
+    function closeTransactionModal() {
+        const modal = document.getElementById('transactionModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('transactionModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeTransactionModal();
+        }
+    });
+
+    // ===== Image Lightbox Functions =====
+    function openImageLightbox(imageUrl) {
+        const lightbox = document.getElementById('imageLightbox');
+        const lightboxImage = document.getElementById('lightboxImage');
+        const lightboxDownload = document.getElementById('lightboxDownload');
+        const lightboxLoader = document.getElementById('lightboxLoader');
+
+        if (!lightbox || !lightboxImage) return;
+
+        // Show loader and hide image initially
+        lightboxImage.classList.add('hidden');
+        lightboxLoader.style.display = 'flex';
+
+        lightboxImage.src = imageUrl;
+        lightboxDownload.href = imageUrl;
+
+        lightbox.classList.remove('hidden');
+        lightbox.classList.add('flex');
+
+        // Prevent body scroll when lightbox is open
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeImageLightbox() {
+        const lightbox = document.getElementById('imageLightbox');
+        const lightboxImage = document.getElementById('lightboxImage');
+        if (!lightbox) return;
+
+        lightbox.classList.add('hidden');
+        lightbox.classList.remove('flex');
+
+        // Clear image src to free memory
+        if (lightboxImage) {
+            lightboxImage.src = '';
+            lightboxImage.classList.add('hidden');
+        }
+
+        // Restore body scroll
+        document.body.style.overflow = '';
+    }
+
+    // Close lightbox on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageLightbox();
+        }
+    });
+</script>
+
+</div>
+
+</html>
+

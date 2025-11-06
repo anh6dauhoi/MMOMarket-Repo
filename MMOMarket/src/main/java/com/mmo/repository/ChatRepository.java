@@ -13,6 +13,10 @@ public interface ChatRepository extends JpaRepository<Chat, Long> {
     @Query("SELECT c FROM Chat c WHERE c.isDelete = false AND ((c.sender.id = :u1 AND c.receiver.id = :u2) OR (c.sender.id = :u2 AND c.receiver.id = :u1)) ORDER BY c.createdAt ASC, c.id ASC")
     List<Chat> findConversation(@Param("u1") Long user1Id, @Param("u2") Long user2Id);
 
+    // Fetch chat messages related to a specific complaint
+    @Query("SELECT c FROM Chat c LEFT JOIN FETCH c.sender LEFT JOIN FETCH c.receiver WHERE c.isDelete = false AND c.complaintId = :complaintId ORDER BY c.createdAt ASC, c.id ASC")
+    List<Chat> findByComplaintIdOrderByCreatedAtAsc(@Param("complaintId") Long complaintId);
+
     // Sidebar: latest message per partner for a given user
     interface ConversationSummaryProjection {
         Long getPartnerId();

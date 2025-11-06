@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Complaint Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" th:href="@{/customer/css/complaint-detail.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<div th:insert="~{fragments/header :: header}"></div>
+
+<main class="flex-grow py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Sidebar -->
+            <div class="md:col-span-1">
+                <div th:replace="~{customer/account-setting :: sidebar}"></div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="md:col-span-3">
+                <div class="card-modern p-6">
+                    <!-- Back Button -->
+                    <div class="mb-6">
+                        <a th:href="@{/account/complaints}" class="inline-flex items-center text-red-500 hover:text-red-600 font-semibold text-sm">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            <span>Back to My Complaints</span>
+                        </a>
+                    </div>
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-6 pb-6 border-b-2 border-red-100">
+                        <div>
+                            <h1 class="page-title">Complaint Details</h1>
+                            <p class="text-gray-500 mt-1 text-sm">Complaint ID: <span class="font-bold text-red-500">#<span th:text="${complaintId}">1</span></span></p>
+                        </div>
+                        <div>
+                            <span th:class="'status-badge text-sm px-4 py-2 ' + ${statusFormatted == 'New' ? 'status-new' : (statusFormatted == 'In Progress' ? 'status-in-progress' : (statusFormatted == 'Pending Confirmation' ? 'status-pending' : (statusFormatted == 'Escalated' ? 'status-escalated' : (statusFormatted == 'Resolved' ? 'status-resolved' : (statusFormatted == 'Closed by Admin' ? 'status-closed' : (statusFormatted == 'Cancelled' ? 'status-cancelled' : ''))))))}"
+                                  th:text="${statusFormatted}">New</span>
+                        </div>
+                    </div>
+
+                    <!-- Status Information Banner -->
+                    <div class="mb-6" th:switch="${statusRaw}">
+                        <!-- NEW Status -->
+                        <div th:case="'NEW'" class="status-info-banner status-info-new">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">📋 Complaint Submitted Successfully</h3>
+                                    <p class="mb-3">Your complaint has been created and is waiting for the seller's response.</p>
+                                    <div class="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                                        <p class="text-sm font-semibold text-blue-800"><i class="fas fa-lightbulb mr-2"></i>What you can do:</p>
+                                        <ul class="text-sm text-blue-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li>Chat with the seller to discuss the issue</li>
+                                            <li>Wait for seller's response (usually within 24-48 hours)</li>
+                                            <li>Cancel this complaint if you resolved the issue directly with seller</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- IN_PROGRESS Status -->
+                        <div th:case="'IN_PROGRESS'" class="status-info-banner status-info-progress">
+                            <div class="flex items-start">
+                                <i class="fas fa-hourglass-half text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">⏳ Complaint In Progress</h3>
+                                    <p class="mb-3">The seller is reviewing your complaint and working on a solution.</p>
+                                    <div class="mt-4 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+                                        <p class="text-sm font-semibold text-yellow-800"><i class="fas fa-lightbulb mr-2"></i>What you can do:</p>
+                                        <ul class="text-sm text-yellow-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li>Continue chatting with seller for updates</li>
+                                            <li>Wait for seller's proposed solution</li>
+                                            <li>Request admin support if seller doesn't respond</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PENDING_CONFIRMATION Status -->
+                        <div th:case="'PENDING_CONFIRMATION'" class="status-info-banner status-info-pending">
+                            <div class="flex items-start">
+                                <i class="fas fa-clock text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">⏰ Pending Your Confirmation</h3>
+                                    <p class="mb-3">The seller has proposed a solution. Please review and confirm if you're satisfied.</p>
+                                    <div class="mt-4 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
+                                        <p class="text-sm font-semibold text-orange-800"><i class="fas fa-exclamation-triangle mr-2"></i>Action Required:</p>
+                                        <ul class="text-sm text-orange-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li><strong>Review seller's response below</strong></li>
+                                            <li>Accept the solution if you're satisfied</li>
+                                            <li>Request admin support if solution is not acceptable</li>
+                                            <li>Respond within 3 days to avoid auto-closure</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ESCALATED Status -->
+                        <div th:case="'ESCALATED'" class="status-info-banner status-info-escalated">
+                            <div class="flex items-start">
+                                <i class="fas fa-user-shield text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">🚨 Escalated to Admin</h3>
+                                    <p class="mb-3">Your complaint has been escalated to admin team for review and decision.</p>
+                                    <div class="mt-4 p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
+                                        <p class="text-sm font-semibold text-red-800"><i class="fas fa-info-circle mr-2"></i>What's happening:</p>
+                                        <ul class="text-sm text-red-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li>Admin team is reviewing all evidence and communications</li>
+                                            <li>Both parties may be contacted for additional information</li>
+                                            <li>Admin will make a final decision within 3-5 business days</li>
+                                            <li>The decision will be binding for both parties</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RESOLVED Status -->
+                        <div th:case="'RESOLVED'" class="status-info-banner status-info-resolved">
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">✅ Complaint Resolved</h3>
+                                    <p class="mb-3">This complaint has been successfully resolved.</p>
+                                    <div class="mt-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                                        <p class="text-sm font-semibold text-green-800"><i class="fas fa-thumbs-up mr-2"></i>Resolution Details:</p>
+                                        <ul class="text-sm text-green-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li>The issue has been resolved satisfactorily</li>
+                                            <li>You can still chat with seller for follow-up questions</li>
+                                            <li>Please contact support if you have new issues</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CLOSED_BY_ADMIN Status -->
+                        <div th:case="'CLOSED_BY_ADMIN'" class="status-info-banner status-info-closed">
+                            <div class="flex items-start">
+                                <i class="fas fa-gavel text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">⚖️ Closed by Admin Decision</h3>
+                                    <p class="mb-3">This complaint has been reviewed and closed by admin with a final decision.</p>
+                                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border-l-4 border-gray-400">
+                                        <p class="text-sm font-semibold text-gray-800"><i class="fas fa-info-circle mr-2"></i>Important:</p>
+                                        <ul class="text-sm text-gray-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li>Admin has reviewed all evidence and made a final decision</li>
+                                            <li>Check the Admin Decision section below for details</li>
+                                            <li>This decision is binding and cannot be appealed</li>
+                                            <li>Contact support if you have questions about the decision</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CANCELLED Status -->
+                        <div th:case="'CANCELLED'" class="status-info-banner status-info-cancelled">
+                            <div class="flex items-start">
+                                <i class="fas fa-times-circle text-2xl mr-4 mt-1"></i>
+                                <div class="flex-grow">
+                                    <h3 class="font-bold text-lg mb-2">❌ Complaint Cancelled</h3>
+                                    <p class="mb-3">This complaint has been cancelled.</p>
+                                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border-l-4 border-gray-400">
+                                        <p class="text-sm font-semibold text-gray-800"><i class="fas fa-info-circle mr-2"></i>Status:</p>
+                                        <ul class="text-sm text-gray-700 mt-2 ml-5 list-disc space-y-1">
+                                            <li>The complaint was cancelled by customer</li>
+                                            <li>Issue may have been resolved outside the system</li>
+                                            <li>You can create a new complaint if needed</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+            <!-- Main Info Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <!-- Product Name -->
+                <div class="md:col-span-2 info-card">
+                    <label class="info-label">
+                        <i class="fas fa-box mr-2"></i>Product Name
+                    </label>
+                    <p class="info-value" th:text="${productName}">Product Name</p>
+                </div>
+
+                <!-- Seller -->
+                <div class="info-card">
+                    <label class="info-label">
+                        <i class="fas fa-store mr-2"></i>Seller
+                    </label>
+                    <p class="info-value" th:text="${sellerName}">Seller Name</p>
+                </div>
+
+                <!-- Complaint Type -->
+                <div class="info-card">
+                    <label class="info-label">
+                        <i class="fas fa-tag mr-2"></i>Complaint Type
+                    </label>
+                    <p class="info-value" th:text="${complaintTypeFormatted}">Item Not Working</p>
+                </div>
+
+                <!-- Submitted On -->
+                <div class="info-card">
+                    <label class="info-label">
+                        <i class="fas fa-calendar mr-2"></i>Submitted On
+                    </label>
+                    <p class="info-value" th:text="${complaintCreatedAt != null ? #dates.format(complaintCreatedAt, 'dd/MM/yyyy HH:mm') : 'N/A'}">01/01/2025 12:00</p>
+                </div>
+
+                <!-- Responded At -->
+                <div class="info-card" th:if="${complaintRespondedAt != null}">
+                    <label class="info-label">
+                        <i class="fas fa-reply mr-2"></i>Seller Responded At
+                    </label>
+                    <p class="info-value" th:text="${#dates.format(complaintRespondedAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 14:30</p>
+                </div>
+
+                <!-- Quantity -->
+                <div class="info-card" th:if="${order != null and order.quantity != null}">
+                    <label class="info-label">
+                        <i class="fas fa-shopping-cart mr-2"></i>Quantity
+                    </label>
+                    <p class="info-value" th:text="${order.quantity}">1</p>
+                </div>
+
+                <!-- Admin Handler (only show when closed by admin) -->
+                <div class="info-card" th:if="${adminHandlerName != null and statusRaw == 'CLOSED_BY_ADMIN'}">
+                    <label class="info-label">
+                        <i class="fas fa-user-shield mr-2"></i>Admin Handler
+                    </label>
+                    <p class="info-value" th:text="${adminHandlerName}">Admin Name</p>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-6">
+                <div class="info-card">
+                    <label class="info-label">
+                        <i class="fas fa-file-alt mr-2"></i>Description
+                    </label>
+                    <p class="info-value whitespace-pre-wrap" th:text="${complaintDescription}">Description of the complaint...</p>
+                </div>
+            </div>
+
+            <!-- Evidence -->
+            <div class="mb-6" th:if="${evidenceList != null and !evidenceList.isEmpty()}">
+                <label class="info-label mb-3 block">
+                    <i class="fas fa-paperclip mr-2"></i>Evidence Files
+                </label>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div th:each="evidence : ${evidenceList}" class="evidence-item">
+                        <a th:href="${evidence}" target="_blank" class="evidence-link">
+                            <div class="evidence-preview" th:if="${#strings.contains(evidence, '.jpg') or #strings.contains(evidence, '.jpeg') or #strings.contains(evidence, '.png') or #strings.contains(evidence, '.gif')}">
+                                <img th:src="${evidence}" alt="Evidence" class="w-full h-full object-cover rounded-lg">
+                            </div>
+                            <div class="evidence-preview bg-gray-100 flex items-center justify-center" th:unless="${#strings.contains(evidence, '.jpg') or #strings.contains(evidence, '.jpeg') or #strings.contains(evidence, '.png') or #strings.contains(evidence, '.gif')}">
+                                <i class="fas fa-file text-4xl text-gray-400"></i>
+                            </div>
+                            <div class="text-xs text-center mt-2 text-gray-600 truncate" th:text="${evidence.contains('/') ? evidence.substring(evidence.lastIndexOf('/') + 1) : evidence}">file.jpg</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seller Response -->
+            <div class="mb-6" th:if="${sellerResponse != null and !#strings.isEmpty(sellerResponse)}">
+                <div class="info-card bg-yellow-50 border-yellow-200">
+                    <label class="info-label text-yellow-800">
+                        <i class="fas fa-reply mr-2"></i>Seller Response
+                    </label>
+                    <p class="info-value text-yellow-900 whitespace-pre-wrap" th:text="${sellerResponse}">Seller's response...</p>
+                </div>
+            </div>
+
+            <!-- Escalation Reason (shown when escalated to admin) -->
+            <div class="mb-6" th:if="${escalationReason != null and !#strings.isEmpty(escalationReason)}">
+                <div class="info-card bg-orange-50 border-orange-200">
+                    <label class="info-label text-orange-800">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Escalation Reason
+                    </label>
+                    <p class="info-value text-orange-900 whitespace-pre-wrap" th:text="${escalationReason}">Reason for escalating to admin...</p>
+                    <div class="mt-3 pt-3 border-t border-orange-200">
+                        <p class="text-xs text-orange-700 italic">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            This complaint has been escalated to admin team for review. Admin will make a final decision.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Decision -->
+            <div class="mb-6" th:if="${adminDecision != null and !#strings.isEmpty(adminDecision)}">
+                <div class="info-card bg-blue-50 border-blue-200">
+                    <label class="info-label text-blue-800">
+                        <i class="fas fa-gavel mr-2"></i>Admin Decision
+                    </label>
+                    <p class="info-value text-blue-900 whitespace-pre-wrap" th:text="${adminDecision}">Admin's decision...</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-3 pt-6 border-t-2 border-red-100">
+                <!-- Chat with Seller Button -->
+                <a th:if="${canChat and sellerId != null}"
+                   th:href="@{/chat(sellerId=${sellerId})}"
+                   class="btn-primary">
+                    <i class="fas fa-comments mr-2"></i>Chat with Seller
+                </a>
+
+                <!-- Request Admin Button -->
+                <button th:if="${canRequestAdmin}"
+                        class="btn-warning"
+                        onclick="openEscalateModal()">
+                    <i class="fas fa-headset mr-2"></i>Request Admin Support
+                </button>
+
+                <!-- Accept Solution Button (only for PENDING_CONFIRMATION) -->
+                <button th:if="${statusRaw == 'PENDING_CONFIRMATION'}"
+                        class="btn-success"
+                        onclick="confirmSolution()">
+                    <i class="fas fa-check-circle mr-2"></i>Accept Solution
+                </button>
+
+                <!-- Cancel Complaint Button (only for NEW status) -->
+                <button th:if="${canCancel}"
+                        class="btn-danger"
+                        onclick="cancelComplaint()">
+                    <i class="fas fa-times-circle mr-2"></i>Cancel Complaint
+                </button>
+
+                <!-- Back Button -->
+                <a th:href="@{/account/complaints}" class="btn-secondary ml-auto">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to List
+                </a>
+            </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Escalate Modal -->
+<div id="escalateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 rounded-t-2xl" style="background: linear-gradient(to right, #f97316, #ef4444);">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas fa-headset text-2xl mr-3" style="color: white;"></i>
+                    <h3 class="text-xl font-bold" style="color: white;">Request Admin Support</h3>
+                </div>
+                <button onclick="closeEscalateModal()" class="hover:text-gray-200 transition" style="color: white;">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6">
+            <div class="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                <p class="text-sm text-yellow-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Important:</strong> Escalating to admin is a serious action. The admin team will review all evidence and communications, then make a final binding decision. This process may take 3-5 business days.
+                </p>
+            </div>
+
+            <form id="escalateForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-pencil-alt mr-1"></i>Reason for Escalation <span class="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        id="escalateReason"
+                        name="reason"
+                        rows="6"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                        placeholder="Please explain in detail why you need admin intervention (minimum 20 characters)..."
+                        required
+                        minlength="20"
+                    ></textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span id="charCount">0</span> / 20 characters minimum
+                    </p>
+                </div>
+
+                <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-sm text-gray-700 mb-2"><strong>What happens next:</strong></p>
+                    <ul class="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                        <li>Your complaint will be escalated to admin team</li>
+                        <li>Admin will review all evidence, messages, and both parties' statements</li>
+                        <li>Both you and the seller will be notified of admin's decision</li>
+                        <li>The decision will be final and binding</li>
+                    </ul>
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        type="submit"
+                        class="flex-1 font-semibold py-3 px-6 rounded-xl transition shadow-lg hover:shadow-xl"
+                        style="background: linear-gradient(to right, #f97316, #ef4444); color: white;"
+                        onmouseover="this.style.background='linear-gradient(to right, #ea580c, #dc2626)'"
+                        onmouseout="this.style.background='linear-gradient(to right, #f97316, #ef4444)'"
+                    >
+                        <i class="fas fa-paper-plane mr-2"></i>Submit Request
+                    </button>
+                    <button
+                        type="button"
+                        onclick="closeEscalateModal()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-xl transition"
+                    >
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const complaintId = /*[[${complaintId}]]*/ 0;
+
+    // Helper function to get CSRF token
+    function getCsrfToken() {
+        return document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+    }
+
+    function getCsrfHeader() {
+        return document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+    }
+
+    // Function to show messages instead of alert
+    function showMessage(message, type = 'info') {
+        // Remove any existing message
+        const existingMessage = document.getElementById('customMessage');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'customMessage';
+        messageDiv.className = 'fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-2xl transform transition-all duration-300 ease-in-out';
+
+        // Set color based on type
+        if (type === 'success') {
+            messageDiv.className += ' bg-green-500 text-white';
+        } else if (type === 'error') {
+            messageDiv.className += ' bg-red-500 text-white';
+        } else if (type === 'warning') {
+            messageDiv.className += ' bg-yellow-500 text-white';
+        } else {
+            messageDiv.className += ' bg-blue-500 text-white';
+        }
+
+        messageDiv.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} mr-3 text-xl"></i>
+                    <p class="font-semibold">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(messageDiv);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (messageDiv && messageDiv.parentElement) {
+                messageDiv.style.opacity = '0';
+                messageDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => messageDiv.remove(), 300);
+            }
+        }, 5000);
+    }
+
+    // Character counter for escalate modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('escalateReason');
+        const charCount = document.getElementById('charCount');
+
+        if (textarea && charCount) {
+            textarea.addEventListener('input', function() {
+                charCount.textContent = this.value.length;
+                if (this.value.length >= 20) {
+                    charCount.classList.add('text-green-600');
+                    charCount.classList.remove('text-red-600');
+                } else {
+                    charCount.classList.add('text-red-600');
+                    charCount.classList.remove('text-green-600');
+                }
+            });
+        }
+    });
+
+    function openEscalateModal() {
+        const statusRaw = /*[[${statusRaw}]]*/ 'NEW';
+
+        // Validate status - only allow escalation for IN_PROGRESS or PENDING_CONFIRMATION
+        if (statusRaw !== 'IN_PROGRESS' && statusRaw !== 'PENDING_CONFIRMATION') {
+            let statusMessage = '';
+            if (statusRaw === 'NEW') {
+                statusMessage = 'You cannot request admin support yet. Please wait for the seller to respond first.';
+            } else if (statusRaw === 'ESCALATED') {
+                statusMessage = 'This complaint has already been escalated to admin. Please wait for admin review.';
+            } else if (statusRaw === 'RESOLVED' || statusRaw === 'CLOSED_BY_ADMIN') {
+                statusMessage = 'This complaint has been closed. You cannot request admin support for closed complaints.';
+            } else if (statusRaw === 'CANCELLED') {
+                statusMessage = 'This complaint has been cancelled. You cannot request admin support for cancelled complaints.';
+            } else {
+                statusMessage = 'You can only request admin support when the complaint is in progress or pending confirmation.';
+            }
+            showMessage(statusMessage, 'warning');
+            return;
+        }
+
+        document.getElementById('escalateModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEscalateModal() {
+        document.getElementById('escalateModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('escalateForm').reset();
+        document.getElementById('charCount').textContent = '0';
+    }
+
+    // Handle escalate form submission
+    document.getElementById('escalateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const reason = document.getElementById('escalateReason').value.trim();
+
+        if (reason.length < 20) {
+            showMessage('Please provide a detailed reason (minimum 20 characters)', 'error');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to escalate this complaint to admin? This action cannot be undone.')) {
+            return;
+        }
+
+        // Show loading
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+
+        // Send request
+        fetch(`/account/complaints/${complaintId}/escalate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [getCsrfHeader()]: getCsrfToken()
+            },
+            body: JSON.stringify({ reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message || 'Complaint escalated successfully! Admin team will review and respond within 3-5 business days.', 'success');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showMessage('Error: ' + (data.error || 'Failed to escalate complaint'), 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred. Please try again.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+
+    function confirmSolution() {
+        if (!confirm('Are you sure you want to accept the seller\'s solution? This will mark the complaint as resolved.')) {
+            return;
+        }
+
+        fetch(`/account/complaints/${complaintId}/confirm`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [getCsrfHeader()]: getCsrfToken()
+            },
+            body: JSON.stringify({ accept: true })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message || 'Solution accepted. Complaint marked as resolved.', 'success');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showMessage('Error: ' + (data.error || 'Failed to confirm solution'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred. Please try again.', 'error');
+        });
+    }
+
+    function cancelComplaint() {
+        if (!confirm('Are you sure you want to cancel this complaint? This action cannot be undone.')) {
+            return;
+        }
+
+        fetch(`/account/complaints/${complaintId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [getCsrfHeader()]: getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message || 'Complaint cancelled successfully.', 'success');
+                setTimeout(() => location.href = '/account/complaints', 2000);
+            } else {
+                showMessage('Error: ' + (data.error || 'Failed to cancel complaint'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred. Please try again.', 'error');
+        });
+    }
+</script>
+

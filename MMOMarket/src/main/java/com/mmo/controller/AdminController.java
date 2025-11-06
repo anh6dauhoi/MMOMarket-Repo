@@ -90,6 +90,15 @@ public class AdminController {
     @Autowired
     private com.mmo.service.DashboardService dashboardService;
 
+    @Autowired
+    private com.mmo.repository.ComplaintRepository complaintRepository;
+
+    @Autowired
+    private com.mmo.repository.TransactionRepository transactionRepository;
+
+    @Autowired
+    private com.mmo.repository.ChatRepository chatRepository;
+
     // NEW: Admin Dashboard route
     @GetMapping({"", "/"})
     public String dashboard(
@@ -2492,6 +2501,272 @@ public class AdminController {
         } catch (Exception ex) {
             redirectAttributes.addFlashAttribute("errorMessage", "Failed to change password: " + ex.getMessage());
             return "redirect:/admin/change-password";
+        }
+    }
+
+    // ==================== COMPLAINT MANAGEMENT ====================
+
+    @GetMapping("/complaints")
+    public String listComplaints(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false, defaultValue = "date_desc") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            Model model) {
+        try {
+            int pageSize = 10;
+            Pageable pageable = PageRequest.of(page, pageSize);
+
+            // Build query
+            StringBuilder jpql = new StringBuilder("SELECT c FROM Complaint c WHERE c.isDelete = false");
+            List<Object> params = new ArrayList<>();
+            int paramIndex = 1;
+
+            // Search filter
+            if (search != null && !search.trim().isEmpty()) {
+                jpql.append(" AND (LOWER(c.customer.fullName) LIKE ?").append(paramIndex)
+                    .append(" OR LOWER(c.seller.fullName) LIKE ?").append(paramIndex + 1)
+                    .append(" OR CAST(c.id AS string) LIKE ?").append(paramIndex + 2).append(")");
+                String searchPattern = "%" + search.toLowerCase() + "%";
+                params.add(searchPattern);
+                params.add(searchPattern);
+                params.add("%" + search + "%");
+                paramIndex += 3;
+            }
+
+            // Status filter
+            if (status != null && !status.trim().isEmpty() && !"".equals(status)) {
+                try {
+                    Complaint.ComplaintStatus statusEnum = Complaint.ComplaintStatus.valueOf(status);
+                    jpql.append(" AND c.status = ?").append(paramIndex);
+                    params.add(statusEnum);
+                    paramIndex++;
+                } catch (IllegalArgumentException e) {
+                    // Invalid status, ignore
+                }
+            }
+
+            // Type filter
+            if (type != null && !type.trim().isEmpty() && !"".equals(type)) {
+                try {
+                    Complaint.ComplaintType typeEnum = Complaint.ComplaintType.valueOf(type);
+                    jpql.append(" AND c.complaintType = ?").append(paramIndex);
+                    params.add(typeEnum);
+                    paramIndex++;
+                } catch (IllegalArgumentException e) {
+                    // Invalid type, ignore
+                }
+            }
+
+            // Sorting
+            String orderBy = " ORDER BY ";
+            switch (sort) {
+                case "date_asc":
+                    orderBy += "c.createdAt ASC";
+                    break;
+                case "priority_desc":
+                    orderBy += "CASE c.status " +
+                              "WHEN 'ESCALATED' THEN 1 " +
+                              "WHEN 'NEW' THEN 2 " +
+                              "WHEN 'IN_PROGRESS' THEN 3 " +
+                              "WHEN 'PENDING_CONFIRMATION' THEN 4 " +
+                              "ELSE 5 END, c.createdAt DESC";
+                    break;
+                case "status_asc":
+                    orderBy += "c.status ASC, c.createdAt DESC";
+                    break;
+                default: // date_desc
+                    orderBy += "c.createdAt DESC";
+            }
+            jpql.append(orderBy);
+
+            // Count query
+            String countJpql = jpql.toString().replace("SELECT c FROM", "SELECT COUNT(c) FROM");
+            countJpql = countJpql.substring(0, countJpql.indexOf(" ORDER BY"));
+
+            TypedQuery<Long> countQuery = entityManager.createQuery(countJpql, Long.class);
+            for (int i = 0; i < params.size(); i++) {
+                countQuery.setParameter(i + 1, params.get(i));
+            }
+            long totalElements = countQuery.getSingleResult();
+
+            // Data query
+            TypedQuery<Complaint> query = entityManager.createQuery(jpql.toString(), Complaint.class);
+            for (int i = 0; i < params.size(); i++) {
+                query.setParameter(i + 1, params.get(i));
+            }
+            query.setFirstResult(page * pageSize);
+            query.setMaxResults(pageSize);
+            List<Complaint> complaints = query.getResultList();
+
+            // Get escalated count
+            long escalatedCount = complaintRepository.findByStatus(Complaint.ComplaintStatus.ESCALATED).size();
+
+            // Add to model
+            model.addAttribute("complaints", complaints);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("totalPages", (int) Math.ceil((double) totalElements / pageSize));
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentStatus", status);
+            model.addAttribute("currentType", type);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("escalatedCount", escalatedCount);
+            model.addAttribute("pageTitle", "Complaint Management");
+            model.addAttribute("body", "admin/complaint-management");
+
+            return "admin/layout";
+        } catch (Exception e) {
+            logger.error("Error listing complaints", e);
+            model.addAttribute("errorMessage", "Failed to load complaints: " + e.getMessage());
+            return "error/500";
+        }
+    }
+
+    @GetMapping("/complaints/{id}")
+    public String viewComplaintDetail(@PathVariable Long id, Model model) {
+        try {
+            // Use JOIN FETCH to eagerly load all required relationships
+            Complaint complaint = entityManager.createQuery(
+                    "SELECT c FROM Complaint c " +
+                    "LEFT JOIN FETCH c.customer " +
+                    "LEFT JOIN FETCH c.seller " +
+                    "LEFT JOIN FETCH c.adminHandler " +
+                    "WHERE c.id = :id", Complaint.class)
+                    .setParameter("id", id)
+                    .getSingleResult();
+
+            // Get transaction if exists
+            Transaction transaction = null;
+            if (complaint.getTransactionId() != null) {
+                transaction = transactionRepository.findById(complaint.getTransactionId()).orElse(null);
+            }
+
+            // Get chat messages/communication history between customer and seller
+            List<Chat> messages = new ArrayList<>();
+            if (complaint.getCustomer() != null && complaint.getSeller() != null) {
+                messages = chatRepository.findConversation(
+                    complaint.getCustomer().getId(),
+                    complaint.getSeller().getId()
+                );
+            }
+
+            model.addAttribute("complaint", complaint);
+            model.addAttribute("transaction", transaction);
+            model.addAttribute("messages", messages);
+            model.addAttribute("pageTitle", "Complaint Detail #" + id);
+            model.addAttribute("body", "admin/complaint-detail");
+
+            return "admin/layout";
+        } catch (jakarta.persistence.NoResultException e) {
+            logger.error("Complaint not found with id: " + id, e);
+            model.addAttribute("errorMessage", "Complaint not found");
+            return "error/404";
+        } catch (Exception e) {
+            logger.error("Error viewing complaint detail", e);
+            model.addAttribute("errorMessage", "Failed to load complaint details: " + e.getMessage());
+            return "error/500";
+        }
+    }
+
+    @PostMapping("/complaints/{id}/resolve")
+    @ResponseBody
+    public ResponseEntity<?> resolveComplaint(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> requestData,
+            Authentication authentication) {
+        try {
+            // Get current admin
+            String username = authentication.getName();
+            User admin = entityManager.createQuery("SELECT u FROM User u WHERE u.email = :email", User.class)
+                    .setParameter("email", username)
+                    .getSingleResult();
+
+            // Get complaint
+            Optional<Complaint> complaintOpt = complaintRepository.findById(id);
+            if (!complaintOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Complaint not found"));
+            }
+
+            Complaint complaint = complaintOpt.get();
+
+            // Validate status
+            if (complaint.getStatus() != Complaint.ComplaintStatus.ESCALATED) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Only escalated complaints can be resolved by admin"));
+            }
+
+            // Get request data
+            String decision = (String) requestData.get("decision");
+            String notes = (String) requestData.get("notes");
+            Boolean refund = (Boolean) requestData.getOrDefault("refund", false);
+            Boolean warningSeller = (Boolean) requestData.getOrDefault("warningSeller", false);
+            Boolean compensate = (Boolean) requestData.getOrDefault("compensate", false);
+            Boolean banSeller = (Boolean) requestData.getOrDefault("banSeller", false);
+
+            // Validate
+            if (decision == null || decision.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Decision is required"));
+            }
+            if (notes == null || notes.length() < 30) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Decision notes must be at least 30 characters"));
+            }
+
+            // Update complaint
+            complaint.setStatus(Complaint.ComplaintStatus.CLOSED_BY_ADMIN);
+            complaint.setAdminDecisionNotes(decision + ": " + notes);
+            complaint.setAdminHandler(admin);
+            complaint = complaintRepository.save(complaint);
+
+            // Process actions
+            if (refund) {
+                // TODO: Implement refund logic
+                logger.info("Refund requested for complaint #{}", id);
+            }
+            if (warningSeller) {
+                // TODO: Implement warning logic
+                logger.info("Warning seller for complaint #{}", id);
+            }
+            if (compensate) {
+                // TODO: Implement compensation logic
+                logger.info("Compensation requested for complaint #{}", id);
+            }
+            if (banSeller) {
+                // TODO: Implement ban logic
+                logger.info("Ban seller requested for complaint #{}", id);
+            }
+
+            // Send notifications
+            try {
+                // Notify customer
+                notificationService.createNotificationForUser(
+                        complaint.getCustomer().getId(),
+                        "Admin Decision on Complaint #" + complaint.getId(),
+                        "Admin has made a decision on your complaint. Decision: " + decision
+                );
+
+                // Notify seller
+                notificationService.createNotificationForUser(
+                        complaint.getSeller().getId(),
+                        "Admin Decision on Complaint #" + complaint.getId(),
+                        "Admin has made a decision on the complaint. Decision: " + decision
+                );
+            } catch (Exception e) {
+                logger.error("Failed to send notifications for complaint #{}", id, e);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Complaint resolved successfully"
+            ));
+
+        } catch (Exception e) {
+            logger.error("Error resolving complaint", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to resolve complaint: " + e.getMessage()));
         }
     }
 }

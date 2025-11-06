@@ -165,24 +165,63 @@
                                     <div class="text-gray-500 text-xs mt-1">Transaction: <span th:text="${c.transactionId}">-</span></div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <th:block th:switch="${c.complaintType}">
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).ITEM_NOT_WORKING}" class="text-sm text-gray-700">Item Not Working</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).ITEM_NOT_AS_DESCRIBED}" class="text-sm text-gray-700">Not As Described</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).FRAUD_SUSPICION}" class="text-sm text-red-700 font-semibold">Fraud Suspicion</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).OTHER}" class="text-sm text-gray-700">Other Issue</span>
-                                        <span th:case="*" class="text-sm text-gray-500" th:text="${c.complaintType}">-</span>
+                                    <th:block th:switch="${c.complaintType?.name()}">
+                                        <span th:case="'ITEM_NOT_WORKING'"
+                                              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                            <i class="fas fa-times-circle mr-1.5"></i>Item Not Working
+                                        </span>
+                                        <span th:case="'ITEM_NOT_AS_DESCRIBED'"
+                                              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                                            <i class="fas fa-exclamation-circle mr-1.5"></i>Not As Described
+                                        </span>
+                                        <span th:case="'FRAUD_SUSPICION'"
+                                              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-600 text-white">
+                                            <i class="fas fa-shield-alt mr-1.5"></i>Fraud Suspicion
+                                        </span>
+                                        <span th:case="'OTHER'"
+                                              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                                            <i class="fas fa-question-circle mr-1.5"></i>Other Issue
+                                        </span>
+                                        <span th:case="*"
+                                              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                            <i class="fas fa-info-circle mr-1.5"></i>Unknown
+                                        </span>
                                     </th:block>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <th:block th:switch="${c.status}">
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).NEW}" class="badge bg-amber-100 text-amber-700">New</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).IN_PROGRESS}" class="badge bg-blue-100 text-blue-700">In Progress</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).PENDING_CONFIRMATION}" class="badge bg-indigo-100 text-indigo-700">Pending</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).ESCALATED}" class="badge bg-red-100 text-red-700">Escalated</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).RESOLVED}" class="badge bg-emerald-100 text-emerald-700">Resolved</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).CLOSED_BY_ADMIN}" class="badge bg-gray-100 text-gray-700">Closed</span>
-                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).CANCELLED}" class="badge bg-gray-100 text-gray-700">Cancelled</span>
-                                        <span th:case="*" class="badge bg-gray-100 text-gray-700" th:text="${c.status}">-</span>
+                                    <th:block th:switch="${c.status?.name()}">
+                                        <span th:case="'NEW'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-100 to-amber-100 text-amber-700 border border-amber-200">
+                                            <i class="fas fa-circle-notch mr-1.5"></i>New
+                                        </span>
+                                        <span th:case="'IN_PROGRESS'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 border border-blue-300">
+                                            <i class="fas fa-spinner mr-1.5"></i>In Progress
+                                        </span>
+                                        <span th:case="'PENDING_CONFIRMATION'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 border border-indigo-300">
+                                            <i class="fas fa-hourglass-half mr-1.5"></i>Pending
+                                        </span>
+                                        <span th:case="'ESCALATED'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-red-100 to-red-200 text-red-700 border border-red-300">
+                                            <i class="fas fa-arrow-up mr-1.5"></i>Escalated
+                                        </span>
+                                        <span th:case="'RESOLVED'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-emerald-100 text-emerald-700 border border-emerald-300">
+                                            <i class="fas fa-check-circle mr-1.5"></i>Resolved
+                                        </span>
+                                        <span th:case="'CLOSED_BY_ADMIN'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 border border-gray-400">
+                                            <i class="fas fa-lock mr-1.5"></i>Closed
+                                        </span>
+                                        <span th:case="'CANCELLED'"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300">
+                                            <i class="fas fa-ban mr-1.5"></i>Cancelled
+                                        </span>
+                                        <span th:case="*"
+                                              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300">
+                                            <i class="fas fa-question mr-1.5"></i>Unknown
+                                        </span>
                                     </th:block>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600" th:text="${c.createdAt != null ? #dates.format(c.createdAt, 'dd/MM/yyyy HH:mm') : ''}">--</td>
@@ -203,13 +242,6 @@
                                             </svg>
                                             Chat
                                         </a>
-                                        <button class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white text-xs font-medium shadow-md hover:shadow-lg transition-all" onclick="requestAdminHandle()">
-                                            <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 11-12 0 6 6 0 0112 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/>
-                                            </svg>
-                                            Request Admin
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -353,6 +385,34 @@
                                 </div>
                             </div>
 
+                            <!-- Admin Decision Section (for CLOSED_BY_ADMIN status) -->
+                            <div id="adminDecisionSection" class="hidden bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border-2 border-purple-200 shadow-sm">
+                                <div class="flex items-start gap-4 mb-4">
+                                    <div class="p-3 rounded-xl flex-shrink-0 bg-purple-600">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-purple-900 mb-2 text-lg flex items-center gap-2">
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            Admin Decision & Notes
+                                        </h4>
+                                        <div class="bg-white p-4 rounded-xl border-2 border-purple-300 shadow-sm">
+                                            <pre id="adminDecisionNotes" class="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed"></pre>
+                                        </div>
+                                        <p class="text-xs text-purple-700 mt-2 italic flex items-center gap-1">
+                                            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            This is the final decision made by the admin. This complaint is now closed.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Seller Response Section -->
                             <div id="responseSection" class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border-2 border-blue-200 shadow-sm">
                                 <h4 class="font-bold text-blue-900 mb-4 flex items-center gap-3 text-lg">
@@ -402,7 +462,7 @@
                                     </svg>
                                     Chat with Customer
                                 </a>
-                                <button onclick="requestAdminHandle()" class="inline-flex items-center px-5 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all">
+                                <button id="requestAdminBtnDetail" onclick="requestAdminHandle()" class="inline-flex items-center px-5 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all">
                                     <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 11-12 0 6 6 0 0112 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/>
@@ -422,14 +482,67 @@
 
 <script>
     let currentComplaintId = null;
+    let currentComplaintStatus = null;
+
+    // Function to show messages instead of alert
+    function showMessage(message, type = 'info') {
+        // Remove any existing message
+        const existingMessage = document.getElementById('customMessage');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'customMessage';
+        messageDiv.className = 'fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-2xl transform transition-all duration-300 ease-in-out';
+
+        // Set color based on type
+        if (type === 'success') {
+            messageDiv.className += ' bg-green-500 text-white';
+        } else if (type === 'error') {
+            messageDiv.className += ' bg-red-500 text-white';
+        } else if (type === 'warning') {
+            messageDiv.className += ' bg-yellow-500 text-white';
+        } else {
+            messageDiv.className += ' bg-blue-500 text-white';
+        }
+
+        messageDiv.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} mr-3 text-xl"></i>
+                    <p class="font-semibold">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(messageDiv);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (messageDiv && messageDiv.parentElement) {
+                messageDiv.style.opacity = '0';
+                messageDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => messageDiv.remove(), 300);
+            }
+        }, 5000);
+    }
 
     async function openComplaintDetail(btn){
         const id = btn.getAttribute('data-id');
         currentComplaintId = id;
+        currentComplaintStatus = null;
         try{
             const res = await fetch(`/seller/complaints/${id}/json`, { headers: { 'Accept': 'application/json' } });
             if(!res.ok){ alert('Failed to load complaint'); return; }
             const c = await res.json();
+
+            // Store current complaint status
+            currentComplaintStatus = c.status;
 
             // Basic info
             document.getElementById('cId').textContent = c.id;
@@ -562,6 +675,10 @@
                 const statusIcon = document.getElementById('statusIcon');
                 const statusTitle = document.getElementById('statusTitle');
                 const statusMessage = document.getElementById('statusMessage');
+                const adminDecisionSection = document.getElementById('adminDecisionSection');
+
+                // Hide admin decision section by default
+                adminDecisionSection.classList.add('hidden');
 
                 // Configure message based on status
                 if(c.status === 'PENDING_CONFIRMATION') {
@@ -602,8 +719,14 @@
                         </svg>
                     `;
                     statusTitle.textContent = '🔒 Closed by Admin';
-                    statusMessage.textContent = 'This complaint has been closed by the administration team. The admin has made a final decision on this matter. No further responses are accepted.';
+                    statusMessage.textContent = 'This complaint has been closed by the administration team. The admin has made a final decision on this matter. Please review the admin decision below.';
                     statusInfoSection.className = 'bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200 shadow-sm';
+
+                    // Show admin decision section if available
+                    if(c.adminDecisionNotes) {
+                        adminDecisionSection.classList.remove('hidden');
+                        document.getElementById('adminDecisionNotes').textContent = c.adminDecisionNotes;
+                    }
                 } else if(c.status === 'CANCELLED') {
                     statusIcon.className = 'p-3 rounded-xl flex-shrink-0 bg-gray-100';
                     statusIcon.innerHTML = `
@@ -614,6 +737,18 @@
                     statusTitle.textContent = '❌ Cancelled';
                     statusMessage.textContent = 'This complaint has been cancelled by either the customer or the system. No further action is needed and the case is now closed.';
                     statusInfoSection.className = 'bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200 shadow-sm';
+                }
+            }
+
+            // Show/hide Request Admin button based on status
+            const requestAdminBtn = document.getElementById('requestAdminBtnDetail');
+            if (requestAdminBtn) {
+                // Only show button for IN_PROGRESS and PENDING_CONFIRMATION status
+                const canRequestAdmin = c.status === 'IN_PROGRESS' || c.status === 'PENDING_CONFIRMATION';
+                if (canRequestAdmin) {
+                    requestAdminBtn.style.display = 'inline-flex';
+                } else {
+                    requestAdminBtn.style.display = 'none';
                 }
             }
 
@@ -676,8 +811,194 @@
 
     function openComplaintModal(){ document.getElementById('complaintModal').classList.remove('hidden'); document.getElementById('complaintModal').classList.add('flex'); }
     function closeComplaintModal(){ document.getElementById('complaintModal').classList.add('hidden'); document.getElementById('complaintModal').classList.remove('flex'); currentComplaintId = null; }
-    function requestAdminHandle(){ alert('Request for admin intervention has been recorded (demo).'); }
+
+    // Open escalate modal
+    function requestAdminHandle() {
+        if (!currentComplaintId) {
+            showMessage('Please select a complaint first.', 'error');
+            return;
+        }
+
+        // Validate status - only allow escalation for IN_PROGRESS or PENDING_CONFIRMATION
+        if (currentComplaintStatus !== 'IN_PROGRESS' && currentComplaintStatus !== 'PENDING_CONFIRMATION') {
+            let statusMessage = '';
+            if (currentComplaintStatus === 'NEW') {
+                statusMessage = 'You cannot request admin support yet. Please respond to the complaint first.';
+            } else if (currentComplaintStatus === 'ESCALATED') {
+                statusMessage = 'This complaint has already been escalated to admin. Please wait for admin review.';
+            } else if (currentComplaintStatus === 'RESOLVED' || currentComplaintStatus === 'CLOSED_BY_ADMIN') {
+                statusMessage = 'This complaint has been closed. You cannot request admin support for closed complaints.';
+            } else if (currentComplaintStatus === 'CANCELLED') {
+                statusMessage = 'This complaint has been cancelled. You cannot request admin support for cancelled complaints.';
+            } else {
+                statusMessage = 'You can only request admin support when the complaint is in progress or pending confirmation.';
+            }
+            showMessage(statusMessage, 'warning');
+            return;
+        }
+
+        document.getElementById('sellerEscalateModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSellerEscalateModal() {
+        document.getElementById('sellerEscalateModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('sellerEscalateForm').reset();
+        document.getElementById('sellerCharCount').textContent = '0';
+    }
+
+    // Character counter for seller escalate modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('sellerEscalateReason');
+        const charCount = document.getElementById('sellerCharCount');
+
+        if (textarea && charCount) {
+            textarea.addEventListener('input', function() {
+                charCount.textContent = this.value.length;
+                if (this.value.length >= 20) {
+                    charCount.classList.add('text-green-600');
+                    charCount.classList.remove('text-red-600');
+                } else {
+                    charCount.classList.add('text-red-600');
+                    charCount.classList.remove('text-green-600');
+                }
+            });
+        }
+
+        // Handle seller escalate form submission
+        const escalateForm = document.getElementById('sellerEscalateForm');
+        if (escalateForm) {
+            escalateForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const reason = document.getElementById('sellerEscalateReason').value.trim();
+
+                if (reason.length < 20) {
+                    alert('Please provide a detailed reason (minimum 20 characters)');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to escalate this complaint to admin? This action cannot be undone.')) {
+                    return;
+                }
+
+                // Show loading
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+
+                try {
+                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content')
+                        || document.querySelector('input[name="_csrf"]')?.value;
+
+                    const response = await fetch(`/seller/complaints/${currentComplaintId}/escalate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({ reason: reason })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert(data.message || 'Complaint escalated successfully! Admin team will review and respond within 3-5 business days.');
+                        closeSellerEscalateModal();
+                        closeComplaintModal();
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to escalate complaint'));
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            });
+        }
+    });
 </script>
+
+<!-- Seller Escalate Modal -->
+<div id="sellerEscalateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 rounded-t-2xl">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas fa-headset text-white text-2xl mr-3"></i>
+                    <h3 class="text-xl font-bold text-white">Request Admin Support</h3>
+                </div>
+                <button onclick="closeSellerEscalateModal()" class="text-white hover:text-gray-200 transition">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6">
+            <div class="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                <p class="text-sm text-yellow-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Important:</strong> Escalating to admin is a serious action. The admin team will review all evidence and communications, then make a final binding decision. This process may take 3-5 business days.
+                </p>
+            </div>
+
+            <form id="sellerEscalateForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-pencil-alt mr-1"></i>Reason for Escalation <span class="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        id="sellerEscalateReason"
+                        name="reason"
+                        rows="6"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                        placeholder="Please explain in detail why you need admin intervention (minimum 20 characters)..."
+                        required
+                        minlength="20"
+                    ></textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span id="sellerCharCount">0</span> / 20 characters minimum
+                    </p>
+                </div>
+
+                <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-sm text-gray-700 mb-2"><strong>What happens next:</strong></p>
+                    <ul class="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                        <li>Your complaint will be escalated to admin team</li>
+                        <li>Admin will review all evidence, messages, and both parties' statements</li>
+                        <li>Both you and the customer will be notified of admin's decision</li>
+                        <li>The decision will be final and binding</li>
+                    </ul>
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        type="submit"
+                        class="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg hover:shadow-xl"
+                    >
+                        <i class="fas fa-paper-plane mr-2"></i>Submit Request
+                    </button>
+                    <button
+                        type="button"
+                        onclick="closeSellerEscalateModal()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-xl transition"
+                    >
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
 

@@ -550,6 +550,29 @@ public class OrderController {
         model.addAttribute("deadlineText", deadlineText);
         model.addAttribute("isExpired", isExpired);
 
+        // Check for previous complaints on this transaction
+        if (order.getTransactionId() != null) {
+            com.mmo.repository.ComplaintRepository complaintRepository =
+                applicationContext.getBean(com.mmo.repository.ComplaintRepository.class);
+
+            java.util.List<com.mmo.entity.Complaint> previousComplaints =
+                complaintRepository.findByTransactionId(order.getTransactionId());
+
+            if (!previousComplaints.isEmpty()) {
+                // Check for resolved/closed complaints
+                java.util.List<com.mmo.entity.Complaint> resolvedComplaints = previousComplaints.stream()
+                    .filter(c -> c.getStatus() == com.mmo.entity.Complaint.ComplaintStatus.RESOLVED ||
+                               c.getStatus() == com.mmo.entity.Complaint.ComplaintStatus.CLOSED_BY_ADMIN)
+                    .collect(java.util.stream.Collectors.toList());
+
+                if (!resolvedComplaints.isEmpty()) {
+                    model.addAttribute("hasResolvedComplaint", true);
+                    model.addAttribute("resolvedComplaintCount", resolvedComplaints.size());
+                    model.addAttribute("lastResolvedComplaint", resolvedComplaints.get(resolvedComplaints.size() - 1));
+                }
+            }
+        }
+
         return "customer/complaint-form";
     }
 
@@ -587,6 +610,54 @@ public class OrderController {
             if (order.getTransactionId() == null) {
                 redirectAttributes.addFlashAttribute("error", "No transaction found for this order");
                 return "redirect:/account/orders/" + id;
+            }
+
+            // Check if there's already an active complaint for this transaction
+            com.mmo.repository.ComplaintRepository complaintRepository =
+                applicationContext.getBean(com.mmo.repository.ComplaintRepository.class);
+
+            // Define active statuses (not resolved/cancelled/closed)
+            java.util.List<com.mmo.entity.Complaint.ComplaintStatus> activeStatuses = java.util.Arrays.asList(
+                com.mmo.entity.Complaint.ComplaintStatus.NEW,
+                com.mmo.entity.Complaint.ComplaintStatus.IN_PROGRESS,
+                com.mmo.entity.Complaint.ComplaintStatus.PENDING_CONFIRMATION,
+                com.mmo.entity.Complaint.ComplaintStatus.ESCALATED
+            );
+
+            boolean hasActiveComplaint = complaintRepository.existsByTransactionIdAndStatusIn(
+                order.getTransactionId(),
+                activeStatuses
+            );
+
+            if (hasActiveComplaint) {
+                com.mmo.entity.Complaint existingComplaint = complaintRepository
+                    .findFirstByTransactionIdAndStatusIn(order.getTransactionId(), activeStatuses);
+
+                redirectAttributes.addFlashAttribute("error",
+                    "You already have an active complaint (#" + existingComplaint.getId() + ") for this order. " +
+                    "Please wait for it to be resolved before filing a new complaint.");
+                redirectAttributes.addFlashAttribute("existingComplaintId", existingComplaint.getId());
+                return "redirect:/account/complaints/" + existingComplaint.getId();
+            }
+
+            // Check if there's a resolved complaint that customer wants to reopen
+            java.util.List<com.mmo.entity.Complaint> previousComplaints =
+                complaintRepository.findByTransactionId(order.getTransactionId());
+
+            boolean hasResolvedComplaint = previousComplaints.stream()
+                .anyMatch(c -> c.getStatus() == com.mmo.entity.Complaint.ComplaintStatus.RESOLVED ||
+                              c.getStatus() == com.mmo.entity.Complaint.ComplaintStatus.CLOSED_BY_ADMIN);
+
+            // If there's a resolved/closed complaint, we allow new complaint but add note
+            String reopenNote = null;
+            if (hasResolvedComplaint) {
+                reopenNote = "[REOPENED] Customer filed new complaint after previous complaint was resolved. " +
+                            "Previous complaints for this transaction: " +
+                            previousComplaints.stream()
+                                .filter(c -> c.getStatus() == com.mmo.entity.Complaint.ComplaintStatus.RESOLVED ||
+                                           c.getStatus() == com.mmo.entity.Complaint.ComplaintStatus.CLOSED_BY_ADMIN)
+                                .map(c -> "#" + c.getId() + " (Status: " + c.getStatus() + ")")
+                                .collect(java.util.stream.Collectors.joining(", "));
             }
 
             // Validate description
@@ -676,10 +747,7 @@ public class OrderController {
                 return "redirect:/account/orders/" + id + "/complaint";
             }
 
-            // Create complaint
-            com.mmo.repository.ComplaintRepository complaintRepository =
-                applicationContext.getBean(com.mmo.repository.ComplaintRepository.class);
-
+            // Create complaint (removed duplicate declaration)
             com.mmo.entity.Complaint complaint = new com.mmo.entity.Complaint();
             complaint.setTransactionId(order.getTransactionId());
             complaint.setCustomer(customer);
@@ -692,7 +760,12 @@ public class OrderController {
                 complaint.setComplaintType(com.mmo.entity.Complaint.ComplaintType.OTHER);
             }
 
-            complaint.setDescription(description.trim());
+            // Set description with reopen note if applicable
+            String finalDescription = description.trim();
+            if (reopenNote != null) {
+                finalDescription = reopenNote + "\n\n" + "NEW COMPLAINT REASON:\n" + description.trim();
+            }
+            complaint.setDescription(finalDescription);
 
             // Store evidence as JSON array
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();

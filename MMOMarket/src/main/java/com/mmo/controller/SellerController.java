@@ -99,6 +99,9 @@ public class SellerController {
     @Autowired
     private SystemConfigurationService systemConfigurationService;
 
+    @Autowired
+    private com.mmo.service.ComplaintService complaintService;
+
     private static final long REGISTRATION_FEE = 200_000L;
 
     @GetMapping("/register")
@@ -1118,7 +1121,7 @@ public class SellerController {
         }
 
         StringBuilder jpql = new StringBuilder(
-            "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.customer.id, c.customer.fullName, c.description) " +
+            "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.respondedAt, c.customer.id, c.customer.fullName, c.description) " +
             "from Complaint c where c.seller.id = :sid and c.isDelete = false"
         );
         if (status != null) jpql.append(" and c.status = :status");
@@ -1179,6 +1182,7 @@ public class SellerController {
             data.put("evidence", c.getEvidence());
             data.put("createdAt", c.getCreatedAt());
             data.put("updatedAt", c.getUpdatedAt());
+            data.put("respondedAt", c.getRespondedAt());
             if (c.getCustomer() != null) {
                 Map<String, Object> cus = new HashMap<>();
                 cus.put("id", c.getCustomer().getId());
@@ -1249,6 +1253,7 @@ public class SellerController {
             // Save seller response
             String response = action + ": " + reason.trim();
             complaint.setSellerFinalResponse(response);
+            complaint.setRespondedAt(new Date()); // Record when seller responded
             complaint.setUpdatedAt(new Date());
 
             // Update status based on action
@@ -1280,6 +1285,49 @@ public class SellerController {
             return ResponseEntity.ok("Response submitted successfully");
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Seller requests admin support (escalate complaint)
+     */
+    @PostMapping(path = "/complaints/{id}/escalate", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> escalateComplaintSeller(@PathVariable("id") Long id,
+                                                     @RequestBody Map<String, String> request,
+                                                     Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            String reason = request.get("reason");
+            if (reason == null || reason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Reason is required");
+            }
+
+            complaintService.escalateToAdmin(id, seller.getId(), reason, true);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Complaint escalated to admin successfully. Admin team will review and respond within 3-5 business days."
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "error", ex.getMessage()
+            ));
         }
     }
 
