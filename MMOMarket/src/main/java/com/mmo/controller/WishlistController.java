@@ -4,6 +4,7 @@ import com.mmo.entity.User;
 import com.mmo.entity.ShopInfo;
 import com.mmo.repository.UserRepository;
 import com.mmo.service.WishlistService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +41,26 @@ public class WishlistController {
         if (user == null) return "redirect:/authen/login";
         boolean added = wishlistService.addToWishlist(user, productId);
         return "redirect:/products?id=" + productId + "&wishlistSuccess=" + (added ? "1" : "0");
+    }
+
+    @PostMapping("/wishlist/toggle")
+    @ResponseBody
+    public ResponseEntity<?> toggle(@RequestParam("productId") Long productId) {
+        User user = currentUser();
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Please login first"));
+        }
+
+        try {
+            boolean added = wishlistService.addToWishlist(user, productId);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "added", added,
+                "message", added ? "Product added to wishlist" : "Product already in wishlist"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to update wishlist"));
+        }
     }
 
     @PostMapping("/wishlist/remove")

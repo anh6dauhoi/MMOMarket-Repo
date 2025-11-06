@@ -10,10 +10,9 @@ import java.util.Date;
 @Getter
 @Setter
 @Table(name = "Complaints", indexes = {
-        @Index(name = "idx_complaint_transaction_id", columnList = "transaction_id"),
-        @Index(name = "idx_complaint_customer_id", columnList = "customer_id"),
-        @Index(name = "idx_complaint_seller_id", columnList = "seller_id"),
-        @Index(name = "idx_complaint_status", columnList = "status")
+        @Index(name = "idx_seller_status_type", columnList = "seller_id, status, complaint_type"),
+        @Index(name = "idx_status_updated_at", columnList = "status, updated_at"),
+        @Index(name = "idx_admin_handler_status", columnList = "admin_handler_id, status")
 })
 public class Complaint {
 
@@ -32,20 +31,38 @@ public class Complaint {
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
 
+    @Enumerated(EnumType.STRING)
+    @Column(
+        name = "complaint_type",
+        nullable = false,
+        columnDefinition = "ENUM('ITEM_NOT_WORKING','ITEM_NOT_AS_DESCRIBED','FRAUD_SUSPICION','OTHER') DEFAULT 'ITEM_NOT_WORKING'"
+    )
+    private ComplaintType complaintType = ComplaintType.ITEM_NOT_WORKING;
+
     @Lob
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Lob
-    @Column(name = "evidence", columnDefinition = "TEXT")
+    @Column(name = "evidence", columnDefinition = "JSON")
     private String evidence;
 
-    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Open'")
-    private String status = "Open"; // Open, Resolved, Rejected
+    @Enumerated(EnumType.STRING)
+    @Column(
+        name = "status",
+        nullable = false,
+        columnDefinition = "ENUM('NEW','IN_PROGRESS','PENDING_CONFIRMATION','ESCALATED','RESOLVED','CLOSED_BY_ADMIN','CANCELLED') DEFAULT 'NEW'"
+    )
+    private ComplaintStatus status = ComplaintStatus.NEW;
 
-    @Lob
-    @Column(name = "resolution", columnDefinition = "TEXT")
-    private String resolution;
+    @Column(name = "seller_final_response", columnDefinition = "TEXT")
+    private String sellerFinalResponse;
+
+    @Column(name = "admin_decision_notes", columnDefinition = "TEXT")
+    private String adminDecisionNotes;
+
+    @ManyToOne
+    @JoinColumn(name = "admin_handler_id")
+    private User adminHandler;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
@@ -72,4 +89,22 @@ public class Complaint {
     @ManyToOne
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
+
+    // Enums aligned with DB
+    public enum ComplaintType {
+        ITEM_NOT_WORKING,
+        ITEM_NOT_AS_DESCRIBED,
+        FRAUD_SUSPICION,
+        OTHER
+    }
+
+    public enum ComplaintStatus {
+        NEW,
+        IN_PROGRESS,
+        PENDING_CONFIRMATION,
+        ESCALATED,
+        RESOLVED,
+        CLOSED_BY_ADMIN,
+        CANCELLED
+    }
 }

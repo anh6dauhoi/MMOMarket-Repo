@@ -124,7 +124,7 @@ public class CategoryServiceImpl implements CategoryService {
 
             // Check if new name already exists (excluding current category)
             if (!name.equalsIgnoreCase(category.getName()) &&
-                categoryRepository.existsByNameIgnoreCaseAndIsDeleteAndIdNot(name, false, id)) {
+                    categoryRepository.existsByNameIgnoreCaseAndIsDeleteAndIdNot(name, false, id)) {
                 throw new IllegalArgumentException("Category name already exists: " + name);
             }
 
@@ -200,4 +200,3 @@ public class CategoryServiceImpl implements CategoryService {
                 search.trim(), true, pageable);
     }
 }
-

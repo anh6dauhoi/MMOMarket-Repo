@@ -7,6 +7,7 @@ import com.mmo.repository.UserRepository;
 import com.mmo.service.EmailService;
 import com.mmo.service.NotificationService;
 import com.mmo.service.SystemConfigurationService;
+import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -16,7 +17,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.Date;
 
 @Component
 public class SellerRegistrationListener {
@@ -78,19 +78,12 @@ public class SellerRegistrationListener {
             }
         }
 
-        // updated > 0: fee deducted and status set to Active. Ensure role SELLER.
-        try {
-            String role = user.getRole();
-            if (role == null || !"SELLER".equalsIgnoreCase(role)) {
-                user.setRole("SELLER");
-                userRepository.save(user);
-            }
-        } catch (Exception ex) {
-            log.warn("Failed to set SELLER role for user id={}: {}", user.getId(), ex.getMessage());
-        }
+        // updated > 0: fee deducted and shopStatus set to Active. Do NOT change user's role.
+        // Keep existing user role (typically CUSTOMER) to avoid role escalation.
 
         // Create or update ShopInfo with defaults and provided data
-        upsertShopInfo(user, msg.shopName(), msg.description());
+        ShopInfo shop = upsertShopInfo(user, msg.shopName(), msg.description());
+        String shopName = shop != null ? shop.getShopName() : (msg.shopName() != null ? msg.shopName() : "Your Shop");
 
         // Notify success
         try {
@@ -101,12 +94,14 @@ public class SellerRegistrationListener {
             );
         } catch (Exception ignored) {}
 
-        // Optional: send email confirmation (best-effort)
+        // Send email confirmation using template (best-effort)
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                String subject = "[MMOMarket] Seller account activated";
-                String html = "<p>Your seller account is now active.</p><p>200,000 coins have been deducted from your balance.</p>";
-                emailService.sendEmailAsync(user.getEmail(), subject, html);
+                String userName = user.getFullName() != null ? user.getFullName() : user.getEmail();
+                String subject = "[MMOMarket] Seller Account Activated Successfully";
+                String htmlContent = EmailTemplate.sellerAccountActivatedEmail(userName, shopName, REGISTRATION_FEE);
+                emailService.sendEmailAsync(user.getEmail(), subject, htmlContent);
+                log.info("Seller activation email sent to user id={}", user.getId());
             }
         } catch (Exception ex) {
             log.warn("Failed sending seller activation email to user id={}: {}", user.getId(), ex.getMessage());
@@ -115,7 +110,7 @@ public class SellerRegistrationListener {
         log.info("Seller activated for user id={} with fee={} coins", user.getId(), REGISTRATION_FEE);
     }
 
-    private void upsertShopInfo(User user, String shopName, String description) {
+    private ShopInfo upsertShopInfo(User user, String shopName, String description) {
         ShopInfo shop = entityManager.createQuery("SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
                 .setParameter("u", user)
                 .getResultStream().findFirst().orElse(null);
@@ -135,6 +130,6 @@ public class SellerRegistrationListener {
             if (description != null) shop.setDescription(description);
             entityManager.merge(shop);
         }
+        return shop;
     }
 }
-
