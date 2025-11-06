@@ -1,0 +1,122 @@
+<!-- ...existing code... -->
+    <!-- Chart.js CDN and initialization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        var revenueLabels = /*[[${labels != null ? labels : '[]'}]]*/ [];
+        var revenueSeries = /*[[${revenueSeries != null ? revenueSeries : '[]'}]]*/ [];
+        var topSellers = /*[[${topSellers != null ? topSellers : '[]'}]]*/ [];
+        var topProducts = /*[[${topProducts != null ? topProducts : '[]'}]]*/ [];
+
+        function formatNumber(v){
+            if(v == null) return '0';
+            return v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        document.addEventListener('DOMContentLoaded', function(){
+            // Revenue Line Chart
+            (function(){
+                var ctx = document.getElementById('revenueChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: revenueLabels,
+                        datasets: [{
+                            label: 'Revenue',
+                            data: revenueSeries,
+                            borderColor: 'rgba(220,38,38,0.9)',
+                            backgroundColor: 'rgba(220,38,38,0.12)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 3
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { ticks: { callback: function(val){ return '$' + formatNumber(val); } } }
+                        }
+                    }
+                });
+            })();
+
+            // Top Sellers Bar Chart (horizontal)
+            (function(){
+                var labels = topSellers.map(function(s){ return s.sellerName; });
+                var data = topSellers.map(function(s){ return s.revenue; });
+                var ctx = document.getElementById('topSellersChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Revenue',
+                            data: data,
+                            backgroundColor: 'rgba(220,38,38,0.8)'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        indexAxis: 'y',
+                        scales: {
+                            x: { ticks: { callback: function(v){ return '$' + formatNumber(v); } } }
+                        }
+                    }
+                });
+            })();
+
+            // Top Products Bar Chart (horizontal)
+            (function(){
+                var labels = topProducts.map(function(p){ return p.productName; });
+                var data = topProducts.map(function(p){ return p.soldCount; });
+                var ctx = document.getElementById('topProductsChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Sold',
+                            data: data,
+                            backgroundColor: 'rgba(59,130,246,0.8)'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        indexAxis: 'y'
+                    }
+                });
+            })();
+
+            // Quick range buttons logic
+            function formatDate(d){
+                var y = d.getFullYear();
+                var m = (d.getMonth()+1).toString().padStart(2,'0');
+                var day = d.getDate().toString().padStart(2,'0');
+                return y + '-' + m + '-' + day;
+            }
+
+            document.querySelectorAll('.quick-range').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var range = btn.getAttribute('data-range');
+                    var to = new Date();
+                    var from = new Date();
+                    if(range === 'week'){
+                        from.setDate(to.getDate() - 7);
+                    } else if(range === 'month'){
+                        from.setMonth(to.getMonth() - 1);
+                    } else if(range === 'year'){
+                        from.setFullYear(to.getFullYear() - 1);
+                    }
+                    var fromInput = document.querySelector('input[name=from]');
+                    var toInput = document.querySelector('input[name=to]');
+                    if(fromInput && toInput){
+                        fromInput.value = formatDate(from);
+                        toInput.value = formatDate(to);
+                        document.getElementById('filterForm').submit();
+                    }
+                });
+            });
+        });
+        /*]]>*/
+    </script>
+<!-- ...existing code... -->
