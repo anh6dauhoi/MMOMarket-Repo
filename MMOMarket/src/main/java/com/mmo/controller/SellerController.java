@@ -446,7 +446,7 @@ public class SellerController {
         );
 
         // Calculate sales count and percentage for each product
-        List<com.mmo.dto.TopProductDto> topProductDtos = new ArrayList<>();
+        List<com.mmo.dto.TopProductDTO> topProductDTO = new ArrayList<>();
         long totalSales = topProducts.stream()
             .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
             .sum();
@@ -460,14 +460,14 @@ public class SellerController {
                 percentage = ((double) salesCount / totalSales) * 100;
             }
 
-            com.mmo.dto.TopProductDto dto = new com.mmo.dto.TopProductDto(
+           com.mmo.dto.TopProductDTO dto = new com.mmo.dto.TopProductDTO(
                 product.getId(),
                 product.getName(),
                 product.getImage(),
                 salesCount,
                 percentage
             );
-            topProductDtos.add(dto);
+            topProductDTO.add(dto);
         }
 
         // Add statistics to model
@@ -479,7 +479,7 @@ public class SellerController {
         model.addAttribute("ordersChange", String.format("%.1f", Math.abs(ordersChange)));
         model.addAttribute("ordersChangePositive", ordersChange >= 0);
         model.addAttribute("recentTransactions", recentTransactions);
-        model.addAttribute("topProducts", topProductDtos);
+        model.addAttribute("topProducts", topProductDTO);
         model.addAttribute("timeFilter", timeFilter);
 
         // Add comparison label based on filter

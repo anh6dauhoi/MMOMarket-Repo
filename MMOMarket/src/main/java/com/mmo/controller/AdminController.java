@@ -87,9 +87,55 @@ public class AdminController {
     @Autowired
     private ShopPointPurchaseRepository shopPointPurchaseRepository;
 
+    @Autowired
+    private com.mmo.service.DashboardService dashboardService;
+
     // NEW: Admin Dashboard route
     @GetMapping({"", "/"})
-    public String dashboard(Model model) {
+    public String dashboard(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            Model model) {
+
+        java.util.Date fromDate = null;
+        java.util.Date toDate = null;
+
+        // Parse date parameters
+        if (from != null && !from.isEmpty() && to != null && !to.isEmpty()) {
+            try {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                fromDate = sdf.parse(from);
+
+                // Add one day to toDate to include the entire day
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.setTime(sdf.parse(to));
+                cal.add(java.util.Calendar.DAY_OF_MONTH, 1);
+                toDate = cal.getTime();
+
+                model.addAttribute("from", from);
+                model.addAttribute("to", to);
+            } catch (Exception e) {
+                logger.error("Error parsing dates", e);
+            }
+        }
+
+        // Get dashboard data
+        DashboardTotalsDTO totals = dashboardService.getDashboardTotals(fromDate, toDate);
+        List<TopSellerDTO> topSellers = dashboardService.getTopSellers(fromDate, toDate);
+        List<TopProductDTO> topProducts = dashboardService.getTopProducts(fromDate, toDate);
+        List<TopPointPurchaseDTO> topPointPurchases = dashboardService.getTopPointPurchases(fromDate, toDate);
+        List<TopBuyerDTO> topBuyers = dashboardService.getTopBuyers(fromDate, toDate);
+        Map<String, Object> revenueData = dashboardService.getRevenueTimeSeries(fromDate, toDate);
+
+        // Add to model - ensure lists are never null
+        model.addAttribute("totals", totals != null ? totals : new DashboardTotalsDTO(0L, 0L, 0L, 0L, "N/A"));
+        model.addAttribute("topSellers", topSellers != null ? topSellers : new java.util.ArrayList<>());
+        model.addAttribute("topProducts", topProducts != null ? topProducts : new java.util.ArrayList<>());
+        model.addAttribute("topPointPurchases", topPointPurchases != null ? topPointPurchases : new java.util.ArrayList<>());
+        model.addAttribute("topBuyers", topBuyers != null ? topBuyers : new java.util.ArrayList<>());
+        model.addAttribute("labels", revenueData != null && revenueData.get("labels") != null ? revenueData.get("labels") : new java.util.ArrayList<>());
+        model.addAttribute("revenueSeries", revenueData != null && revenueData.get("series") != null ? revenueData.get("series") : new java.util.ArrayList<>());
+
         model.addAttribute("pageTitle", "Admin Dashboard");
         model.addAttribute("body", "admin/dashboard");
         return "admin/layout";

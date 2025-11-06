@@ -47,7 +47,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.seller.id = :sellerId AND t.isDelete = false AND t.createdAt >= :startDate AND t.createdAt < :endDate")
     Long getOrdersBySellerIdBetweenDates(@Param("sellerId") Long sellerId, @Param("startDate") Date startDate, @Param("endDate") Date endDate);
-}
 
     // New: find escrow transactions whose release date passed
     List<Transaction> findByStatusAndEscrowReleaseDateBefore(String status, Date before);
