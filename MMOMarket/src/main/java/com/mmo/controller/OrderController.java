@@ -325,4 +325,40 @@ public class OrderController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
+    // New: API endpoint to poll order status after purchase
+    @GetMapping("/api/orders/{id}/status")
+    @ResponseBody
+    public ResponseEntity<?> checkOrderStatus(@PathVariable("id") Long id, Authentication authentication) {
+        try {
+            String email = resolveEmail(authentication);
+            if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+
+            Orders order = ordersRepository.findById(id).orElse(null);
+            if (order == null || !Objects.equals(order.getCustomerId(), userOpt.get().getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("orderId", order.getId());
+            response.put("status", order.getStatus() != null ? order.getStatus().name() : "UNKNOWN");
+            response.put("errorMessage", order.getErrorMessage());
+            response.put("transactionId", order.getTransactionId());
+
+            if (order.getStatus() == Orders.QueueStatus.COMPLETED) {
+                // Include product name for success message
+                String productName = (order.getProduct() != null) ? order.getProduct().getName() : ("Product #" + order.getProductId());
+                response.put("productName", productName);
+                response.put("quantity", order.getQuantity());
+                response.put("totalPrice", order.getTotalPrice());
+            }
+
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Internal error"));
+        }
+    }
 }

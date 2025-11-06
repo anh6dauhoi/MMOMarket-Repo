@@ -9,7 +9,6 @@ import java.util.Date;
 import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
-    // ...existing code...
     List<Transaction> findByCustomer_Id(Long customerId);
 
     List<Transaction> findBySeller_Id(Long sellerId);
@@ -50,3 +49,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Long getOrdersBySellerIdBetweenDates(@Param("sellerId") Long sellerId, @Param("startDate") Date startDate, @Param("endDate") Date endDate);
 }
 
+    // New: find escrow transactions whose release date passed
+    List<Transaction> findByStatusAndEscrowReleaseDateBefore(String status, Date before);
+}

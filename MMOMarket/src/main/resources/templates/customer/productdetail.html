@@ -31,347 +31,6 @@
         @media (max-width: 640px) {
             body { background-position: top center; }
         }
-
-        /* Toast Notification Styles */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            min-width: 300px;
-            padding: 16px 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideIn 0.3s ease-out;
-            border-left: 4px solid;
-        }
-
-        .toast.success {
-            border-left-color: #10b981;
-        }
-
-        .toast.error {
-            border-left-color: #ef4444;
-        }
-
-        .toast.info {
-            border-left-color: #3b82f6;
-        }
-
-        .toast-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .toast.success .toast-icon {
-            background: #dcfce7;
-            color: #10b981;
-        }
-
-        .toast.error .toast-icon {
-            background: #fee2e2;
-            color: #ef4444;
-        }
-
-        .toast.info .toast-icon {
-            background: #dbeafe;
-            color: #3b82f6;
-        }
-
-        .toast-content {
-            flex: 1;
-        }
-
-        .toast-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 2px;
-        }
-
-        .toast-message {
-            font-size: 13px;
-            color: #6b7280;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: #9ca3af;
-            cursor: pointer;
-            padding: 0;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s;
-        }
-
-        .toast-close:hover {
-            color: #4b5563;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideOut {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-        }
-
-        .toast.removing {
-            animation: slideOut 0.3s ease-out forwards;
-        }
-
-        /* Login Modal Styles */
-        .login-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            z-index: 9998;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: fadeIn 0.3s ease-out;
-            padding: 20px;
-        }
-
-        .login-modal {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-            max-width: 440px;
-            width: 100%;
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            overflow: hidden;
-            position: relative;
-        }
-
-        .login-modal-header {
-            padding: 32px 32px 24px;
-            text-align: center;
-            position: relative;
-        }
-
-        .login-modal-icon-wrapper {
-            display: inline-flex;
-            margin-bottom: 16px;
-        }
-
-        .login-modal-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
-        }
-
-        .login-modal-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #111827;
-            margin: 0 0 8px 0;
-            letter-spacing: -0.5px;
-        }
-
-        .login-modal-subtitle {
-            font-size: 15px;
-            color: #6b7280;
-            margin: 0;
-            line-height: 1.5;
-        }
-
-        .login-modal-body {
-            padding: 0 32px 32px;
-        }
-
-        .login-modal-message {
-            font-size: 15px;
-            color: #374151;
-            line-height: 1.7;
-            margin: 0;
-            text-align: center;
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .login-modal-features {
-            margin-top: 20px;
-            padding: 0;
-            list-style: none;
-        }
-
-        .login-modal-features li {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 0;
-            font-size: 14px;
-            color: #4b5563;
-        }
-
-        .login-modal-features li i {
-            color: #10b981;
-            font-size: 16px;
-        }
-
-        .login-modal-footer {
-            padding: 0 32px 32px;
-            display: flex;
-            gap: 12px;
-        }
-
-        .modal-btn {
-            flex: 1;
-            padding: 14px 24px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none;
-            outline: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .modal-btn-cancel {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #e5e7eb;
-        }
-
-        .modal-btn-cancel:hover {
-            background: #e5e7eb;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .modal-btn-cancel:active {
-            transform: translateY(0);
-        }
-
-        .modal-btn-primary {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-
-        .modal-btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
-        }
-
-        .modal-btn-primary:active {
-            transform: translateY(0);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(40px) scale(0.95);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        .modal-closing {
-            animation: fadeOut 0.25s ease-out forwards;
-        }
-
-        .modal-closing .login-modal {
-            animation: slideDown 0.25s ease-out forwards;
-        }
-
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-
-        @keyframes slideDown {
-            from {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-            to {
-                transform: translateY(40px) scale(0.95);
-                opacity: 0;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .login-modal {
-                max-width: 100%;
-                border-radius: 20px 20px 0 0;
-                animation: slideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-
-            .login-modal-header,
-            .login-modal-body,
-            .login-modal-footer {
-                padding-left: 24px;
-                padding-right: 24px;
-            }
-
-            .modal-btn {
-                padding: 12px 20px;
-                font-size: 14px;
-            }
-
-            @keyframes slideUpMobile {
-                from {
-                    transform: translateY(100%);
-                }
-                to {
-                    transform: translateY(0);
-                }
-            }
-        }
     </style>
 </head>
 <body>
@@ -446,7 +105,19 @@
                 <button id="buyNowBtn" class="btn btn-primary" type="button">Buy Now</button>
                 <button id="wishlistBtn" class="btn btn-secondary" type="button" th:attr="data-product-id=${product.id}">Add to Wishlist</button>
             </div>
-            <button class="btn btn-chat" type="button">Chat with seller</button>
+            <!-- Chat button: Hide if current user is the seller of this product -->
+            <button th:if="${currentUserId == null or currentUserId != product.seller.id}"
+                    class="btn btn-chat"
+                    type="button"
+                    th:attr="data-seller-id=${product.seller.id}">
+                <i class="fas fa-comment-dots"></i> Chat with seller
+            </button>
+            <!-- Message for seller viewing their own product -->
+            <div th:if="${currentUserId != null and currentUserId == product.seller.id}"
+                 class="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 flex items-center gap-2">
+                <i class="fas fa-info-circle text-blue-500"></i>
+                <span>This is your own product. You cannot chat with yourself.</span>
+            </div>
         </div>
     </div>
 
@@ -772,6 +443,7 @@
                     container.innerHTML = html;
                     enhanceFormatPrices(container);
                     attachModalDismissHandlers(container);
+                    attachModalPurchaseHandlers(container);
                 } catch (e) {
                     console.error('Failed to load preview', e);
                     showToast('Failed to load purchase preview. Please try again.', 'error');
@@ -825,16 +497,25 @@
             });
         }
 
-        // 3. Chat Button - show login modal for guests
+        // 3. Chat Button - show login modal for guests or navigate to chat
         const chatBtn = document.querySelector('.btn-chat');
         if (chatBtn) {
             chatBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+
                 if (!isUserAuthenticated()) {
-                    e.preventDefault();
                     showLoginModal();
+                    return;
                 }
-                // If authenticated, let the default behavior handle it
-                // You may need to add the actual chat functionality here
+
+                // Get seller ID from button attribute
+                const sellerId = chatBtn.getAttribute('data-seller-id');
+                if (sellerId) {
+                    // Redirect to chat page with seller ID as parameter
+                    window.location.href = `/chat?sellerId=${sellerId}`;
+                } else {
+                    showToast('Unable to start chat. Seller information not available.', 'error');
+                }
             });
         }
 
@@ -922,6 +603,136 @@
         });
     }
 
+    function attachModalPurchaseHandlers(root){
+        const btn = root.querySelector('#confirmPurchaseBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            // guard if disabled
+            if (btn.disabled) return;
+            const productId = btn.getAttribute('data-product-id');
+            const variantId = btn.getAttribute('data-variant-id');
+            const quantity = btn.getAttribute('data-quantity') || '1';
+            if (!productId || !variantId) return;
+
+            const paramName = document.querySelector('meta[name="_csrf_parameter"]')?.content;
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+            const formData = new URLSearchParams();
+            formData.set('productId', productId);
+            formData.set('variantId', variantId);
+            formData.set('quantity', String(quantity));
+            if (paramName && token) formData.set(paramName, token);
+
+            btn.disabled = true;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>';
+            try {
+                const res = await fetch('/buy/place', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        ...(header && token ? { [header]: token } : {})
+                    },
+                    body: formData.toString()
+                });
+                if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data && data.ok && data.orderId) {
+                        // Close buy modal
+                        const container = document.getElementById('buyModalContainer');
+                        if (container) container.innerHTML = '';
+
+                        // Show processing toast and start polling
+                        showToast('Order created. Processing payment...', 'info');
+                        startOrderStatusPolling(data.orderId);
+                        return;
+                    }
+                    showToast('Unexpected response from server.', 'error');
+                } else {
+                    const text = await res.text();
+                    showToast(text || 'Could not create order. Please try again.', 'error');
+                }
+            } catch (err) {
+                console.error('Place order error', err);
+                showToast('An error occurred while placing your order.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // Elegant success modal (modern, accessible)
+    function showPurchaseSuccessModal(orderId){
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm';
+        overlay.setAttribute('role','dialog');
+        overlay.setAttribute('aria-modal','true');
+
+        const card = document.createElement('div');
+        card.className = 'relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden';
+
+        const header = document.createElement('div');
+        header.className = 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 px-6 py-6';
+        header.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <i class="fa-solid fa-bag-shopping text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Payment Successful</h3>
+                <p class="text-white/90 text-sm">Your order has been created and is being processed</p>
+              </div>
+            </div>`;
+
+        const body = document.createElement('div');
+        body.className = 'px-6 py-6 space-y-4';
+        body.innerHTML = `
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+              <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5"></i>
+              <div class="text-sm text-emerald-800">
+                <div class="font-semibold">Order placed successfully</div>
+                <div class="mt-0.5">You can view details, download accounts, and activate them from the order page.</div>
+              </div>
+            </div>`;
+
+        const footer = document.createElement('div');
+        footer.className = 'px-6 py-5 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-5 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm';
+        cancelBtn.textContent = 'Close';
+        cancelBtn.addEventListener('click', () => { overlay.remove(); });
+
+        const viewBtn = document.createElement('a');
+        viewBtn.className = 'px-6 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-md';
+        viewBtn.textContent = 'View Order Details';
+        viewBtn.href = `/account/orders/${orderId}`;
+
+        footer.appendChild(cancelBtn);
+        footer.appendChild(viewBtn);
+
+        const closeX = document.createElement('button');
+        closeX.className = 'absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 text-gray-600';
+        closeX.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        closeX.addEventListener('click', () => overlay.remove());
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+        card.appendChild(closeX);
+
+        overlay.appendChild(card);
+
+        // Click outside to close
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        // ESC to close
+        const esc = (e) => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
+
+        document.body.appendChild(overlay);
+    }
 
     // New: Login modal functions
     function showLoginModal() {
@@ -995,6 +806,54 @@
             }, 300);
         }, 4000);
     }
+
+    // New: Poll order status after placing order
+    function startOrderStatusPolling(orderId) {
+        let pollCount = 0;
+        const maxPolls = 30; // Poll for max 30 seconds (30 * 1000ms)
+        const pollInterval = 1000; // Check every 1 second
+
+        const pollTimer = setInterval(async () => {
+            pollCount++;
+
+            try {
+                const response = await fetch(`/api/orders/${orderId}/status`);
+                if (!response.ok) {
+                    clearInterval(pollTimer);
+                    showToast('Failed to check order status. Please check My Orders page.', 'error');
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'COMPLETED') {
+                    clearInterval(pollTimer);
+                    // Show success toast message
+                    const productName = data.productName || 'Product';
+                    const quantity = data.quantity || 1;
+                    showToast(`Purchase successful! ${quantity} x ${productName} ready in My Orders.`, 'success');
+                    // Also show success modal
+                    showPurchaseSuccessModal(orderId);
+                } else if (data.status === 'FAILED') {
+                    clearInterval(pollTimer);
+                    const errorMsg = data.errorMessage || 'Purchase failed. Please try again.';
+                    showToast(errorMsg, 'error');
+                } else if (pollCount >= maxPolls) {
+                    // Timeout - stop polling but inform user
+                    clearInterval(pollTimer);
+                    showToast('Order is still processing. Check My Orders for updates.', 'info');
+                }
+                // If status is PENDING or PROCESSING, continue polling
+            } catch (error) {
+                console.error('Error polling order status:', error);
+                if (pollCount >= 5) { // Give up after 5 failed attempts
+                    clearInterval(pollTimer);
+                    showToast('Unable to check order status. Please check My Orders page.', 'error');
+                }
+            }
+        }, pollInterval);
+    }
 </script>
 </body>
 </html>
+

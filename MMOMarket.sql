@@ -161,7 +161,6 @@ CREATE TABLE IF NOT EXISTS Transactions (
     product_id BIGINT NOT NULL,
     variant_id BIGINT NOT NULL,
     quantity BIGINT NOT NULL DEFAULT 1,
-    delivered_account_id BIGINT NULL, -- Sẽ thêm FK sau
     amount BIGINT NOT NULL,
     commission BIGINT NOT NULL,
     coinAdmin BIGINT NOT NULL,
@@ -203,11 +202,6 @@ CREATE TABLE IF NOT EXISTS ProductVariantAccounts (
     FOREIGN KEY (deleted_by) REFERENCES Users(id),
     INDEX idx_variant_id_status (variant_id, status)
 );
-
--- Thêm lại FK cho bảng Transactions
-ALTER TABLE Transactions
-ADD CONSTRAINT fk_delivered_account
-FOREIGN KEY (delivered_account_id) REFERENCES ProductVariantAccounts(id) ON DELETE NO ACTION;
 
 -- Bảng CoinDeposits - Cập nhật để tích hợp SePay Webhook
 CREATE TABLE IF NOT EXISTS CoinDeposits (
@@ -263,10 +257,26 @@ CREATE TABLE IF NOT EXISTS Complaints (
     transaction_id BIGINT, -- Mã giao dịch
     customer_id BIGINT NOT NULL, -- Mã khách hàng
     seller_id BIGINT NOT NULL, -- Mã người bán
+    complaint_type ENUM(
+        'ITEM_NOT_WORKING',      -- Sản phẩm không hoạt động
+        'ITEM_NOT_AS_DESCRIBED', -- Không giống mô tả
+        'FRAUD_SUSPICION',       -- Nghi ngờ lừa đảo
+        'OTHER'                  -- Khác
+    ) NOT NULL DEFAULT 'ITEM_NOT_WORKING',
     description TEXT NOT NULL, -- Mô tả khiếu nại
-    evidence TEXT, -- Bằng chứng
-    status VARCHAR(20) DEFAULT 'Open', -- Trạng thái: Open, Resolved, Rejected
-    resolution TEXT, -- Giải quyết
+    evidence JSON NULL, -- Bằng chứng
+	status ENUM(
+        'NEW',                     -- Mới tạo (Chờ Seller phản hồi đầu tiên)
+        'IN_PROGRESS',             -- Đang thương lượng (Hai bên đang chat)
+        'PENDING_CONFIRMATION',    -- Seller đã submit, chờ Buyer xác nhận
+        'ESCALATED',               -- Đã leo thang, chờ Admin (thay cho OPEN_PENDING_ADMIN)
+        'RESOLVED',                -- Đã giải quyết (Buyer đồng ý với Seller)
+        'CLOSED_BY_ADMIN',         -- Đã đóng (Admin ra phán quyết cuối cùng)
+        'CANCELLED'                -- Đã đóng (Buyer tự hủy khiếu nại)
+    ) NOT NULL DEFAULT 'NEW',
+    seller_final_response TEXT NULL,
+    admin_handler_id BIGINT NULL,
+    admin_decision_notes TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     created_by BIGINT, -- Người tạo
@@ -276,7 +286,11 @@ CREATE TABLE IF NOT EXISTS Complaints (
     FOREIGN KEY (customer_id) REFERENCES Users(id) ON DELETE NO ACTION,
     FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE NO ACTION,
     FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
+    FOREIGN KEY (deleted_by) REFERENCES Users(id),
+    FOREIGN KEY (admin_handler_id) REFERENCES Users(id) ON DELETE SET NULL,
+    INDEX idx_seller_status_type (seller_id, status, complaint_type),
+    INDEX idx_status_updated_at (status, updated_at),
+    INDEX idx_admin_handler_status (admin_handler_id, status)
 );
 
 -- Bảng Chats - Quản lý tin nhắn
@@ -397,6 +411,19 @@ CREATE TABLE IF NOT EXISTS Orders (
     FOREIGN KEY (variant_id) REFERENCES ProductVariants(id),
 	FOREIGN KEY (transaction_id) REFERENCES Transactions(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Bảng ShopPointPurchases - Ghi lại lịch sử Seller mua points
+CREATE TABLE IF NOT EXISTS ShopPointPurchases (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,        
+    points_bought BIGINT NOT NULL, 
+    coins_spent BIGINT NOT NULL,   
+    points_before BIGINT NOT NULL,
+    points_after BIGINT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE NO ACTION,
+    INDEX idx_user_id (user_id)
+);
 
 -- Trigger update points with transaction completed
 DELIMITER $$

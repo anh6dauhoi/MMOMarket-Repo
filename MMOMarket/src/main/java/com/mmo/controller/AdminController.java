@@ -44,6 +44,8 @@ import jakarta.persistence.PersistenceContext;
 import com.mmo.service.ChatService;
 import com.mmo.service.AuthService;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.mmo.entity.ShopPointPurchase;
+import com.mmo.repository.ShopPointPurchaseRepository;
 
 @Controller
 @RequestMapping("/admin")
@@ -82,11 +84,38 @@ public class AdminController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private ShopPointPurchaseRepository shopPointPurchaseRepository;
+
     // NEW: Admin Dashboard route
     @GetMapping({"", "/"})
     public String dashboard(Model model) {
         model.addAttribute("pageTitle", "Admin Dashboard");
         model.addAttribute("body", "admin/dashboard");
+        return "admin/layout";
+    }
+
+    // NEW: Admin Chat route
+    @GetMapping("/chat")
+    public String adminChat(@RequestParam(value = "partnerId", required = false) Long partnerId,
+                            Model model, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/login";
+        }
+
+        User currentUser = authService.findByEmail(authentication.getName());
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+
+        // Get all conversations for admin
+        List<ConversationSummaryDto> conversations = chatService.listConversations(currentUser.getId());
+
+        model.addAttribute("conversations", conversations);
+        model.addAttribute("currentUser", currentUser);
+        if (partnerId != null) model.addAttribute("partnerId", partnerId);
+        model.addAttribute("pageTitle", "Chat Management");
+        model.addAttribute("body", "admin/chat");
         return "admin/layout";
     }
 
@@ -630,19 +659,332 @@ public class AdminController {
         }
     }
 
-    @GetMapping("/chat")
-    public String adminChat(Authentication authentication, Model model) {
-        if (authentication != null && authentication.isAuthenticated()) {
-            User current = authService.findByEmail(authentication.getName());
-            List<ConversationSummaryDto> conversations = chatService.listConversations(current.getId());
-            model.addAttribute("conversations", conversations);
-            model.addAttribute("currentUser", current);
+
+    @GetMapping("/transactions")
+    public String transactionsManagement(@RequestParam(name = "status", defaultValue = "All") String txStatus,
+                                         @RequestParam(name = "orderStatus", defaultValue = "All") String orderStatus,
+                                         @RequestParam(name = "page", defaultValue = "0") int page,
+                                         @RequestParam(name = "search", defaultValue = "") String search,
+                                         @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
+                                         Model model) {
+        // Build base JPQL for transactions + eager parts
+        StringBuilder sb = new StringBuilder("SELECT t FROM Transaction t " +
+                " LEFT JOIN FETCH t.product p " +
+                " LEFT JOIN FETCH t.variant v " +
+                " LEFT JOIN FETCH t.customer c " +
+                " LEFT JOIN FETCH t.seller s " +
+                " WHERE 1=1");
+        if (!"All".equalsIgnoreCase(txStatus)) {
+            sb.append(" AND LOWER(t.status) = LOWER(:txStatus)");
         }
-        model.addAttribute("pageTitle", "Chat");
-        model.addAttribute("body", "admin/chat");
+        if (search != null && !search.isBlank()) {
+            sb.append(" AND (" +
+                    " CAST(t.id AS string) LIKE :kw " +
+                    " OR LOWER(c.fullName) LIKE LOWER(:kw) OR LOWER(c.email) LIKE LOWER(:kw) " +
+                    " OR LOWER(s.fullName) LIKE LOWER(:kw) OR LOWER(s.email) LIKE LOWER(:kw) " +
+                    " OR LOWER(p.name) LIKE LOWER(:kw) " +
+                    ")");
+        }
+
+        // Apply sorting based on sort parameter
+        String orderClause;
+        switch (sort.toLowerCase()) {
+            case "date_asc":
+                orderClause = " ORDER BY t.createdAt ASC";
+                break;
+            case "amount_desc":
+                orderClause = " ORDER BY t.amount DESC";
+                break;
+            case "amount_asc":
+                orderClause = " ORDER BY t.amount ASC";
+                break;
+            case "quantity_desc":
+                orderClause = " ORDER BY t.quantity DESC";
+                break;
+            case "quantity_asc":
+                orderClause = " ORDER BY t.quantity ASC";
+                break;
+            default: // date_desc
+                orderClause = " ORDER BY t.createdAt DESC";
+        }
+        sb.append(orderClause);
+
+        jakarta.persistence.Query tq = entityManager.createQuery(sb.toString(), com.mmo.entity.Transaction.class);
+        if (!"All".equalsIgnoreCase(txStatus)) {
+            tq.setParameter("txStatus", txStatus);
+        }
+        if (search != null && !search.isBlank()) {
+            tq.setParameter("kw", "%" + search + "%");
+        }
+        java.util.List<com.mmo.entity.Transaction> all = tq.getResultList();
+
+        int total = all.size();
+        int size = 10;
+        int totalPages = (int) Math.ceil((double) total / size);
+        java.util.List<com.mmo.entity.Transaction> pageList = all.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+
+        // Load Orders for the page transactions to simulate JOIN view
+        java.util.Set<Long> txIds = pageList.stream().map(com.mmo.entity.Transaction::getId).collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, com.mmo.entity.Orders> orderByTxId = new java.util.HashMap<>();
+        if (!txIds.isEmpty()) {
+            entityManager.createQuery("SELECT o FROM Orders o LEFT JOIN FETCH o.transaction WHERE o.transaction.id IN :ids", com.mmo.entity.Orders.class)
+                    .setParameter("ids", txIds)
+                    .getResultList()
+                    .forEach(o -> orderByTxId.put(o.getTransaction() != null ? o.getTransaction().getId() : o.getTransactionId(), o));
+        }
+
+        // If orderStatus filter is applied, re-filter page list using the loaded orders
+        if (!"All".equalsIgnoreCase(orderStatus)) {
+            pageList = pageList.stream()
+                    .filter(t -> {
+                        com.mmo.entity.Orders o = orderByTxId.get(t.getId());
+                        String os = o != null && o.getStatus() != null ? o.getStatus().name() : null;
+                        return os != null && os.equalsIgnoreCase(orderStatus);
+                    })
+                    .toList();
+        }
+
+        // Map to list items
+        java.util.List<com.mmo.dto.AdminTransactionListItem> items = new java.util.ArrayList<>();
+        for (com.mmo.entity.Transaction t : pageList) {
+            com.mmo.entity.Orders o = orderByTxId.get(t.getId());
+            String productName = t.getProduct() != null ? t.getProduct().getName() : "";
+            String variantName = t.getVariant() != null ? t.getVariant().getVariantName() : "";
+            String customerName = t.getCustomer() != null ? t.getCustomer().getFullName() : "";
+            String customerEmail = t.getCustomer() != null ? t.getCustomer().getEmail() : "";
+            String sellerName = t.getSeller() != null ? t.getSeller().getFullName() : "";
+            String sellerEmail = t.getSeller() != null ? t.getSeller().getEmail() : "";
+            Long qty = (o != null && o.getQuantity() != null) ? o.getQuantity() : (t.getQuantity() != null ? t.getQuantity() : 0L);
+            items.add(new com.mmo.dto.AdminTransactionListItem(
+                    t.getId(),
+                    o != null ? o.getId() : null,
+                    o != null ? o.getRequestId() : null,
+                    o != null && o.getStatus() != null ? o.getStatus().name() : null,
+                    t.getStatus(),
+                    t.getAmount(),
+                    t.getCoinSeller(),
+                    t.getCoinAdmin(),
+                    qty,
+                    productName,
+                    variantName,
+                    customerName,
+                    customerEmail,
+                    sellerName,
+                    sellerEmail,
+                    t.getCreatedAt(),
+                    o != null ? o.getProcessedAt() : null
+            ));
+        }
+
+        model.addAttribute("transactions", items);
+        model.addAttribute("currentStatus", txStatus);
+        model.addAttribute("currentOrderStatus", orderStatus);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageTitle", "Transactions Management");
+        model.addAttribute("body", "admin/transactions");
         return "admin/layout";
     }
 
+    @GetMapping(value = "/transactions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTransactionDetail(@PathVariable Long id, Authentication auth) {
+        try {
+            Authentication authentication = auth;
+            if (authentication == null || !authentication.isAuthenticated()) {
+                authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            }
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            // Basic admin validation (authorities or DB role)
+            boolean hasAdminAuthority = false;
+            try {
+                if (authentication.getAuthorities() != null) {
+                    for (GrantedAuthority ga : authentication.getAuthorities()) {
+                        String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
+                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
+                            hasAdminAuthority = true;
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            User admin = null;
+            try {
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", authentication.getName())
+                        .getResultStream().findFirst().orElse(null);
+            } catch (Exception ignored) {}
+
+            boolean okAdmin = hasAdminAuthority;
+            if (!okAdmin && admin != null && admin.getRole() != null) {
+                String role = admin.getRole().trim();
+                if (role.toUpperCase().startsWith("ROLE_")) role = role.substring(5);
+                okAdmin = "ADMIN".equalsIgnoreCase(role);
+            }
+            if (!okAdmin) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+
+            com.mmo.entity.Transaction t = entityManager.createQuery(
+                    "SELECT t FROM Transaction t " +
+                            " LEFT JOIN FETCH t.product p " +
+                            " LEFT JOIN FETCH t.variant v " +
+                            " LEFT JOIN FETCH t.customer c " +
+                            " LEFT JOIN FETCH t.seller s " +
+                            " WHERE t.id = :id", com.mmo.entity.Transaction.class)
+                    .setParameter("id", id)
+                    .getResultStream().findFirst().orElse(null);
+            if (t == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Transaction not found");
+
+            com.mmo.entity.Orders o = entityManager.createQuery("SELECT o FROM Orders o WHERE o.transaction.id = :id", com.mmo.entity.Orders.class)
+                    .setParameter("id", id)
+                    .getResultStream().findFirst().orElse(null);
+
+            String productName = t.getProduct() != null ? t.getProduct().getName() : "";
+            String variantName = t.getVariant() != null ? t.getVariant().getVariantName() : "";
+            String customerName = t.getCustomer() != null ? t.getCustomer().getFullName() : "";
+            String customerEmail = t.getCustomer() != null ? t.getCustomer().getEmail() : "";
+            String sellerName = t.getSeller() != null ? t.getSeller().getFullName() : "";
+            String sellerEmail = t.getSeller() != null ? t.getSeller().getEmail() : "";
+
+            com.mmo.dto.AdminTransactionDetailResponse resp = new com.mmo.dto.AdminTransactionDetailResponse(
+                    t.getId(),
+                    o != null ? o.getId() : null,
+                    o != null ? o.getRequestId() : null,
+                    o != null && o.getStatus() != null ? o.getStatus().name() : null,
+                    o != null ? o.getErrorMessage() : null,
+                    o != null && o.getProcessedAt() != null ? o.getProcessedAt().toString() : null,
+                    t.getStatus(),
+                    t.getAmount(),
+                    t.getCommission(),
+                    t.getCoinAdmin(),
+                    t.getCoinSeller(),
+                    o != null && o.getQuantity() != null ? o.getQuantity() : t.getQuantity(),
+                    productName,
+                    variantName,
+                    t.getCustomer() != null ? t.getCustomer().getId() : null,
+                    customerName,
+                    customerEmail,
+                    t.getSeller() != null ? t.getSeller().getId() : null,
+                    sellerName,
+                    sellerEmail,
+                    t.getEscrowReleaseDate() != null ? t.getEscrowReleaseDate().toString() : null,
+                    t.getCreatedAt() != null ? t.getCreatedAt().toString() : null,
+                    t.getUpdatedAt() != null ? t.getUpdatedAt().toString() : null
+            );
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/point-purchases")
+    public String pointPurchases(@RequestParam(name = "page", defaultValue = "0") int page,
+                                 @RequestParam(name = "search", defaultValue = "") String search,
+                                 @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
+                                 Model model) {
+        String queryStr = "SELECT p FROM ShopPointPurchase p LEFT JOIN FETCH p.user WHERE 1=1";
+        if (!search.isBlank()) {
+            queryStr += " AND (LOWER(p.user.fullName) LIKE LOWER(:search) OR LOWER(p.user.email) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(p.user.id AS string) LIKE :search)";
+        }
+
+        // Apply sorting
+        switch (sort.toLowerCase()) {
+            case "date_asc":
+                queryStr += " ORDER BY p.createdAt ASC";
+                break;
+            case "points_desc":
+                queryStr += " ORDER BY p.pointsBought DESC";
+                break;
+            case "points_asc":
+                queryStr += " ORDER BY p.pointsBought ASC";
+                break;
+            case "coins_desc":
+                queryStr += " ORDER BY p.coinsSpent DESC";
+                break;
+            case "coins_asc":
+                queryStr += " ORDER BY p.coinsSpent ASC";
+                break;
+            default: // date_desc
+                queryStr += " ORDER BY p.createdAt DESC";
+        }
+
+        jakarta.persistence.Query query = entityManager.createQuery(queryStr, ShopPointPurchase.class);
+        if (!search.isBlank()) {
+            query.setParameter("search", "%" + search + "%");
+        }
+        List<ShopPointPurchase> all = query.getResultList();
+        int total = all.size();
+        int totalPages = (int) Math.ceil((double) total / 10);
+        List<ShopPointPurchase> pageList = all.stream()
+                .skip((long) page * 10)
+                .limit(10)
+                .toList();
+
+        model.addAttribute("purchases", pageList);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("currentSearch", search);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageTitle", "Point Purchases");
+        model.addAttribute("body", "admin/point-purchases");
+        return "admin/layout";
+    }
+
+    // NEW: Admin-only API endpoint to search/list users for starting new chats
+    @GetMapping(value = "/api/users", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> adminSearchUsers(@RequestParam(name = "kw", required = false) String kw,
+                                              @RequestParam(name = "page", defaultValue = "0") int page,
+                                              @RequestParam(name = "size", defaultValue = "10") int size,
+                                              Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            User currentUser = authService.findByEmail(authentication.getName());
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50));
+            java.util.List<User> users;
+            if (kw == null || kw.trim().isEmpty()) {
+                users = entityManager.createQuery("SELECT u FROM User u WHERE u.isDelete = false AND u.id <> :exclude ORDER BY LOWER(COALESCE(u.fullName, '')) ASC, u.id ASC", User.class)
+                        .setParameter("exclude", currentUser.getId())
+                        .setFirstResult(pageable.getPageNumber() * pageable.getPageSize())
+                        .setMaxResults(pageable.getPageSize())
+                        .getResultList();
+            } else {
+                String keyword = "%" + kw.trim().toLowerCase() + "%";
+                users = entityManager.createQuery("SELECT u FROM User u WHERE u.isDelete = false AND u.id <> :exclude AND (LOWER(COALESCE(u.fullName, '')) LIKE :kw OR LOWER(COALESCE(u.email, '')) LIKE :kw) ORDER BY LOWER(COALESCE(u.fullName, '')) ASC, u.id ASC", User.class)
+                        .setParameter("exclude", currentUser.getId())
+                        .setParameter("kw", keyword)
+                        .setFirstResult(pageable.getPageNumber() * pageable.getPageSize())
+                        .setMaxResults(pageable.getPageSize())
+                        .getResultList();
+            }
+            java.util.List<java.util.Map<String, Object>> out = new java.util.ArrayList<>();
+            for (User u : users) {
+                String name = (u.getFullName() == null || u.getFullName().isBlank()) ? ("User #" + u.getId()) : u.getFullName();
+                out.add(java.util.Map.of(
+                        "id", u.getId(),
+                        "fullName", name,
+                        "email", u.getEmail(),
+                        "role", u.getRole()
+                ));
+            }
+            return ResponseEntity.ok(out);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", ex.getMessage()));
+        }
+    }
     // ==================== CATEGORY MANAGEMENT ====================
 
     @GetMapping("/categories")
