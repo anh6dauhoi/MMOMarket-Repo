@@ -67,4 +67,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                                    @Param("minPrice") Long minPrice,
                                                    @Param("maxPrice") Long maxPrice,
                                                    Pageable pageable);
+
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false")
+    Long countBySellerId(@Param("sellerId") Long sellerId);
+
+    @Query("SELECT p FROM Product p " +
+           "LEFT JOIN Transaction t ON p.id = t.product.id AND t.isDelete = false AND LOWER(t.status) = 'completed' " +
+           "WHERE p.seller.id = :sellerId AND p.isDelete = false " +
+           "GROUP BY p.id " +
+           "ORDER BY COUNT(t.id) DESC")
+    List<Product> findTopSellingProductsBySeller(@Param("sellerId") Long sellerId, Pageable pageable);
+
+    @Query("SELECT COALESCE(COUNT(t.id), 0) FROM Transaction t " +
+           "WHERE t.product.id = :productId AND t.isDelete = false AND LOWER(t.status) = 'completed'")
+    Long countSalesForProduct(@Param("productId") Long productId);
 }

@@ -3,6 +3,7 @@ package com.mmo.controller;
 import com.mmo.entity.Blog;
 import com.mmo.entity.User;
 import com.mmo.service.BlogService;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,11 @@ public class BlogController {
     @Autowired
     private BlogService blogService;
 
+    @Autowired
+    private EntityManager entityManager;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BlogController.class);
+
     // list with optional search q and pagination (page starts at 0)
     @GetMapping("/blog")
     public String blogList(@RequestParam(value = "q", required = false) String q,
@@ -27,7 +33,8 @@ public class BlogController {
                            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                            @RequestParam(value = "size", required = false, defaultValue = "10") int size,
                            Model model,
-                           HttpSession session) {
+                           HttpSession session,
+                           org.springframework.security.core.Authentication authentication) {
 
         Page<Blog> posts = blogService.listPosts(q, sort, page, size);
         model.addAttribute("postsPage", posts);
@@ -37,7 +44,7 @@ public class BlogController {
         model.addAttribute("query", q == null ? "" : q.trim());
         model.addAttribute("sort", (sort == null || sort.isBlank()) ? "newest" : sort.trim().toLowerCase());
 
-        Long currentUserId = resolveCurrentUserId(session);
+        Long currentUserId = resolveCurrentUserId(session, authentication);
         java.util.Set<Long> likedBlogIds = blogService.getLikedBlogIdsForList(currentUserId, session, posts.getContent());
         model.addAttribute("likedBlogIds", likedBlogIds);
 
@@ -52,13 +59,16 @@ public class BlogController {
 
     // detail by identifier: numeric id or a title-based identifier (slug-like)
     @GetMapping("/blog/{identifier}")
-    public String blogDetail(@PathVariable("identifier") String identifier, Model model, HttpSession session) {
+    public String blogDetail(@PathVariable("identifier") String identifier,
+                            Model model,
+                            HttpSession session,
+                            org.springframework.security.core.Authentication authentication) {
         Optional<Blog> found = blogService.findByIdentifier(identifier);
         if (!found.isPresent()) return "redirect:/blog";
         Blog post = found.get();
 
         String sessionId = session.getId();
-        Long currentUserId = resolveCurrentUserId(session);
+        Long currentUserId = resolveCurrentUserId(session, authentication);
 
         // delegate to service with currentUserId and session so views/likes persist per-account
         Map<String, Object> vm = blogService.prepareBlogView(post, sessionId, currentUserId, session);
@@ -72,8 +82,10 @@ public class BlogController {
     // toggle like for a comment (redirect guests)
     @PostMapping("/blog/comment/{id}/like")
     @ResponseBody
-    public ResponseEntity<?> toggleCommentLike(@PathVariable("id") Long commentId, HttpSession session) {
-        Long currentUserId = resolveCurrentUserId(session);
+    public ResponseEntity<?> toggleCommentLike(@PathVariable("id") Long commentId,
+                                              HttpSession session,
+                                              org.springframework.security.core.Authentication authentication) {
+        Long currentUserId = resolveCurrentUserId(session, authentication);
         if (currentUserId == null) {
             return ResponseEntity.status(401)
                     .header("X-Redirect", "/authen/login")
@@ -85,8 +97,10 @@ public class BlogController {
     // toggle like for a blog (redirect guests)
     @PostMapping("/blog/{id}/like")
     @ResponseBody
-    public ResponseEntity<?> toggleBlogLike(@PathVariable("id") Long blogId, HttpSession session) {
-        Long currentUserId = resolveCurrentUserId(session);
+    public ResponseEntity<?> toggleBlogLike(@PathVariable("id") Long blogId,
+                                           HttpSession session,
+                                           org.springframework.security.core.Authentication authentication) {
+        Long currentUserId = resolveCurrentUserId(session, authentication);
         if (currentUserId == null) {
             return ResponseEntity.status(401)
                     .header("X-Redirect", "/authen/login")
@@ -96,24 +110,123 @@ public class BlogController {
     }
 
     // helper: try multiple session attribute keys / types to obtain current user id
-    private Long resolveCurrentUserId(HttpSession session) {
-        if (session == null) return null;
-        String[] keys = new String[]{"currentUserId", "userId", "currentUser", "user", "loggedUser"};
-        for (String k : keys) {
-            Object v = session.getAttribute(k);
-            if (v == null) continue;
-            if (v instanceof Long) return (Long) v;
-            if (v instanceof Integer) return ((Integer) v).longValue();
-            if (v instanceof User) return ((User) v).getId();
-            // some frameworks store a Map/DTO - try common patterns
+    private Long resolveCurrentUserId(HttpSession session, org.springframework.security.core.Authentication authentication) {
+        log.debug("=== Resolving current user ID ===");
+        log.debug("Authentication object: {}", authentication);
+        log.debug("Is authenticated: {}", authentication != null ? authentication.isAuthenticated() : "null");
+
+        // First, try to get user from Spring Security Authentication
+        if (authentication != null && authentication.isAuthenticated()) {
+
+            Object principal = authentication.getPrincipal();
+            log.debug("Principal type: {}", principal != null ? principal.getClass().getName() : "null");
+            log.debug("Principal value: {}", principal);
+
+            // Skip if anonymous user (not logged in)
+            if (principal == null || "anonymousUser".equals(principal)) {
+                log.debug("Anonymous user detected, returning null");
+                return null;
+            }
+
+            // Check if principal is a String (username/email)
+            if (principal instanceof String) {
+                String emailOrUsername = (String) principal;
+                log.debug("Principal is String: {}", emailOrUsername);
+                if ("anonymousUser".equalsIgnoreCase(emailOrUsername)) {
+                    return null;
+                }
+                // Try to find user by email
+                try {
+                    User user = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                        .setParameter("email", emailOrUsername)
+                        .getSingleResult();
+                    log.debug("Found user by email (String): ID = {}", user.getId());
+                    return user.getId();
+                } catch (Exception e) {
+                    log.debug("User not found by email (String): {}", e.getMessage());
+                }
+            }
+
+            // Check if principal is UserDetails (form login)
+            if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+                String email = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
+                log.debug("Principal is UserDetails, username/email: {}", email);
+                try {
+                    User user = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                        .setParameter("email", email)
+                        .getSingleResult();
+                    log.debug("Found user by email (UserDetails): ID = {}", user.getId());
+                    return user.getId();
+                } catch (Exception e) {
+                    log.debug("User not found by email (UserDetails): {}", e.getMessage());
+                }
+            }
+
+            // Check if principal is OAuth2User (OAuth2 login like Google)
+            if (principal instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
+                org.springframework.security.oauth2.core.user.OAuth2User oauth2User =
+                    (org.springframework.security.oauth2.core.user.OAuth2User) principal;
+                String email = oauth2User.getAttribute("email");
+                log.debug("Principal is OAuth2User, email: {}", email);
+                if (email != null) {
+                    try {
+                        User user = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                            .setParameter("email", email)
+                            .getSingleResult();
+                        log.debug("Found user by email (OAuth2): ID = {}", user.getId());
+                        return user.getId();
+                    } catch (Exception e) {
+                        log.debug("User not found by email (OAuth2): {}", e.getMessage());
+                    }
+                }
+            }
+
+            // Check if principal is a User entity directly
+            if (principal instanceof User) {
+                log.debug("Principal is User entity directly: ID = {}", ((User) principal).getId());
+                return ((User) principal).getId();
+            }
+
+            // Try to get ID from principal using reflection (last resort)
             try {
-                // reflectively try "getId" if present (safe fallback)
-                java.lang.reflect.Method m = v.getClass().getMethod("getId");
-                Object id = m.invoke(v);
-                if (id instanceof Long) return (Long) id;
-                if (id instanceof Integer) return ((Integer) id).longValue();
-            } catch (Exception ignore) { /* not reflective */ }
+                java.lang.reflect.Method m = principal.getClass().getMethod("getId");
+                Object id = m.invoke(principal);
+                if (id instanceof Long) {
+                    log.debug("Found user ID via reflection (Long): {}", id);
+                    return (Long) id;
+                }
+                if (id instanceof Integer) {
+                    log.debug("Found user ID via reflection (Integer): {}", id);
+                    return ((Integer) id).longValue();
+                }
+            } catch (Exception ignore) {
+                log.debug("Reflection failed: {}", ignore.getMessage());
+            }
         }
+
+        // Fallback to session-based resolution (for backward compatibility)
+        log.debug("Falling back to session-based resolution");
+        if (session != null) {
+            String[] keys = new String[]{"currentUserId", "userId", "currentUser", "user", "loggedUser"};
+            for (String k : keys) {
+                Object v = session.getAttribute(k);
+                if (v == null) continue;
+                log.debug("Found session attribute '{}': {}", k, v);
+                if (v instanceof Long) return (Long) v;
+                if (v instanceof Integer) return ((Integer) v).longValue();
+                if (v instanceof User) return ((User) v).getId();
+                // some frameworks store a Map/DTO - try common patterns
+                try {
+                    // reflectively try "getId" if present (safe fallback)
+                    java.lang.reflect.Method m = v.getClass().getMethod("getId");
+                    Object id = m.invoke(v);
+                    if (id instanceof Long) return (Long) id;
+                    if (id instanceof Integer) return ((Integer) id).longValue();
+                } catch (Exception ignore) { /* not reflective */ }
+            }
+        }
+
+        log.debug("No user ID found, returning null");
         return null;
     }
 
@@ -123,9 +236,10 @@ public class BlogController {
     public ResponseEntity<?> addComment(@PathVariable("id") Long blogId,
                                         @RequestParam("content") String content,
                                         @RequestParam(value = "parentId", required = false) Long parentId,
-                                        HttpSession session) {
+                                        HttpSession session,
+                                        org.springframework.security.core.Authentication authentication) {
 
-        Long userId = resolveCurrentUserId(session);
+        Long userId = resolveCurrentUserId(session, authentication);
         if (userId == null) {
             return ResponseEntity.status(401)
                     .header("X-Redirect", "/authen/login")

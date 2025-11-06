@@ -65,233 +65,348 @@
             <div th:replace="~{seller/sidebar :: sidebar}"></div>
 
             <!-- Main Content -->
-            <div class="lg:col-span-3 space-y-8">
+            <div class="lg:col-span-3 space-y-6">
                 <!-- Header Section -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center justify-between mb-4">
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-                        <p class="text-gray-500 mt-1">Welcome back to your shop management</p>
-                    </div>
-                    <div class="mt-4 md:mt-0">
-                        <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-md transition-colors flex items-center space-x-2">
-                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"
-                                 xmlns="http://www.w3.org/2000/svg">
-                                <path clip-rule="evenodd"
-                                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                      fill-rule="evenodd"/>
-                            </svg>
-                            <span>Add New Product</span>
-                        </button>
+                <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-md border border-gray-200 p-8">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="p-2 bg-primary-100 rounded-lg">
+                                    <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                    </svg>
+                                </div>
+                                <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Shop Dashboard</h1>
+                            </div>
+                            <p class="text-gray-600 text-base">Monitor your shop performance and recent activities</p>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <!-- Time Filter Dropdown -->
+                            <div class="relative">
+                                <select id="timeFilter"
+                                        onchange="window.location.href='/seller/my-shop?timeFilter=' + this.value"
+                                        class="appearance-none bg-white border-2 border-gray-300 text-gray-700 py-2.5 pl-10 pr-10 rounded-xl font-medium focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all cursor-pointer hover:border-gray-400 shadow-sm">
+                                    <option value="day" th:selected="${timeFilter == 'day'}">Today</option>
+                                    <option value="month" th:selected="${timeFilter == 'month' or timeFilter == null}">This Month</option>
+                                    <option value="year" th:selected="${timeFilter == 'year'}">This Year</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                     <!-- Revenue -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 card-hover">
-                        <div class="flex justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Total Revenue</p>
-                                <p class="text-2xl font-bold mt-1">125.000 <span
-                                        class="text-base font-normal text-gray-500">points</span></p>
+                    <div class="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-md border border-blue-100 p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                                        <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Revenue</p>
+                                <div class="mt-2 flex items-baseline gap-2">
+                                    <p class="text-3xl font-bold text-gray-900">
+                                        <span th:text="${#numbers.formatDecimal(totalRevenue, 0, 'POINT', 0, 'NONE')}">0</span>
+                                    </p>
+                                    <span class="text-sm font-medium text-gray-500">coins</span>
+                                </div>
                             </div>
-                            <div class="bg-primary-50 p-3 rounded-lg">
-                                <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"/>
+                        </div>
+                        <div class="flex items-center pt-3 border-t border-blue-100">
+                            <span th:classappend="${revenueChangePositive} ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'"
+                                  class="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <svg th:if="${revenueChangePositive}" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                                 </svg>
-                            </div>
+                                <svg th:if="${!revenueChangePositive}" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                </svg>
+                                <span th:text="${revenueChange} + '%'">0%</span>
+                            </span>
+                            <span class="text-xs text-gray-500 ml-2" th:text="${comparisonLabel}">vs last month</span>
                         </div>
-                        <div class="mt-4 flex items-center">
-                                <span class="text-sm font-medium text-green-500 flex items-center">
-                                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor"
-                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                              stroke-width="2"/>
-                                    </svg>
-                                    15% vs last month
-                                </span>
-                        </div>
-                        <div class="h-20 mt-4 chart-gradient rounded-lg"></div>
                     </div>
 
                     <!-- Orders -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 card-hover">
-                        <div class="flex justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Total Orders</p>
-                                <p class="text-2xl font-bold mt-1">350</p>
+                    <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-md border border-purple-100 p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                                        <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Orders</p>
+                                <div class="mt-2">
+                                    <p class="text-3xl font-bold text-gray-900" th:text="${totalOrders}">0</p>
+                                </div>
                             </div>
-                            <div class="bg-primary-50 p-3 rounded-lg">
-                                <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                          stroke-width="2"/>
+                        </div>
+                        <div class="flex items-center pt-3 border-t border-purple-100">
+                            <span th:classappend="${ordersChangePositive} ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'"
+                                  class="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <svg th:if="${ordersChangePositive}" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                                 </svg>
-                            </div>
+                                <svg th:if="${!ordersChangePositive}" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                </svg>
+                                <span th:text="${ordersChange} + '%'">0%</span>
+                            </span>
+                            <span class="text-xs text-gray-500 ml-2" th:text="${comparisonLabel}">vs last month</span>
                         </div>
-                        <div class="mt-4 flex items-center">
-                                <span class="text-sm font-medium text-green-500 flex items-center">
-                                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor"
-                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                              stroke-width="2"/>
-                                    </svg>
-                                    10% vs last month
-                                </span>
-                        </div>
-                        <div class="h-20 mt-4 chart-gradient rounded-lg"></div>
                     </div>
 
-                    <!-- Conversion -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 card-hover">
-                        <div class="flex justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-gray-500">Conversion Rate</p>
-                                <p class="text-2xl font-bold mt-1">4.5%</p>
+                    <!-- Products -->
+                    <div class="bg-gradient-to-br from-white to-green-50 rounded-2xl shadow-md border border-green-100 p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                                        <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Products</p>
+                                <div class="mt-2">
+                                    <p class="text-3xl font-bold text-gray-900" th:text="${totalProducts}">0</p>
+                                </div>
                             </div>
-                            <div class="bg-primary-50 p-3 rounded-lg">
-                                <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          stroke-width="2"/>
+                        </div>
+                        <div class="flex items-center pt-3 border-t border-green-100">
+                            <span class="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                <svg class="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                                 </svg>
+                                Active in your shop
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Top Product Card -->
+                    <div class="bg-gradient-to-br from-white to-orange-50 rounded-2xl shadow-md border border-orange-100 p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1 min-w-0 pr-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors flex-shrink-0">
+                                        <svg class="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Top Product</p>
+                                <div class="mt-2" th:if="${topProducts != null && !topProducts.isEmpty()}">
+                                    <p class="text-lg font-bold text-gray-900 truncate leading-tight line-clamp-2"
+                                       th:text="${topProducts[0].productName}"
+                                       th:title="${topProducts[0].productName}">Product Name</p>
+                                    <p class="text-sm text-gray-600 mt-1 font-medium">
+                                        <span th:text="${topProducts[0].salesCount}">0</span> sales
+                                    </p>
+                                </div>
+                                <div class="mt-2" th:if="${topProducts == null || topProducts.isEmpty()}">
+                                    <p class="text-lg font-bold text-gray-400">No sales yet</p>
+                                    <p class="text-sm text-gray-500 mt-1">Start selling</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-4 flex items-center">
-                                <span class="text-sm font-medium text-green-500 flex items-center">
-                                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor"
-                                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                              stroke-width="2"/>
-                                    </svg>
-                                    5% vs last month
-                                </span>
+                        <div class="pt-3 border-t border-orange-100" th:if="${topProducts != null && !topProducts.isEmpty()}">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                                <div class="bg-gradient-to-r from-orange-500 to-orange-600 h-2.5 rounded-full transition-all duration-500"
+                                     th:style="'width: ' + ${topProducts[0].salesPercentage} + '%'"></div>
+                            </div>
+                            <p class="text-xs font-medium text-gray-600 flex items-center gap-1 flex-wrap">
+                                <svg class="h-3.5 w-3.5 text-orange-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+                                </svg>
+                                <span th:text="${#numbers.formatDecimal(topProducts[0].salesPercentage, 0, 1)}">0</span>% of total sales
+                            </p>
                         </div>
-                        <div class="h-20 mt-4 chart-gradient rounded-lg"></div>
                     </div>
                 </div>
 
                 <!-- Data Sections -->
-                <div class="grid grid-cols-1 xl:grid-cols-5 gap-8">
+                <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
                     <!-- Recent Orders -->
-                    <div class="xl:col-span-3 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Orders</h2>
+                    <div class="xl:col-span-3 bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-5 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-primary-100 rounded-lg">
+                                        <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                        </svg>
+                                    </div>
+                                    <h2 class="text-xl font-bold text-gray-800">Recent Orders</h2>
+                                </div>
+                                <span class="text-sm text-gray-500 font-medium">Last 5 transactions</span>
+                            </div>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
-                                <thead>
+                                <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Order ID
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Product
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Amount
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Order ID</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Product</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
                                 </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        #MMO-2854
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Quizlet Account</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">July 11, 2024</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2.500 points</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        #MMO-2853
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Game Key</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">July 10, 2024</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">5.000 points</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Processing</span>
+                                <tbody class="bg-white divide-y divide-gray-100">
+                                <tr th:if="${recentTransactions == null || recentTransactions.isEmpty()}">
+                                    <td colspan="5" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center justify-center">
+                                            <svg class="h-16 w-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                                            </svg>
+                                            <p class="text-base font-semibold text-gray-600">No recent orders</p>
+                                            <p class="text-sm text-gray-500 mt-1">Your recent transactions will appear here</p>
+                                        </div>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        #MMO-2852
+                                <tr th:each="transaction : ${recentTransactions}" class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm font-bold text-primary-600">#<span th:text="${transaction.id}">0</span></span>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">AI Chat Access</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">July 10, 2024</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">3.200 points</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
+                                    <td class="px-6 py-4 max-w-xs">
+                                        <span class="text-sm font-medium text-gray-900 line-clamp-1 block"
+                                              th:text="${transaction.product.name}"
+                                              th:title="${transaction.product.name}">Product Name</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm text-gray-600" th:text="${#dates.format(transaction.createdAt, 'MMM dd, yyyy')}">Date</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm font-bold text-gray-900">
+                                            <span th:text="${#numbers.formatDecimal(transaction.coinSeller, 0, 'POINT', 0, 'NONE')}">0</span>
+                                        </span>
+                                        <span class="text-xs text-gray-500 ml-1">coins</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span th:if="${transaction.status == 'COMPLETED'}"
+                                              class="px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full bg-green-100 text-green-700 border border-green-200">
+                                            <svg class="h-3.5 w-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Completed
+                                        </span>
+                                        <span th:if="${transaction.status == 'CREATED'}"
+                                              class="px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">
+                                            <svg class="h-3.5 w-3.5 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                            </svg>
+                                            Processing
+                                        </span>
+                                        <span th:if="${transaction.status != 'COMPLETED' && transaction.status != 'CREATED'}"
+                                              class="px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full bg-gray-100 text-gray-700 border border-gray-200"
+                                              th:text="${transaction.status}">Status</span>
                                     </td>
                                 </tr>
                                 </tbody>
                             </table>
                         </div>
-                        <div class="mt-4 text-right">
-                            <a class="text-sm font-medium text-primary-600 hover:text-primary-500" href="#">View all
-                                orders →</a>
+                        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                            <a class="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors group" href="/account/orders">
+                                <span>View all orders</span>
+                                <svg class="h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                </svg>
+                            </a>
                         </div>
                     </div>
 
                     <!-- Top Products -->
-                    <div class="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Top Selling Products</h2>
-                        <div class="space-y-5">
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-sm font-medium">Quizlet Accounts</span>
-                                    <span class="text-sm text-gray-500">45%</span>
+                    <div class="xl:col-span-2 bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-5 border-b border-gray-200">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 bg-orange-100 rounded-lg">
+                                    <svg class="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                    </svg>
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="progress-bar h-2" style="width: 45%"></div>
-                                </div>
+                                <h2 class="text-xl font-bold text-gray-800">Top Selling Products</h2>
                             </div>
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-sm font-medium">Game Keys</span>
-                                    <span class="text-sm text-gray-500">30%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="progress-bar h-2" style="width: 30%"></div>
-                                </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- Empty state -->
+                            <div th:if="${topProducts == null || topProducts.isEmpty()}" class="text-center py-12">
+                                <svg class="h-16 w-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
+                                <p class="text-base font-semibold text-gray-600">No sales data available</p>
+                                <p class="text-sm text-gray-500 mt-1">Start selling to see your top products</p>
                             </div>
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-sm font-medium">AI Chat Access</span>
-                                    <span class="text-sm text-gray-500">25%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="progress-bar h-2" style="width: 25%"></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-sm font-medium">Premium Plugins</span>
-                                    <span class="text-sm text-gray-500">15%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="progress-bar h-2" style="width: 15%"></div>
+
+                            <!-- Dynamic products -->
+                            <div class="space-y-6" th:if="${topProducts != null && !topProducts.isEmpty()}">
+                                <div th:each="product, iterStat : ${topProducts}" class="group">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            <div class="flex-shrink-0 relative">
+                                                <img th:if="${product.productImage != null && !product.productImage.isEmpty()}"
+                                                     th:src="@{${product.productImage}}"
+                                                     alt="Product"
+                                                     class="w-10 h-10 rounded-lg object-cover border-2 border-gray-200 group-hover:border-primary-300 transition-colors">
+                                                <div th:unless="${product.productImage != null && !product.productImage.isEmpty()}"
+                                                     class="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                                    </svg>
+                                                </div>
+                                                <span class="absolute -top-1 -left-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-full border-2 border-white"
+                                                      th:text="${iterStat.index + 1}">1</span>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <span class="text-sm font-semibold text-gray-900 block truncate"
+                                                      th:text="${product.productName}"
+                                                      th:title="${product.productName}">Product Name</span>
+                                                <span class="text-xs text-gray-500 font-medium" th:text="${product.salesCount + ' sales'}">0 sales</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 flex-shrink-0">
+                                            <span class="text-sm font-bold text-gray-900" th:text="${#numbers.formatDecimal(product.salesPercentage, 0, 1) + '%'}">0%</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                        <div class="progress-bar h-2.5 transition-all duration-500 ease-out"
+                                             th:style="'width: ' + ${product.salesPercentage} + '%'"
+                                             th:classappend="${iterStat.index == 0} ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                                                            (${iterStat.index == 1} ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+                                                            'bg-gradient-to-r from-gray-400 to-gray-500')"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-6">
-                            <h3 class="text-sm font-medium text-gray-700 mb-3">Sales by Time</h3>
-                            <div class="h-48 chart-gradient rounded-lg"></div>
+                        <div class="border-t border-gray-200 p-6 bg-gray-50" th:if="${topProducts != null && !topProducts.isEmpty()}">
+                            <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide">Sales Overview</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="text-center p-4 bg-white rounded-xl border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all">
+                                    <p class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-700" th:text="${totalOrders}">0</p>
+                                    <p class="text-xs text-gray-600 font-semibold mt-2 uppercase tracking-wide">Total Sales</p>
+                                </div>
+                                <div class="text-center p-4 bg-white rounded-xl border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all">
+                                    <p class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-orange-700" th:text="${topProducts.size()}">0</p>
+                                    <p class="text-xs text-gray-600 font-semibold mt-2 uppercase tracking-wide">Products Sold</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

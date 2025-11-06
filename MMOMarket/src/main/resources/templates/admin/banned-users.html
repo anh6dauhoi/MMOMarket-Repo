@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Banned Users</title>
+</head>
+<body>
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null and totalPages > 0 ? totalPages : 1},
+              userCount=${users != null ? #lists.size(users) : 0}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+
+        <!-- Toast Notification -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Title & Stats Row -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-6 space-y-4 md:space-y-0">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Banned Users</h1>
+                <p class="text-sm text-gray-500">Manage banned users and restore access</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a th:href="@{/admin/users}"
+                   class="px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition shadow-md flex items-center text-sm">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Users
+                </a>
+                <span class="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-300">
+                    <i class="fas fa-ban mr-1"></i>
+                    <span th:text="${total * size}">0</span> Total
+                </span>
+            </div>
+        </div>
+
+        <!-- Compact Search Controls -->
+        <div class="mb-6 bg-red-50 p-4 rounded-lg border border-red-300 shadow-sm">
+            <form method="get" action="/admin/users/banned">
+                <div class="flex flex-wrap items-end gap-3">
+                    <!-- Search Input -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-search text-red-600 mr-1"></i>Search
+                        </label>
+                        <input name="search"
+                               class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white shadow-sm text-sm"
+                               placeholder="Search by name or email..."
+                               type="text"
+                               th:value="${currentSearch != null ? currentSearch : ''}">
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-md text-sm whitespace-nowrap">
+                            <i class="fas fa-search mr-1.5"></i>Search
+                        </button>
+                        <a th:href="@{/admin/users/banned}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200 text-sm whitespace-nowrap">
+                            <i class="fas fa-redo mr-1.5"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-lg border border-red-200 shadow-sm">
+            <table class="min-w-full bg-white">
+                <!-- Header: red theme matching transactions -->
+                <thead class="bg-red-600">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">User Info</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Email</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Role</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+
+                <tr class="hover:bg-red-50 transition duration-150" th:each="user,iter : ${users}">
+                    <td class="py-3 px-4 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${page * size + iter.index + 1}">1</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-red-400 to-rose-500 rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                                <span class="text-white font-semibold text-sm" th:text="${user.fullName != null ? #strings.substring(user.fullName, 0, 1).toUpperCase() : 'U'}">U</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${user.fullName}">Full Name</div>
+                                <div class="text-xs text-gray-500" th:text="${user.phone != null ? user.phone : 'No phone'}">Phone</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="text-sm text-gray-900" th:text="${user.email}">email@example.com</span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span th:if="${user.role == 'ADMIN'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                            <i class="fas fa-crown mr-1"></i>Admin
+                        </span>
+                        <span th:if="${user.role == 'SELLER'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                            <i class="fas fa-store mr-1"></i>Seller
+                        </span>
+                        <span th:if="${user.role == 'CUSTOMER'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                            <i class="fas fa-user mr-1"></i>Customer
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
+                            <i class="fas fa-ban mr-1"></i>Banned
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <button class="inline-flex items-center px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                onclick="unbanUser(this)"
+                                th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                            <i class="fas fa-check mr-1.5"></i>Unban
+                        </button>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(users)}">
+                    <td class="text-center py-16 text-gray-400" colspan="6">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">No banned users found</p>
+                        <p class="text-sm">All users are currently active</p>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition duration-150" th:each="user,iter : ${users}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-500 mr-2" th:text="${page * size + iter.index + 1}">1</span>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gradient-to-br from-red-400 to-rose-500 rounded-lg flex items-center justify-center mr-2 shadow-sm">
+                                <span class="text-white font-semibold text-xs" th:text="${user.fullName != null ? #strings.substring(user.fullName, 0, 1).toUpperCase() : 'U'}">U</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 text-sm" th:text="${user.fullName}">Full Name</h3>
+                                <p class="text-xs text-gray-500" th:text="${user.email}">email@example.com</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs">Role:</p>
+                        <span th:if="${user.role == 'ADMIN'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                            <i class="fas fa-crown mr-0.5"></i>Admin
+                        </span>
+                        <span th:if="${user.role == 'SELLER'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                            <i class="fas fa-store mr-0.5"></i>Seller
+                        </span>
+                        <span th:if="${user.role == 'CUSTOMER'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                            <i class="fas fa-user mr-0.5"></i>Customer
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Status:</p>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 border border-red-300">
+                            <i class="fas fa-ban mr-0.5"></i>Banned
+                        </span>
+                    </div>
+                </div>
+
+                <button class="w-full py-2 bg-green-50 text-green-500 hover:bg-green-100 rounded font-medium text-sm"
+                        onclick="unbanUser(this)"
+                        th:attr="data-id=${user.id}, data-name=${user.fullName}">
+                    <i class="fas fa-check mr-1"></i>Unban
+                </button>
+            </div>
+
+            <div class="text-center py-16 text-gray-400" th:if="${#lists.isEmpty(users)}">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p class="text-lg font-medium">No banned users found</p>
+                <p class="text-sm">All users are currently active</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-sm text-gray-600">
+                Showing <span class="font-semibold text-gray-900" th:text="${userCount > 0 ? (page * size + 1) : 0}">0</span>
+                to <span class="font-semibold text-gray-900" th:text="${page * size + userCount}">0</span>
+                of <span class="font-semibold text-gray-900" th:text="${total * size}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <a class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 text-sm font-medium transition duration-150"
+                   th:with="url='/admin/users/banned?page=' + ${page - 1}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}" th:if="${page > 0}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+
+                <a class="px-3 py-2 border rounded-lg text-sm font-medium transition duration-150"
+                   th:classappend="${i == page} ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-50'"
+                   th:each="i : ${#numbers.sequence(0, total - 1)}"
+                   th:with="url='/admin/users/banned?page=' + ${i}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}"
+                   th:if="${i == 0 or i == page or i == page - 1 or i == page + 1 or i == total - 1}"
+                   th:text="${i + 1}">1</a>
+
+                <a class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 text-sm font-medium transition duration-150"
+                   th:with="url='/admin/users/banned?page=' + ${page + 1}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                   th:href="${url}" th:if="${page < total - 1}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            toast.classList.remove('hidden');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('opacity-100');
+            }, 3000);
+        }
+
+        async function unbanUser(button) {
+            const userId = button.dataset.id;
+            const userName = button.dataset.name;
+
+            if (!confirm(`Are you sure you want to unban user "${userName}"? This will restore their access to the system.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/users/${userId}/unban`, {
+                    method: 'PUT',
+                    headers: {
+                        [csrfHeader]: csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('User unbanned successfully');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showToast('Error: ' + errorText, true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to unban user', true);
+            }
+        }
+        /*]]>*/
+    </script>
+</div>
+</body>
+</html>
