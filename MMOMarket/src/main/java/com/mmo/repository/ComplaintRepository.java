@@ -11,6 +11,8 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     List<Complaint> findBySeller(User seller);
 
-    List<Complaint> findByStatus(String status);
-}
+    List<Complaint> findByStatus(Complaint.ComplaintStatus status);
 
+    // Check for complaints by transaction id and status (no IgnoreCase needed for Enum)
+    boolean existsByTransactionIdAndStatus(Long transactionId, Complaint.ComplaintStatus status);
+}

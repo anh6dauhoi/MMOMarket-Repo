@@ -8,6 +8,7 @@ public class ConversationSummaryDto {
     private String lastMessage;
     private Date lastMessageTime;
     private boolean isSentByMe;
+    private boolean admin; // New: mark if this conversation is with Admin (Support)
 
     public Long getPartnerId() { return partnerId; }
     public void setPartnerId(Long partnerId) { this.partnerId = partnerId; }
@@ -23,5 +24,7 @@ public class ConversationSummaryDto {
 
     public boolean isSentByMe() { return isSentByMe; }
     public void setSentByMe(boolean sentByMe) { isSentByMe = sentByMe; }
-}
 
+    public boolean isAdmin() { return admin; }
+    public void setAdmin(boolean admin) { this.admin = admin; }
+}

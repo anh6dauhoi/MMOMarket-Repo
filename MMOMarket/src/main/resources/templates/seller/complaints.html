@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MMO Market - Seller Complaints</title>
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/images/logo.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { primary: {50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'} } } } };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/seller/css/complaints.css}">
+    <style>
+        body {
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen font-sans text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="flex-grow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Header -->
+                <div class="glass-card rounded-3xl card-shadow p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-4 mb-3">
+                            <div class="p-3 rounded-2xl bg-gradient-to-br from-primary-500 to-purple-600 shadow-lg">
+                                <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0m12.728 0A9 9 0 016 18.364M9 10h.01M15 10h.01M8 15s1.5 2 4 2 4-2 4-2"/>
+                                </svg>
+                            </div>
+                            <h1 class="text-3xl md:text-4xl font-extrabold gradient-header">
+                                Customer Complaints
+                            </h1>
+                        </div>
+                        <p class="text-gray-600 ml-16 text-sm md:text-base">Track and resolve customer complaints in a timely manner</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-gradient-to-br from-primary-50 to-purple-50 px-6 py-3 rounded-2xl border border-primary-200 shadow-sm">
+                        <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <div class="text-right">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</div>
+                            <div class="text-2xl font-bold text-primary-700" th:text="${totalItems}">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="glass-card rounded-3xl card-shadow p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        <h2 class="text-xl font-bold text-gray-800">Filter Complaints</h2>
+                    </div>
+                    <form method="get" th:action="@{/seller/complaints}" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Status
+                            </label>
+                            <select name="status" class="input-modern w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white shadow-sm transition-all">
+                                <option value="">All Statuses</option>
+                                <option th:each="st : ${T(com.mmo.entity.Complaint.ComplaintStatus).values()}"
+                                        th:value="${st}"
+                                        th:text="${st.name() == 'NEW'} ? 'New' :
+                                                  (${st.name() == 'IN_PROGRESS'} ? 'In Progress' :
+                                                  (${st.name() == 'PENDING_CONFIRMATION'} ? 'Pending Confirmation' :
+                                                  (${st.name() == 'ESCALATED'} ? 'Escalated to Admin' :
+                                                  (${st.name() == 'RESOLVED'} ? 'Resolved' :
+                                                  (${st.name() == 'CLOSED_BY_ADMIN'} ? 'Closed by Admin' :
+                                                  (${st.name() == 'CANCELLED'} ? 'Cancelled' : ${st.name()}))))))"
+                                        th:selected="${status} == ${st}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                </svg>
+                                Type
+                            </label>
+                            <select name="type" class="input-modern w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white shadow-sm transition-all">
+                                <option value="">All Types</option>
+                                <option th:each="tp : ${T(com.mmo.entity.Complaint.ComplaintType).values()}"
+                                        th:value="${tp}"
+                                        th:text="${tp.name() == 'ITEM_NOT_WORKING'} ? 'Item Not Working' :
+                                                  (${tp.name() == 'ITEM_NOT_AS_DESCRIBED'} ? 'Not As Described' :
+                                                  (${tp.name() == 'FRAUD_SUSPICION'} ? 'Fraud Suspicion' :
+                                                  (${tp.name() == 'OTHER'} ? 'Other Issue' : ${tp.name()})))"
+                                        th:selected="${type} == ${tp}"></option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="btn-primary w-full px-6 py-3 rounded-xl text-white font-semibold shadow-lg flex items-center justify-center gap-2 hover:shadow-xl">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                Apply Filters
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- List -->
+                <div class="glass-card rounded-3xl card-shadow p-8">
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-100">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-3">
+                            <div class="p-2 bg-gradient-to-br from-primary-100 to-purple-100 rounded-xl">
+                                <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                                </svg>
+                            </div>
+                            Complaint List
+                        </h2>
+                        <div class="flex items-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-2 rounded-xl border border-gray-200">
+                            <span class="text-sm text-gray-600">Showing</span>
+                            <span class="font-bold text-primary-600" th:text="${#lists.size(complaints)}">0</span>
+                            <span class="text-sm text-gray-600">of</span>
+                            <span class="font-bold text-primary-600" th:text="${totalItems}">0</span>
+                        </div>
+                    </div>
+
+                    <div th:if="${complaints == null or #lists.isEmpty(complaints)}" class="text-center py-16">
+                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary-50 to-purple-50 mb-4 shadow-lg">
+                            <svg class="h-10 w-10 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                            </svg>
+                        </div>
+                        <p class="text-gray-700 text-xl font-bold mb-2">No complaints found</p>
+                        <p class="text-gray-500 text-sm">You have no customer complaints at this time</p>
+                    </div>
+
+                    <div class="overflow-x-auto" th:if="${complaints != null and !#lists.isEmpty(complaints)}">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gradient-to-r from-primary-50 to-primary-100">
+                            <tr>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">#</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Customer</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Type</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Created</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Action</th>
+                            </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                            <tr th:each="c,iter : ${complaints}" class="table-row-hover">
+                                <td class="px-4 py-4 text-sm font-semibold text-primary-600" th:text="${iter.index + 1}">1</td>
+                                <td class="px-4 py-4">
+                                    <div class="font-semibold text-gray-900" th:text="${c.customerName}">Customer</div>
+                                    <div class="text-gray-500 text-xs mt-1">Transaction: <span th:text="${c.transactionId}">-</span></div>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <th:block th:switch="${c.complaintType}">
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).ITEM_NOT_WORKING}" class="text-sm text-gray-700">Item Not Working</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).ITEM_NOT_AS_DESCRIBED}" class="text-sm text-gray-700">Not As Described</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).FRAUD_SUSPICION}" class="text-sm text-red-700 font-semibold">Fraud Suspicion</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintType).OTHER}" class="text-sm text-gray-700">Other Issue</span>
+                                        <span th:case="*" class="text-sm text-gray-500" th:text="${c.complaintType}">-</span>
+                                    </th:block>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <th:block th:switch="${c.status}">
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).NEW}" class="badge bg-amber-100 text-amber-700">New</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).IN_PROGRESS}" class="badge bg-blue-100 text-blue-700">In Progress</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).PENDING_CONFIRMATION}" class="badge bg-indigo-100 text-indigo-700">Pending</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).ESCALATED}" class="badge bg-red-100 text-red-700">Escalated</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).RESOLVED}" class="badge bg-emerald-100 text-emerald-700">Resolved</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).CLOSED_BY_ADMIN}" class="badge bg-gray-100 text-gray-700">Closed</span>
+                                        <span th:case="${T(com.mmo.entity.Complaint.ComplaintStatus).CANCELLED}" class="badge bg-gray-100 text-gray-700">Cancelled</span>
+                                        <span th:case="*" class="badge bg-gray-100 text-gray-700" th:text="${c.status}">-</span>
+                                    </th:block>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600" th:text="${c.createdAt != null ? #dates.format(c.createdAt, 'dd/MM/yyyy HH:mm') : ''}">--</td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <button class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-xs font-medium shadow-md hover:shadow-lg transition-all"
+                                                th:attr="data-id=${c.id}" onclick="openComplaintDetail(this)">
+                                            <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                            Details
+                                        </button>
+                                        <a class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs font-medium shadow-md hover:shadow-lg transition-all"
+                                           th:href="@{'/chat'(sellerId=${c.customerId})}">
+                                            <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 3.866-4.03 7-9 7a9.86 9.86 0 01-4-.8l-4 1 1-3.2A6.92 6.92 0 013 12c0-3.866 4.03-7 9-7s9 3.134 9 7z"/>
+                                            </svg>
+                                            Chat
+                                        </a>
+                                        <button class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white text-xs font-medium shadow-md hover:shadow-lg transition-all" onclick="requestAdminHandle()">
+                                            <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/>
+                                            </svg>
+                                            Request Admin
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div th:if="${totalPages > 1}" class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200">
+                        <div class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <svg class="h-5 w-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                            Page <span class="text-primary-600 text-lg" th:text="${currentPage + 1}">1</span> of <span class="text-primary-600 text-lg" th:text="${totalPages}">1</span>
+                        </div>
+                        <div class="flex items-center flex-wrap gap-2">
+                            <a th:if="${currentPage > 0}"
+                               th:href="@{/seller/complaints(page=0, status=${status}, type=${type})}"
+                               class="px-4 py-2 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-semibold shadow-md hover:shadow-lg transition-all">
+                                « First
+                            </a>
+                            <a th:if="${currentPage > 0}"
+                               th:href="@{/seller/complaints(page=${currentPage - 1}, status=${status}, type=${type})}"
+                               class="px-4 py-2 rounded-xl bg-gradient-to-r from-primary-200 to-primary-300 hover:from-primary-300 hover:to-primary-400 text-primary-800 font-semibold shadow-md hover:shadow-lg transition-all">
+                                ‹ Previous
+                            </a>
+                            <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                                <a th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
+                                   th:href="@{/seller/complaints(page=${i}, status=${status}, type=${type})}"
+                                   th:classappend="${i == currentPage} ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-300'"
+                                   class="px-4 py-2 rounded-xl font-bold transition-all hover:shadow-md" th:text="${i + 1}">1</a>
+                            </th:block>
+                            <a th:if="${currentPage < totalPages - 1}"
+                               th:href="@{/seller/complaints(page=${currentPage + 1}, status=${status}, type=${type})}"
+                               class="px-4 py-2 rounded-xl bg-gradient-to-r from-primary-200 to-primary-300 hover:from-primary-300 hover:to-primary-400 text-primary-800 font-semibold shadow-md hover:shadow-lg transition-all">
+                                Next ›
+                            </a>
+                            <a th:if="${currentPage < totalPages - 1}"
+                               th:href="@{/seller/complaints(page=${totalPages - 1}, status=${status}, type=${type})}"
+                               class="px-4 py-2 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-semibold shadow-md hover:shadow-lg transition-all">
+                                Last »
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal -->
+                <div id="complaintModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 modal-backdrop">
+                    <div class="bg-white rounded-3xl shadow-2xl border-2 border-primary-200 w-full max-w-5xl max-h-[92vh] overflow-y-auto m-4 modal-content">
+                        <!-- Modal Header -->
+                        <div class="sticky top-0 bg-gradient-to-r from-primary-600 to-purple-600 px-8 py-6 rounded-t-3xl border-b-4 border-primary-700 z-10">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
+                                        <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-2xl font-bold text-white">Complaint Details</h3>
+                                </div>
+                                <button onclick="closeComplaintModal()" class="text-white/80 hover:text-white hover:bg-white/20 rounded-xl p-2 transition-all">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Modal Content -->
+                        <div id="complaintContent" class="p-8 space-y-6">
+                            <!-- Basic Info Cards -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="bg-gradient-to-br from-primary-50 to-primary-100 p-4 rounded-2xl border-2 border-primary-200">
+                                    <div class="text-xs font-semibold text-primary-600 uppercase tracking-wide mb-1">Complaint ID</div>
+                                    <div id="cId" class="text-lg font-bold text-primary-900"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-2xl border-2 border-blue-200">
+                                    <div class="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Transaction ID</div>
+                                    <div id="cTx" class="text-lg font-bold text-blue-900"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-2xl border-2 border-purple-200">
+                                    <div class="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Type</div>
+                                    <div id="cType" class="text-lg font-bold text-purple-900"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-2xl border-2 border-emerald-200">
+                                    <div class="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Status</div>
+                                    <div id="cStatus" class="text-lg font-bold text-emerald-900"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-2xl border-2 border-amber-200">
+                                    <div class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Customer</div>
+                                    <div id="cCustomer" class="text-lg font-bold text-amber-900"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-2xl border-2 border-gray-200">
+                                    <div class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Created At</div>
+                                    <div id="cCreated" class="text-lg font-bold text-gray-900"></div>
+                                </div>
+                            </div>
+
+                            <!-- Description Section -->
+                            <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                                    </svg>
+                                    <div class="text-sm font-bold text-gray-700 uppercase tracking-wide">Complaint Description</div>
+                                </div>
+                                <pre id="cDesc" class="bg-white p-4 rounded-xl whitespace-pre-wrap text-gray-800 border border-gray-300 shadow-sm text-sm leading-relaxed"></pre>
+                            </div>
+
+                            <!-- Evidence -->
+                            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-2xl border-2 border-indigo-200">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <div class="text-sm font-bold text-indigo-700 uppercase tracking-wide">Evidence (Images/Videos)</div>
+                                </div>
+                                <div id="cEvidenceMedia" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <!-- Images and videos will be rendered here -->
+                                </div>
+                                <details class="mt-4">
+                                    <summary class="cursor-pointer text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Show raw JSON data
+                                    </summary>
+                                    <pre id="cEvidence" class="bg-white p-4 rounded-xl overflow-x-auto text-xs mt-2 border border-indigo-300 shadow-sm"></pre>
+                                </details>
+                            </div>
+
+                            <!-- Status Information Message -->
+                            <div id="statusInfoSection" class="hidden bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200 shadow-sm">
+                                <div class="flex items-start gap-4">
+                                    <div id="statusIcon" class="p-3 rounded-xl flex-shrink-0">
+                                        <!-- Icon will be updated by JS -->
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 id="statusTitle" class="font-bold text-gray-900 mb-2 text-lg"></h4>
+                                        <p id="statusMessage" class="text-gray-700 text-sm leading-relaxed"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seller Response Section -->
+                            <div id="responseSection" class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border-2 border-blue-200 shadow-sm">
+                                <h4 class="font-bold text-blue-900 mb-4 flex items-center gap-3 text-lg">
+                                    <div class="p-2 bg-blue-600 rounded-xl">
+                                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </div>
+                                    Your Response
+                                </h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label for="responseReason" class="block text-sm font-bold text-blue-900 mb-2 flex items-center gap-2">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                            Reason / Explanation <span class="text-red-600">*</span>
+                                        </label>
+                                        <textarea id="responseReason" rows="4"
+                                            class="input-modern w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none shadow-sm"
+                                            placeholder="Enter your reason for approving or rejecting this complaint..."></textarea>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="handleComplaintResponse('APPROVE')"
+                                            class="flex-1 inline-flex items-center justify-center px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold shadow-lg hover:shadow-xl transition-all">
+                                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            Approve Complaint
+                                        </button>
+                                        <button onclick="handleComplaintResponse('REJECT')"
+                                            class="flex-1 inline-flex items-center justify-center px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-lg hover:shadow-xl transition-all">
+                                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            Reject Complaint
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t-2 border-gray-200">
+                                <a id="cChatBtn" href="#" class="inline-flex items-center px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all">
+                                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 3.866-4.03 7-9 7a9.86 9.86 0 01-4-.8l-4 1 1-3.2A6.92 6.92 0 013 12c0-3.866 4.03-7 9-7s9 3.134 9 7z"/>
+                                    </svg>
+                                    Chat with Customer
+                                </a>
+                                <button onclick="requestAdminHandle()" class="inline-flex items-center px-5 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all">
+                                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/>
+                                    </svg>
+                                    Request Admin
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script>
+    let currentComplaintId = null;
+
+    async function openComplaintDetail(btn){
+        const id = btn.getAttribute('data-id');
+        currentComplaintId = id;
+        try{
+            const res = await fetch(`/seller/complaints/${id}/json`, { headers: { 'Accept': 'application/json' } });
+            if(!res.ok){ alert('Failed to load complaint'); return; }
+            const c = await res.json();
+
+            // Basic info
+            document.getElementById('cId').textContent = c.id;
+            document.getElementById('cTx').textContent = c.transactionId ?? '-';
+
+            // Type with human-readable label
+            const typeLabels = {
+                'ITEM_NOT_WORKING': 'Item Not Working',
+                'ITEM_NOT_AS_DESCRIBED': 'Not As Described',
+                'FRAUD_SUSPICION': 'Fraud Suspicion',
+                'OTHER': 'Other Issue'
+            };
+            document.getElementById('cType').textContent = typeLabels[c.type] || c.type;
+
+            // Status with human-readable label
+            const statusLabels = {
+                'NEW': 'New',
+                'IN_PROGRESS': 'In Progress',
+                'PENDING_CONFIRMATION': 'Pending Confirmation',
+                'ESCALATED': 'Escalated to Admin',
+                'RESOLVED': 'Resolved',
+                'CLOSED_BY_ADMIN': 'Closed by Admin',
+                'CANCELLED': 'Cancelled'
+            };
+            document.getElementById('cStatus').textContent = statusLabels[c.status] || c.status;
+
+            document.getElementById('cCustomer').textContent = c.customer ? `${c.customer.name} (#${c.customer.id})` : '-';
+            document.getElementById('cCreated').textContent = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+            document.getElementById('cDesc').textContent = c.description || 'No description provided';
+
+            // Clear previous reason
+            document.getElementById('responseReason').value = '';
+
+            // Parse and render evidence as images/videos
+            const evidenceMedia = document.getElementById('cEvidenceMedia');
+            const evidenceRaw = document.getElementById('cEvidence');
+            evidenceMedia.innerHTML = '';
+
+            if(c.evidence) {
+                try {
+                    const evidence = JSON.parse(c.evidence);
+                    evidenceRaw.textContent = JSON.stringify(evidence, null, 2);
+
+                    // Assume evidence is array of URLs or object with urls array
+                    let urls = [];
+                    if(Array.isArray(evidence)) {
+                        urls = evidence;
+                    } else if(evidence.urls && Array.isArray(evidence.urls)) {
+                        urls = evidence.urls;
+                    } else if(evidence.files && Array.isArray(evidence.files)) {
+                        urls = evidence.files;
+                    }
+
+                    if(urls.length > 0) {
+                        urls.forEach(url => {
+                            const ext = url.toLowerCase().split('.').pop().split('?')[0];
+                            if(['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                                // Image
+                                const div = document.createElement('div');
+                                div.className = 'evidence-item border-2 border-gray-200 rounded-xl overflow-hidden bg-white shadow-md';
+                                div.innerHTML = `<img src="${url}" alt="Evidence" class="w-full h-56 object-cover cursor-pointer hover:opacity-90 transition-opacity" onclick="window.open('${url}', '_blank')">`;
+                                evidenceMedia.appendChild(div);
+                            } else if(['mp4', 'webm', 'ogg', 'mov'].includes(ext)) {
+                                // Video
+                                const div = document.createElement('div');
+                                div.className = 'evidence-item border-2 border-gray-200 rounded-xl overflow-hidden bg-white shadow-md';
+                                div.innerHTML = `<video controls class="w-full h-56 object-cover"><source src="${url}" type="video/${ext === 'mov' ? 'mp4' : ext}">Your browser does not support video.</video>`;
+                                evidenceMedia.appendChild(div);
+                            } else {
+                                // Other file - show as link
+                                const div = document.createElement('div');
+                                div.className = 'evidence-item border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white flex items-center shadow-md hover:border-primary-300';
+                                div.innerHTML = `<svg class="h-8 w-8 text-gray-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                    <a href="${url}" target="_blank" class="text-sm font-semibold text-primary-700 hover:text-primary-900 hover:underline truncate">${url.split('/').pop()}</a>`;
+                                evidenceMedia.appendChild(div);
+                            }
+                        });
+                    } else {
+                        evidenceMedia.innerHTML = '<div class="col-span-2 md:col-span-3 text-center py-8 text-gray-500 text-sm italic bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">No evidence files provided</div>';
+                    }
+                } catch {
+                    evidenceRaw.textContent = c.evidence || '';
+                    evidenceMedia.innerHTML = '<div class="col-span-2 md:col-span-3 text-center py-8 text-red-500 text-sm italic bg-red-50 rounded-xl border-2 border-dashed border-red-300">Evidence format invalid (not JSON)</div>';
+                }
+            } else {
+                evidenceRaw.textContent = 'No evidence';
+                evidenceMedia.innerHTML = '<div class="col-span-2 md:col-span-3 text-center py-8 text-gray-500 text-sm italic bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">No evidence provided</div>';
+            }
+
+            const chatBtn = document.getElementById('cChatBtn');
+            chatBtn.href = c.customer ? `/chat?sellerId=${c.customer.id}` : '#';
+
+            // Show/hide response section based on complaint status
+            // Business logic: Seller can only respond when complaint is NEW or IN_PROGRESS
+            const responseSection = document.getElementById('responseSection');
+            const statusInfoSection = document.getElementById('statusInfoSection');
+            const canRespond = ['NEW', 'IN_PROGRESS'].includes(c.status);
+
+            if(canRespond) {
+                responseSection.style.display = 'block';
+                statusInfoSection.classList.add('hidden');
+
+                // Update UI based on status
+                if(c.status === 'NEW') {
+                    responseSection.querySelector('h4').innerHTML = `
+                        <div class="p-2 bg-amber-600 rounded-xl">
+                            <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <span>⚠️ New Complaint - Your Response Required</span>
+                    `;
+                    responseSection.className = 'bg-gradient-to-br from-amber-50 to-amber-100 p-6 rounded-2xl border-2 border-amber-200 shadow-sm';
+                } else if(c.status === 'IN_PROGRESS') {
+                    responseSection.querySelector('h4').innerHTML = `
+                        <div class="p-2 bg-blue-600 rounded-xl">
+                            <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <span>📝 In Progress - Continue Your Response</span>
+                    `;
+                    responseSection.className = 'bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border-2 border-blue-200 shadow-sm';
+                }
+            } else {
+                // Hide response section and show status info
+                responseSection.style.display = 'none';
+                statusInfoSection.classList.remove('hidden');
+
+                const statusIcon = document.getElementById('statusIcon');
+                const statusTitle = document.getElementById('statusTitle');
+                const statusMessage = document.getElementById('statusMessage');
+
+                // Configure message based on status
+                if(c.status === 'PENDING_CONFIRMATION') {
+                    statusIcon.className = 'p-3 rounded-xl flex-shrink-0 bg-indigo-100';
+                    statusIcon.innerHTML = `
+                        <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    `;
+                    statusTitle.textContent = '⏳ Pending Confirmation';
+                    statusMessage.textContent = 'This complaint is awaiting confirmation from the customer or admin. You cannot make changes at this time. Please wait for further updates.';
+                    statusInfoSection.className = 'bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-2xl border-2 border-indigo-200 shadow-sm';
+                } else if(c.status === 'ESCALATED') {
+                    statusIcon.className = 'p-3 rounded-xl flex-shrink-0 bg-red-100';
+                    statusIcon.innerHTML = `
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    `;
+                    statusTitle.textContent = '🚨 Escalated to Admin';
+                    statusMessage.textContent = 'This complaint has been escalated to the administration team for review. The admin will handle this case directly. You will be notified of the final decision.';
+                    statusInfoSection.className = 'bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-2xl border-2 border-red-200 shadow-sm';
+                } else if(c.status === 'RESOLVED') {
+                    statusIcon.className = 'p-3 rounded-xl flex-shrink-0 bg-emerald-100';
+                    statusIcon.innerHTML = `
+                        <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    `;
+                    statusTitle.textContent = '✅ Resolved';
+                    statusMessage.textContent = 'This complaint has been successfully resolved. No further action is required from you. The case has been closed and all parties have been notified.';
+                    statusInfoSection.className = 'bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border-2 border-emerald-200 shadow-sm';
+                } else if(c.status === 'CLOSED_BY_ADMIN') {
+                    statusIcon.className = 'p-3 rounded-xl flex-shrink-0 bg-gray-100';
+                    statusIcon.innerHTML = `
+                        <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    `;
+                    statusTitle.textContent = '🔒 Closed by Admin';
+                    statusMessage.textContent = 'This complaint has been closed by the administration team. The admin has made a final decision on this matter. No further responses are accepted.';
+                    statusInfoSection.className = 'bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200 shadow-sm';
+                } else if(c.status === 'CANCELLED') {
+                    statusIcon.className = 'p-3 rounded-xl flex-shrink-0 bg-gray-100';
+                    statusIcon.innerHTML = `
+                        <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    `;
+                    statusTitle.textContent = '❌ Cancelled';
+                    statusMessage.textContent = 'This complaint has been cancelled by either the customer or the system. No further action is needed and the case is now closed.';
+                    statusInfoSection.className = 'bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-gray-200 shadow-sm';
+                }
+            }
+
+            openComplaintModal();
+        }catch(e){ console.error(e); alert('Error loading data'); }
+    }
+
+    async function handleComplaintResponse(action) {
+        const reason = document.getElementById('responseReason').value.trim();
+
+        if(!reason) {
+            alert('Please enter a reason for your decision.');
+            document.getElementById('responseReason').focus();
+            return;
+        }
+
+        if(reason.length < 10) {
+            alert('Please provide a more detailed reason (at least 10 characters).');
+            document.getElementById('responseReason').focus();
+            return;
+        }
+
+        const confirmMsg = action === 'APPROVE'
+            ? 'Are you sure you want to APPROVE this complaint? This will accept the customer\'s claim.'
+            : 'Are you sure you want to REJECT this complaint? This will deny the customer\'s claim.';
+
+        if(!confirm(confirmMsg)) {
+            return;
+        }
+
+        try {
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content')
+                || document.querySelector('input[name="_csrf"]')?.value;
+
+            const res = await fetch(`/seller/complaints/${currentComplaintId}/respond`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    action: action,
+                    reason: reason
+                })
+            });
+
+            if(res.ok) {
+                alert(action === 'APPROVE' ? 'Complaint approved successfully!' : 'Complaint rejected successfully!');
+                closeComplaintModal();
+                location.reload(); // Reload to show updated status
+            } else {
+                const error = await res.text();
+                alert('Error: ' + error);
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Failed to submit response. Please try again.');
+        }
+    }
+
+    function openComplaintModal(){ document.getElementById('complaintModal').classList.remove('hidden'); document.getElementById('complaintModal').classList.add('flex'); }
+    function closeComplaintModal(){ document.getElementById('complaintModal').classList.add('hidden'); document.getElementById('complaintModal').classList.remove('flex'); currentComplaintId = null; }
+    function requestAdminHandle(){ alert('Request for admin intervention has been recorded (demo).'); }
+</script>
+</body>
+</html>
+

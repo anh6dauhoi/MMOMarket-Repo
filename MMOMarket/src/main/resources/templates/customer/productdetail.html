@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +15,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" th:href="@{/customer/css/productdetail.css}">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta name="_csrf_parameter" th:content="${_csrf.parameterName}" />
+    <meta name="user-authenticated" th:content="${#authorization.expression('isAuthenticated()')}" />
+
     <style>
         body {
             background: url('/images/home1.jpg') no-repeat center center fixed;
@@ -29,24 +34,10 @@
     </style>
 </head>
 <body>
-<div th:replace="~{fragments/header :: header}"></div>
+<!-- Toast Notification Container -->
+<div class="toast-container"></div>
 
-<!-- Success toast (compat) - bottom-left with safe spacing -->
-<div th:if="${param.wishlistSuccess != null}"
-     id="wishlist-toast"
-     class="fixed z-50 w-auto max-w-xs bottom-8 sm:bottom-10 left-4 sm:left-8 pointer-events-none"
-     role="alert" aria-live="polite" aria-atomic="true">
-    <div th:if="${param.wishlistSuccess[0] == '1'}"
-         class="pointer-events-auto flex items-start gap-3 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg">
-        <span class="flex-1">Added to wishlist successfully.</span>
-        <button type="button" onclick="document.getElementById('wishlist-toast')?.remove()" aria-label="Close">✕</button>
-    </div>
-    <div th:unless="${param.wishlistSuccess[0] == '1'}"
-         class="pointer-events-auto flex items-start gap-3 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg">
-        <span class="flex-1">This item is already in your wishlist.</span>
-        <button type="button" onclick="document.getElementById('wishlist-toast')?.remove()" aria-label="Close">✕</button>
-    </div>
-</div>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <div class="container" th:if="${product != null}">
     <div class="product-main">
@@ -112,13 +103,21 @@
 
             <div class="action-buttons">
                 <button id="buyNowBtn" class="btn btn-primary" type="button">Buy Now</button>
-                <form th:action="@{/wishlist/add}" method="post" style="display:inline;">
-                    <input type="hidden" name="productId" th:value="${product.id}">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <button id="wishlistBtn" class="btn btn-secondary" type="submit">Add to Wishlist</button>
-                </form>
+                <button id="wishlistBtn" class="btn btn-secondary" type="button" th:attr="data-product-id=${product.id}">Add to Wishlist</button>
             </div>
-            <button class="btn btn-chat" type="button">Chat with seller</button>
+            <!-- Chat button: Hide if current user is the seller of this product -->
+            <button th:if="${currentUserId == null or currentUserId != product.seller.id}"
+                    class="btn btn-chat"
+                    type="button"
+                    th:attr="data-seller-id=${product.seller.id}">
+                <i class="fas fa-comment-dots"></i> Chat with seller
+            </button>
+            <!-- Message for seller viewing their own product -->
+            <div th:if="${currentUserId != null and currentUserId == product.seller.id}"
+                 class="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 flex items-center gap-2">
+                <i class="fas fa-info-circle text-blue-500"></i>
+                <span>This is your own product. You cannot chat with yourself.</span>
+            </div>
         </div>
     </div>
 
@@ -274,7 +273,55 @@
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 
-<script>
+<!-- Container to inject buy preview modal fragment -->
+<div id="buyModalContainer"></div>
+
+<!-- Login Required Modal -->
+<div id="loginModal" class="login-modal-overlay" style="display: none;">
+    <div class="login-modal">
+        <div class="login-modal-header">
+            <div class="login-modal-icon-wrapper">
+                <div class="login-modal-icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+            </div>
+            <h3 class="login-modal-title">Authentication Required</h3>
+            <p class="login-modal-subtitle">Please sign in to continue</p>
+        </div>
+        <div class="login-modal-body">
+            <p class="login-modal-message">
+                You need to be logged in to access this feature. Sign in to your account to continue shopping and enjoy all the benefits.
+            </p>
+            <ul class="login-modal-features">
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <span>Save items to your wishlist</span>
+                </li>
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <span>Make secure purchases</span>
+                </li>
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <span>Chat with sellers directly</span>
+                </li>
+            </ul>
+        </div>
+        <div class="login-modal-footer">
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeLoginModal()">
+                Cancel
+            </button>
+            <button type="button" class="modal-btn modal-btn-primary" onclick="redirectToLogin()">
+                <i class="fas fa-sign-in-alt"></i>
+                Sign In
+            </button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
     function changeQuantity(amount) {
         const quantityEl = document.getElementById('quantity');
         if (!quantityEl) return;
@@ -333,23 +380,24 @@
         const stock = stockEl ? parseInt(String(stockEl.innerText || '0').replace(/[^0-9-]/g,''), 10) : 0;
         const disabled = isNaN(stock) ? false : (stock <= 0);
 
+        // Only disable Buy Now button when out of stock
         if (buyBtn) {
             buyBtn.disabled = disabled;
             buyBtn.classList.toggle('opacity-50', disabled);
             buyBtn.setAttribute('aria-disabled', String(disabled));
-        }
-        if (wishBtn) {
-            wishBtn.disabled = disabled;
-            wishBtn.classList.toggle('opacity-50', disabled);
-            wishBtn.setAttribute('aria-disabled', String(disabled));
-            // also add tooltip for clarity if disabled
             if (disabled) {
-                wishBtn.title = 'Cannot add to wishlist: out of stock';
-                buyBtn && (buyBtn.title = 'Cannot buy: out of stock');
+                buyBtn.title = 'Cannot buy: out of stock';
             } else {
-                wishBtn.title = '';
-                buyBtn && (buyBtn.title = '');
+                buyBtn.title = '';
             }
+        }
+
+        // Keep Add to Wishlist button always enabled
+        if (wishBtn) {
+            wishBtn.disabled = false;
+            wishBtn.classList.remove('opacity-50');
+            wishBtn.setAttribute('aria-disabled', 'false');
+            wishBtn.title = '';
         }
 
         // If stock is zero, ensure quantity doesn't go above zero (optional UX)
@@ -385,18 +433,437 @@
             select.addEventListener('change', onVariantChange);
         }
 
-        // Ensure quantity buttons still work if they were inline onclick
-        // (no changes needed for inline attributes; kept for compatibility)
-
         // Ensure action buttons reflect initial stock state
         syncActionButtons();
+
+        // === EVENT LISTENERS FOR ACTION BUTTONS ===
+
+        // 1. Buy Now Button - show login modal OR open buy preview
+        const buyBtn = document.getElementById('buyNowBtn');
+        if (buyBtn) {
+            buyBtn.addEventListener('click', async () => {
+                if (!isUserAuthenticated()) {
+                    showLoginModal();
+                    return;
+                }
+                try {
+                    const html = await postBuyPreview();
+                    const container = document.getElementById('buyModalContainer');
+                    if (!container) return;
+                    container.innerHTML = html;
+                    enhanceFormatPrices(container);
+                    attachModalDismissHandlers(container);
+                    attachModalPurchaseHandlers(container);
+                } catch (e) {
+                    console.error('Failed to load preview', e);
+                    showToast('Failed to load purchase preview. Please try again.', 'error');
+                }
+            });
+        }
+
+        // 2. Add to Wishlist Button - show login modal OR toggle wishlist
+        const wishBtn = document.getElementById('wishlistBtn');
+        if (wishBtn) {
+            wishBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+
+                if (!isUserAuthenticated()) {
+                    showLoginModal();
+                    return;
+                }
+
+                const productId = wishBtn.getAttribute('data-product-id');
+                if (!productId) return;
+
+                const paramName = document.querySelector('meta[name="_csrf_parameter"]')?.content;
+                const token = document.querySelector('meta[name="_csrf"]')?.content;
+                const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+                const formData = new URLSearchParams();
+                formData.set('productId', productId);
+                if (paramName && token) formData.set(paramName, token);
+
+                try {
+                    const response = await fetch('/wishlist/toggle', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            ...(header && token ? { [header]: token } : {})
+                        },
+                        body: formData.toString()
+                    });
+
+                    if (response.ok) {
+                        const action = wishBtn.classList.contains('added') ? 'removed from' : 'added to';
+                        showToast(`Product successfully ${action} your wishlist.`, 'success');
+                        wishBtn.classList.toggle('added');
+                    } else {
+                        showToast('Failed to update wishlist. Please try again.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error toggling wishlist:', error);
+                    showToast('An error occurred. Please try again.', 'error');
+                }
+            });
+        }
+
+        // 3. Chat Button - show login modal for guests or navigate to chat
+        const chatBtn = document.querySelector('.btn-chat');
+        if (chatBtn) {
+            chatBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                if (!isUserAuthenticated()) {
+                    showLoginModal();
+                    return;
+                }
+
+                // Get seller ID from button attribute
+                const sellerId = chatBtn.getAttribute('data-seller-id');
+                if (sellerId) {
+                    // Redirect to chat page with seller ID as parameter
+                    window.location.href = `/chat?sellerId=${sellerId}`;
+                } else {
+                    showToast('Unable to start chat. Seller information not available.', 'error');
+                }
+            });
+        }
+
+        // === MODAL CLOSE HANDLERS ===
+
+        // Close login modal on overlay click
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+            loginModal.addEventListener('click', (e) => {
+                if (e.target === loginModal) {
+                    closeLoginModal();
+                }
+            });
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('loginModal');
+                if (modal && modal.style.display !== 'none') {
+                    closeLoginModal();
+                }
+            }
+        });
     });
 
-    // Auto-hide toast after 2.2s (robust selector)
-    document.addEventListener('DOMContentLoaded', () => {
-        const toast = document.getElementById('wishlist-toast');
-        if (toast) setTimeout(() => toast.remove(), 2200);
-    });
+    function postBuyPreview() {
+        const productId = /*[[${product != null ? product.id : 0}]]*/ 0;
+        if (!productId) return;
+        const variantSelect = document.getElementById('variation');
+        const qtyEl = document.getElementById('quantity');
+        const variantId = variantSelect ? variantSelect.value : '';
+        const quantity = qtyEl ? (parseInt(qtyEl.textContent || '1', 10) || 1) : 1;
+
+        const paramName = document.querySelector('meta[name="_csrf_parameter"]')?.content;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        const formData = new URLSearchParams();
+        formData.set('productId', productId);
+        formData.set('variantId', variantId);
+        formData.set('quantity', String(quantity));
+        if (paramName && token) formData.set(paramName, token);
+
+        return fetch('/buy/preview', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                ...(header && token ? { [header]: token } : {})
+            },
+            body: formData.toString()
+        }).then(res => res.text());
+    }
+
+    function attachModalDismissHandlers(root) {
+        if (!root) return;
+        root.querySelectorAll('[data-dismiss="true"]').forEach(el => {
+            el.addEventListener('click', () => {
+                const container = document.getElementById('buyModalContainer');
+                if (container) container.innerHTML = '';
+            });
+        });
+        // Click outside to close
+        const overlay = root.querySelector('.absolute.inset-0');
+        if (overlay) overlay.addEventListener('click', () => {
+            const container = document.getElementById('buyModalContainer');
+            if (container) container.innerHTML = '';
+        });
+        // Escape key to close
+        document.addEventListener('keydown', function esc(e){
+            if (e.key === 'Escape') {
+                const container = document.getElementById('buyModalContainer');
+                if (container) container.innerHTML = '';
+                document.removeEventListener('keydown', esc);
+            }
+        });
+    }
+
+    function enhanceFormatPrices(root) {
+        (root || document).querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            const num = Math.round(Number(String(v).replace(/[^0-9.-]+/g,'')) || 0);
+            el.textContent = String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        });
+    }
+
+    function attachModalPurchaseHandlers(root){
+        const btn = root.querySelector('#confirmPurchaseBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            // guard if disabled
+            if (btn.disabled) return;
+            const productId = btn.getAttribute('data-product-id');
+            const variantId = btn.getAttribute('data-variant-id');
+            const quantity = btn.getAttribute('data-quantity') || '1';
+            if (!productId || !variantId) return;
+
+            const paramName = document.querySelector('meta[name="_csrf_parameter"]')?.content;
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+            const formData = new URLSearchParams();
+            formData.set('productId', productId);
+            formData.set('variantId', variantId);
+            formData.set('quantity', String(quantity));
+            if (paramName && token) formData.set(paramName, token);
+
+            btn.disabled = true;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>';
+            try {
+                const res = await fetch('/buy/place', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        ...(header && token ? { [header]: token } : {})
+                    },
+                    body: formData.toString()
+                });
+                if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data && data.ok && data.orderId) {
+                        // Close buy modal
+                        const container = document.getElementById('buyModalContainer');
+                        if (container) container.innerHTML = '';
+
+                        // Show processing toast and start polling
+                        showToast('Order created. Processing payment...', 'info');
+                        startOrderStatusPolling(data.orderId);
+                        return;
+                    }
+                    showToast('Unexpected response from server.', 'error');
+                } else {
+                    const text = await res.text();
+                    showToast(text || 'Could not create order. Please try again.', 'error');
+                }
+            } catch (err) {
+                console.error('Place order error', err);
+                showToast('An error occurred while placing your order.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // Elegant success modal (modern, accessible)
+    function showPurchaseSuccessModal(orderId){
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm';
+        overlay.setAttribute('role','dialog');
+        overlay.setAttribute('aria-modal','true');
+
+        const card = document.createElement('div');
+        card.className = 'relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden';
+
+        const header = document.createElement('div');
+        header.className = 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 px-6 py-6';
+        header.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <i class="fa-solid fa-bag-shopping text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Payment Successful</h3>
+                <p class="text-white/90 text-sm">Your order has been created and is being processed</p>
+              </div>
+            </div>`;
+
+        const body = document.createElement('div');
+        body.className = 'px-6 py-6 space-y-4';
+        body.innerHTML = `
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+              <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5"></i>
+              <div class="text-sm text-emerald-800">
+                <div class="font-semibold">Order placed successfully</div>
+                <div class="mt-0.5">You can view details, download accounts, and activate them from the order page.</div>
+              </div>
+            </div>`;
+
+        const footer = document.createElement('div');
+        footer.className = 'px-6 py-5 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-5 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm';
+        cancelBtn.textContent = 'Close';
+        cancelBtn.addEventListener('click', () => { overlay.remove(); });
+
+        const viewBtn = document.createElement('a');
+        viewBtn.className = 'px-6 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-md';
+        viewBtn.textContent = 'View Order Details';
+        viewBtn.href = `/account/orders/${orderId}`;
+
+        footer.appendChild(cancelBtn);
+        footer.appendChild(viewBtn);
+
+        const closeX = document.createElement('button');
+        closeX.className = 'absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 text-gray-600';
+        closeX.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        closeX.addEventListener('click', () => overlay.remove());
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+        card.appendChild(closeX);
+
+        overlay.appendChild(card);
+
+        // Click outside to close
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        // ESC to close
+        const esc = (e) => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
+
+        document.body.appendChild(overlay);
+    }
+
+    // New: Login modal functions
+    function showLoginModal() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeLoginModal() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+            modal.classList.add('modal-closing');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('modal-closing');
+                document.body.style.overflow = '';
+            }, 200);
+        }
+    }
+
+    function redirectToLogin() {
+        const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = '/authen/login?redirect=' + currentUrl;
+    }
+
+    function isUserAuthenticated() {
+        const meta = document.querySelector('meta[name="user-authenticated"]');
+        return meta && meta.content === 'true';
+    }
+
+    // Toast notification function
+    function showToast(message, type = 'success') {
+        const container = document.querySelector('.toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const iconHtml = type === 'success'
+            ? '<i class="fas fa-check"></i>'
+            : type === 'error'
+            ? '<i class="fas fa-exclamation-circle"></i>'
+            : '<i class="fas fa-info-circle"></i>';
+
+        const title = type.charAt(0).toUpperCase() + type.slice(1);
+
+        toast.innerHTML = `
+            <div class="toast-icon">
+                ${iconHtml}
+            </div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto-remove toast after 4 seconds
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 4000);
+    }
+
+    // New: Poll order status after placing order
+    function startOrderStatusPolling(orderId) {
+        let pollCount = 0;
+        const maxPolls = 30; // Poll for max 30 seconds (30 * 1000ms)
+        const pollInterval = 1000; // Check every 1 second
+
+        const pollTimer = setInterval(async () => {
+            pollCount++;
+
+            try {
+                const response = await fetch(`/api/orders/${orderId}/status`);
+                if (!response.ok) {
+                    clearInterval(pollTimer);
+                    showToast('Failed to check order status. Please check My Orders page.', 'error');
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'COMPLETED') {
+                    clearInterval(pollTimer);
+                    // Show success toast message
+                    const productName = data.productName || 'Product';
+                    const quantity = data.quantity || 1;
+                    showToast(`Purchase successful! ${quantity} x ${productName} ready in My Orders.`, 'success');
+                    // Also show success modal
+                    showPurchaseSuccessModal(orderId);
+                } else if (data.status === 'FAILED') {
+                    clearInterval(pollTimer);
+                    const errorMsg = data.errorMessage || 'Purchase failed. Please try again.';
+                    showToast(errorMsg, 'error');
+                } else if (pollCount >= maxPolls) {
+                    // Timeout - stop polling but inform user
+                    clearInterval(pollTimer);
+                    showToast('Order is still processing. Check My Orders for updates.', 'info');
+                }
+                // If status is PENDING or PROCESSING, continue polling
+            } catch (error) {
+                console.error('Error polling order status:', error);
+                if (pollCount >= 5) { // Give up after 5 failed attempts
+                    clearInterval(pollTimer);
+                    showToast('Unable to check order status. Please check My Orders page.', 'error');
+                }
+            }
+        }, pollInterval);
+    }
 </script>
 </body>
 </html>
+

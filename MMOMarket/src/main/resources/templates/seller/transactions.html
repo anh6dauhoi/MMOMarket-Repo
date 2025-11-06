@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MMO Market - Seller Transactions</title>
+    <!-- Favicon - Multiple sizes for crisp display -->
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="48x48" th:href="@{/images/logo.png}">
+    <link rel="icon" type="image/png" sizes="64x64" th:href="@{/images/logo.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
+    <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+        .badge {
+            padding: .375rem .75rem;
+            border-radius: .5rem;
+            font-size: .75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .table-row-hover {
+            transition: background-color 0.2s ease;
+        }
+        .table-row-hover:hover {
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen font-sans text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="flex-grow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+
+            <div class="lg:col-span-3 space-y-6 animate-fade-in">
+                <!-- Header Section -->
+                <div class="bg-white rounded-2xl shadow-2xl border border-primary-100 p-6 flex flex-col md:flex-row md:items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold text-primary-900 flex items-center">
+                            <svg class="h-8 w-8 mr-3 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                            </svg>
+                            Transactions
+                        </h1>
+                        <p class="text-primary-600 mt-1 ml-11">Track your transaction history and revenue</p>
+                    </div>
+                    <div class="mt-4 md:mt-0">
+                        <div class="text-sm text-primary-500">
+                            <span class="font-semibold text-primary-700" th:text="${totalItems}">0</span> total transactions
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Toggleable Revenue Card -->
+                    <div id="revenueCard" class="bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl shadow-xl border border-primary-200 p-6 text-white card-hover cursor-pointer transition-all duration-300" onclick="toggleRevenue()">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="bg-white/20 p-3 rounded-xl">
+                                <svg id="revenueIcon" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span id="revenueBadge" class="text-xs font-medium bg-white/20 px-2 py-1 rounded-full">Total</span>
+                        </div>
+                        <p id="revenueLabel" class="text-sm font-medium text-primary-100 mb-1">Total Revenue</p>
+                        <p class="text-2xl font-bold"><span id="revenueValue" th:text="${totalEarned}">0</span> coins</p>
+
+                        <!-- Hidden data attributes for toggle -->
+                        <span class="hidden" id="completedEarnedData" th:text="${completedEarned}">0</span>
+                        <span class="hidden" id="totalEarnedData" th:text="${totalEarned}">0</span>
+                    </div>
+
+                    <!-- Escrow -->
+                    <div class="bg-white rounded-2xl shadow-xl border border-amber-100 p-6 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="bg-amber-50 p-3 rounded-xl">
+                                <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span class="badge bg-amber-100 text-amber-700 text-xs">Pending</span>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">In Escrow</p>
+                        <p class="text-2xl font-bold text-amber-600"><span th:text="${escrowCount}">0</span> orders</p>
+                        <p class="text-xs text-gray-500 mt-2">Waiting for 3-day release</p>
+                    </div>
+
+                    <!-- Disputed -->
+                    <div class="bg-white rounded-2xl shadow-xl border border-red-100 p-6 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="bg-red-50 p-3 rounded-xl">
+                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </div>
+                            <span class="badge bg-red-100 text-red-700 text-xs">Issue</span>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">Disputed</p>
+                        <p class="text-2xl font-bold text-red-600"><span th:text="${disputedCount}">0</span> orders</p>
+                        <p class="text-xs text-gray-500 mt-2">Need urgent attention</p>
+                    </div>
+
+                    <!-- Completed -->
+                    <div class="bg-white rounded-2xl shadow-xl border border-emerald-100 p-6 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="bg-emerald-50 p-3 rounded-xl">
+                                <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span class="badge bg-emerald-100 text-emerald-700 text-xs">Success</span>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600 mb-1">Completed</p>
+                        <p class="text-2xl font-bold text-emerald-600"><span th:text="${completedCount}">0</span> orders</p>
+                        <p class="text-xs text-gray-500 mt-2">Funds received</p>
+                    </div>
+                </div>
+
+                <!-- Search, Filter, and Sort Controls -->
+                <div class="bg-white rounded-2xl shadow-2xl border border-primary-100 p-6">
+                    <form method="get" th:action="@{/seller/transactions}" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- Search by Product -->
+                            <div class="relative">
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Search Product</label>
+                                <div class="relative">
+                                    <input type="text" name="search" th:value="${search}"
+                                           placeholder="Enter product name..."
+                                           class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                                    <svg class="absolute left-3 top-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Filter by Status -->
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Filter by Status</label>
+                                <select name="status" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                                    <option value="">All Statuses</option>
+                                    <option value="ESCROW" th:selected="${status == 'ESCROW'}">Escrow</option>
+                                    <option value="COMPLETED" th:selected="${status == 'COMPLETED'}">Completed</option>
+                                    <option value="DISPUTED" th:selected="${status == 'DISPUTED'}">Disputed</option>
+                                    <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">Cancelled</option>
+                                    <option value="REFUNDED" th:selected="${status == 'REFUNDED'}">Refunded</option>
+                                </select>
+                            </div>
+
+                            <!-- Sort By -->
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Sort By</label>
+                                <select name="sortBy" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                                    <option value="date" th:selected="${sortBy == 'date' or sortBy == null}">Date</option>
+                                    <option value="coins" th:selected="${sortBy == 'coins'}">Coins</option>
+                                </select>
+                            </div>
+
+                            <!-- Sort Direction -->
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Order</label>
+                                <select name="sortDir" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                                    <option value="desc" th:selected="${sortDir == 'desc' or sortDir == null}">Descending (High to Low)</option>
+                                    <option value="asc" th:selected="${sortDir == 'asc'}">Ascending (Low to High)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <div class="text-sm text-gray-600">
+                                <span class="font-semibold" th:text="${totalItems}">0</span> results found
+                            </div>
+                            <div class="flex gap-2">
+                                <a th:href="@{/seller/transactions}"
+                                   class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition-colors duration-200">
+                                    Clear
+                                </a>
+                                <button type="submit"
+                                        class="px-6 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                                    Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-2xl shadow-2xl border border-primary-100 p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                        <h2 class="text-lg font-semibold text-primary-900 flex items-center">
+                            <svg class="h-5 w-5 mr-2 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                            </svg>
+                            Transaction List
+                        </h2>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-primary-600">
+                                Showing <span th:text="${#lists.size(transactions)}">0</span> of <span th:text="${totalItems}">0</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div th:if="${transactions == null or #lists.isEmpty(transactions)}" class="text-center py-16">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-50 mb-4">
+                            <svg class="h-8 w-8 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                            </svg>
+                        </div>
+                        <p class="text-gray-500 text-lg font-medium">No transactions found</p>
+                        <p class="text-gray-400 text-sm mt-2">Try adjusting your filters or search criteria</p>
+                    </div>
+
+                    <div class="overflow-x-auto" th:if="${transactions != null and !#lists.isEmpty(transactions)}">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gradient-to-r from-primary-50 to-primary-100">
+                                <tr>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">#</th>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Product</th>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Qty</th>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Amount</th>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-4 text-left text-xs font-bold text-primary-700 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                <tr th:each="item,iter : ${transactions}" class="table-row-hover">
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-primary-600" th:text="${iter.index + 1}">1</td>
+                                    <td class="px-4 py-4">
+                                        <div class="font-semibold text-gray-900" th:text="${item.productName}">Product</div>
+                                        <div class="text-gray-500 text-xs mt-1 flex items-center">
+                                            <svg class="h-3 w-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                            </svg>
+                                            <span th:text="${item.variantName}">Variant</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-700" th:text="${item.quantity}">1</td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <span class="text-base font-bold text-primary-700" th:text="${item.coinSeller != null ? item.coinSeller : 0}">0</span>
+                                        <span class="text-xs text-gray-500 ml-1">coins</span>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        <div class="flex items-center">
+                                            <svg class="h-4 w-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            <span th:text="${item.createdAt != null ? #dates.format(item.createdAt, 'dd/MM/yyyy HH:mm') : ''}">01/01/2024</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <th:block th:switch="${item.status != null ? item.status.toUpperCase() : 'UNKNOWN'}">
+                                            <span th:case="'ESCROW'" class="badge bg-amber-100 text-amber-700 inline-flex items-center">
+                                                <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3"/></svg>
+                                                Escrow
+                                            </span>
+                                            <span th:case="'DISPUTED'" class="badge bg-red-100 text-red-700 inline-flex items-center">
+                                                <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                                                Disputed
+                                            </span>
+                                            <span th:case="'COMPLETED'" class="badge bg-emerald-100 text-emerald-700 inline-flex items-center">
+                                                <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                                Completed
+                                            </span>
+                                            <span th:case="'CANCELLED'" class="badge bg-gray-100 text-gray-700">Cancelled</span>
+                                            <span th:case="'REFUNDED'" class="badge bg-gray-100 text-gray-700">Refunded</span>
+                                            <span th:case="*" class="badge bg-gray-100 text-gray-700" th:text="${item.status}">-</span>
+                                        </th:block>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <button class="inline-flex items-center px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                                                th:attr="data-id=${item.id}"
+                                                onclick="openTxDetail(this)">
+                                            <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div th:if="${totalPages > 1}" class="mt-6 flex items-center justify-between border-t pt-6">
+                        <div class="text-sm text-gray-600">
+                            Page <span class="font-semibold" th:text="${currentPage + 1}">1</span> of <span class="font-semibold" th:text="${totalPages}">1</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <!-- First Page -->
+                            <a th:if="${currentPage > 0}"
+                               th:href="@{/seller/transactions(page=0, search=${search}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                               class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                                </svg>
+                            </a>
+
+                            <!-- Previous Page -->
+                            <a th:if="${currentPage > 0}"
+                               th:href="@{/seller/transactions(page=${currentPage - 1}, search=${search}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                               class="px-4 py-2 rounded-lg bg-primary-100 hover:bg-primary-200 text-primary-700 font-medium transition-colors">
+                                Previous
+                            </a>
+
+                            <!-- Page Numbers -->
+                            <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                                <a th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
+                                   th:href="@{/seller/transactions(page=${i}, search=${search}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                   th:classappend="${i == currentPage} ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                   class="px-4 py-2 rounded-lg font-medium transition-colors"
+                                   th:text="${i + 1}">1</a>
+                            </th:block>
+
+                            <!-- Next Page -->
+                            <a th:if="${currentPage < totalPages - 1}"
+                               th:href="@{/seller/transactions(page=${currentPage + 1}, search=${search}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                               class="px-4 py-2 rounded-lg bg-primary-100 hover:bg-primary-200 text-primary-700 font-medium transition-colors">
+                                Next
+                            </a>
+
+                            <!-- Last Page -->
+                            <a th:if="${currentPage < totalPages - 1}"
+                               th:href="@{/seller/transactions(page=${totalPages - 1}, search=${search}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                               class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- Detail Modal -->
+<div id="txModal" class="fixed inset-0 hidden items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
+    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+        <div class="px-6 py-5 bg-gradient-to-r from-primary-600 to-primary-700 border-b flex items-center justify-between">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <svg class="h-6 w-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Transaction Details
+            </h3>
+            <button class="text-white hover:text-primary-100 transition-colors p-1 rounded-lg hover:bg-white/10" onclick="closeTxModal()">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+            <!-- Status Banner -->
+            <div id="escrowBlock" class="hidden p-4 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <h4 class="text-sm font-bold text-amber-900">ESCROW - Funds On Hold</h4>
+                        <p class="text-sm text-amber-800 mt-1" id="txEscrowExplain">Funds are held for 3 days to ensure transaction security.</p>
+                        <p class="text-xs text-amber-700 mt-2 font-medium">
+                            <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Release date: <span id="txEscrowRelease" class="font-semibold"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="disputedBlock" class="hidden p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100 border border-red-200">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <h4 class="text-sm font-bold text-red-900">DISPUTED - Under Review</h4>
+                        <p class="text-sm text-red-800 mt-1">Funds are frozen due to customer dispute. Please contact support to resolve.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="completedBlock" class="hidden p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <h4 class="text-sm font-bold text-emerald-900">COMPLETED - Payment Received</h4>
+                        <p class="text-sm text-emerald-800 mt-1">Funds have been successfully transferred to your wallet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction Details Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Category</div>
+                    <div id="txCategory" class="text-base font-semibold text-gray-900">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Product</div>
+                    <div id="txProduct" class="text-base font-semibold text-gray-900">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Variant</div>
+                    <div id="txVariant" class="text-base font-semibold text-gray-900">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Unit Price</div>
+                    <div id="txVariantPrice" class="text-base font-semibold text-primary-700">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quantity</div>
+                    <div id="txQuantity" class="text-base font-semibold text-gray-900">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Amount</div>
+                    <div id="txAmount" class="text-base font-bold text-gray-900">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Commission</div>
+                    <div id="txCommission" class="text-base font-semibold text-gray-900">-</div>
+                </div>
+                <div class="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-4 border-2 border-primary-200">
+                    <div class="text-xs font-bold text-primary-700 uppercase tracking-wide mb-2">Your Earnings</div>
+                    <div id="txCoinSeller" class="text-xl font-bold text-primary-700">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Transaction Date</div>
+                    <div id="txDate" class="text-base font-semibold text-gray-900">-</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Status</div>
+                    <div><span id="txStatus" class="badge bg-gray-100 text-gray-700">-</span></div>
+                </div>
+            </div>
+
+            <!-- Account Data Section with Show/Hide functionality -->
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                        </svg>
+                        <div class="text-sm font-bold text-blue-900 uppercase tracking-wide">Delivered Account Information</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btnToggleAccount"
+                                class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                                onclick="toggleAccountData()">
+                            <svg id="iconShowAccount" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <span id="labelShowAccount">Show Info</span>
+                        </button>
+                        <button id="btnCopyAccount"
+                                class="px-4 py-2 rounded-lg bg-gray-300 text-white font-semibold text-sm shadow-md cursor-not-allowed flex items-center gap-2"
+                                onclick="copyAccountData()"
+                                disabled>
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg p-4 border border-blue-200">
+                    <pre id="txAccountData" class="whitespace-pre-wrap text-sm text-gray-500 font-mono select-none">Click "Show Info" to view account details</pre>
+                </div>
+                <p class="text-xs text-blue-700 mt-3 flex items-start">
+                    <svg class="h-4 w-4 mr-1.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <span>This is the account information that was delivered to the customer. Keep it secure for your records.</span>
+                </p>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t flex justify-end space-x-3">
+            <button class="px-5 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition-colors duration-200" onclick="closeTxModal()">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // Global variable to store account data in memory
+    let currentAccountData = null;
+    let accountDataVisible = false;
+
+    function fmt(n) {
+        if (n === null || n === undefined) return '0';
+        // Vietnamese format: use dot (.) as thousand separator
+        return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+    }
+    function fmtDate(d) {
+        if (!d) return '';
+        const dt = new Date(d);
+        const pad = (x) => String(x).padStart(2, '0');
+        return pad(dt.getDate()) + '/' + pad(dt.getMonth()+1) + '/' + dt.getFullYear() + ' ' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+    }
+
+    // Format all coin values on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Format Completed Earnings in KPI card
+        const completedEarnedEl = document.getElementById('completedEarnedValue');
+        if (completedEarnedEl) {
+            const value = completedEarnedEl.textContent.trim();
+            if (value && !isNaN(value)) {
+                completedEarnedEl.textContent = fmt(Number(value));
+            }
+        }
+
+        // Format Total Earnings in KPI card
+        const totalEarnedEl = document.getElementById('totalEarnedValue');
+        if (totalEarnedEl) {
+            const value = totalEarnedEl.textContent.trim();
+            if (value && !isNaN(value)) {
+                totalEarnedEl.textContent = fmt(Number(value));
+            }
+        }
+
+        // Format Total Revenue value in the revenue card
+        const revenueValueEl = document.getElementById('revenueValue');
+        if (revenueValueEl) {
+            const value = revenueValueEl.textContent.trim();
+            if (value && !isNaN(value)) {
+                revenueValueEl.textContent = fmt(Number(value));
+            }
+        }
+
+        // Format all transaction amounts in the table
+        document.querySelectorAll('td .text-primary-700').forEach(function(el) {
+            const coinText = el.textContent.trim();
+            if (coinText && !isNaN(coinText)) {
+                el.textContent = fmt(Number(coinText));
+            }
+        });
+    });
+
+    function openTxDetail(btn) {
+        const id = btn.getAttribute('data-id');
+        if (!id) return;
+
+        // Reset account data visibility state
+        currentAccountData = null;
+        accountDataVisible = false;
+        resetAccountDisplay();
+
+        fetch('/seller/transactions/' + id + '/json', { headers: { 'Accept': 'application/json' }})
+            .then(function(r) {
+                if (!r.ok) throw new Error('Failed to load');
+                return r.json();
+            })
+            .then(function(data) {
+                document.getElementById('txCategory').textContent = data.categoryName || '-';
+                document.getElementById('txProduct').textContent = data.productName || '-';
+                document.getElementById('txVariant').textContent = data.variantName || '-';
+                document.getElementById('txVariantPrice').textContent = fmt(data.variantPrice) + ' coins';
+                document.getElementById('txQuantity').textContent = data.quantity || '-';
+                document.getElementById('txAmount').textContent = fmt(data.amount) + ' coins';
+                document.getElementById('txCommission').textContent = fmt(data.commission) + ' coins';
+                document.getElementById('txCoinSeller').textContent = fmt(data.coinSeller) + ' coins';
+                document.getElementById('txDate').textContent = fmtDate(data.createdAt);
+
+                const st = (data.status || '').toUpperCase();
+                const stEl = document.getElementById('txStatus');
+                stEl.textContent = st;
+                stEl.className = 'badge ' + (st==='COMPLETED'?'bg-emerald-100 text-emerald-700': st==='ESCROW'?'bg-amber-100 text-amber-700': st==='DISPUTED'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-700');
+
+                // Show/hide status blocks
+                const escrowBlock = document.getElementById('escrowBlock');
+                const disputedBlock = document.getElementById('disputedBlock');
+                const completedBlock = document.getElementById('completedBlock');
+
+                escrowBlock.classList.add('hidden');
+                disputedBlock.classList.add('hidden');
+                completedBlock.classList.add('hidden');
+
+                if (st === 'ESCROW') {
+                    escrowBlock.classList.remove('hidden');
+                    document.getElementById('txEscrowExplain').textContent = data.statusExplain || 'Funds are held for 3 days to ensure transaction security.';
+                    document.getElementById('txEscrowRelease').textContent = data.escrowReleaseDate ? fmtDate(data.escrowReleaseDate) : 'N/A';
+                } else if (st === 'DISPUTED') {
+                    disputedBlock.classList.remove('hidden');
+                } else if (st === 'COMPLETED') {
+                    completedBlock.classList.remove('hidden');
+                }
+
+                // Store account data in memory (not in DOM)
+                currentAccountData = data.deliveredAccountData || 'No account data available';
+
+                showTxModal();
+            })
+            .catch(function() { alert('Failed to load transaction details.'); });
+    }
+
+    function resetAccountDisplay() {
+        const accountDataEl = document.getElementById('txAccountData');
+        const btnToggle = document.getElementById('btnToggleAccount');
+        const btnCopy = document.getElementById('btnCopyAccount');
+        const labelShow = document.getElementById('labelShowAccount');
+        const iconShow = document.getElementById('iconShowAccount');
+
+        accountDataEl.textContent = 'Click "Show Info" to view account details';
+        accountDataEl.classList.add('text-gray-500', 'select-none');
+        accountDataEl.classList.remove('text-gray-900');
+
+        labelShow.textContent = 'Show Info';
+        iconShow.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">';
+
+        btnCopy.disabled = true;
+        btnCopy.classList.add('bg-gray-300', 'cursor-not-allowed');
+        btnCopy.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+    }
+
+    function toggleAccountData() {
+        const accountDataEl = document.getElementById('txAccountData');
+        const btnToggle = document.getElementById('btnToggleAccount');
+        const btnCopy = document.getElementById('btnCopyAccount');
+        const labelShow = document.getElementById('labelShowAccount');
+        const iconShow = document.getElementById('iconShowAccount');
+
+        if (!accountDataVisible) {
+            // Show account data
+            accountDataEl.textContent = currentAccountData;
+            accountDataEl.classList.remove('text-gray-500', 'select-none');
+            accountDataEl.classList.add('text-gray-900');
+
+            labelShow.textContent = 'Hide Info';
+            iconShow.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
+
+            btnCopy.disabled = false;
+            btnCopy.classList.remove('bg-gray-300', 'cursor-not-allowed');
+            btnCopy.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+
+            accountDataVisible = true;
+        } else {
+            // Hide account data
+            accountDataEl.textContent = 'Click "Show Info" to view account details';
+            accountDataEl.classList.add('text-gray-500', 'select-none');
+            accountDataEl.classList.remove('text-gray-900');
+
+            labelShow.textContent = 'Show Info';
+            iconShow.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+
+            btnCopy.disabled = true;
+            btnCopy.classList.add('bg-gray-300', 'cursor-not-allowed');
+            btnCopy.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+
+            accountDataVisible = false;
+        }
+    }
+
+    function copyAccountData() {
+        if (!currentAccountData || !accountDataVisible) return;
+
+        navigator.clipboard.writeText(currentAccountData)
+            .then(function() {
+                const btnCopy = document.getElementById('btnCopyAccount');
+                const originalHTML = btnCopy.innerHTML;
+
+                btnCopy.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>Copied!</span>';
+                btnCopy.classList.add('bg-emerald-700');
+
+                setTimeout(function() {
+                    btnCopy.innerHTML = originalHTML;
+                    btnCopy.classList.remove('bg-emerald-700');
+                }, 2000);
+            })
+            .catch(function() {
+                alert('Failed to copy to clipboard');
+            });
+    }
+
+    function showTxModal() {
+        const m = document.getElementById('txModal');
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+    }
+
+    function closeTxModal() {
+        const m = document.getElementById('txModal');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+
+        // Reset account data when closing modal for security
+        currentAccountData = null;
+        accountDataVisible = false;
+        resetAccountDisplay();
+    }
+
+    // Toggle revenue card between Total Revenue and Received Amount
+    function toggleRevenue() {
+        const revenueCard = document.getElementById('revenueCard');
+        const revenueValue = document.getElementById('revenueValue');
+        const revenueLabel = document.getElementById('revenueLabel');
+        const revenueBadge = document.getElementById('revenueBadge');
+        const revenueIcon = document.getElementById('revenueIcon');
+        const completedEarnedData = document.getElementById('completedEarnedData');
+        const totalEarnedData = document.getElementById('totalEarnedData');
+
+        // Toggle logic
+        if (revenueBadge.textContent.trim() === 'Total') {
+            revenueBadge.textContent = 'Received';
+            revenueLabel.textContent = 'Received Amount';
+            revenueValue.textContent = fmt(Number(completedEarnedData.textContent.trim()));
+            revenueIcon.classList.remove('text-primary-600');
+            revenueIcon.classList.add('text-emerald-600');
+            revenueCard.classList.remove('from-primary-500', 'to-primary-700');
+            revenueCard.classList.add('from-emerald-500', 'to-emerald-700');
+        } else {
+            revenueBadge.textContent = 'Total';
+            revenueLabel.textContent = 'Total Revenue';
+            revenueValue.textContent = fmt(Number(totalEarnedData.textContent.trim()));
+            revenueIcon.classList.remove('text-emerald-600');
+            revenueIcon.classList.add('text-primary-600');
+            revenueCard.classList.remove('from-emerald-500', 'to-emerald-700');
+            revenueCard.classList.add('from-primary-500', 'to-primary-700');
+        }
+    }
+</script>
+</body>
+</html>

@@ -42,3 +42,4 @@ public class CategoryResponse {
         return builder.build();
     }
 }
+
