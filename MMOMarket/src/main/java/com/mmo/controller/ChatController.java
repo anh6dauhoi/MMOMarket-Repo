@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -42,12 +43,52 @@ public class ChatController {
         this.chatSseService = chatSseService;
     }
 
+    /**
+     * Helper method to get current user from authentication
+     * Handles both OAuth2 (Google) and form-based login
+     */
+    private User getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        // Case 1: Form-based login - principal is User object
+        if (principal instanceof User) {
+            return (User) principal;
+        }
+
+        // Case 2: OAuth2 login - principal is OAuth2User
+        if (principal instanceof OAuth2User) {
+            OAuth2User oauth2User = (OAuth2User) principal;
+            String email = oauth2User.getAttribute("email");
+            if (email != null) {
+                return authService.findByEmail(email);
+            }
+        }
+
+        // Case 3: Principal is string (username/email)
+        if (principal instanceof String) {
+            String identifier = (String) principal;
+            return authService.findByEmail(identifier);
+        }
+
+        // Fallback: try to get email from authentication name
+        return authService.findByEmail(authentication.getName());
+    }
+
     // Chat page
     @GetMapping("/chat")
     public String chatPage(@RequestParam(value = "sellerId", required = false) Long sellerId,
                            Authentication authentication,
                            Model model) {
-        User current = authService.findByEmail(authentication.getName());
+        User current = getCurrentUser(authentication);
+
+        if (current == null) {
+            return "redirect:/authen/login";
+        }
+
         List<ConversationSummaryDto> conversations = chatService.listConversations(current.getId());
         model.addAttribute("conversations", conversations);
         model.addAttribute("currentUser", current);
@@ -60,7 +101,14 @@ public class ChatController {
     @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseBody
     public SseEmitter subscribe(Authentication authentication) {
-        User current = authService.findByEmail(authentication.getName());
+        User current = getCurrentUser(authentication);
+
+        if (current == null) {
+            SseEmitter emitter = new SseEmitter();
+            emitter.completeWithError(new IllegalStateException("User not authenticated"));
+            return emitter;
+        }
+
         return chatSseService.subscribe(current.getId());
     }
 
@@ -68,7 +116,12 @@ public class ChatController {
     @GetMapping("/chat/messages/{partnerId}")
     @ResponseBody
     public ResponseEntity<List<ChatMessageDto>> loadMessages(@PathVariable Long partnerId, Authentication authentication) {
-        User current = authService.findByEmail(authentication.getName());
+        User current = getCurrentUser(authentication);
+
+        if (current == null) {
+            return ResponseEntity.status(401).build();
+        }
+
         List<ChatMessageDto> messages = chatService.getMessages(current.getId(), partnerId);
         return ResponseEntity.ok(messages);
     }
@@ -81,7 +134,13 @@ public class ChatController {
                                   Authentication authentication) {
         Map<String, Object> res = new HashMap<>();
         try {
-            User current = authService.findByEmail(authentication.getName());
+            User current = getCurrentUser(authentication);
+
+            if (current == null) {
+                res.put("error", "User not authenticated");
+                return ResponseEntity.status(401).body(res);
+            }
+
             ChatMessageDto dto = chatService.send(current.getId(), receiverId, message);
             return ResponseEntity.ok(dto);
         } catch (IllegalArgumentException ex) {
@@ -110,7 +169,12 @@ public class ChatController {
                 return ResponseEntity.badRequest().body(res);
             }
 
-            User current = authService.findByEmail(authentication.getName());
+            User current = getCurrentUser(authentication);
+
+            if (current == null) {
+                res.put("error", "User not authenticated");
+                return ResponseEntity.status(401).body(res);
+            }
 
             // Create upload directory if not exists
             File uploadDirFile = new File(uploadDir);

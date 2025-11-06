@@ -4,6 +4,8 @@ import com.mmo.dto.CreateWithdrawalRequest;
 import com.mmo.dto.SellerRegistrationForm;
 import com.mmo.dto.SellerWithdrawalResponse;
 import com.mmo.dto.SellerTransactionListItem;
+import com.mmo.dto.SellerComplaintListItem;
+import com.mmo.entity.Complaint;
 import com.mmo.entity.SellerBankInfo;
 import com.mmo.entity.ShopInfo;
 import com.mmo.entity.User;
@@ -894,6 +896,210 @@ public class SellerController {
             data.put("escrowReleased", escrowReleased);
 
             return ResponseEntity.ok(data);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // NEW: Seller Complaints list page with filters and actions
+    @GetMapping("/complaints")
+    public String listSellerComplaints(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "status", required = false) Complaint.ComplaintStatus status,
+            @RequestParam(name = "type", required = false) Complaint.ComplaintType type,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+        User seller = userRepository.findByEmail(email).orElse(null);
+        if (seller == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+        boolean activeShop = seller.getShopStatus() != null && seller.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
+        StringBuilder jpql = new StringBuilder(
+            "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.customer.id, c.customer.fullName, c.description) " +
+            "from Complaint c where c.seller.id = :sid and c.isDelete = false"
+        );
+        if (status != null) jpql.append(" and c.status = :status");
+        if (type != null) jpql.append(" and c.complaintType = :type");
+        jpql.append(" order by c.updatedAt desc");
+
+        var query = entityManager.createQuery(jpql.toString(), SellerComplaintListItem.class)
+                .setParameter("sid", seller.getId());
+        if (status != null) query.setParameter("status", status);
+        if (type != null) query.setParameter("type", type);
+
+        var all = query.getResultList();
+        int pageSize = 10;
+        int totalItems = all.size();
+        int totalPages = (int) Math.ceil((double) totalItems / pageSize);
+        page = Math.max(0, Math.min(page, Math.max(totalPages - 1, 0)));
+        int start = page * pageSize;
+        int end = Math.min(start + pageSize, totalItems);
+        var items = all.subList(Math.min(start, end), end);
+
+        model.addAttribute("complaints", items);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalItems", totalItems);
+        model.addAttribute("status", status);
+        model.addAttribute("type", type);
+        return "seller/complaints";
+    }
+
+    // NEW: Complaint Detail JSON for modal
+    @GetMapping(path = "/complaints/{id}/json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getComplaintDetail(@PathVariable("id") Long id, Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            Complaint c = entityManager.find(Complaint.class, id);
+            if (c == null || c.isDelete() || c.getSeller() == null || !c.getSeller().getId().equals(seller.getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+            }
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", c.getId());
+            data.put("transactionId", c.getTransactionId());
+            data.put("type", c.getComplaintType());
+            data.put("status", c.getStatus());
+            data.put("description", c.getDescription());
+            data.put("evidence", c.getEvidence());
+            data.put("createdAt", c.getCreatedAt());
+            data.put("updatedAt", c.getUpdatedAt());
+            if (c.getCustomer() != null) {
+                Map<String, Object> cus = new HashMap<>();
+                cus.put("id", c.getCustomer().getId());
+                cus.put("name", c.getCustomer().getFullName());
+                data.put("customer", cus);
+            }
+            if (c.getAdminHandler() != null) {
+                Map<String, Object> admin = new HashMap<>();
+                admin.put("id", c.getAdminHandler().getId());
+                admin.put("name", c.getAdminHandler().getFullName());
+                data.put("adminHandler", admin);
+            }
+            data.put("sellerFinalResponse", c.getSellerFinalResponse());
+            data.put("adminDecisionNotes", c.getAdminDecisionNotes());
+            return ResponseEntity.ok(data);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // NEW: Seller responds to complaint (approve/reject)
+    @PostMapping(path = "/complaints/{id}/respond", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> respondToComplaint(@PathVariable("id") Long id,
+                                                @RequestBody Map<String, String> request,
+                                                Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            Complaint complaint = entityManager.find(Complaint.class, id);
+            if (complaint == null || complaint.isDelete() || complaint.getSeller() == null || !complaint.getSeller().getId().equals(seller.getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Complaint not found");
+            }
+
+            String action = request.get("action");
+            String reason = request.get("reason");
+
+            if (action == null || (!action.equals("APPROVE") && !action.equals("REJECT"))) {
+                return ResponseEntity.badRequest().body("Invalid action. Must be APPROVE or REJECT");
+            }
+
+            if (reason == null || reason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Reason is required");
+            }
+
+            if (reason.trim().length() < 10) {
+                return ResponseEntity.badRequest().body("Reason must be at least 10 characters");
+            }
+
+            // Check if already responded
+            if (complaint.getSellerFinalResponse() != null && !complaint.getSellerFinalResponse().isEmpty()) {
+                return ResponseEntity.badRequest().body("You have already responded to this complaint");
+            }
+
+            // Save seller response
+            String response = action + ": " + reason.trim();
+            complaint.setSellerFinalResponse(response);
+            complaint.setUpdatedAt(new Date());
+
+            // Update status based on action
+            if (action.equals("APPROVE")) {
+                // Seller accepts the complaint - move to pending confirmation or resolved
+                if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
+                    complaint.setStatus(Complaint.ComplaintStatus.IN_PROGRESS);
+                }
+            } else if (action.equals("REJECT")) {
+                // Seller rejects the complaint - move to pending confirmation
+                if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
+                    complaint.setStatus(Complaint.ComplaintStatus.PENDING_CONFIRMATION);
+                }
+            }
+
+            entityManager.merge(complaint);
+
+            // Create notification for customer
+            try {
+                String notifTitle = action.equals("APPROVE") ? "Seller Approved Your Complaint" : "Seller Responded to Your Complaint";
+                String notifMessage = "The seller has responded to your complaint #" + complaint.getId() +
+                                     " for transaction #" + complaint.getTransactionId() + ". Please check the details.";
+                notificationService.createNotificationForUser(complaint.getCustomer().getId(), notifTitle, notifMessage);
+            } catch (Exception e) {
+                // Log but don't fail
+                System.err.println("Failed to create notification: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok("Response submitted successfully");
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
