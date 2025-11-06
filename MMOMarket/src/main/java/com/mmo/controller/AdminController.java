@@ -6,11 +6,8 @@ import com.mmo.dto.AdminWithdrawalResponse;
 import com.mmo.dto.WithdrawalDetailResponse;
 import com.mmo.dto.CoinDepositDetailResponse;
 import com.mmo.dto.TransactionDetailResponse;
-import com.mmo.entity.User;
-import com.mmo.entity.Withdrawal;
-import com.mmo.entity.CoinDeposit;
-import com.mmo.entity.Transaction;
-
+import com.mmo.entity.*;
+import com.mmo.entity.ShopPointPurchase;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -29,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mmo.dto.*;
-import com.mmo.entity.Category;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
 import com.mmo.entity.CoinDeposit;
@@ -74,8 +70,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import com.mmo.service.ChatService;
 import com.mmo.service.AuthService;
-import com.mmo.entity.ShopPointPurchase;
 import com.mmo.repository.ShopPointPurchaseRepository;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin")
@@ -1425,89 +1421,6 @@ public class AdminController {
         }
     }
 
-
-    @GetMapping(value = "/transactions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public ResponseEntity<?> getTransactionDetail(@PathVariable Long id, Authentication auth) {
-        try {
-            Authentication authentication = auth;
-            if (authentication == null || !authentication.isAuthenticated()) {
-                authentication = SecurityContextHolder.getContext().getAuthentication();
-            }
-            if (authentication == null || !authentication.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-
-            boolean hasAdminAuthority = false;
-            try {
-                if (authentication.getAuthorities() != null) {
-                    for (GrantedAuthority ga : authentication.getAuthorities()) {
-                        String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
-                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
-                            hasAdminAuthority = true;
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception ignored) {}
-
-            User admin = null;
-            try {
-                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
-                        .setParameter("e", authentication.getName())
-                        .getResultStream().findFirst().orElse(null);
-            } catch (Exception ignored) {}
-
-            boolean okAdmin = hasAdminAuthority;
-            if (!okAdmin && admin != null && admin.getRole() != null) {
-                String role = admin.getRole().trim();
-                if (role.toUpperCase().startsWith("ROLE_")) role = role.substring(5);
-                okAdmin = "ADMIN".equalsIgnoreCase(role);
-            }
-            if (!okAdmin) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
-
-            Transaction tx = entityManager.createQuery("SELECT t FROM Transaction t " +
-                            "LEFT JOIN FETCH t.customer LEFT JOIN FETCH t.seller LEFT JOIN FETCH t.product LEFT JOIN FETCH t.variant " +
-                            "WHERE t.id = :id", Transaction.class)
-                    .setParameter("id", id)
-                    .getResultStream().findFirst().orElse(null);
-            if (tx == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Transaction not found");
-
-            String customerName = tx.getCustomer() != null ? tx.getCustomer().getFullName() : "";
-            String customerEmail = tx.getCustomer() != null ? tx.getCustomer().getEmail() : "";
-            String sellerName = tx.getSeller() != null ? tx.getSeller().getFullName() : "";
-            String sellerEmail = tx.getSeller() != null ? tx.getSeller().getEmail() : "";
-            String productTitle = tx.getProduct() != null ? tx.getProduct().getName() : "";
-            String variantName = tx.getVariant() != null ? tx.getVariant().getVariantName() : "";
-
-            TransactionDetailResponse resp = new TransactionDetailResponse(
-                    tx.getId(),
-                    tx.getCustomer() != null ? tx.getCustomer().getId() : null,
-                    customerName,
-                    customerEmail,
-                    tx.getSeller() != null ? tx.getSeller().getId() : null,
-                    sellerName,
-                    sellerEmail,
-                    tx.getProduct() != null ? tx.getProduct().getId() : null,
-                    productTitle,
-                    tx.getVariant() != null ? tx.getVariant().getId() : null,
-                    variantName,
-                    tx.getAmount(),
-                    tx.getCommission(),
-                    tx.getCoinAdmin(),
-                    tx.getCoinSeller(),
-                    tx.getStatus(),
-                    tx.getEscrowReleaseDate() != null ? tx.getEscrowReleaseDate().toString() : "",
-                    tx.getDeliveredAccount() != null ? tx.getDeliveredAccount().getId() : null,
-                    tx.getCreatedAt() != null ? tx.getCreatedAt().toString() : "",
-                    tx.getUpdatedAt() != null ? tx.getUpdatedAt().toString() : ""
-            );
-
-            return ResponseEntity.ok(resp);
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
-        }
-    }
 
     @GetMapping("/categories/deleted/list")
     @ResponseBody
