@@ -13,7 +13,8 @@ import java.util.Date;
 @Setter
 @Table(name = "Reviews", indexes = {
         @Index(name = "idx_review_product_id", columnList = "product_id"),
-        @Index(name = "idx_review_user_id", columnList = "user_id")
+        @Index(name = "idx_review_user_id", columnList = "user_id"),
+        @Index(name = "idx_review_order_id", columnList = "order_id")
 })
 public class Review {
 
@@ -30,6 +31,11 @@ public class Review {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    // FK: order_id -> Orders(id) - Track which order this review is for
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    private Orders order;
 
     @Min(1)
     @Max(5)

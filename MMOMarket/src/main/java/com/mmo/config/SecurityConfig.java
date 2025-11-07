@@ -2,6 +2,7 @@ package com.mmo.config;
 
 import com.mmo.repository.UserRepository;
 import com.mmo.entity.User;
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -80,10 +81,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider, UserDetailsService userDetailsService) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider, UserDetailsService userDetailsService, CustomOAuth2UserService customOAuth2UserService) throws Exception {
         http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests((requests) -> requests
+                        // Allow async dispatches to pass through security checks
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/webhook/sepay").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/webhook/sepay").permitAll()
                         // Public pages for guests (view only)
@@ -152,6 +155,9 @@ public class SecurityConfig {
                 )
                 .oauth2Login((oauth2) -> oauth2
                         .loginPage("/authen/login")
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
                         .successHandler((request, response, authentication) -> {
                             boolean isAdmin = authentication.getAuthorities().stream()
                                     .anyMatch(a -> "ADMIN".equals(a.getAuthority()));

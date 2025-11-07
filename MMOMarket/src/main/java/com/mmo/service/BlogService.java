@@ -455,10 +455,17 @@ public class BlogService {
     // Admin methods for blog management
     @Transactional
     public Blog createBlog(com.mmo.dto.CreateBlogRequest request, Long adminId) {
+        // Get admin user for author relationship
+        User admin = entityManager.find(User.class, adminId);
+        if (admin == null) {
+            throw new IllegalArgumentException("Admin user not found with id: " + adminId);
+        }
+
         Blog blog = new Blog();
         blog.setTitle(request.getTitle());
         blog.setContent(request.getContent());
         blog.setImage(request.getImage());
+        blog.setAuthor(admin); // Set author relationship (required)
         blog.setCreatedBy(adminId);
         blog.setStatus(true); // Active by default
         blog.setDelete(false);

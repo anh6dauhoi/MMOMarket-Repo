@@ -71,10 +71,12 @@ public class ReviewController {
                 return "redirect:/account/orders";
             }
         }
-        long purchases = ordersRepository.countByCustomerIdAndProductIdAndStatus(user.getId(), order.getProductId(), Orders.QueueStatus.COMPLETED);
-        long reviewsCountForUser = reviewRepository.countByUser_IdAndProduct_Id(user.getId(), order.getProductId());
-        if (reviewsCountForUser >= purchases) {
-            return "redirect:/account/orders";
+
+        // Check if user has already reviewed THIS specific order
+        boolean alreadyReviewed = reviewRepository.existsByUser_IdAndOrder_IdAndIsDeleteFalse(user.getId(), orderId);
+        if (alreadyReviewed) {
+            // Already reviewed this order, redirect to view
+            return "redirect:/account/orders/" + orderId + "/review/view";
         }
         // Prepare model for UI
         Long productId = order.getProductId();
@@ -151,11 +153,13 @@ public class ReviewController {
         Orders order = ordersRepository.findById(orderId).orElse(null);
         if (order == null || !order.getCustomerId().equals(user.getId())) return "redirect:/account/orders";
 
-        // Find my latest review for this product
-        Review mine = null;
-        var optMine = reviewRepository.findFirstByUser_IdAndProduct_IdAndIsDeleteFalseOrderByCreatedAtDesc(user.getId(), order.getProductId());
-        if (optMine.isPresent()) mine = optMine.get();
-        if (mine == null) return "redirect:/account/orders";
+        // Find review for THIS specific order
+        var optMine = reviewRepository.findByUser_IdAndOrder_IdAndIsDeleteFalse(user.getId(), orderId);
+        if (optMine.isEmpty()) {
+            // No review for this order yet, redirect to create form
+            return "redirect:/account/orders/" + orderId + "/review";
+        }
+        Review mine = optMine.get();
 
         // Can edit within 7 days
         boolean canEdit = false;
@@ -262,11 +266,14 @@ public class ReviewController {
         if (order.getStatus() != Orders.QueueStatus.COMPLETED) {
             return "redirect:/account/orders";
         }
-        long purchases = ordersRepository.countByCustomerIdAndProductIdAndStatus(user.getId(), order.getProductId(), Orders.QueueStatus.COMPLETED);
-        long reviews = reviewRepository.countByUser_IdAndProduct_Id(user.getId(), order.getProductId());
-        if (reviews >= purchases) {
-            return "redirect:/account/orders"; // already reached max reviews per purchases
+
+        // Check if user has already reviewed THIS specific order
+        boolean alreadyReviewed = reviewRepository.existsByUser_IdAndOrder_IdAndIsDeleteFalse(user.getId(), orderId);
+        if (alreadyReviewed) {
+            // Already reviewed this order
+            return "redirect:/account/orders/" + orderId + "/review/view";
         }
+
         if (reviewRequest.getRating() == null || reviewRequest.getRating() < 1 || reviewRequest.getRating() > 5) {
             bindingResult.rejectValue("rating", "invalid", "Rating must be between 1 and 5");
         }
@@ -276,6 +283,7 @@ public class ReviewController {
             return "customer/review-form";
         }
         Review r = new Review();
+        r.setOrder(order); // Link review to specific order - allows multiple reviews for same product
         r.setProduct(order.getProduct());
         r.setUser(user);
         r.setRating(reviewRequest.getRating());

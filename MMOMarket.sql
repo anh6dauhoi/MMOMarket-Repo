@@ -318,24 +318,6 @@ CREATE TABLE IF NOT EXISTS Chats (
     FOREIGN KEY (deleted_by) REFERENCES Users(id)
 );
 
--- Bảng Reviews - Quản lý đánh giá sản phẩm
-CREATE TABLE IF NOT EXISTS Reviews (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
-    product_id BIGINT NOT NULL, -- Mã sản phẩm
-    user_id BIGINT NOT NULL, -- Mã người đánh giá
-    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5), -- Xếp hạng
-    comment TEXT, -- Nội dung đánh giá
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
-    created_by BIGINT, -- Người tạo
-    deleted_by BIGINT, -- Người xóa
-    isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm
-    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE NO ACTION,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE NO ACTION,
-    FOREIGN KEY (created_by) REFERENCES Users(id),
-    FOREIGN KEY (deleted_by) REFERENCES Users(id)
-);
-
 -- Bảng Blogs - Quản lý bài viết blog với đếm số lượt thích
 CREATE TABLE IF NOT EXISTS Blogs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Mã ID tự tăng
@@ -413,6 +395,29 @@ CREATE TABLE IF NOT EXISTS Orders (
     FOREIGN KEY (variant_id) REFERENCES ProductVariants(id),
 	FOREIGN KEY (transaction_id) REFERENCES Transactions(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Bảng Reviews - Quản lý đánh giá sản phẩm
+CREATE TABLE IF NOT EXISTS Reviews (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    order_id BIGINT NULL, -- Thêm trường này để link với đơn hàng (theo Entity)
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    deleted_by BIGINT,
+    isDelete TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE NO ACTION,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE NO ACTION,
+    FOREIGN KEY (order_id) REFERENCES Orders(id) ON DELETE SET NULL, -- FK mới cho Order
+    FOREIGN KEY (created_by) REFERENCES Users(id),
+    FOREIGN KEY (deleted_by) REFERENCES Users(id),
+    INDEX idx_review_product_id (product_id),
+    INDEX idx_review_user_id (user_id),
+    INDEX idx_review_order_id (order_id)
+);
 
 -- Bảng ShopPointPurchases - Ghi lại lịch sử Seller mua points
 CREATE TABLE IF NOT EXISTS ShopPointPurchases (
