@@ -151,6 +151,38 @@ public class EmailTemplate {
                 "</div>";
     }
 
+    public static String sellerRegistrationOtpEmail(String code) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#22c55e 0,#38bdf8 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">🎉 Seller Registration Verification - MMOMarket</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">You are registering as a <b>Seller</b> on MMOMarket.</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 18px;\">Please enter the OTP code below within <b>5 minutes</b> to complete your seller registration:</p>" +
+                "<div style=\"text-align:center;margin:20px 0 16px;\">" +
+                "<span style=\"display:inline-block;background:#22c55e;color:#fff;font-size:34px;font-weight:800;letter-spacing:8px;padding:16px 36px;border-radius:10px;box-shadow:0 3px 10px rgba(34,197,94,0.15);\">" + code + "</span>" +
+                "</div>" +
+                "<div style=\"background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:14px;color:#15803d;margin:0 0 8px;\"><b>📝 Registration details:</b></p>" +
+                "<ul style=\"font-size:13px;color:#166534;margin:0;padding-left:20px;\">" +
+                "<li>Registration fee: <b>200,000 coins</b></li>" +
+                "<li>The fee will be deducted from your account balance</li>" +
+                "<li>Your shop will be activated immediately upon successful verification</li>" +
+                "</ul>" +
+                "</div>" +
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:13px;color:#92400e;margin:0;\"><b>Security note:</b> MMOMarket will <u>never</u> ask you to enter OTP outside the official website/app. If you did <u>not</u> request seller registration, <b>do not share this code</b> and change your password immediately.</p>" +
+                "</div>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/register' style='display:inline-block;background:#22c55e;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(34,197,94,0.15);'>Complete Registration</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
     public static String withdrawalBankInfoUpdatedEmail(String userName, String oldBankInfo, String newBankInfo, String updatedDate) {
         return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
                 "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +

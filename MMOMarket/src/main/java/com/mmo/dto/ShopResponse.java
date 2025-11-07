@@ -37,7 +37,16 @@ public class ShopResponse {
             response.setSellerId(shop.getUser().getId());
             response.setSellerEmail(shop.getUser().getEmail());
             response.setSellerName(shop.getUser().getFullName());
-            response.setStatus(shop.getUser().getShopStatus());
+
+            // Trim and set shopStatus to avoid whitespace issues
+            String shopStatus = shop.getUser().getShopStatus();
+            if (shopStatus != null) {
+                shopStatus = shopStatus.trim();
+            }
+            response.setStatus(shopStatus);
+        } else {
+            // If user is null, set status to null (will hide Flag button)
+            response.setStatus(null);
         }
 
         response.setProductCount(productCount);

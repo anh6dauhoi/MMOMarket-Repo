@@ -12,6 +12,9 @@ public class SellerRegistrationForm {
     @NotBlank(message = "Description is required")
     private String description;
 
+    // OTP code for verifying seller registration
+    private String otp;
+
     public String getShopName() {
         return shopName;
     }
@@ -26,6 +29,14 @@ public class SellerRegistrationForm {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getOtp() {
+        return otp;
+    }
+
+    public void setOtp(String otp) {
+        this.otp = otp;
     }
 }
 

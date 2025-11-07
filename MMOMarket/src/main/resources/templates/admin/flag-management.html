@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null and totalPages > 0 ? totalPages : 1},
+              flagCount=${flags != null ? #lists.size(flags) : 0}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+
+        <!-- Toast Notification -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Title & Stats Row -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-6 space-y-4 md:space-y-0">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Flag Management</h1>
+                <p class="text-sm text-gray-500">Manage shop warning flags and penalties</p>
+            </div>
+        </div>
+
+        <!-- Compact Search & Filter Controls -->
+        <div class="mb-6 bg-red-50 p-4 rounded-lg border border-red-300 shadow-sm">
+            <form method="get" action="/admin/flag-management">
+                <div class="flex flex-wrap items-end gap-3">
+                    <!-- Search Input -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-search text-red-600 mr-1"></i>Search
+                        </label>
+                        <input name="search"
+                               class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white shadow-sm text-sm"
+                               placeholder="Search by shop name, seller, or flag ID..."
+                               type="text"
+                               th:value="${currentSearch != null ? currentSearch : ''}">
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="w-40">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-toggle-on text-red-600 mr-1"></i>Status
+                        </label>
+                        <select name="status" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="All" th:selected="${currentStatus == null or currentStatus == '' or currentStatus == 'All'}">All Status</option>
+                            <option value="ACTIVE" th:selected="${currentStatus == 'ACTIVE'}">Active</option>
+                            <option value="RESOLVED" th:selected="${currentStatus == 'RESOLVED'}">Resolved</option>
+                        </select>
+                    </div>
+
+                    <!-- Level Filter -->
+                    <div class="w-40">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-exclamation-triangle text-red-600 mr-1"></i>Level
+                        </label>
+                        <select name="level" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="All" th:selected="${currentLevel == null or currentLevel == '' or currentLevel == 'All'}">All Levels</option>
+                            <option value="WARNING" th:selected="${currentLevel == 'WARNING'}">Warning</option>
+                            <option value="SEVERE" th:selected="${currentLevel == 'SEVERE'}">Severe</option>
+                            <option value="BANNED" th:selected="${currentLevel == 'BANNED'}">Banned</option>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-md text-sm whitespace-nowrap">
+                            <i class="fas fa-filter mr-1.5"></i>Apply
+                        </button>
+                        <a th:href="@{/admin/flag-management}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200 text-sm whitespace-nowrap">
+                            <i class="fas fa-redo mr-1.5"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-lg border border-red-200 shadow-sm">
+            <table class="min-w-full bg-white">
+                <!-- Header: red theme -->
+                <thead class="bg-red-600">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Shop</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Reason</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Level</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Created By</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Created At</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+
+                <tr class="hover:bg-red-50 transition duration-150" th:each="flag,iter : ${flags}">
+                    <td class="py-3 px-4 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${page * size + iter.index + 1}">1</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-store text-blue-700"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${flag.shop != null ? flag.shop.shopName : 'N/A'}">Shop Name</div>
+                                <div class="text-xs text-gray-500" th:text="${flag.shop != null and flag.shop.user != null ? flag.shop.user.fullName : 'N/A'}">Seller Name</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm text-gray-900 max-w-xs truncate" th:text="${flag.reason}">Reason text</div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span th:if="${flag.flagLevel != null and flag.flagLevel.name() == 'WARNING'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Warning
+                        </span>
+                        <span th:if="${flag.flagLevel != null and flag.flagLevel.name() == 'SEVERE'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Severe
+                        </span>
+                        <span th:if="${flag.flagLevel != null and flag.flagLevel.name() == 'BANNED'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
+                            <i class="fas fa-ban mr-1"></i>Banned
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span th:if="${flag.status != null and flag.status.name() == 'ACTIVE'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
+                            <i class="fas fa-flag mr-1"></i>Active
+                        </span>
+                        <span th:if="${flag.status != null and flag.status.name() == 'RESOLVED'}"
+                              class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            <i class="fas fa-check-circle mr-1"></i>Resolved
+                        </span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm text-gray-900" th:text="${flag.admin != null ? flag.admin.fullName : 'N/A'}">Admin Name</div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900" th:text="${flag.createdAt != null ? #dates.format(flag.createdAt, 'dd/MM/yyyy HH:mm') : 'N/A'}">Date</div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-2">
+                            <button class="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    onclick="viewFlagDetail(this)"
+                                    th:attr="data-id=${flag.id}">
+                                <i class="fas fa-eye mr-1.5"></i>View
+                            </button>
+                            <button th:if="${flag.status != null and flag.status.name() == 'ACTIVE'}"
+                                    class="inline-flex items-center px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    onclick="resolveFlag(this)"
+                                    th:attr="data-id=${flag.id}">
+                                <i class="fas fa-check mr-1.5"></i>Resolve
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(flags)}">
+                    <td class="text-center py-16 text-gray-400" colspan="8">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">No flags found</p>
+                        <p class="text-sm">Try adjusting your filters or search criteria</p>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition duration-150" th:each="flag,iter : ${flags}">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <span class="font-bold text-gray-500 mr-2" th:text="${page * size + iter.index + 1}">1</span>
+                        <span class="text-sm font-semibold text-gray-900" th:text="${flag.shop != null ? flag.shop.shopName : 'N/A'}">Shop Name</span>
+                    </div>
+                    <span th:if="${flag.status != null and flag.status.name() == 'ACTIVE'}"
+                          class="px-2 py-1 inline-flex text-xs leading-none font-semibold rounded-full bg-red-100 text-red-800 border border-red-300">
+                        <i class="fas fa-flag mr-0.5"></i>Active
+                    </span>
+                    <span th:if="${flag.status != null and flag.status.name() == 'RESOLVED'}"
+                          class="px-2 py-1 inline-flex text-xs leading-none font-semibold rounded-full bg-green-100 text-green-800 border border-green-300">
+                        <i class="fas fa-check-circle mr-0.5"></i>Resolved
+                    </span>
+                </div>
+
+                <div class="space-y-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs">Level:</p>
+                        <span th:if="${flag.flagLevel != null and flag.flagLevel.name() == 'WARNING'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Warning
+                        </span>
+                        <span th:if="${flag.flagLevel != null and flag.flagLevel.name() == 'SEVERE'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Severe
+                        </span>
+                        <span th:if="${flag.flagLevel != null and flag.flagLevel.name() == 'BANNED'}"
+                              class="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800 border border-red-300">
+                            <i class="fas fa-ban mr-1"></i>Banned
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Reason:</p>
+                        <p class="text-sm text-gray-900 line-clamp-2" th:text="${flag.reason}">Reason text</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Created:</p>
+                        <p class="text-sm text-gray-900" th:text="${flag.createdAt != null ? #dates.format(flag.createdAt, 'dd/MM/yyyy HH:mm') : 'N/A'}">Date</p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button class="flex-1 py-2 bg-blue-50 text-blue-500 hover:bg-blue-100 rounded font-medium text-sm"
+                            onclick="viewFlagDetail(this)"
+                            th:attr="data-id=${flag.id}">
+                        <i class="fas fa-eye mr-1"></i>View
+                    </button>
+                    <button th:if="${flag.status != null and flag.status.name() == 'ACTIVE'}"
+                            class="flex-1 py-2 bg-green-50 text-green-500 hover:bg-green-100 rounded font-medium text-sm"
+                            onclick="resolveFlag(this)"
+                            th:attr="data-id=${flag.id}">
+                        <i class="fas fa-check mr-1"></i>Resolve
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-center py-16 text-gray-400" th:if="${#lists.isEmpty(flags)}">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p class="text-lg font-medium">No flags found</p>
+                <p class="text-sm">Try adjusting your filters or search criteria</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-sm text-gray-600">
+                Showing <span class="font-semibold text-gray-900" th:text="${flagCount > 0 ? (page * size + 1) : 0}">0</span>
+                to <span class="font-semibold text-gray-900" th:text="${page * size + flagCount}">0</span>
+                of <span class="font-semibold text-gray-900" th:text="${total * size}">0</span> results
+            </div>
+            <div class="flex space-x-1 flex-wrap justify-center">
+                <!-- Previous button -->
+                <a th:if="${page > 0}"
+                   th:href="@{/admin/flag-management(page=${page - 1}, search=${currentSearch}, status=${currentStatus}, level=${currentLevel})}"
+                   class="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-150 text-sm font-medium">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <span th:unless="${page > 0}"
+                      class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed">
+                    <i class="fas fa-chevron-left"></i>
+                </span>
+
+                <!-- Page numbers -->
+                <th:block th:each="i : ${#numbers.sequence(0, total - 1)}">
+                    <a th:if="${i == page}"
+                       class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm shadow-sm">
+                        <span th:text="${i + 1}">1</span>
+                    </a>
+                    <a th:unless="${i == page}"
+                       th:href="@{/admin/flag-management(page=${i}, search=${currentSearch}, status=${currentStatus}, level=${currentLevel})}"
+                       class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-150 text-sm font-medium">
+                        <span th:text="${i + 1}">1</span>
+                    </a>
+                </th:block>
+
+                <!-- Next button -->
+                <a th:if="${page < total - 1}"
+                   th:href="@{/admin/flag-management(page=${page + 1}, search=${currentSearch}, status=${currentStatus}, level=${currentLevel})}"
+                   class="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-150 text-sm font-medium">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <span th:unless="${page < total - 1}"
+                      class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Flag Detail Modal -->
+    <div id="flagDetailModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 rounded-t-lg">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                        <i class="fas fa-flag text-white text-2xl mr-3"></i>
+                        <h3 class="text-xl font-bold text-white">Flag Details</h3>
+                    </div>
+                    <button onclick="closeFlagDetailModal()" class="text-white hover:text-red-200 transition duration-200">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div id="flagDetailContent" class="space-y-4">
+                    <div class="flex items-center justify-center py-8">
+                        <i class="fas fa-spinner fa-spin text-red-600 text-3xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resolve Flag Modal -->
+    <div id="resolveFlagModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full">
+            <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 rounded-t-lg">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-white text-2xl mr-3"></i>
+                        <h3 class="text-xl font-bold text-white">Resolve Flag</h3>
+                    </div>
+                    <button onclick="closeResolveFlagModal()" class="text-white hover:text-green-200 transition duration-200">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-blue-600 mt-0.5 mr-3"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-blue-900 mb-1">About Resolving Flags</p>
+                            <p class="text-xs text-blue-800">
+                                Resolving a flag marks it as closed. The flag will remain in the system for record-keeping but will no longer be active.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <form id="resolveFlagForm">
+                    <input type="hidden" id="resolveFlagId">
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-align-left text-gray-500 mr-1"></i>Resolution Notes <span class="text-red-500">*</span>
+                        </label>
+                        <textarea id="resolutionNotes" rows="5" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                  placeholder="Explain why this flag is being resolved...&#10;&#10;Examples:&#10;- Issue has been addressed by the seller&#10;- Shop has improved their practices&#10;- Flag was issued in error"></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Please provide a clear explanation for resolving this flag.</p>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeResolveFlagModal()"
+                                class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-200 shadow-md">
+                            <i class="fas fa-check mr-2"></i>Resolve Flag
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+
+    function showToast(message, isSuccess = true) {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        if (!toast || !toastMessage) {
+            console.error('Toast elements not found');
+            return;
+        }
+        toastMessage.textContent = message;
+        toast.className = 'fixed bottom-5 right-5 py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50 ' +
+            (isSuccess ? 'bg-green-500' : 'bg-red-500') + ' text-white';
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3000);
+    }
+
+    function viewFlagDetail(button) {
+        console.log('viewFlagDetail called', button);
+        const flagId = button.getAttribute('data-id');
+        console.log('Flag ID:', flagId);
+
+        const modal = document.getElementById('flagDetailModal');
+        const content = document.getElementById('flagDetailContent');
+
+        if (!modal) {
+            console.error('Modal element not found');
+            alert('Error: Modal not found');
+            return;
+        }
+
+        if (!content) {
+            console.error('Content element not found');
+            alert('Error: Content element not found');
+            return;
+        }
+
+        // Show modal with loading state
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        console.log('Modal should be visible now');
+
+        content.innerHTML = `
+            <div class="flex items-center justify-center py-8">
+                <i class="fas fa-spinner fa-spin text-red-600 text-3xl"></i>
+            </div>
+        `;
+
+        // Fetch flag details
+        fetch(`/admin/flags/${flagId}`, {
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to load flag details');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Flag data received:', data);
+            const statusBadge = data.status === 'ACTIVE'
+                ? '<span class="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full bg-red-100 text-red-800 border border-red-300"><i class="fas fa-flag mr-1"></i>Active</span>'
+                : '<span class="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full bg-green-100 text-green-800 border border-green-300"><i class="fas fa-check-circle mr-1"></i>Resolved</span>';
+
+            let levelBadge = '';
+            let levelIcon = '';
+            if (data.flagLevel === 'WARNING') {
+                levelBadge = '<span class="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300"><i class="fas fa-exclamation-circle mr-1"></i>Warning</span>';
+                levelIcon = '<i class="fas fa-exclamation-circle text-yellow-600 text-2xl"></i>';
+            } else if (data.flagLevel === 'SEVERE') {
+                levelBadge = '<span class="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300"><i class="fas fa-exclamation-triangle mr-1"></i>Severe</span>';
+                levelIcon = '<i class="fas fa-exclamation-triangle text-orange-600 text-2xl"></i>';
+            } else if (data.flagLevel === 'BANNED') {
+                levelBadge = '<span class="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full bg-red-100 text-red-800 border border-red-300"><i class="fas fa-ban mr-1"></i>Banned</span>';
+                levelIcon = '<i class="fas fa-ban text-red-600 text-2xl"></i>';
+            }
+
+            content.innerHTML = `
+                <!-- Header Info Card -->
+                <div class="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center space-x-3">
+                            ${levelIcon}
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-900">Flag #${data.id}</h4>
+                                <p class="text-sm text-gray-600">Created on ${data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
+                            </div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                </div>
+
+                <!-- Shop Information -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 h-12 w-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-store text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Shop Information</p>
+                            <p class="text-lg font-bold text-gray-900">${data.shopName || 'N/A'}</p>
+                            <p class="text-sm text-gray-600">Shop ID: #${data.shopId || 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flag Details Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                            <i class="fas fa-layer-group text-gray-400 mr-1"></i>Flag Level
+                        </p>
+                        ${levelBadge}
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                            <i class="fas fa-user-shield text-gray-400 mr-1"></i>Created By
+                        </p>
+                        <p class="text-sm font-medium text-gray-900">${data.adminName || 'N/A'}</p>
+                    </div>
+                </div>
+
+                <!-- Reason Section -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        <i class="fas fa-clipboard-list text-gray-400 mr-1"></i>Reason
+                    </p>
+                    <p class="text-sm text-gray-900 leading-relaxed">${data.reason || 'N/A'}</p>
+                </div>
+
+                ${data.relatedComplaintId ? `
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                    <p class="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">
+                        <i class="fas fa-link text-purple-500 mr-1"></i>Related Complaint
+                    </p>
+                    <a href="/admin/complaints/${data.relatedComplaintId}"
+                       class="inline-flex items-center text-sm font-medium text-purple-700 hover:text-purple-900 hover:underline">
+                        <i class="fas fa-external-link-alt mr-2"></i>View Complaint #${data.relatedComplaintId}
+                    </a>
+                </div>
+                ` : ''}
+
+                ${data.status === 'RESOLVED' ? `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p class="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">
+                        <i class="fas fa-check-circle text-green-500 mr-1"></i>Resolution Details
+                    </p>
+                    <div class="space-y-2">
+                        <div>
+                            <p class="text-xs text-gray-600">Resolution Notes:</p>
+                            <p class="text-sm text-gray-900 mt-1">${data.resolutionNotes || 'No notes provided'}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600">Resolved At:</p>
+                            <p class="text-sm text-gray-900 mt-1">${data.resolvedAt ? new Date(data.resolvedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Timeline -->
+                <div class="mt-4 border-t border-gray-200 pt-4">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                        <i class="fas fa-clock text-gray-400 mr-1"></i>Timeline
+                    </p>
+                    <div class="space-y-2">
+                        <div class="flex items-center text-sm">
+                            <div class="w-24 text-gray-500">Created:</div>
+                            <div class="text-gray-900 font-medium">${data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</div>
+                        </div>
+                        ${data.updatedAt && data.updatedAt !== data.createdAt ? `
+                        <div class="flex items-center text-sm">
+                            <div class="w-24 text-gray-500">Updated:</div>
+                            <div class="text-gray-900 font-medium">${new Date(data.updatedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        ` : ''}
+                        ${data.resolvedAt ? `
+                        <div class="flex items-center text-sm">
+                            <div class="w-24 text-gray-500">Resolved:</div>
+                            <div class="text-green-600 font-medium">${new Date(data.resolvedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            content.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
+                    <p class="text-red-600 font-medium">Failed to load flag details</p>
+                    <p class="text-sm text-gray-500 mt-1">${error.message}</p>
+                </div>
+            `;
+            console.error('Error:', error);
+        });
+    }
+
+    function closeFlagDetailModal() {
+        const modal = document.getElementById('flagDetailModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function resolveFlag(button) {
+        console.log('resolveFlag called', button);
+        const flagId = button.getAttribute('data-id');
+        console.log('Flag ID:', flagId);
+
+        const modal = document.getElementById('resolveFlagModal');
+        const resolveFlagIdInput = document.getElementById('resolveFlagId');
+        const resolutionNotesInput = document.getElementById('resolutionNotes');
+
+        if (!modal) {
+            console.error('Resolve modal not found');
+            alert('Error: Resolve modal not found');
+            return;
+        }
+
+        if (!resolveFlagIdInput) {
+            console.error('resolveFlagId input not found');
+            return;
+        }
+
+        resolveFlagIdInput.value = flagId;
+        if (resolutionNotesInput) {
+            resolutionNotesInput.value = '';
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        console.log('Resolve modal should be visible now');
+    }
+
+    function closeResolveFlagModal() {
+        const modal = document.getElementById('resolveFlagModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        const resolutionNotesInput = document.getElementById('resolutionNotes');
+        if (resolutionNotesInput) {
+            resolutionNotesInput.value = '';
+        }
+    }
+
+    function handleResolveFlagSubmit(e) {
+        e.preventDefault();
+        console.log('Form submitted');
+
+        const flagId = document.getElementById('resolveFlagId').value;
+        const resolutionNotes = document.getElementById('resolutionNotes').value.trim();
+
+        if (!resolutionNotes) {
+            showToast('Please provide resolution notes', false);
+            return;
+        }
+
+        // Disable submit button to prevent double submission
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (!submitBtn) {
+            console.error('Submit button not found');
+            return;
+        }
+
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        if (!csrfToken || !csrfHeader) {
+            console.error('CSRF token not found');
+            showToast('Security token not found. Please refresh the page.', false);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            return;
+        }
+
+        fetch(`/admin/flags/${flagId}/resolve`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            },
+            body: JSON.stringify({ resolutionNotes: resolutionNotes }),
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to resolve flag');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, false);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            } else {
+                showToast('Flag resolved successfully! Refreshing page...', true);
+                closeResolveFlagModal();
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        })
+        .catch(error => {
+            showToast(error.message || 'Failed to resolve flag', false);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            console.error('Error:', error);
+        });
+    }
+
+    function setupModalListeners() {
+        // Close modals when clicking outside
+        const flagDetailModal = document.getElementById('flagDetailModal');
+        if (flagDetailModal) {
+            flagDetailModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeFlagDetailModal();
+                }
+            });
+        }
+
+        const resolveFlagModal = document.getElementById('resolveFlagModal');
+        if (resolveFlagModal) {
+            resolveFlagModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeResolveFlagModal();
+                }
+            });
+        }
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFlagDetailModal();
+                closeResolveFlagModal();
+            }
+        });
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Flag management page loaded');
+
+        // Setup form submission listener
+        const resolveFlagForm = document.getElementById('resolveFlagForm');
+        if (resolveFlagForm) {
+            resolveFlagForm.addEventListener('submit', handleResolveFlagSubmit);
+        }
+
+        // Setup modal close listeners
+        setupModalListeners();
+    });
+    </script>
+</div>
+
+</html>

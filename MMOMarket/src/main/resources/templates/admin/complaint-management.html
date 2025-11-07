@@ -24,10 +24,6 @@
                 <p class="text-sm text-gray-500">Review and manage customer complaints</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <span class="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-300">
-                    <i class="fas fa-list mr-1"></i>
-                    <span th:text="${total * size}">0</span> Total
-                </span>
                 <span class="px-3 py-1.5 bg-yellow-50 text-yellow-700 text-xs font-semibold rounded-full border border-yellow-300">
                     <i class="fas fa-hourglass-half mr-1"></i>
                     <span th:text="${escalatedCount != null ? escalatedCount : 0}">0</span> Escalated

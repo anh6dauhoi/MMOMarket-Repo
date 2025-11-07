@@ -21,12 +21,6 @@
                 <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Shop Management</h1>
                 <p class="text-sm text-gray-500">Manage seller shops and commission rates</p>
             </div>
-            <div class="flex items-center space-x-2">
-                <span class="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-300">
-                    <i class="fas fa-store mr-1"></i>
-                    <span th:text="${total * size}">0</span> Total
-                </span>
-            </div>
         </div>
 
         <!-- Compact Search & Filter Controls -->
@@ -163,7 +157,10 @@
                         </div>
                     </td>
                     <td class="py-3 px-4 whitespace-nowrap">
-                        <div class="flex items-center space-x-2">
+                        <!-- Debug: Display status and isDelete values -->
+                        <span class="hidden" th:attr="data-debug-status=${shop.status}, data-debug-isdelete=${shop.isDelete}"></span>
+
+                        <div class="flex items-center space-x-2 flex-wrap gap-y-2">
                             <button class="inline-flex items-center px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
                                     onclick="openCommissionModal(this)"
                                     th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-rate=${shop.commission}">
@@ -173,6 +170,14 @@
                                     onclick="openShopDetail(this)"
                                     th:attr="data-id=${shop.id}">
                                 <i class="fas fa-eye mr-1.5"></i>Detail
+                            </button>
+                            <!-- Flag button: Check BOTH status=Active AND isDelete=false -->
+                            <!-- Note: isDelete is boolean in Java, will be true/false in template -->
+                            <button th:if="${shop.status != null and #strings.equalsIgnoreCase(#strings.trim(shop.status), 'Active') and !shop.isDelete}"
+                                    class="inline-flex items-center px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    onclick="openFlagShopModal(this)"
+                                    th:attr="data-id=${shop.id}, data-name=${shop.shopName}">
+                                <i class="fas fa-flag mr-1.5"></i>Flag
                             </button>
                             <button th:if="${shop.isDelete == false}"
                                     class="inline-flex items-center px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
@@ -258,25 +263,36 @@
                     </div>
                 </div>
 
-                <div class="flex space-x-2">
-                    <button class="flex-1 py-2 bg-purple-50 text-purple-500 hover:bg-purple-100 rounded font-medium text-sm"
+                <!-- Debug: Display status and isDelete values -->
+                <span class="hidden" th:attr="data-debug-status-mobile=${shop.status}, data-debug-isdelete-mobile=${shop.isDelete}"></span>
+
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button class="py-2 bg-purple-50 text-purple-500 hover:bg-purple-100 rounded font-medium text-sm"
                             onclick="openCommissionModal(this)"
                             th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-rate=${shop.commission}">
                         <i class="fas fa-cog mr-1"></i>Config
                     </button>
-                    <button class="flex-1 py-2 bg-blue-50 text-blue-500 hover:bg-blue-100 rounded font-medium text-sm"
+                    <button class="py-2 bg-blue-50 text-blue-500 hover:bg-blue-100 rounded font-medium text-sm"
                             onclick="openShopDetail(this)"
                             th:attr="data-id=${shop.id}">
                         <i class="fas fa-eye mr-1"></i>Detail
                     </button>
+                    <!-- Flag button: Check BOTH status=Active AND isDelete=false -->
+                    <!-- Note: isDelete is boolean, use !shop.isDelete to check false -->
+                    <button th:if="${shop.status != null and #strings.equalsIgnoreCase(#strings.trim(shop.status), 'Active') and !shop.isDelete}"
+                            class="py-2 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 rounded font-medium text-sm"
+                            onclick="openFlagShopModal(this)"
+                            th:attr="data-id=${shop.id}, data-name=${shop.shopName}">
+                        <i class="fas fa-flag mr-1"></i>Flag
+                    </button>
                     <button th:if="${shop.isDelete == false}"
-                            class="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
+                            class="py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded font-medium text-sm"
                             onclick="toggleShopStatus(this)"
                             th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}, data-isdelete=${shop.isDelete}">
                         <i class="fas fa-ban mr-1"></i>Inactive
                     </button>
                     <button th:if="${shop.isDelete == true}"
-                            class="flex-1 py-2 bg-green-50 text-green-500 hover:bg-green-100 rounded font-medium text-sm"
+                            class="py-2 bg-green-50 text-green-500 hover:bg-green-100 rounded font-medium text-sm"
                             onclick="toggleShopStatus(this)"
                             th:attr="data-id=${shop.id}, data-name=${shop.shopName}, data-status=${shop.status}, data-isdelete=${shop.isDelete}">
                         <i class="fas fa-check mr-1"></i>Active
@@ -505,6 +521,35 @@
         /*<![CDATA[*/
         const csrfToken = /*[[${_csrf.token}]]*/ '';
         const csrfHeader = /*[[${_csrf.headerName}]]*/ '';
+
+        // Debug: Log all shop statuses on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== Shop Status Debug Info ===');
+            document.querySelectorAll('[data-debug-status]').forEach(function(el, index) {
+                const status = el.getAttribute('data-debug-status');
+                const isDelete = el.getAttribute('data-debug-isdelete');
+                const row = el.closest('tr');
+                const shopName = row ? row.querySelector('[data-name]')?.getAttribute('data-name') : 'Unknown';
+                console.log(`Shop ${index + 1}: "${shopName}"`);
+                console.log(`  → Status: "${status}" (type: ${typeof status}, trimmed: "${status?.trim()}")`);
+                console.log(`  → isDelete: ${isDelete} (type: ${typeof isDelete})`);
+
+                // Check conditions
+                const statusOk = status && status.trim().toLowerCase() === 'active';
+                const isDeleteOk = isDelete === 'false'; // boolean false renders as string "false"
+                console.log(`  → Status is Active: ${statusOk}`);
+                console.log(`  → isDelete is false: ${isDeleteOk}`);
+                console.log(`  → Should show Flag: ${statusOk && isDeleteOk}`);
+
+                // Check if Flag button exists in this row
+                const flagBtn = row ? row.querySelector('button[onclick*="openFlagShopModal"]') : null;
+                console.log(`  → Flag button visible: ${flagBtn !== null}`);
+                if (statusOk && isDeleteOk && !flagBtn) {
+                    console.warn(`  ⚠️ WARNING: Conditions met but Flag button NOT visible!`);
+                }
+            });
+            console.log('=============================');
+        });
 
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
@@ -788,8 +833,204 @@
                 });
             }
         });
+
+        // Flag Shop Modal Functions
+        function openFlagShopModal(button) {
+            const shopId = button.getAttribute('data-id');
+            const shopName = button.getAttribute('data-name');
+
+            document.getElementById('flagShopId').value = shopId;
+            document.getElementById('flagShopName').textContent = shopName;
+
+            const modal = document.getElementById('flagShopModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeFlagShopModal() {
+            const modal = document.getElementById('flagShopModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('flagShopForm').reset();
+        }
+
+        // Wait for DOM to be fully loaded before attaching event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const flagForm = document.getElementById('flagShopForm');
+            if (!flagForm) {
+                console.error('Flag shop form not found in DOM');
+                return;
+            }
+
+            flagForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const shopId = document.getElementById('flagShopId').value;
+                const reason = document.getElementById('flagReason').value;
+                const flagLevel = document.getElementById('flagLevel').value;
+                const relatedComplaintId = document.getElementById('relatedComplaintId').value;
+
+                // Validation
+                if (!reason || reason.trim() === '') {
+                    showToast('Please enter a reason', true);
+                    return;
+                }
+                if (!flagLevel || flagLevel === '') {
+                    showToast('Please select a flag level', true);
+                    return;
+                }
+
+                const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+
+                console.log('Submitting flag for shop:', shopId);
+                console.log('Flag level:', flagLevel);
+                console.log('Reason:', reason);
+                console.log('CSRF Token:', csrfToken);
+                console.log('CSRF Header:', csrfHeader);
+
+                const requestBody = {
+                    shopId: parseInt(shopId),
+                    reason: reason,
+                    flagLevel: flagLevel,
+                    relatedComplaintId: relatedComplaintId ? parseInt(relatedComplaintId) : null
+                };
+
+                console.log('Request body:', requestBody);
+
+                fetch(`/admin/shops/${shopId}/flag`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    },
+                    body: JSON.stringify(requestBody),
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+
+                    // Check if response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    } else {
+                        // Not JSON, try to get text
+                        return response.text().then(text => {
+                            console.error('Non-JSON response:', text);
+                            throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+                        });
+                    }
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data.error) {
+                        showToast(data.error, true);
+                    } else {
+                        showToast('Shop flagged successfully', false);
+                        closeFlagShopModal();
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error flagging shop:', error);
+                    showToast('Failed to flag shop: ' + error.message, true);
+                });
+            });
+
+            // Close modal when clicking outside
+            const flagModal = document.getElementById('flagShopModal');
+            if (flagModal) {
+                flagModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeFlagShopModal();
+                    }
+                });
+            }
+        });
         /*]]>*/
     </script>
+
+    <!-- Flag Shop Modal -->
+    <div id="flagShopModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Flag Shop</h3>
+                        <p class="text-sm text-gray-500 mt-1">Shop: <span id="flagShopName" class="font-semibold"></span></p>
+                    </div>
+                    <button onclick="closeFlagShopModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="flagShopForm">
+                    <input type="hidden" id="flagShopId">
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-exclamation-triangle text-red-500 mr-1"></i>Flag Level <span class="text-red-500">*</span>
+                        </label>
+                        <select id="flagLevel" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                            <option value="">Select level...</option>
+                            <option value="WARNING">Warning - Minor violation</option>
+                            <option value="SEVERE">Severe - Moderate violation</option>
+                            <option value="BANNED">Banned - Major violation / Fraud</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <strong>Warning:</strong> Slow response, unprofessional language<br>
+                            <strong>Severe:</strong> Misleading descriptions, review manipulation<br>
+                            <strong>Banned:</strong> Fraud, selling prohibited items
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-align-left text-gray-500 mr-1"></i>Reason <span class="text-red-500">*</span>
+                        </label>
+                        <textarea id="flagReason" rows="4" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                  placeholder="Describe the violation in detail..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-link text-gray-500 mr-1"></i>Related Complaint ID (optional)
+                        </label>
+                        <input type="number" id="relatedComplaintId"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                               placeholder="Enter complaint ID if applicable">
+                    </div>
+
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <div class="flex items-start">
+                            <i class="fas fa-info-circle text-yellow-600 mt-0.5 mr-2"></i>
+                            <div class="text-xs text-yellow-800">
+                                <strong>Penalties:</strong><br>
+                                • 3 flags in 30 days: -1 level<br>
+                                • 5 flags in 90 days: -2 levels<br>
+                                • 7 total flags or 1 fraud: Permanent ban<br>
+                                • Flags auto-removed after 180 days
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeFlagShopModal()"
+                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200">
+                            <i class="fas fa-flag mr-2"></i>Flag Shop
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 </html>

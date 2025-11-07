@@ -22,7 +22,21 @@
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-2xl font-bold mb-2">Become a Seller</h2>
         <p class="text-gray-600 mb-1">Provide your shop details and agree to the terms to activate your seller account.</p>
-        <p class="text-gray-700 font-semibold mb-8">A one-time activation fee of 200.000 coins will be deducted upon confirmation.</p>
+        <p class="text-gray-700 font-semibold mb-2">A one-time activation fee of 200,000 coins will be deducted upon confirmation.</p>
+
+        <!-- Display current balance -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-blue-800">Your Current Balance</p>
+                <p class="text-xl font-bold text-blue-900 mt-1">
+                    <span id="currentBalance" th:text="${user != null and user.coins != null ? #numbers.formatDecimal(user.coins, 0, 'POINT', 0, 'COMMA') : 0}" th:data-coins="${user != null and user.coins != null ? user.coins : 0}">0</span>
+                    <span class="text-base font-normal">coins</span>
+                </p>
+            </div>
+        </div>
 
         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert" th:if="${successMessage}">
             <span class="block sm:inline" th:text="${successMessage}"></span>
@@ -61,9 +75,11 @@
                     </div>
                 </div>
 
+                <div id="balanceError" class="text-sm text-red-600 hidden"></div>
+
                 <div>
                     <button id="triggerSubmit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" type="submit">
-                        Confirm and Pay 200.000 coins
+                        Confirm and Pay 200,000 coins
                     </button>
                 </div>
             </div>
@@ -91,11 +107,31 @@
                 </div>
             </div>
             <div class="px-6 py-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <p class="text-sm text-gray-600">Please review the Terms and Policy. By confirming, 200.000 coins will be deducted from your balance.</p>
+                <p class="text-sm text-gray-600">Please review the Terms and Policy. By confirming, 200,000 coins will be deducted from your balance.</p>
                 <div class="flex gap-3 justify-end">
                     <button id="cancelSubmit" class="px-4 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">Cancel</button>
-                    <button id="confirmSubmit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">I Agree and Confirm</button>
+                    <button id="confirmSubmit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">I Agree - Continue to OTP</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OTP Modal for seller registration -->
+    <div id="verifyOtpModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity duration-300 hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-green-200">
+            <button id="otpModalCloseBtn" class="absolute right-4 top-2 text-3xl text-gray-400 hover:text-red-500 font-bold">&times;</button>
+            <h3 class="text-xl font-bold text-green-700 mb-3">🎉 Verify OTP - Seller Registration</h3>
+            <p class="text-sm text-gray-600 mb-2">Enter the 6-digit OTP sent to your email to complete your seller registration.</p>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p class="text-xs text-green-800 mb-1"><b>Registration fee: 200,000 coins</b></p>
+                <p class="text-xs text-green-700">Your current balance: <span id="modalBalance" class="font-bold">0</span> coins</p>
+            </div>
+            <input id="otpInput" type="text" maxlength="6" inputmode="numeric" pattern="\d{6}" class="w-full border rounded-md p-2 text-center tracking-widest font-mono text-lg" placeholder="000000" />
+            <div id="otpModalMsg" class="mt-2 text-sm"></div>
+            <div class="mt-4 flex gap-2 justify-end">
+                <button id="otpSendBtn" type="button" class="px-3 py-2 bg-green-400 rounded hover:bg-green-500">Send OTP</button>
+                <button id="otpCancelBtn" type="button" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button id="otpVerifySubmitBtn" type="button" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Verify & Register</button>
             </div>
         </div>
     </div>
@@ -104,10 +140,57 @@
         (function() {
             const form = document.getElementById('sellerRegisterForm');
             const modal = document.getElementById('pdfModal');
+            const otpModal = document.getElementById('verifyOtpModal');
             const closeBtn = document.getElementById('closeModal');
             const cancelBtn = document.getElementById('cancelSubmit');
             const confirmBtn = document.getElementById('confirmSubmit');
             const viewTermsBtn = document.getElementById('viewTermsBtn');
+            const balanceError = document.getElementById('balanceError');
+
+            const otpInput = document.getElementById('otpInput');
+            const otpSendBtn = document.getElementById('otpSendBtn');
+            const otpVerifySubmitBtn = document.getElementById('otpVerifySubmitBtn');
+            const otpCancelBtn = document.getElementById('otpCancelBtn');
+            const otpModalCloseBtn = document.getElementById('otpModalCloseBtn');
+            const otpMsg = document.getElementById('otpModalMsg');
+            const modalBalanceSpan = document.getElementById('modalBalance');
+
+            const REGISTRATION_FEE = 200000;
+            let cooldown = 0;
+            let cooldownTimer;
+
+            function getCsrfFromForm(frm) {
+                if (!frm) return { name: null, value: null };
+                const inputs = Array.from(frm.querySelectorAll('input[type="hidden"]'));
+                let csrf = inputs.find(i => (i.name || '').toLowerCase().includes('csrf'));
+                if (csrf) return { name: csrf.name, value: csrf.value };
+                csrf = inputs[0];
+                return csrf ? { name: csrf.name, value: csrf.value } : { name: null, value: null };
+            }
+
+            function formatNumber(num) {
+                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            function getCurrentBalance() {
+                const balanceEl = document.getElementById('currentBalance');
+                if (balanceEl && balanceEl.dataset.coins) {
+                    return parseInt(balanceEl.dataset.coins, 10) || 0;
+                }
+                return 0;
+            }
+
+            function validateBalance() {
+                const balance = getCurrentBalance();
+                if (balance < REGISTRATION_FEE) {
+                    balanceError.textContent = 'Insufficient balance. You need at least ' + formatNumber(REGISTRATION_FEE) + ' coins to register as a seller.';
+                    balanceError.classList.remove('hidden');
+                    return false;
+                }
+                balanceError.textContent = '';
+                balanceError.classList.add('hidden');
+                return true;
+            }
 
             function ensurePdfFitWidth() {
                 const frame = document.getElementById('pdfFrame');
@@ -125,9 +208,187 @@
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             }
+
             function closeModal() {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+            }
+
+            function openOtpModal() {
+                // Update balance in modal
+                const balance = getCurrentBalance();
+                modalBalanceSpan.textContent = formatNumber(balance);
+
+                // Validate balance before opening
+                if (!validateBalance()) {
+                    return;
+                }
+
+                otpModal.classList.remove('hidden');
+                otpModal.classList.add('flex');
+            }
+
+            function closeOtpModal() {
+                otpModal.classList.add('hidden');
+                otpModal.classList.remove('flex');
+                otpInput.value = '';
+                setOtpMsg('', true);
+                // Reset message styling
+                otpMsg.className = 'mt-2 text-sm';
+            }
+
+            function setOtpMsg(text, ok) {
+                otpMsg.textContent = text || '';
+                // Default styling
+                if (ok) {
+                    otpMsg.className = 'mt-2 text-sm text-green-600';
+                } else {
+                    otpMsg.className = 'mt-2 text-sm text-red-600';
+                }
+            }
+
+            function startCooldown(seconds) {
+                cooldown = seconds;
+                otpSendBtn.disabled = true;
+                const base = 'Send OTP';
+                function tick() {
+                    if (cooldown <= 0) {
+                        otpSendBtn.disabled = false;
+                        otpSendBtn.textContent = base;
+                        return;
+                    }
+                    otpSendBtn.textContent = base + ' (' + cooldown + 's)';
+                    cooldown -= 1;
+                    cooldownTimer = setTimeout(tick, 1000);
+                }
+                tick();
+            }
+
+            async function sendOtp() {
+                try {
+                    setOtpMsg('', true);
+                    const csrf = getCsrfFromForm(form);
+                    const body = csrf.name && csrf.value ? encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value) : '';
+                    const res = await fetch('/seller/register/send-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body
+                    });
+                    const txt = await res.text();
+                    if (res.ok) {
+                        setOtpMsg('OTP has been sent to your email.', true);
+                        startCooldown(60);
+                    } else if (res.status === 429) {
+                        const m = txt.match(/(\d+)s/);
+                        const sec = m ? parseInt(m[1], 10) : 30;
+                        setOtpMsg(txt || 'Please wait before requesting a new OTP.', false);
+                        startCooldown(Math.max(10, Math.min(60, sec)));
+                    } else if (res.status === 401) {
+                        setOtpMsg('You are not logged in. Please sign in first.', false);
+                    } else {
+                        setOtpMsg(txt || 'Failed to send OTP. Please try again later.', false);
+                    }
+                } catch (e) {
+                    setOtpMsg('Failed to send OTP. Please try again later.', false);
+                }
+            }
+
+            async function verifyAndSubmit() {
+                const otp = (otpInput?.value || '').trim();
+                if (!/^\d{6}$/.test(otp)) {
+                    setOtpMsg('Please enter a valid 6-digit OTP.', false);
+                    otpInput && otpInput.focus();
+                    return;
+                }
+
+                // Validate balance again
+                if (!validateBalance()) {
+                    setOtpMsg('Insufficient balance. Please top up your account.', false);
+                    return;
+                }
+
+                // Get form data
+                const shopName = document.getElementById('shopName').value;
+                const description = document.getElementById('description').value;
+                const csrf = getCsrfFromForm(form);
+
+                // Build payload
+                const payload = {
+                    shopName: shopName,
+                    description: description,
+                    otp: otp
+                };
+
+                // Disable button to prevent double submit
+                otpVerifySubmitBtn.disabled = true;
+                otpVerifySubmitBtn.textContent = 'Processing...';
+
+                try {
+                    const res = await fetch('/seller/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf.value || ''
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const txt = await res.text();
+
+                    if (res.ok) {
+                        // Success: close modal and redirect
+                        closeOtpModal();
+                        try {
+                            const banner = document.createElement('div');
+                            banner.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50';
+                            banner.textContent = 'Seller registration successful! Redirecting...';
+                            document.body.appendChild(banner);
+                            setTimeout(() => { window.location.href = '/seller/shop-info'; }, 1000);
+                        } catch (_) { window.location.href = '/seller/shop-info'; }
+                    } else if (res.status === 400) {
+                        // Keep modal open and show error
+                        if (txt && txt.startsWith('MSG_OTP_EXPIRED')) {
+                            setOtpMsg('⏰ OTP has expired. Please request a new OTP.', false);
+                        } else if (txt && txt.startsWith('MSG_OTP_INVALID')) {
+                            setOtpMsg('❌ OTP is incorrect or already used. Please try again.', false);
+                        } else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) {
+                            setOtpMsg('📧 Please enter the 6-digit OTP sent to your email.', false);
+                        } else if (txt.includes('Insufficient balance')) {
+                            setOtpMsg('💰 Insufficient balance. You need at least 200,000 coins.', false);
+                        } else if (txt.includes('Warning') || txt.includes('⚠️')) {
+                            // Special handling for warning after 3+ attempts
+                            setOtpMsg(txt, false);
+                            // Make it more visible with background color
+                            otpMsg.className = 'mt-2 text-sm text-red-700 bg-yellow-50 border border-yellow-300 rounded p-3';
+                        } else if (txt.includes('Attempt')) {
+                            // Show attempt counter
+                            setOtpMsg(txt, false);
+                        } else {
+                            setOtpMsg(txt || 'Failed to register. Please try again.', false);
+                        }
+                        // Re-enable button
+                        otpVerifySubmitBtn.disabled = false;
+                        otpVerifySubmitBtn.textContent = 'Verify & Register';
+                    } else if (res.status === 401) {
+                        // Logged out - redirect to login
+                        try {
+                            sessionStorage.setItem('redirectMessage', 'Too many OTP failures. You have been logged out.');
+                        } catch (e) {}
+                        window.location.href = '/authen/login';
+                        return;
+                    } else if (res.status === 403) {
+                        setOtpMsg('You do not have permission to perform this action.', false);
+                        otpVerifySubmitBtn.disabled = false;
+                        otpVerifySubmitBtn.textContent = 'Verify & Register';
+                    } else {
+                        setOtpMsg(txt || 'Unexpected error. Please try again later.', false);
+                        otpVerifySubmitBtn.disabled = false;
+                        otpVerifySubmitBtn.textContent = 'Verify & Register';
+                    }
+                } catch (e) {
+                    setOtpMsg('Network error. Please try again later.', false);
+                    otpVerifySubmitBtn.disabled = false;
+                    otpVerifySubmitBtn.textContent = 'Verify & Register';
+                }
             }
 
             // Show modal when clicking Terms link
@@ -136,24 +397,51 @@
                 openModal();
             });
 
-            // Intercept form submit to show modal first
+            // Intercept form submit to show modals first
             form.addEventListener('submit', function(e) {
-                // If we already confirmed, skip modal
-                if (form.dataset.confirmed === 'true') return;
                 e.preventDefault();
+
+                // Validate balance
+                if (!validateBalance()) {
+                    return;
+                }
+
+                // Check if agree checkbox is checked
+                const agreeCheckbox = document.getElementById('agree');
+                if (!agreeCheckbox || !agreeCheckbox.checked) {
+                    if (balanceError) {
+                        balanceError.textContent = 'You must agree to the Terms and Policy to continue.';
+                        balanceError.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                // Show PDF modal first
                 openModal();
             });
 
             closeBtn?.addEventListener('click', closeModal);
             cancelBtn?.addEventListener('click', function(){ closeModal(); });
+
+            // When user confirms terms, open OTP modal
             confirmBtn?.addEventListener('click', function() {
-                // Prevent double submit
-                confirmBtn.disabled = true;
-                confirmBtn.textContent = 'Processing...';
-                // Mark as confirmed to bypass modal next submit
-                form.dataset.confirmed = 'true';
-                form.submit();
+                closeModal();
+                openOtpModal();
             });
+
+            // OTP modal handlers
+            otpSendBtn?.addEventListener('click', sendOtp);
+            otpVerifySubmitBtn?.addEventListener('click', verifyAndSubmit);
+            otpCancelBtn?.addEventListener('click', closeOtpModal);
+            otpModalCloseBtn?.addEventListener('click', closeOtpModal);
+
+            // Close OTP modal on backdrop click
+            otpModal?.addEventListener('click', function(e) {
+                if (e.target === otpModal) closeOtpModal();
+            });
+
+            // Validate balance on page load
+            window.addEventListener('DOMContentLoaded', validateBalance);
         })();
     </script>
 </div>

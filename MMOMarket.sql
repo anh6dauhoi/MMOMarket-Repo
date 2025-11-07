@@ -427,6 +427,25 @@ CREATE TABLE IF NOT EXISTS ShopPointPurchases (
     INDEX idx_user_id (user_id)
 );
 
+CREATE TABLE IF NOT EXISTS ShopFlags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    shop_id BIGINT NOT NULL,               -- Shop bị gắn cờ
+    admin_id BIGINT NOT NULL,              -- Admin thực hiện gắn cờ
+    related_complaint_id BIGINT NULL,      -- (Tùy chọn) Link đến khiếu nại dẫn đến việc gắn cờ
+    reason TEXT NOT NULL,                  -- Lý do gắn cờ (Bắt buộc theo UC48)
+    flag_level ENUM('WARNING', 'SEVERE', 'BANNED') NOT NULL DEFAULT 'WARNING', -- Mức độ nghiêm trọng
+    status ENUM('ACTIVE', 'RESOLVED') NOT NULL DEFAULT 'ACTIVE', -- Trạng thái cờ (Đang hiệu lực / Đã giải quyết)
+    resolution_notes TEXT NULL,            -- Ghi chú của Admin khi gỡ cờ (nếu có)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    resolved_at DATETIME NULL,             -- Thời điểm cờ được gỡ bỏ
+
+    FOREIGN KEY (shop_id) REFERENCES ShopInfo(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Users(id) ON DELETE NO ACTION,
+    FOREIGN KEY (related_complaint_id) REFERENCES Complaints(id) ON DELETE SET NULL,
+    INDEX idx_shop_status (shop_id, status) -- Index để query nhanh các Shop đang bị cờ Active
+);
+
 -- Trigger update points with transaction completed
 DELIMITER $$
 

@@ -146,6 +146,9 @@ public class SellerController {
         }
         model.addAttribute("sellerAgreementUrl", agreementUrl);
 
+        // Add user data to model for balance display
+        model.addAttribute("user", user);
+
         // Prefer shopStatus over legacy SellerRegistration flow
         String shopStatus = user.getShopStatus();
         model.addAttribute("shopStatus", shopStatus);
@@ -171,11 +174,152 @@ public class SellerController {
         return "customer/account-setting";
     }
 
+    // NEW: Send OTP for seller registration
+    @PostMapping(path = "/register/send-otp")
+    @ResponseBody
+    public ResponseEntity<?> sendSellerRegistrationOtp(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return ResponseEntity.badRequest().body("User has no email configured. Cannot send OTP.");
+        }
+        // Cooldown: avoid spamming OTP sends (min 60 seconds between sends)
+        try {
+            Optional<com.mmo.entity.EmailVerification> latest = emailVerificationRepository.findTopByUserOrderByCreatedAtDesc(user);
+            if (latest.isPresent() && latest.get().getCreatedAt() != null) {
+                long seconds = (System.currentTimeMillis() - latest.get().getCreatedAt().getTime()) / 1000L;
+                if (seconds < 60) {
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Offload OTP creation + persistence + email to executor; return immediately
+        try {
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] OTP Verify Seller Registration";
+                    String html = EmailTemplate.sellerRegistrationOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+
+        return ResponseEntity.ok("OTP has been sent to your email.");
+    }
+
+    // NEW: Seller registration with OTP (JSON endpoint)
+    @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> registerSellerJson(@RequestBody SellerRegistrationForm sellerRegistration,
+                                                Authentication authentication,
+                                                HttpSession session,
+                                                HttpServletRequest request) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+
+            // Validate required fields
+            if (sellerRegistration.getShopName() == null || sellerRegistration.getShopName().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Shop name is required.");
+            }
+            if (sellerRegistration.getDescription() == null || sellerRegistration.getDescription().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Shop description is required.");
+            }
+
+            // Validate OTP
+            if (sellerRegistration.getOtp() == null || !sellerRegistration.getOtp().matches("\\d{6}")) {
+                return handleOtpFailForSellerRegister(session, request, authentication, user, user.getId(), "seller_register", "MSG_OTP_REQUIRED: Please enter the 6-digit OTP sent to your email.");
+            }
+
+            // Pre-validate OTP
+            var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, sellerRegistration.getOtp());
+            if (optVerification.isEmpty()) {
+                return handleOtpFailForSellerRegister(session, request, authentication, user, user.getId(), "seller_register", "MSG_OTP_INVALID: OTP is incorrect or already used.");
+            }
+            var verification = optVerification.get();
+            if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+                return handleOtpFailForSellerRegister(session, request, authentication, user, user.getId(), "seller_register", "MSG_OTP_EXPIRED: OTP has expired. Please request a new OTP.");
+            }
+
+            // Success so far: clear attempts
+            clearSellerOtpAttempts(session, user.getId(), "seller_register");
+
+            // Validate coins balance
+            Long currentCoins = user.getCoins() == null ? 0L : user.getCoins();
+            if (currentCoins < REGISTRATION_FEE && (user.getShopStatus() == null || !user.getShopStatus().equalsIgnoreCase("Active"))) {
+                notificationService.createNotificationForUser(
+                        user.getId(),
+                        "Seller registration failed",
+                        "Insufficient balance. A fee of 200,000 coins is required to activate your seller account."
+                );
+                return ResponseEntity.badRequest().body("Insufficient balance. 200,000 coins are required for seller registration.");
+            }
+
+            // Mark OTP as used
+            verification.setUsed(true);
+            emailVerificationRepository.save(verification);
+
+            // Enqueue registration request for idempotent, atomic processing
+            String dedupeKey = UUID.randomUUID().toString();
+            com.mmo.mq.dto.SellerRegistrationMessage msg = new com.mmo.mq.dto.SellerRegistrationMessage(
+                    user.getId(),
+                    sellerRegistration.getShopName(),
+                    sellerRegistration.getDescription(),
+                    dedupeKey
+            );
+            try {
+                sellerRegistrationPublisher.publish(msg);
+            } catch (Exception ex) {
+                return ResponseEntity.status(500).body("Failed to submit registration. Please try again later.");
+            }
+
+            // Return success
+            return ResponseEntity.ok("Registration successful! Redirecting to your shop...");
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
     @PostMapping("/register")
     public String registerSeller(@Valid @ModelAttribute("sellerRegistration") SellerRegistrationForm sellerRegistration,
                                  BindingResult bindingResult,
                                  @RequestParam(value = "agree", required = false) Boolean agree,
-                                 RedirectAttributes redirectAttributes) {
+                                 RedirectAttributes redirectAttributes,
+                                 HttpSession session,
+                                 HttpServletRequest request,
+                                 Authentication authentication) {
         // Validate basic input
         if (agree == null || !agree) {
             redirectAttributes.addFlashAttribute("agreeError", "You must agree to the Terms and Policy to continue.");
@@ -187,7 +331,6 @@ public class SellerController {
         }
 
         // Resolve current user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = null;
         if (authentication != null && authentication.isAuthenticated()) {
             Object principal = authentication.getPrincipal();
@@ -212,7 +355,64 @@ public class SellerController {
             return "redirect:/login";
         }
 
-        // Optional soft check to provide faster feedback; final guard happens in the queue consumer
+        // Validate OTP first
+        if (sellerRegistration.getOtp() == null || !sellerRegistration.getOtp().matches("\\d{6}")) {
+            int attempts = incSellerOtpAttempts(session, user.getId(), "seller_register");
+            if (attempts >= 5) {
+                try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                try { session.invalidate(); } catch (Exception ignored) {}
+                redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                return "redirect:/authen/login";
+            } else if (attempts >= 3) {
+                sendSellerRegistrationOtpForUser(user);
+                redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP. A new OTP has been sent to your email.");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Please enter the 6-digit OTP sent to your email.");
+            }
+            redirectAttributes.addFlashAttribute("sellerRegistration", sellerRegistration);
+            return "redirect:/seller/register";
+        }
+
+        // Pre-validate OTP
+        var optVerification = emailVerificationRepository.findTopByUserAndVerificationCodeAndIsUsedFalseOrderByCreatedAtDesc(user, sellerRegistration.getOtp());
+        if (optVerification.isEmpty()) {
+            int attempts = incSellerOtpAttempts(session, user.getId(), "seller_register");
+            if (attempts >= 5) {
+                try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                try { session.invalidate(); } catch (Exception ignored) {}
+                redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                return "redirect:/authen/login";
+            } else if (attempts >= 3) {
+                sendSellerRegistrationOtpForUser(user);
+                redirectAttributes.addFlashAttribute("errorMessage", "Incorrect OTP. A new OTP has been sent to your email.");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Incorrect or used OTP.");
+            }
+            redirectAttributes.addFlashAttribute("sellerRegistration", sellerRegistration);
+            return "redirect:/seller/register";
+        }
+        var verification = optVerification.get();
+        if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
+            int attempts = incSellerOtpAttempts(session, user.getId(), "seller_register");
+            if (attempts >= 5) {
+                try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
+                try { session.invalidate(); } catch (Exception ignored) {}
+                redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
+                return "redirect:/authen/login";
+            } else if (attempts >= 3) {
+                sendSellerRegistrationOtpForUser(user);
+                redirectAttributes.addFlashAttribute("errorMessage", "OTP expired. A new OTP has been sent to your email.");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "OTP has expired. Please request a new OTP.");
+            }
+            redirectAttributes.addFlashAttribute("sellerRegistration", sellerRegistration);
+            return "redirect:/seller/register";
+        }
+
+        // Success: clear attempts
+        clearSellerOtpAttempts(session, user.getId(), "seller_register");
+
+        // Validate coins balance
         Long currentCoins = user.getCoins() == null ? 0L : user.getCoins();
         if (currentCoins < REGISTRATION_FEE && (user.getShopStatus() == null || !user.getShopStatus().equalsIgnoreCase("Active"))) {
             notificationService.createNotificationForUser(
@@ -224,6 +424,10 @@ public class SellerController {
             redirectAttributes.addFlashAttribute("sellerRegistration", sellerRegistration);
             return "redirect:/seller/register";
         }
+
+        // Mark OTP as used
+        verification.setUsed(true);
+        emailVerificationRepository.save(verification);
 
         // Enqueue registration request for idempotent, atomic processing
         String dedupeKey = UUID.randomUUID().toString();
@@ -241,9 +445,9 @@ public class SellerController {
             return "redirect:/seller/register";
         }
 
-        // Inform the user; actual activation will be applied shortly by the consumer
-        redirectAttributes.addFlashAttribute("successMessage", "Your registration request has been submitted. Your shop will be activated shortly if requirements are met.");
-        return "redirect:/seller/register";
+        // Redirect to shop-info page on success
+        redirectAttributes.addFlashAttribute("successMessage", "Your seller registration was successful! Welcome to your shop.");
+        return "redirect:/seller/shop-info";
     }
 
     @GetMapping("/shop-info")
@@ -288,8 +492,21 @@ public class SellerController {
             fallback.setShopName(user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop");
             fallback.setDescription("");
             model.addAttribute("shop", fallback);
+            model.addAttribute("totalFlags", 0);
+            model.addAttribute("activeFlags", 0);
         } else {
             model.addAttribute("shop", shop);
+            // Get flag statistics
+            Long totalFlags = entityManager.createQuery(
+                "SELECT COUNT(f) FROM ShopFlag f WHERE f.shop.id = :shopId", Long.class)
+                .setParameter("shopId", shop.getId())
+                .getSingleResult();
+            Long activeFlags = entityManager.createQuery(
+                "SELECT COUNT(f) FROM ShopFlag f WHERE f.shop.id = :shopId AND f.status = com.mmo.entity.ShopFlag$FlagStatus.ACTIVE", Long.class)
+                .setParameter("shopId", shop.getId())
+                .getSingleResult();
+            model.addAttribute("totalFlags", totalFlags != null ? totalFlags : 0);
+            model.addAttribute("activeFlags", activeFlags != null ? activeFlags : 0);
         }
         model.addAttribute("sellerEmail", user.getEmail());
         model.addAttribute("shopStatus", user.getShopStatus());
@@ -312,6 +529,69 @@ public class SellerController {
         if (user == null) return ResponseEntity.status(401).build();
         // No contract in new flow
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    /**
+     * Get shop flags for current seller
+     */
+    @GetMapping("/shop-flags")
+    @ResponseBody
+    public ResponseEntity<?> getShopFlags(Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Unauthorized"));
+            }
+
+            String email = auth.getName();
+            if (auth.getPrincipal() instanceof OidcUser oidc) {
+                email = oidc.getEmail();
+            } else if (auth.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "User not found"));
+            }
+
+            ShopInfo shop = entityManager.createQuery(
+                "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                .setParameter("u", user)
+                .getResultStream().findFirst().orElse(null);
+
+            if (shop == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Shop not found"));
+            }
+
+            // Get all flags for this shop
+            List<com.mmo.entity.ShopFlag> flags = entityManager.createQuery(
+                "SELECT f FROM ShopFlag f " +
+                "LEFT JOIN FETCH f.admin " +
+                "LEFT JOIN FETCH f.relatedComplaint " +
+                "WHERE f.shop.id = :shopId " +
+                "ORDER BY f.createdAt DESC",
+                com.mmo.entity.ShopFlag.class)
+                .setParameter("shopId", shop.getId())
+                .getResultList();
+
+            List<com.mmo.dto.ShopFlagResponse> flagResponses = flags.stream()
+                .map(com.mmo.dto.ShopFlagResponse::from)
+                .collect(java.util.stream.Collectors.toList());
+
+            return ResponseEntity.ok(Map.of(
+                "flags", flagResponses,
+                "total", flags.size(),
+                "active", flags.stream().filter(f -> f.getStatus() == com.mmo.entity.ShopFlag.FlagStatus.ACTIVE).count()
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to get shop flags: " + e.getMessage()));
+        }
     }
 
     @PostMapping(value = "/contract", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -2248,6 +2528,46 @@ public class SellerController {
             });
         } catch (Exception ignored) { }
     }
+
+    private void sendSellerRegistrationOtpForUser(User user) {
+        try {
+            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
+            User target = user;
+            emailExecutor.execute(() -> {
+                try {
+                    String code = authService.generateVerificationCode();
+                    com.mmo.entity.EmailVerification verification = new com.mmo.entity.EmailVerification();
+                    verification.setUser(target);
+                    verification.setVerificationCode(code);
+                    verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
+                    verification.setUsed(false);
+                    emailVerificationRepository.save(verification);
+                    String subject = "[MMOMarket] OTP Verify Seller Registration";
+                    String html = EmailTemplate.sellerRegistrationOtpEmail(code);
+                    emailService.sendEmailAsync(target.getEmail(), subject, html);
+                } catch (Exception ignored) { }
+            });
+        } catch (Exception ignored) { }
+    }
+
+    private ResponseEntity<String> handleOtpFailForSellerRegister(HttpSession session, HttpServletRequest request, Authentication authentication, User user, Long uid, String action, String baseMessage) {
+        int attempts = incSellerOtpAttempts(session, uid, action);
+        if (attempts >= 5) {
+            try {
+                new SecurityContextLogoutHandler().logout(request, null, authentication);
+            } catch (Exception ignored) { }
+            try { session.invalidate(); } catch (Exception ignored) { }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Too many OTP failures. You have been logged out. Please sign in again.");
+        } else if (attempts >= 3) {
+            try {
+                sendSellerRegistrationOtpForUser(user);
+            } catch (Exception ignored) {}
+            String warningMsg = "⚠️ Warning: You have entered an incorrect OTP " + attempts + " times. A new OTP has been sent to your email. Please check your inbox and use the latest OTP.";
+            return ResponseEntity.badRequest().body(warningMsg);
+        } else {
+            return ResponseEntity.badRequest().body(baseMessage + " (Attempt " + attempts + "/5)");
+        }
+    }
     private void sendDeleteShopOtpForUser(User user) {
         try {
             if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
@@ -2308,9 +2628,10 @@ public class SellerController {
                     sendWithdrawalOtpForUser(user);
                 }
             } catch (Exception ignored) {}
-            return ResponseEntity.badRequest().body(baseMessage + " A new OTP has been sent to your email. Please use the latest OTP.");
+            String warningMsg = "⚠️ Warning: You have entered an incorrect OTP " + attempts + " times. A new OTP has been sent to your email. Please check your inbox and use the latest OTP.";
+            return ResponseEntity.badRequest().body(warningMsg);
         } else {
-            return ResponseEntity.badRequest().body(baseMessage);
+            return ResponseEntity.badRequest().body(baseMessage + " (Attempt " + attempts + "/5)");
         }
     }
 

@@ -24,10 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -98,6 +95,9 @@ public class AdminController {
 
     @Autowired
     private com.mmo.repository.ChatRepository chatRepository;
+
+    @Autowired
+    private com.mmo.service.SepayApiService sepayApiService;
 
     // NEW: Admin Dashboard route
     @GetMapping({"", "/"})
@@ -711,6 +711,65 @@ public class AdminController {
             return ResponseEntity.ok(resp);
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/coin-deposits/{id}/retry", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> retryCoinDeposit(@PathVariable Long id, Authentication auth) {
+        try {
+            // Auth check
+            Authentication authentication = auth;
+            if (authentication == null || !authentication.isAuthenticated()) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "Unauthorized"));
+            }
+
+            // Admin validation
+            boolean hasAdminAuthority = false;
+            try {
+                if (authentication.getAuthorities() != null) {
+                    for (GrantedAuthority ga : authentication.getAuthorities()) {
+                        String a = ga == null || ga.getAuthority() == null ? "" : ga.getAuthority().trim();
+                        if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) {
+                            hasAdminAuthority = true;
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            User admin = null;
+            try {
+                admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                        .setParameter("e", authentication.getName())
+                        .getResultStream().findFirst().orElse(null);
+            } catch (Exception ignored) {}
+
+            boolean okAdmin = hasAdminAuthority;
+            if (!okAdmin && admin != null && admin.getRole() != null) {
+                String role = admin.getRole().trim();
+                if (role.toUpperCase().startsWith("ROLE_")) role = role.substring(5);
+                okAdmin = "ADMIN".equalsIgnoreCase(role);
+            }
+            if (!okAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Forbidden"));
+            }
+
+            // Call retry service
+            String result = sepayApiService.retryFailedDeposit(id);
+
+            boolean success = result.toLowerCase().startsWith("success");
+            return ResponseEntity.ok(Map.of(
+                "success", success,
+                "message", result
+            ));
+
+        } catch (Exception ex) {
+            logger.error("Error retrying deposit: ", ex);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Internal error: " + ex.getMessage()));
         }
     }
 
@@ -2000,31 +2059,60 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
             }
 
-            // Find the shop by id
+            // Find the shop by id with user joined
             ShopInfo shop = entityManager.createQuery(
-                            "SELECT s FROM ShopInfo s WHERE s.id = :id", ShopInfo.class)
+                            "SELECT s FROM ShopInfo s LEFT JOIN FETCH s.user WHERE s.id = :id", ShopInfo.class)
                     .setParameter("id", id)
                     .getSingleResult();
 
+            if (shop.getUser() == null) {
+                return ResponseEntity.badRequest().body("Shop owner not found");
+            }
+
+            User seller = shop.getUser();
+
             // Toggle the isDelete status
             boolean currentIsDelete = shop.isDelete();
-            shop.setDelete(!currentIsDelete);
+            boolean newIsDelete = !currentIsDelete;
+            shop.setDelete(newIsDelete);
 
-            if (!currentIsDelete) {
-                // If we're setting isDelete to true (deactivating), set deletedBy
+            // Update user shopStatus correspondingly
+            if (newIsDelete) {
+                // Deactivating: set isDelete=true AND shopStatus=Inactive
                 shop.setDeletedBy(admin);
+                seller.setShopStatus("Inactive");
+                logger.info("Admin {} deactivated shop {} - set isDelete=true and shopStatus=Inactive", admin.getId(), id);
+
+                // Also hide all products from this shop
+                int productsUpdated = entityManager.createQuery(
+                    "UPDATE Product p SET p.isDelete = true WHERE p.seller.id = :sellerId AND p.isDelete = false")
+                    .setParameter("sellerId", seller.getId())
+                    .executeUpdate();
+                logger.info("Deactivated {} products from shop {}", productsUpdated, id);
             } else {
-                // If we're setting isDelete to false (activating), clear deletedBy
+                // Activating: set isDelete=false AND shopStatus=Active
                 shop.setDeletedBy(null);
+                seller.setShopStatus("Active");
+                logger.info("Admin {} activated shop {} - set isDelete=false and shopStatus=Active", admin.getId(), id);
+
+                // Also restore all products from this shop
+                int productsUpdated = entityManager.createQuery(
+                    "UPDATE Product p SET p.isDelete = false WHERE p.seller.id = :sellerId AND p.isDelete = true")
+                    .setParameter("sellerId", seller.getId())
+                    .executeUpdate();
+                logger.info("Reactivated {} products from shop {}", productsUpdated, id);
             }
 
             entityManager.merge(shop);
+            entityManager.merge(seller);
 
             String action = currentIsDelete ? "activated" : "deactivated";
             return ResponseEntity.ok().body("Shop " + action + " successfully");
         } catch (RuntimeException e) {
+            logger.error("Error toggling shop status for shop {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception ex) {
+            logger.error("Internal error toggling shop status for shop {}", id, ex);
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
@@ -2369,9 +2457,52 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("User is already banned");
             }
 
+            // Set user as deleted (banned)
             user.setDelete(true);
             user.setDeletedBy(admin.getId());
+
+            // If user is a seller, also set shopStatus to Inactive for consistency
+            if (user.getShopStatus() != null && !"Inactive".equalsIgnoreCase(user.getShopStatus())) {
+                user.setShopStatus("Inactive");
+                logger.info("Admin {} banned user {} - set isDelete=true and shopStatus=Inactive", admin.getId(), id);
+            } else {
+                logger.info("Admin {} banned user {} - set isDelete=true", admin.getId(), id);
+            }
+
             entityManager.merge(user);
+
+            // Also update associated shop if exists
+            try {
+                ShopInfo shop = entityManager.createQuery(
+                    "SELECT s FROM ShopInfo s WHERE s.user.id = :userId", ShopInfo.class)
+                    .setParameter("userId", id)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+
+                if (shop != null && !shop.isDelete()) {
+                    shop.setDelete(true);
+                    entityManager.merge(shop);
+                    logger.info("Also set shop {} isDelete=true when banning user {}", shop.getId(), id);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not update shop for banned user {}: {}", id, e.getMessage());
+            }
+
+            // Hide all products from this banned user/seller
+            try {
+                int productsUpdated = entityManager.createQuery(
+                    "UPDATE Product p SET p.isDelete = true, p.deletedBy = :adminId WHERE p.seller.id = :userId AND p.isDelete = false")
+                    .setParameter("adminId", admin.getId())
+                    .setParameter("userId", id)
+                    .executeUpdate();
+
+                if (productsUpdated > 0) {
+                    logger.info("Banned user {} - also hid {} products", id, productsUpdated);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not update products for banned user {}: {}", id, e.getMessage());
+            }
 
             // Create notification for banned user
             notificationService.createNotificationForUser(user.getId(), "Account Banned",
@@ -2410,9 +2541,52 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("User is not banned");
             }
 
+            // Unban user
             user.setDelete(false);
             user.setDeletedBy(null);
+
+            // If user is/was a seller, also set shopStatus to Active for consistency
+            // Only set to Active if they had shopStatus before (not null)
+            if (user.getShopStatus() != null) {
+                user.setShopStatus("Active");
+                logger.info("Admin {} unbanned user {} - set isDelete=false and shopStatus=Active", admin.getId(), id);
+            } else {
+                logger.info("Admin {} unbanned user {} - set isDelete=false", admin.getId(), id);
+            }
+
             entityManager.merge(user);
+
+            // Also update associated shop if exists
+            try {
+                ShopInfo shop = entityManager.createQuery(
+                    "SELECT s FROM ShopInfo s WHERE s.user.id = :userId", ShopInfo.class)
+                    .setParameter("userId", id)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+
+                if (shop != null && shop.isDelete()) {
+                    shop.setDelete(false);
+                    entityManager.merge(shop);
+                    logger.info("Also set shop {} isDelete=false when unbanning user {}", shop.getId(), id);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not update shop for unbanned user {}: {}", id, e.getMessage());
+            }
+
+            // Restore all products from this unbanned user/seller
+            try {
+                int productsUpdated = entityManager.createQuery(
+                    "UPDATE Product p SET p.isDelete = false, p.deletedBy = null WHERE p.seller.id = :userId AND p.isDelete = true")
+                    .setParameter("userId", id)
+                    .executeUpdate();
+
+                if (productsUpdated > 0) {
+                    logger.info("Unbanned user {} - also restored {} products", id, productsUpdated);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not restore products for unbanned user {}: {}", id, e.getMessage());
+            }
 
             // Create notification for unbanned user
             notificationService.createNotificationForUser(user.getId(), "Account Unbanned",
@@ -2769,4 +2943,470 @@ public class AdminController {
                     .body(Map.of("error", "Failed to resolve complaint: " + e.getMessage()));
         }
     }
+
+    // ==================== SHOP FLAG MANAGEMENT ====================
+
+    @Autowired
+    private com.mmo.service.ShopFlagService shopFlagService;
+
+    @Autowired
+    private com.mmo.repository.ShopFlagRepository shopFlagRepository;
+
+    /**
+     * Flag Management page - List all flags
+     */
+    @GetMapping("/flag-management")
+    public String flagManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+                                 @RequestParam(name = "search", defaultValue = "") String search,
+                                 @RequestParam(name = "status", defaultValue = "All") String status,
+                                 @RequestParam(name = "level", defaultValue = "All") String level,
+                                 Model model) {
+        try {
+            StringBuilder jpql = new StringBuilder(
+                    "SELECT f FROM ShopFlag f " +
+                    "LEFT JOIN f.shop s " +
+                    "LEFT JOIN s.user su " +
+                    "LEFT JOIN f.admin a " +
+                    "WHERE 1=1"
+            );
+
+            // Status filter
+            if (!"All".equalsIgnoreCase(status)) {
+                if ("ACTIVE".equalsIgnoreCase(status)) {
+                    jpql.append(" AND f.status = com.mmo.entity.ShopFlag$FlagStatus.ACTIVE");
+                } else if ("RESOLVED".equalsIgnoreCase(status)) {
+                    jpql.append(" AND f.status = com.mmo.entity.ShopFlag$FlagStatus.RESOLVED");
+                }
+            }
+
+            // Level filter
+            if (!"All".equalsIgnoreCase(level)) {
+                if ("WARNING".equalsIgnoreCase(level)) {
+                    jpql.append(" AND f.flagLevel = com.mmo.entity.ShopFlag$FlagLevel.WARNING");
+                } else if ("SEVERE".equalsIgnoreCase(level)) {
+                    jpql.append(" AND f.flagLevel = com.mmo.entity.ShopFlag$FlagLevel.SEVERE");
+                } else if ("BANNED".equalsIgnoreCase(level)) {
+                    jpql.append(" AND f.flagLevel = com.mmo.entity.ShopFlag$FlagLevel.BANNED");
+                }
+            }
+
+            // Search filter - only search if shop exists
+            if (search != null && !search.trim().isEmpty()) {
+                jpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(su.fullName) LIKE LOWER(:search) OR CAST(f.id AS string) LIKE :search)");
+            }
+
+            jpql.append(" ORDER BY f.createdAt DESC");
+
+            // Count query
+            StringBuilder countJpql = new StringBuilder("SELECT COUNT(f) FROM ShopFlag f LEFT JOIN f.shop s LEFT JOIN s.user su WHERE 1=1");
+            if (!"All".equalsIgnoreCase(status)) {
+                if ("ACTIVE".equalsIgnoreCase(status)) {
+                    countJpql.append(" AND f.status = com.mmo.entity.ShopFlag$FlagStatus.ACTIVE");
+                } else if ("RESOLVED".equalsIgnoreCase(status)) {
+                    countJpql.append(" AND f.status = com.mmo.entity.ShopFlag$FlagStatus.RESOLVED");
+                }
+            }
+            if (!"All".equalsIgnoreCase(level)) {
+                if ("WARNING".equalsIgnoreCase(level)) {
+                    countJpql.append(" AND f.flagLevel = com.mmo.entity.ShopFlag$FlagLevel.WARNING");
+                } else if ("SEVERE".equalsIgnoreCase(level)) {
+                    countJpql.append(" AND f.flagLevel = com.mmo.entity.ShopFlag$FlagLevel.SEVERE");
+                } else if ("BANNED".equalsIgnoreCase(level)) {
+                    countJpql.append(" AND f.flagLevel = com.mmo.entity.ShopFlag$FlagLevel.BANNED");
+                }
+            }
+            if (search != null && !search.trim().isEmpty()) {
+                countJpql.append(" AND (LOWER(s.shopName) LIKE LOWER(:search) OR LOWER(su.fullName) LIKE LOWER(:search) OR CAST(f.id AS string) LIKE :search)");
+            }
+
+            TypedQuery<Long> countQuery = entityManager.createQuery(countJpql.toString(), Long.class);
+            if (search != null && !search.trim().isEmpty()) {
+                countQuery.setParameter("search", "%" + search.trim() + "%");
+            }
+            long total = countQuery.getSingleResult();
+
+            // Get paginated results
+            TypedQuery<com.mmo.entity.ShopFlag> query = entityManager.createQuery(jpql.toString(), com.mmo.entity.ShopFlag.class);
+            if (search != null && !search.trim().isEmpty()) {
+                query.setParameter("search", "%" + search.trim() + "%");
+            }
+            query.setFirstResult(page * 10);
+            query.setMaxResults(10);
+            List<com.mmo.entity.ShopFlag> flags = query.getResultList();
+
+            int totalPages = (int) Math.ceil((double) total / 10);
+
+            model.addAttribute("flags", flags);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentStatus", status);
+            model.addAttribute("currentLevel", level);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("pageTitle", "Flag Management");
+            model.addAttribute("body", "admin/flag-management");
+            return "admin/layout";
+        } catch (Exception e) {
+            logger.error("Error loading flag management page", e);
+            model.addAttribute("flags", new java.util.ArrayList<>());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentStatus", status);
+            model.addAttribute("currentLevel", level);
+            model.addAttribute("totalPages", 0);
+            model.addAttribute("errorMessage", "Error loading flags: " + e.getMessage());
+            model.addAttribute("pageTitle", "Flag Management");
+            model.addAttribute("body", "admin/flag-management");
+            return "admin/layout";
+        }
+    }
+
+    /**
+     * Create a new flag for a shop
+     */
+    @PostMapping("/shops/{shopId}/flag")
+    @ResponseBody
+    public ResponseEntity<?> flagShop(@PathVariable Long shopId,
+                                      @RequestBody CreateShopFlagRequest request,
+                                      Authentication auth) {
+        try {
+            logger.info("=== FLAG SHOP REQUEST START ===");
+            logger.info("Received flag request for shop {}", shopId);
+            logger.info("Request body: shopId={}, reason={}, flagLevel={}, relatedComplaintId={}",
+                    request.shopId(), request.reason(), request.flagLevel(), request.relatedComplaintId());
+
+            if (auth == null || !auth.isAuthenticated()) {
+                logger.warn("Unauthorized flag attempt for shop {}", shopId);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Unauthorized"));
+            }
+
+            String authEmail = auth.getName();
+            logger.info("Auth user email: {}", authEmail);
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", authEmail)
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null) {
+                logger.error("Admin user not found for email: {}", authEmail);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Admin user not found"));
+            }
+
+            logger.info("Admin found: id={}, role={}", admin.getId(), admin.getRole());
+
+            if (!"ADMIN".equalsIgnoreCase(admin.getRole())) {
+                logger.warn("Non-admin user {} (role={}) attempted to flag shop {}",
+                        authEmail, admin.getRole(), shopId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Forbidden - Admin role required"));
+            }
+
+            // Validate request
+            if (request.reason() == null || request.reason().trim().isEmpty()) {
+                logger.warn("Flag request missing reason for shop {}", shopId);
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Reason is required"));
+            }
+
+            if (request.flagLevel() == null || request.flagLevel().trim().isEmpty()) {
+                logger.warn("Flag request missing flag level for shop {}", shopId);
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Flag level is required"));
+            }
+
+            com.mmo.entity.ShopFlag.FlagLevel flagLevel;
+            try {
+                flagLevel = com.mmo.entity.ShopFlag.FlagLevel.valueOf(request.flagLevel().toUpperCase());
+                logger.info("Parsed flag level: {}", flagLevel);
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid flag level {} for shop {}", request.flagLevel(), shopId);
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Invalid flag level. Must be WARNING, SEVERE, or BANNED"));
+            }
+
+            logger.info("Creating {} flag for shop {} by admin {}", flagLevel, shopId, admin.getId());
+
+            com.mmo.entity.ShopFlag flag = shopFlagService.createFlag(
+                    shopId,
+                    admin.getId(),
+                    request.relatedComplaintId(),
+                    request.reason(),
+                    flagLevel
+            );
+
+            logger.info("Successfully created flag {} for shop {}", flag.getId(), shopId);
+            logger.info("=== FLAG SHOP REQUEST SUCCESS ===");
+
+            return ResponseEntity.ok(com.mmo.dto.ShopFlagResponse.from(flag));
+
+        } catch (Exception e) {
+            logger.error("=== FLAG SHOP REQUEST FAILED ===");
+            logger.error("Error flagging shop {}: {}", shopId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to flag shop: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Resolve a flag
+     */
+    @PutMapping("/flags/{flagId}/resolve")
+    @ResponseBody
+    public ResponseEntity<?> resolveFlag(@PathVariable Long flagId,
+                                         @RequestBody ResolveShopFlagRequest request,
+                                         Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || !"ADMIN".equalsIgnoreCase(admin.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden"));
+            }
+
+            com.mmo.entity.ShopFlag flag = shopFlagService.resolveFlag(flagId, request.resolutionNotes());
+
+            return ResponseEntity.ok(com.mmo.dto.ShopFlagResponse.from(flag));
+
+        } catch (Exception e) {
+            logger.error("Error resolving flag", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to resolve flag: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get flag details
+     */
+    @GetMapping("/flags/{flagId}")
+    @ResponseBody
+    public ResponseEntity<?> getFlagDetail(@PathVariable Long flagId, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            com.mmo.entity.ShopFlag flag = entityManager.createQuery(
+                    "SELECT f FROM ShopFlag f LEFT JOIN FETCH f.shop s LEFT JOIN FETCH s.user LEFT JOIN FETCH f.admin LEFT JOIN FETCH f.relatedComplaint WHERE f.id = :id",
+                    com.mmo.entity.ShopFlag.class
+            ).setParameter("id", flagId).getResultStream().findFirst().orElse(null);
+
+            if (flag == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Flag not found"));
+            }
+
+            return ResponseEntity.ok(com.mmo.dto.ShopFlagResponse.from(flag));
+
+        } catch (Exception e) {
+            logger.error("Error getting flag detail", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get flag detail: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get shop flag statistics
+     */
+    @GetMapping("/shops/{shopId}/flag-stats")
+    @ResponseBody
+    public ResponseEntity<?> getShopFlagStats(@PathVariable Long shopId, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            Map<String, Object> stats = shopFlagService.getShopFlagStats(shopId);
+            return ResponseEntity.ok(stats);
+
+        } catch (Exception e) {
+            logger.error("Error getting shop flag stats", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get shop flag stats: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Process amnesty request for a shop
+     */
+    @PostMapping("/shops/{shopId}/amnesty")
+    @ResponseBody
+    public ResponseEntity<?> processAmnesty(@PathVariable Long shopId, Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || !"ADMIN".equalsIgnoreCase(admin.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden"));
+            }
+
+            boolean success = shopFlagService.processAmnestyRequest(shopId);
+
+            if (success) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "Amnesty granted successfully"
+                ));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Shop is not eligible for amnesty. Requirements: No flags in last 90 days and at least one warning flag."
+                ));
+            }
+
+        } catch (Exception e) {
+            logger.error("Error processing amnesty", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to process amnesty: " + e.getMessage()));
+        }
+    }
+
+    // ==================== SCHEDULER MANAGEMENT ====================
+
+    @Autowired
+    private com.mmo.scheduler.ShopFlagScheduler shopFlagScheduler;
+
+    /**
+     * Manual trigger: Auto-remove old flags
+     * For testing scheduler without waiting
+     */
+    @PostMapping("/scheduler/flags/auto-remove")
+    @ResponseBody
+    public ResponseEntity<?> triggerAutoRemoveOldFlags(Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || !"ADMIN".equalsIgnoreCase(admin.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden"));
+            }
+
+            logger.info("Admin {} manually triggered auto-remove old flags job", admin.getId());
+            shopFlagScheduler.runAutoRemoveOldFlagsManually();
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Auto-remove old flags job triggered successfully. Check logs for details."
+            ));
+
+        } catch (Exception e) {
+            logger.error("Error triggering auto-remove old flags", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to trigger job: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Manual trigger: Check flags and notify admins
+     * For testing scheduler without waiting
+     */
+    @PostMapping("/scheduler/flags/check-notify")
+    @ResponseBody
+    public ResponseEntity<?> triggerCheckFlagsNotify(Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            User admin = entityManager.createQuery("select u from User u where lower(u.email)=lower(:e)", User.class)
+                    .setParameter("e", auth.getName())
+                    .getResultStream().findFirst().orElse(null);
+
+            if (admin == null || !"ADMIN".equalsIgnoreCase(admin.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden"));
+            }
+
+            logger.info("Admin {} manually triggered check flags and notify job", admin.getId());
+            shopFlagScheduler.runCheckFlagsManually();
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Check flags and notify admins job triggered successfully. Check logs for details."
+            ));
+
+        } catch (Exception e) {
+            logger.error("Error triggering check flags notify", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to trigger job: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get scheduler status and statistics
+     */
+    @GetMapping("/scheduler/flags/status")
+    @ResponseBody
+    public ResponseEntity<?> getSchedulerStatus(Authentication auth) {
+        try {
+            if (auth == null || !auth.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
+
+            // Get overall statistics
+            long totalFlags = entityManager.createQuery("SELECT COUNT(f) FROM ShopFlag f", Long.class)
+                    .getSingleResult();
+            long activeFlags = entityManager.createQuery(
+                    "SELECT COUNT(f) FROM ShopFlag f WHERE f.status = com.mmo.entity.ShopFlag$FlagStatus.ACTIVE", Long.class)
+                    .getSingleResult();
+            long resolvedFlags = entityManager.createQuery(
+                    "SELECT COUNT(f) FROM ShopFlag f WHERE f.status = com.mmo.entity.ShopFlag$FlagStatus.RESOLVED", Long.class)
+                    .getSingleResult();
+
+            // Flags eligible for auto-removal (older than 180 days)
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.add(java.util.Calendar.DAY_OF_MONTH, -180);
+            Date oneEightyDaysAgo = cal.getTime();
+
+            long eligibleForRemoval = entityManager.createQuery(
+                    "SELECT COUNT(f) FROM ShopFlag f WHERE f.status = com.mmo.entity.ShopFlag$FlagStatus.ACTIVE " +
+                    "AND f.createdAt < :date", Long.class)
+                    .setParameter("date", oneEightyDaysAgo)
+                    .getSingleResult();
+
+            // Shops needing penalty check
+            long shopsWithActiveFlags = entityManager.createQuery(
+                    "SELECT COUNT(DISTINCT f.shop.id) FROM ShopFlag f WHERE f.status = com.mmo.entity.ShopFlag$FlagStatus.ACTIVE", Long.class)
+                    .getSingleResult();
+
+            Map<String, Object> status = new java.util.HashMap<>();
+            status.put("totalFlags", totalFlags);
+            status.put("activeFlags", activeFlags);
+            status.put("resolvedFlags", resolvedFlags);
+            status.put("eligibleForAutoRemoval", eligibleForRemoval);
+            status.put("shopsWithActiveFlags", shopsWithActiveFlags);
+            status.put("schedulerEnabled", true);
+            status.put("schedules", Map.of(
+                    "autoRemoveOldFlags", "Daily at 2:00 AM - Auto-remove flags older than 180 days (cron: 0 0 2 * * ?)",
+                    "checkFlagsNotify", "Every 6 hours - Check flags and notify admins (3 flags/5 flags alerts, 7 flags auto-ban) (cron: 0 0 */6 * * ?)",
+                    "dailyReport", "Daily at 8:00 AM - Generate statistics report (cron: 0 0 8 * * ?)"
+            ));
+            status.put("notes", Map.of(
+                    "autoDowngrade", "NOT ENABLED - Admins must manually downgrade shop levels",
+                    "autoBan", "ENABLED - 7 flags or 1 BANNED flag will auto-ban shop"
+            ));
+
+            return ResponseEntity.ok(status);
+
+        } catch (Exception e) {
+            logger.error("Error getting scheduler status", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get scheduler status: " + e.getMessage()));
+        }
+    }
 }
+
+
