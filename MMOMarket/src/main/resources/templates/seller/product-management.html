@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MMO Market - Product Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: url('/images/home3.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .badge-sm { padding: 2px 8px; }
+        .cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tn { font-variant-numeric: tabular-nums; }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .product-img {
+            border-radius: 8px;
+            border: 2px solid #e0e7ff;
+            transition: all 0.2s ease;
+        }
+        .product-img:hover {
+            border-color: #6366f1;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
+</head>
+<body class="flex flex-col min-h-screen text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="flex-grow py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Sidebar -->
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-lg p-6 md:p-8 animate-fade-in">
+                    <!-- Header: Title left, Add Product right -->
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b-2 border-primary-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                                <i class="fas fa-boxes-stacked text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl md:text-3xl font-extrabold text-primary-900">Product Management</h1>
+                                <p class="text-sm text-gray-500 mt-1">Manage your products and inventory</p>
+                            </div>
+                        </div>
+                        <button type="button" id="addProductBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 font-medium">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Product</span>
+                        </button>
+                    </div>
+
+                    <!-- Filters bar under title -->
+                    <div class="mb-6 p-4 rounded-xl border-2 border-primary-200 bg-gradient-to-r from-primary-50 to-purple-50">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1">
+                                <label class="sr-only" for="pmSearch">Search products</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-primary-400"></i>
+                                    <input id="pmSearch" type="text" placeholder="Search products..." class="w-full pl-10 pr-3 py-2.5 rounded-lg border-2 border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-all" oninput="filterProducts()"/>
+                                </div>
+                            </div>
+                            <div class="w-full sm:w-48">
+                                <label for="statusFilter" class="sr-only">Status</label>
+                                <select id="statusFilter" class="w-full px-3 py-2.5 rounded-lg border-2 border-primary-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-medium transition-all" onchange="applyStatusFilter()" th:value="${status}">
+                                    <option value="all" th:selected="${status}=='all' or status==null or status==''">All</option>
+                                    <option value="active" th:selected="${status}=='active'">Active</option>
+                                    <option value="hidden" th:selected="${status}=='hidden'">Hidden</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flash area -->
+                    <div id="alertBox" class="hidden mb-4 p-4 rounded-xl border-2"></div>
+
+                    <div class="table-wrap border-2 border-primary-200 rounded-xl overflow-hidden shadow-sm">
+                        <table class="table-auto w-full bg-white text-xs">
+                            <colgroup>
+                                <col> <!-- Product takes remaining space -->
+                                <col style="width:1%"> <!-- Category minimal -->
+                                <col style="width:1%"> <!-- Variants minimal -->
+                                <col style="width:1%"> <!-- Price minimal -->
+                                <col style="width:1%"> <!-- Sold minimal -->
+                                <col style="width:1%"> <!-- Status minimal -->
+                                <col style="width:1%"> <!-- Actions minimal -->
+                            </colgroup>
+                            <thead>
+                            <tr class="bg-gradient-to-r from-primary-600 to-purple-600 text-white">
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-left text-xs font-bold align-middle uppercase tracking-tight">Product</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-left text-xs font-bold align-middle uppercase tracking-tight">Category</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-center text-xs font-bold align-middle uppercase tracking-tight">Variants</th>
+                                <th class="px-3 py-2 h-10 whitespace-nowrap text-right text-xs font-bold align-middle uppercase tracking-tight">
+                                    <a th:with="isPriceAsc=${sortPrice}=='asc',
+                                                isPriceDesc=${sortPrice}=='desc',
+                                                nextSort=${isPriceAsc} ? 'desc' : 'asc',
+                                                sortUrl=@{'/seller/product-management'(sortPrice=${nextSort}, status=${status})}"
+                                       th:href="${sortUrl}"
+                                       class="inline-flex items-center gap-1 hover:text-white cursor-pointer transition-colors">
+                                        <span>Price</span>
+                                        <span class="inline-flex flex-col text-xs leading-none">
+                                            <i class="fas fa-caret-up" th:classappend="${isPriceAsc} ? ' text-white' : ' text-white/70'"></i>
+                                            <i class="fas fa-caret-down -mt-1" th:classappend="${isPriceDesc} ? ' text-white' : ' text-white/70'"></i>
+                                        </span>
+                                    </a>
+                                </th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-right text-xs font-bold align-middle uppercase tracking-tight">Sold</th>
+                                <th class="px-2 py-2 h-10 whitespace-nowrap text-center text-xs font-bold align-middle uppercase tracking-tight">Status</th>
+                                <th class="px-6 py-2 h-10 whitespace-nowrap text-right text-xs font-bold align-middle uppercase tracking-tight">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-primary-100" id="productTbody">
+                            <tr th:each="p : ${products}" th:classappend="${p.isDelete} ? 'opacity-60' : ''" th:attr="data-id=${p.id}" class="hover:bg-primary-50 transition-colors duration-150">
+                                <td class="px-2 py-2 align-middle">
+                                    <div class="flex items-center gap-2">
+                                        <img th:src="${p.image != null ? p.image : '/images/default-avatar.svg'}" alt="thumb" class="w-10 h-10 object-cover rounded-lg product-img"/>
+                                        <div class="min-w-0" th:title="${p.name}">
+                                            <div class="font-semibold text-gray-900 truncate text-xs" th:text="${p.name}">Product name</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-2 py-2 cell align-middle" th:title="${p.category != null ? p.category.name : '—'}">
+                                    <span class="text-xs font-medium text-gray-700" th:text="${p.category != null ? p.category.name : '—'}">—</span>
+                                </td>
+                                <td class="px-2 py-2 text-center align-middle whitespace-nowrap">
+                                    <span class="text-xs font-semibold inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200">
+                                        <i class="fa-solid fa-layer-group text-xs"></i>
+                                        <span th:text="${p.variantCount}">0</span>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-2 text-right align-middle whitespace-nowrap" th:title="${#numbers.formatInteger(p.lowestPrice, 0, 'COMMA')}">
+                                    <span class="text-xs font-bold text-emerald-600 tn" th:text="${#numbers.formatInteger(p.lowestPrice, 0, 'COMMA') }">0</span>
+                                </td>
+                                <td class="px-2 py-2 text-right align-middle whitespace-nowrap" th:title="${#numbers.formatInteger(p.totalSold, 0, 'COMMA')}">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 text-xs font-semibold">
+                                        <i class="fa-solid fa-cart-shopping text-xs"></i>
+                                        <span class="tn" th:text="${#numbers.formatInteger(p.totalSold, 0, 'COMMA')}">0</span>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-2 text-center align-middle whitespace-nowrap">
+                                    <span th:classappend="${!p.isDelete} ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200' : 'bg-gray-200 text-gray-700 border border-gray-300'" class="badge badge-sm text-xs">
+                                        <i th:classappend="${!p.isDelete} ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'" class="text-xs"></i>
+                                        <span th:text="${!p.isDelete} ? 'Active' : 'Hidden'">Active</span>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-2 text-right whitespace-nowrap align-middle">
+                                    <div class="inline-flex items-center gap-1">
+                                        <!-- Link to seller product detail page -->
+                                        <a class="p-1.5 rounded-lg hover:bg-primary-100 text-primary-600 inline-flex items-center transition-colors" th:href="@{'/seller/products/' + ${p.id} + '/detail'}" title="Details">
+                                            <i class="fa-regular fa-eye text-sm"></i>
+                                        </a>
+                                        <button type="button" class="p-1.5 rounded-lg hover:bg-primary-100 text-primary-600 transition-colors" th:attr="data-id=${p.id}" onclick="openEditModal(this)" title="Edit">
+                                            <i class="fa-regular fa-pen-to-square text-sm"></i>
+                                        </button>
+                                        <button type="button" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" th:attr="data-id=${p.id}" onclick="toggleHide(this)" title="Hide/Show">
+                                            <i class="fa-solid fa-eye-slash text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${products == null or #lists.isEmpty(products)}">
+                                <td colspan="7" class="px-4 py-8 text-center">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i class="fa-solid fa-inbox text-4xl text-gray-300"></i>
+                                        <span class="text-gray-500 font-medium text-sm">No products yet</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination (transaction-management style) -->
+                    <div class="flex flex-col sm:flex-row justify-between items-center mt-6 pt-6 border-t-2 border-primary-100 space-y-3 sm:space-y-0"
+                         th:with="sortParam=${sortPrice != null and sortPrice != '' ? '&sortPrice=' + sortPrice : ''},
+                                  statusParam=${status != null and status != '' ? '&status=' + status : ''},
+                                  page0=${currentPage != null ? currentPage - 1 : 0},
+                                  total=${totalPages != null and totalPages > 0 ? totalPages : 1}">
+
+                        <div class="text-sm text-primary-900 font-medium text-center sm:text-left bg-primary-50 px-4 py-2 rounded-lg border border-primary-200">
+                            <span th:with="s=${startItem != null ? startItem : (totalItems > 0 ? 1 : 0)}, e=${endItem != null ? endItem : (totalItems > 0 ? (pageSize != null ? ( (currentPage != null ? ((currentPage -1) * pageSize + 1) : 1) + ( (totalItems < pageSize) ? (totalItems -1) : (pageSize -1) ) ) : totalItems) : 0)}">
+                                <i class="fa-solid fa-list-check text-primary-600 mr-1"></i>
+                                <span th:text="${totalItems == 0 ? 'Showing 0 of 0 results' : 'Showing ' + s + ' to ' + e + ' of ' + totalItems + ' results'}">Showing 0 to 0 of 0 results</span>
+                            </span>
+                        </div>
+
+                        <div class="flex space-x-2 flex-wrap justify-center">
+                            <a class="px-3 sm:px-4 py-2 border-2 border-primary-200 rounded-lg hover:bg-primary-50 hover:border-primary-300 font-medium text-primary-700 transition-all"
+                               th:with="url='/seller/product-management?page=' + ${currentPage > 1 ? (currentPage - 1) : 1} + ${statusParam} + ${sortParam}"
+                               th:href="${url}"
+                               th:if="${currentPage > 1}">
+                                <i class="fa-solid fa-chevron-left mr-1"></i>Previous
+                            </a>
+
+                            <a class="px-3 sm:px-4 py-2 border-2 rounded-lg font-medium transition-all"
+                               th:each="i : ${#numbers.sequence(0, total - 1)}"
+                               th:with="url='/seller/product-management?page=' + (${i} + 1) + ${statusParam} + ${sortParam}"
+                               th:href="${url}"
+                               th:if="${i == 0 or i == page0 or i == page0 - 1 or i == page0 + 1 or i == total - 1}"
+                               th:classappend="${i == page0} ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white border-primary-600 shadow-md' : 'border-primary-200 text-primary-700 hover:bg-primary-50 hover:border-primary-300'"
+                               th:text="${i + 1}">1</a>
+
+                            <a class="px-3 sm:px-4 py-2 border-2 border-primary-200 rounded-lg hover:bg-primary-50 hover:border-primary-300 font-medium text-primary-700 transition-all"
+                               th:with="url='/seller/product-management?page=' + (${currentPage < total ? (currentPage + 1) : total}) + ${statusParam} + ${sortParam}"
+                               th:href="${url}"
+                               th:if="${currentPage < total}">
+                                Next<i class="fa-solid fa-chevron-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden CSRF carrier form -->
+    <form id="csrfForm" class="hidden">
+        <input type="hidden" name="_csrf" th:if="${_csrf != null}" th:value="${_csrf.token}"/>
+    </form>
+</main>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- Edit Product Modal -->
+<div id="editModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
+        <div class="px-6 py-4 bg-gradient-to-r from-primary-600 to-purple-600 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </div>
+                <span id="epTitleText">Add Product</span>
+            </h3>
+            <button class="text-2xl leading-none text-white/80 hover:text-white transition-colors" onclick="closeEditModal()">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="p-6 flex-1 overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epName">
+                        <i class="fa-solid fa-tag text-primary-600 mr-1"></i>Product Name
+                    </label>
+                    <input id="epName" type="text" required class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all" placeholder="Enter product name"/>
+                    <div id="errName" class="mt-1 text-sm text-red-600 hidden" aria-live="polite"></div>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epCategory">
+                        <i class="fa-solid fa-folder text-primary-600 mr-1"></i>Category
+                    </label>
+                    <select id="epCategory" required class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all">
+                        <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
+                    </select>
+                    <div id="errCategory" class="mt-1 text-sm text-red-600 hidden" aria-live="polite"></div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epDesc">
+                        <i class="fa-solid fa-align-left text-primary-600 mr-1"></i>Description
+                    </label>
+                    <textarea id="epDesc" rows="5" required class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all" placeholder="Product description..."></textarea>
+                    <div id="errDesc" class="mt-1 text-sm text-red-600 hidden" aria-live="polite"></div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epImageFile">
+                        <i class="fa-solid fa-image text-primary-600 mr-1"></i>Upload Image
+                    </label>
+                    <input id="epImageFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition-all"/>
+                    <div id="errImage" class="mt-1 text-sm text-red-600 hidden" aria-live="polite"></div>
+                    <div class="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                        <i class="fa-solid fa-info-circle text-primary-500"></i>
+                        <span>PNG, JPG, JPEG, WEBP. Maximum 10MB. <span id="epImageHint" class="font-semibold text-primary-600 hidden"></span></span>
+                    </div>
+                    <img id="epPreview" src="" alt="preview" class="w-full h-56 object-contain rounded-lg border-2 border-primary-200 bg-gradient-to-br from-primary-50 to-purple-50 mt-3 hidden"/>
+                </div>
+                <!-- Hidden image URL field: store final image URL here -->
+                <input id="epImageUrl" type="hidden" />
+            </div>
+            <div id="epMsg" class="mt-4 text-sm"></div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t-2 border-primary-100 flex items-center justify-end gap-3">
+            <button type="button" class="px-5 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 font-medium text-gray-700 transition-all" onclick="closeEditModal()">
+                <i class="fa-solid fa-times mr-1"></i>Cancel
+            </button>
+            <button type="button" id="epSaveBtn" class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white font-medium shadow-md hover:shadow-lg transition-all">
+                <i class="fa-solid fa-save mr-1"></i>Save
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- product-detail is a separate full page now at /seller/products/{id}/detail -->
+
+<!-- Toast container -->
+<div id="toastHost" class="fixed top-4 right-4 z-[100] w-80 max-w-[92vw] space-y-3 pointer-events-none"></div>
+
+<script>
+    // CSRF helpers
+    function getCookie(name) {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+    function getCsrf() {
+        let token = null, headerName = 'X-CSRF-TOKEN';
+        const form = document.getElementById('csrfForm');
+        if (form) {
+            const i = form.querySelector('input[type="hidden"]');
+            if (i && i.value) token = i.value;
+        }
+        if (!token) {
+            const meta = document.querySelector('meta[name="_csrf"]');
+            if (meta && meta.content) token = meta.content;
+        }
+        const metaHeader = document.querySelector('meta[name="_csrf_header"]');
+        if (metaHeader && metaHeader.content) headerName = metaHeader.content;
+        if (!token) token = getCookie('XSRF-TOKEN') || getCookie('xsrf-token');
+        return { value: token, headerName };
+    }
+    function csrfHeaders() {
+        const c = getCsrf();
+        const h = {};
+        if (c.value) {
+            h[c.headerName] = c.value;
+            h['X-CSRF-TOKEN'] = c.value;
+            h['X-XSRF-TOKEN'] = c.value;
+        }
+        return h;
+    }
+
+    // Ensure status filter defaults to 'all' on first load
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('statusFilter');
+        if (sel && (!sel.value || sel.value === '')) {
+            sel.value = 'all';
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has('status')) {
+                params.set('status', 'all');
+                window.history.replaceState(null, '', window.location.pathname + (params.toString() ? ('?' + params.toString()) : ''));
+            }
+        }
+    });
+
+    // Toast helper (kept for success creation only)
+    function showToast(message, type = 'info', opts = {}) {
+        if (!message) return;
+        const host = document.getElementById('toastHost');
+        if (!host) return;
+        const theme = {
+            success: { bar:'bg-green-500', icon:'fa-solid fa-circle-check text-green-600', title:'Success' },
+            error:   { bar:'bg-red-500',   icon:'fa-solid fa-triangle-exclamation text-red-600', title:'Error' },
+            warning: { bar:'bg-amber-500', icon:'fa-solid fa-circle-exclamation text-amber-600', title:'Warning' },
+            info:    { bar:'bg-blue-500',  icon:'fa-solid fa-circle-info text-blue-600', title:'Info' }
+        }[type] || { bar:'bg-gray-500', icon:'fa-regular fa-bell text-gray-600', title:'Notice' };
+        const wrap = document.createElement('div');
+        wrap.className = 'pointer-events-auto flex items-start gap-3 bg-white shadow-xl rounded-xl border border-gray-100 relative overflow-hidden transform transition-all duration-300 translate-x-4 opacity-0';
+        const bar = document.createElement('div'); bar.className = 'w-1 ' + theme.bar; wrap.appendChild(bar);
+        const inner = document.createElement('div'); inner.className = 'p-3 pr-8';
+        inner.innerHTML = `<div class="flex items-start gap-2">
+            <i class="${theme.icon} mt-0.5"></i>
+            <div class="min-w-0">
+                <div class="text-sm font-semibold text-gray-900">${theme.title}</div>
+                <div class="text-sm text-gray-700 break-words">${message}</div>
+            </div>
+        </div>`;
+        wrap.appendChild(inner);
+        const closeBtn = document.createElement('button'); closeBtn.className = 'absolute top-2 right-2 text-gray-400 hover:text-gray-600'; closeBtn.innerHTML = '&times;'; closeBtn.onclick = () => dismiss(); wrap.appendChild(closeBtn);
+        host.appendChild(wrap);
+        requestAnimationFrame(() => { wrap.classList.remove('translate-x-4','opacity-0'); wrap.classList.add('translate-x-0','opacity-100'); });
+        const ttl = opts.ttl || (type === 'error' ? 5000 : 3200);
+        let timer = setTimeout(() => dismiss(), ttl);
+        wrap.addEventListener('mouseenter', () => { if (timer) { clearTimeout(timer); timer = null; } });
+        wrap.addEventListener('mouseleave', () => { if (!timer) { timer = setTimeout(() => dismiss(), 1800); } });
+        function dismiss(){ wrap.classList.add('opacity-0','translate-x-4'); setTimeout(()=>{ try{ host.removeChild(wrap);}catch(_){ } },200); }
+    }
+
+    // Inline alert helper — shows messages inside page elements.
+    // targetId: 'alertBox' for page-level alerts, 'epMsg' for modal messages.
+    function showInline(message, type = 'error', opts = {}) {
+        if (!message) return;
+        const targetId = opts.targetId || 'alertBox';
+        const target = document.getElementById(targetId);
+        if (!target) {
+            // fallback to toast if no inline container found
+            showToast(message, type, opts);
+            return;
+        }
+        // Build simple inline message appearance
+        const theme = {
+            success: { bar: 'bg-green-500', title: 'Success', wrap: 'bg-green-50 border-green-200 text-green-800' },
+            error:   { bar: 'bg-red-500',   title: 'Error',   wrap: 'bg-red-50 border-red-200 text-red-800' },
+            warning: { bar: 'bg-amber-500', title: 'Warning', wrap: 'bg-amber-50 border-amber-200 text-amber-800' },
+            info:    { bar: 'bg-blue-500',  title: 'Info',    wrap: 'bg-blue-50 border-blue-200 text-blue-800' }
+        }[type] || { bar: 'bg-gray-500', title: 'Notice', wrap: 'bg-gray-50 border-gray-200 text-gray-800' };
+
+        // If target is modal message area, we keep it simple and persistent until next action.
+        if (targetId === 'epMsg') {
+            target.classList.remove('hidden');
+            target.innerHTML = `<div class="p-3 rounded-md border ${theme.wrap} text-sm"><strong class="mr-2">${theme.title}:</strong>${message}</div>`;
+            if (opts.autoHide) {
+                setTimeout(() => { target.innerHTML = ''; target.classList.add('hidden'); }, opts.ttl || 4000);
+            }
+            return;
+        }
+
+        // Page-level alert (alertBox) — show briefly then auto-hide
+        target.classList.remove('hidden');
+        target.innerHTML = `<div class="flex items-start gap-3">
+            <div class="w-1 ${theme.bar} rounded-sm"></div>
+            <div class="flex-1 p-2 text-sm">
+                <strong class="block">${theme.title}</strong>
+                <div>${message}</div>
+            </div>
+            <button type="button" class="text-gray-500 ml-2" aria-label="close" onclick="(function(el){el.innerHTML='';el.classList.add('hidden');})(document.getElementById('${targetId}'))">&times;</button>
+        </div>`;
+        if (opts.ttl !== 0) {
+            setTimeout(() => { try { target.innerHTML = ''; target.classList.add('hidden'); } catch(_){} }, opts.ttl || 4500);
+        }
+    }
+
+    // Backward compat: use showInline directly if needed
+
+    // Client-side filter by product name
+    function filterProducts() {
+        const q = (document.getElementById('pmSearch')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('#productTbody tr[data-id]');
+        rows.forEach(r => {
+            const nameEl = r.querySelector('td:nth-child(1) .font-semibold');
+            const name = (nameEl?.textContent || '').toLowerCase();
+            r.style.display = q && !name.includes(q) ? 'none' : '';
+        });
+    }
+
+    let editingId = null;
+
+    // NOTE: client-side field validation removed. Use HTML `required` attributes and backend validation.
+    function clearFieldErrors() {
+        // clear per-field error boxes and modal message
+        const ids = ['errName','errCategory','errDesc', 'errImage', 'epMsg'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = '';
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+    }
+
+    async function openEditModal(btn) {
+        const id = btn?.getAttribute('data-id'); if (!id) return; editingId = id;
+        try {
+            const res = await fetch('/seller/products/' + encodeURIComponent(id) + '/json', { method: 'GET' });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            document.getElementById('epName').value = data.name || '';
+            document.getElementById('epDesc').value = data.description || '';
+            // set hidden image url and preview - show existing image
+            const imageHidden = document.getElementById('epImageUrl'); if (imageHidden) imageHidden.value = data.image || '';
+            const prev = document.getElementById('epPreview'); if (prev) { if (data.image) { prev.src = data.image; prev.classList.remove('hidden'); } else { prev.src=''; prev.classList.add('hidden'); } }
+            const catSel = document.getElementById('epCategory'); if (data.categoryId && catSel) { catSel.value = String(data.categoryId); }
+            const file = document.getElementById('epImageFile'); if (file) { try { file.value=''; file.removeAttribute('required'); } catch(_){} }
+            // Show hint for edit mode
+            const hint = document.getElementById('epImageHint'); if (hint) hint.classList.remove('hidden');
+            const title = document.getElementById('epTitleText'); if (title) title.textContent = 'Edit Product';
+            const save = document.getElementById('epSaveBtn'); if (save) save.textContent = 'Save';
+            clearFieldErrors();
+             document.getElementById('epMsg').textContent = '';
+             document.getElementById('editModal').classList.remove('hidden');
+         } catch (e) { showInline('Failed to load product data.', 'error'); }
+     }
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        const prev = document.getElementById('epPreview'); if (prev) { prev.src=''; prev.classList.add('hidden'); }
+        const imageHidden = document.getElementById('epImageUrl'); if (imageHidden) imageHidden.value = '';
+        editingId = null;
+    }
+
+    // Updated applyStatusFilter: always set a status param (default 'all')
+    function applyStatusFilter() {
+        const sel = document.getElementById('statusFilter');
+        const status = sel ? (sel.value || 'all') : 'all';
+        const params = new URLSearchParams(window.location.search);
+        // Always keep an explicit status param; default is 'all'
+        params.set('status', status);
+        const qs = params.toString();
+        window.location.assign(window.location.pathname + (qs ? ('?' + qs) : ''));
+    }
+
+    // Add Product (create mode)
+    const addBtn = document.getElementById('addProductBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function() {
+            editingId = null;
+            document.getElementById('epName').value = '';
+            document.getElementById('epDesc').value = '';
+            const imageHidden = document.getElementById('epImageUrl'); if (imageHidden) imageHidden.value = '';
+            const catSel = document.getElementById('epCategory'); if (catSel) catSel.selectedIndex = 0;
+            const prev = document.getElementById('epPreview'); if (prev) { prev.src=''; prev.classList.add('hidden'); }
+            const file = document.getElementById('epImageFile'); if (file) { try { file.value=''; file.setAttribute('required', 'required'); } catch(_){} }
+            // Hide hint for create mode
+            const hint = document.getElementById('epImageHint'); if (hint) hint.classList.add('hidden');
+            const title = document.getElementById('epTitleText'); if (title) title.textContent = 'Add Product';
+            const save = document.getElementById('epSaveBtn'); if (save) save.textContent = 'Create';
+            clearFieldErrors();
+             document.getElementById('epMsg').textContent = '';
+             document.getElementById('editModal').classList.remove('hidden');
+         });
+     }
+
+    // Busy state
+    function setBusy(el, busy, textWhileBusy) {
+        if (!el) return; el.disabled = !!busy;
+        if (busy) { el.dataset._oldText = el.textContent; el.textContent = textWhileBusy || 'Processing...'; el.classList.add('opacity-70','cursor-not-allowed'); }
+        else { if (el.dataset._oldText) el.textContent = el.dataset._oldText; el.classList.remove('opacity-70','cursor-not-allowed'); }
+    }
+
+    // Save (create/edit) — automatically upload selected image file (if any) before sending create/edit request
+    const epSaveBtn = document.getElementById('epSaveBtn');
+    epSaveBtn.addEventListener('click', async function () {
+        // Use browser native validation UI for required fields (pre-check) before sending to backend
+        const requiredEls = [document.getElementById('epName'), document.getElementById('epCategory'), document.getElementById('epDesc'), document.getElementById('epImageFile')];
+        for (const el of requiredEls) {
+            if (!el) continue;
+            if (typeof el.reportValidity === 'function') {
+                if (!el.reportValidity()) return; // show browser message and stop
+            }
+        }
+         const name = document.getElementById('epName').value.trim();
+         const description = document.getElementById('epDesc').value.trim();
+         const categoryId = document.getElementById('epCategory').value;
+        // image URL is stored in hidden field epImageUrl; we'll override it if user selected a new file
+        const imageHidden = document.getElementById('epImageUrl');
+        const currentImageUrl = imageHidden ? (imageHidden.value || '').trim() : '';
+        const payload = { name, description, image: currentImageUrl, categoryId };
+        // No client-side validation here; backend will validate. HTML `required` attributes are set on inputs.
+        const headers = Object.assign({ 'Content-Type': 'application/json' }, csrfHeaders());
+        setBusy(epSaveBtn, true, editingId ? 'Saving...' : 'Creating...');
+        try {
+            // If user has selected a file, upload it first and set payload.image to returned url
+            const file = document.getElementById('epImageFile')?.files?.[0];
+            if (file) {
+                // No client-side strict validation for file type/size — backend will validate. Only show preview.
+                const data = new FormData(); data.append('file', file);
+                // perform upload
+                const upRes = await fetch('/seller/products/upload-image', { method: 'POST', headers: csrfHeaders(), body: data, credentials: 'same-origin' });
+                let upPayload = null; try { upPayload = await upRes.json(); } catch(_) { try { upPayload = JSON.parse(await upRes.text()); } catch(_) { upPayload = null; } }
+                if (!upRes.ok || !(upPayload && upPayload.url)) {
+                    showInline((upPayload && (upPayload.message || upPayload.error || upPayload.url)) || 'Upload failed', 'error', { targetId: 'epMsg', autoHide: false }); setBusy(epSaveBtn, false); return;
+                }
+                payload.image = upPayload.url;
+                // update hidden field and preview
+                if (imageHidden) imageHidden.value = upPayload.url;
+                const prev = document.getElementById('epPreview'); if (prev) { prev.src = upPayload.url; prev.classList.remove('hidden'); }
+            }
+
+            const url = editingId ? ('/seller/products/' + encodeURIComponent(editingId)) : '/seller/products';
+            const method = editingId ? 'PUT' : 'POST';
+            const res = await fetch(url, { method: method, headers, body: JSON.stringify(payload), credentials: 'same-origin' });
+            const text = await res.text();
+            let data = null; try { data = JSON.parse(text); } catch(_){ }
+            if (!res.ok) {
+                // Show backend validation messages inline. Prefer data.message, but if fieldErrors contains description/image
+                // put them into their field containers (errDesc/errImage). Otherwise show combined message in epMsg.
+                const fe = data && data.fieldErrors ? data.fieldErrors : null;
+                // clear previous field errors
+                clearFieldErrors();
+                if (fe) {
+                    let shown = false;
+                    if (fe.name) {
+                        const nameEl = document.getElementById('errName');
+                        if (nameEl) { nameEl.innerHTML = Array.isArray(fe.name) ? fe.name.join('<br/>') : String(fe.name); nameEl.classList.remove('hidden'); shown = true; }
+                    }
+                    if (fe.categoryId) {
+                        const catEl = document.getElementById('errCategory');
+                        if (catEl) { catEl.innerHTML = Array.isArray(fe.categoryId) ? fe.categoryId.join('<br/>') : String(fe.categoryId); catEl.classList.remove('hidden'); shown = true; }
+                    }
+                    if (fe.description) {
+                        const descEl = document.getElementById('errDesc');
+                        if (descEl) { descEl.innerHTML = Array.isArray(fe.description) ? fe.description.join('<br/>') : String(fe.description); descEl.classList.remove('hidden'); shown = true; }
+                    }
+                    if (fe.image) {
+                        const imgEl = document.getElementById('errImage');
+                        if (imgEl) { imgEl.innerHTML = Array.isArray(fe.image) ? fe.image.join('<br/>') : String(fe.image); imgEl.classList.remove('hidden'); shown = true; }
+                    }
+                    // If there are other field errors or a general message, show them in epMsg
+                    const otherKeys = Object.keys(fe || {}).filter(k => k !== 'description' && k !== 'image' && k !== 'name' && k !== 'categoryId');
+                    let message = (data && data.message) || text || 'Request failed';
+                    if (otherKeys.length) {
+                        const parts = otherKeys.map(k => {
+                            const v = fe[k];
+                            return k + ': ' + (Array.isArray(v) ? v.join('; ') : String(v));
+                        });
+                        message += ' — ' + parts.join(' ; ');
+                        showInline(message, 'error', { targetId: 'epMsg', autoHide: false });
+                        shown = true;
+                    }
+                    if (!shown) {
+                        // If fieldErrors only contained description/image/name/category they are shown above; if not, show general message
+                        if (!(fe.description || fe.image || fe.name || fe.categoryId)) showInline(message, 'error', { targetId: 'epMsg', autoHide: false });
+                    }
+                } else {
+                    const message = (data && data.message) || text || 'Request failed';
+                    showInline(message, 'error', { targetId: 'epMsg', autoHide: false });
+                }
+                return;
+            }
+            // On success: only creation (POST) shows toast; updates show inline message
+            const successMsg = (data && data.message) || (editingId ? 'Updated successfully' : 'Created successfully');
+            if (!editingId) {
+                showToast(successMsg, 'success');
+            } else {
+                showInline(successMsg, 'success', { targetId: 'alertBox' });
+            }
+            setTimeout(() => window.location.reload(), 600);
+        } catch (e) { showInline('Network error', 'error', { targetId: editingId ? 'epMsg' : 'alertBox', autoHide: false }); }
+        finally { setBusy(epSaveBtn, false); }
+    });
+
+    // Image preview on file select
+    const epImageFile = document.getElementById('epImageFile');
+    const epPreview = document.getElementById('epPreview');
+    let epTempPreviewUrl = null;
+
+    if (epImageFile) {
+        epImageFile.addEventListener('change', function () {
+            const file = epImageFile.files?.[0]; if (!file) return;
+             // No client-side strict validation for file type/size — backend will validate. Only show preview.
+             if (epTempPreviewUrl) { try { URL.revokeObjectURL(epTempPreviewUrl); } catch(_){} epTempPreviewUrl = null; }
+             const url = URL.createObjectURL(file); epTempPreviewUrl = url; epPreview.src = url; epPreview.classList.remove('hidden');
+            showInline('Image selected — it will be uploaded when you click Create/Save.', 'info', { targetId: 'epMsg', autoHide: true, ttl: 3500 });
+        });
+    }
+
+    // Toggle hide/show
+    async function toggleHide(btn) {
+        const id = btn?.getAttribute('data-id'); if (!id) return;
+        try {
+            const res = await fetch('/seller/products/' + encodeURIComponent(id) + '/toggle-hide', { method: 'POST', headers: csrfHeaders(), credentials: 'same-origin' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) { showInline('Unable to update product status', 'error'); return; }
+            const row = document.querySelector('tr[data-id="' + id + '"]');
+            if (row) {
+                const badge = row.querySelector('td:nth-child(6) .badge');
+                if (badge) {
+                    if (data.hidden) {
+                        badge.classList.remove('bg-green-100','text-green-700');
+                        badge.classList.add('bg-gray-200','text-gray-700');
+                        const span = badge.querySelector('span'); if (span) span.textContent = 'Hidden';
+                        const icon = badge.querySelector('i'); if (icon) icon.className = 'fa-solid fa-eye-slash';
+                        row.classList.add('opacity-60');
+                    } else {
+                        badge.classList.remove('bg-gray-200','text-gray-700');
+                        badge.classList.add('bg-green-100','text-green-700');
+                        const span = badge.querySelector('span'); if (span) span.textContent = 'Active';
+                        const icon = badge.querySelector('i'); if (icon) icon.className = 'fa-solid fa-eye';
+                        row.classList.remove('opacity-60');
+                    }
+                }
+            }
+
+            // Adjust status filter and URL to keep this product visible after refresh
+            const sel = document.getElementById('statusFilter');
+            const newFilter = data.hidden ? 'hidden' : 'active';
+            if (sel) sel.value = newFilter;
+            const params = new URLSearchParams(window.location.search);
+            params.set('status', newFilter);
+            // Preserve existing sort/page params
+            const newUrl = window.location.pathname + '?' + params.toString();
+            if (newUrl !== window.location.href) {
+                window.history.replaceState(null, '', newUrl);
+            }
+
+            showInline('Product status updated', 'success');
+        } catch (e) { showInline('Network error', 'error'); }
+    }
+
+    <!-- product detail modal and JS provided by fragment seller/product-detail :: productDetailModal -->
+</script>
+</body>
+</html>

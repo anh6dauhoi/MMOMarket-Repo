@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Product Reviews</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <style>
+        .star { color: #d1d5db; }
+        .star.active { color: #f59e0b; }
+        .progress-bar { height: 8px; background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; }
+        .progress { height: 100%; background-color: #ef4444; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div th:insert="~{fragments/header :: header}"></div>
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left: Product + Reviews -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Product header -->
+            <div class="bg-white shadow rounded-lg p-4 flex items-center space-x-3">
+                <img th:src="${productImage}" alt="product" class="w-16 h-16 rounded object-cover border"/>
+                <div>
+                    <div class="text-sm text-gray-500">Product</div>
+                    <div class="text-lg font-semibold" th:text="${productName}">Product name</div>
+                </div>
+            </div>
+
+            <!-- Rating summary -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-2xl font-bold mb-4">Customer Reviews</h2>
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="flex items-center">
+                        <i class="fa-star fas text-yellow-400" th:classappend="${avgRounded >= 1} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${avgRounded >= 2} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${avgRounded >= 3} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${avgRounded >= 4} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${avgRounded >= 5} ? '' : 'far text-gray-300'"></i>
+                    </div>
+                    <div class="text-gray-600" th:text="'Based on ' + ${totalReviews} + ' reviews'"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-3" th:each="d : ${distribution}">
+                        <div class="w-5 text-sm font-semibold" th:text="${d.star}">5</div>
+                        <div class="flex-1 progress-bar">
+                            <div class="progress" th:style="${'width:' + d.percent + '%'}"></div>
+                        </div>
+                        <div class="w-10 text-right text-sm text-gray-600" th:text="${d.percent} + '%'">40%</div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Reviews list -->
+            <div class="space-y-4">
+                <div class="bg-white shadow rounded-lg p-4" th:each="rv : ${reviews}" th:unless="${reviews == null}">
+                    <div class="flex items-center justify-between">
+                        <div class="font-semibold" th:text="${rv.user != null ? rv.user.fullName : 'Customer'}">User</div>
+                        <div class="text-xs text-gray-500" th:text="${#dates.format(rv.createdAt, 'dd/MM/yyyy')}">2 weeks ago</div>
+                    </div>
+                    <div class="flex items-center mt-1">
+                        <i class="fa-star fas text-yellow-400" th:classappend="${rv.rating >= 1} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${rv.rating >= 2} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${rv.rating >= 3} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${rv.rating >= 4} ? '' : 'far text-gray-300'"></i>
+                        <i class="fa-star fas text-yellow-400 ml-1" th:classappend="${rv.rating >= 5} ? '' : 'far text-gray-300'"></i>
+                    </div>
+                    <p class="text-gray-700 text-sm mt-3" th:text="${rv.comment}">Nội dung đánh giá</p>
+                </div>
+                <div th:if="${reviews == null || #lists.isEmpty(reviews)}" class="bg-white shadow rounded-lg p-6 text-center text-gray-500">No reviews yet</div>
+            </div>
+        </div>
+
+        <!-- Right: panel -->
+        <!-- When no review yet: write panel (existing) -->
+        <div class="lg:col-span-1" th:if="${myReview == null}">
+            <div class="bg-white shadow rounded-lg p-5 sticky top-6">
+                <h3 class="text-lg font-bold mb-4">Write a review</h3>
+                <form th:action="@{/account/orders/{orderId}/review(orderId=${orderId})}" method="post" th:object="${reviewRequest}" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Your Rating <span class="text-red-500">*</span></label>
+                        <div class="flex items-center space-x-2" id="starsWrite">
+                            <i class="fas fa-star star text-2xl" data-value="1"></i>
+                            <i class="fas fa-star star text-2xl" data-value="2"></i>
+                            <i class="fas fa-star star text-2xl" data-value="3"></i>
+                            <i class="fas fa-star star text-2xl" data-value="4"></i>
+                            <i class="fas fa-star star text-2xl" data-value="5"></i>
+                        </div>
+                        <input type="hidden" th:field="*{rating}" id="ratingInputWrite" />
+                        <div class="text-xs text-red-600 mt-1" th:if="${#fields.hasErrors('rating')}" th:errors="*{rating}"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Your Review (optional)</label>
+                        <textarea th:field="*{comment}" rows="5" placeholder="Share your thoughts about the product..." class="w-full border rounded p-3 text-sm focus:outline-none focus:ring focus:ring-red-300"></textarea>
+                    </div>
+                    <button type="submit" class="w-full px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white font-semibold">Submit Review</button>
+                    <a th:href="@{/account/orders}" class="block text-center text-sm text-gray-600 hover:text-gray-800">Back to orders</a>
+                </form>
+            </div>
+        </div>
+
+        <!-- When already reviewed: show review in right panel -->
+        <div class="lg:col-span-1" th:if="${myReview != null}">
+            <div class="bg-white shadow rounded-lg p-5 sticky top-6">
+                <!-- My Review Display -->
+                <h3 class="text-lg font-bold mb-4">My Review</h3>
+                <div class="mb-4">
+                    <div class="flex items-center mb-2" id="static-stars">
+                        <i th:class="${myReview['rating'] >= 1 ? 'fas fa-star text-yellow-400' : 'far fa-star text-gray-300'}" class="static-star" data-value="1"></i>
+                        <i th:class="${myReview['rating'] >= 2 ? 'fas fa-star text-yellow-400 ml-1' : 'far fa-star text-gray-300 ml-1'}" class="static-star" data-value="2"></i>
+                        <i th:class="${myReview['rating'] >= 3 ? 'fas fa-star text-yellow-400 ml-1' : 'far fa-star text-gray-300 ml-1'}" class="static-star" data-value="3"></i>
+                        <i th:class="${myReview['rating'] >= 4 ? 'fas fa-star text-yellow-400 ml-1' : 'far fa-star text-gray-300 ml-1'}" class="static-star" data-value="4"></i>
+                        <i th:class="${myReview['rating'] >= 5 ? 'fas fa-star text-yellow-400 ml-1' : 'far fa-star text-gray-300 ml-1'}" class="static-star" data-value="5"></i>
+                    </div>
+                    <div class="text-xs text-gray-500 mb-2" th:text="${#dates.format(myReview['createdAt'], 'dd/MM/yyyy HH:mm')}">--/--/----</div>
+                    <p class="text-sm text-gray-700 whitespace-pre-line" th:text="${myReview['comment']}">...</p>
+                </div>
+
+                <!-- Edit Form (if within 7 days) -->
+                <div th:if="${canEdit}" class="border-t pt-4">
+                    <h4 class="text-sm font-bold mb-3">Edit your review</h4>
+                    <form th:action="@{/account/orders/{orderId}/review/view(orderId=${orderId})}" method="post" class="space-y-4">
+                        <input type="hidden" name="reviewId" th:value="${myReview['reviewId']}" />
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Your Rating</label>
+                            <div class="flex items-center space-x-2" id="starsEditRight">
+                                <i class="fas fa-star star text-2xl" data-value="1"></i>
+                                <i class="fas fa-star star text-2xl" data-value="2"></i>
+                                <i class="fas fa-star star text-2xl" data-value="3"></i>
+                                <i class="fas fa-star star text-2xl" data-value="4"></i>
+                                <i class="fas fa-star star text-2xl" data-value="5"></i>
+                            </div>
+                            <input type="hidden" name="rating" id="ratingInputEditRight" th:value="${myReview['rating']}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Your Review</label>
+                            <textarea name="comment" rows="5" class="w-full border rounded p-3 text-sm focus:outline-none focus:ring focus:ring-yellow-300" th:text="${myReview['comment']}"></textarea>
+                        </div>
+                        <button type="submit" class="w-full px-4 py-2 rounded bg-yellow-500 hover:bg-yellow-600 text-white font-semibold">Save changes</button>
+                    </form>
+                </div>
+
+                <!-- Expired message (if past 7 days) -->
+                <div th:unless="${canEdit}" class="border-t pt-4">
+                    <p class="text-sm text-gray-600 mb-3">Editing period has expired (7 days). You can no longer edit this review.</p>
+                </div>
+
+                <!-- Back link -->
+                <div class="mt-4">
+                    <a th:href="@{/account/orders}" class="block text-center text-sm text-gray-600 hover:text-gray-800">Back to orders</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:insert="~{fragments/footer :: footer}"></div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sync helper for static stars on the left
+        const staticStars = document.querySelectorAll('#static-stars .static-star');
+        const renderStatic = (val) => {
+            staticStars.forEach(el => {
+                const v = Number(el.dataset.value);
+                el.classList.toggle('fas', v <= val);
+                el.classList.toggle('far', v > val);
+                el.classList.toggle('text-yellow-400', v <= val);
+                el.classList.toggle('text-gray-300', v > val);
+            });
+        };
+        // Initialize from whichever hidden input is present
+        const initVal = Number((document.getElementById('ratingInputEditRight')?.value || document.getElementById('ratingInputWrite')?.value || 0));
+        if (staticStars && staticStars.length) renderStatic(initVal);
+
+        // Right-side edit widget
+        const starsEditRight = document.querySelectorAll('#starsEditRight .star');
+        const ratingInputEditRight = document.getElementById('ratingInputEditRight');
+        if (starsEditRight && starsEditRight.length && ratingInputEditRight) {
+            let current = Number(ratingInputEditRight.value || 0);
+            const sync = () => starsEditRight.forEach(st => st.classList.toggle('active', Number(st.dataset.value) <= current));
+            starsEditRight.forEach(st => {
+                st.addEventListener('click', () => { current = Number(st.dataset.value); ratingInputEditRight.value = current; sync(); renderStatic(current); });
+                st.addEventListener('mouseenter', () => { const hv = Number(st.dataset.value); starsEditRight.forEach(s => s.classList.toggle('active', Number(s.dataset.value) <= hv)); });
+                st.addEventListener('mouseleave', sync);
+            });
+            sync();
+        }
+
+        // Right-side write widget (when no review yet)
+        const starsWrite = document.querySelectorAll('#starsWrite .star');
+        const ratingInputWrite = document.getElementById('ratingInputWrite');
+        if (starsWrite && starsWrite.length && ratingInputWrite) {
+            let currentW = Number(ratingInputWrite.value || 0);
+            const syncW = () => starsWrite.forEach(st => st.classList.toggle('active', Number(st.dataset.value) <= currentW));
+            starsWrite.forEach(st => {
+                st.addEventListener('click', () => { currentW = Number(st.dataset.value); ratingInputWrite.value = currentW; syncW(); });
+                st.addEventListener('mouseenter', () => { const hv = Number(st.dataset.value); starsWrite.forEach(s => s.classList.toggle('active', Number(s.dataset.value) <= hv)); });
+                st.addEventListener('mouseleave', syncW);
+            });
+            syncW();
+        }
+    });
+</script>
+</body>
+</html>

@@ -124,8 +124,10 @@ body {
 .badge-verified {
   display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600;
   color: var(--primary-color); background: #fff; border: 1px solid var(--primary-color); border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 .badge-verified i { color: var(--primary-color); }
+.badge-verified span { color: var(--primary-color); font-weight: 700; }
 .seller-meta { display: flex; align-items: center; gap: 10px; color: var(--secondary-text-color); font-size: .95rem; }
 .seller-meta .rating i { color: #ffc107; margin-right: 4px; }
 .seller-stats { margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; }
