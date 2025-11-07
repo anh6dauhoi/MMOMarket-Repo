@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.util.List;
+import com.mmo.repository.ReviewRepository;
+import com.mmo.repository.ProductRepository;
 
 @ControllerAdvice
 public class GlobalModelAttributes {
@@ -30,6 +32,12 @@ public class GlobalModelAttributes {
     // Add: system configuration for global attributes
     @Autowired(required = false)
     private com.mmo.service.SystemConfigurationService systemConfigurationService;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     @ModelAttribute
     public void addCurrentUser(Model model, Authentication authentication) {
@@ -97,6 +105,39 @@ public class GlobalModelAttributes {
             // Always provide seller agreement URL for templates that need it
             provideSellerAgreementUrl(model);
         }
+    }
+
+    @ModelAttribute
+    public void addSellerQuickStats(Model model, Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) return;
+            // If already computed, skip
+            if (model.containsAttribute("sellerAvgRating") && model.containsAttribute("sellerProductCount")) return;
+            String email = authentication.getName();
+            if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
+                OAuth2User oauthUser = oauth2Token.getPrincipal();
+                String mail = oauthUser.getAttribute("email");
+                if (mail != null) email = mail;
+            }
+            if (email == null) return;
+            User user = authService.findByEmail(email);
+            if (user == null || user.getId() == null) return;
+            // Only compute if user has a shop (shopStatus not null/empty) or is not deleted
+            if (user.isDelete()) return;
+            // Count products
+            Long productCount = null;
+            try { productCount = productRepository.countBySellerId(user.getId()); } catch (Exception ignored) {}
+            if (productCount == null) productCount = 0L;
+            // Average rating
+            Double avg = 0.0;
+            try {
+                Double tmp = reviewRepository.getAverageRatingBySeller(user.getId());
+                if (tmp != null) avg = tmp;
+            } catch (Exception ignored) {}
+            double rounded = Math.round(avg * 10.0) / 10.0;
+            model.addAttribute("sellerAvgRating", rounded);
+            model.addAttribute("sellerProductCount", productCount);
+        } catch (Exception ignored) { }
     }
 
     private void provideSellerAgreementUrl(Model model) {
