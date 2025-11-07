@@ -6,18 +6,33 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+            min-height: 100vh;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
         .star { color: #d1d5db; }
         .star.active { color: #f59e0b; }
         .progress-bar { height: 8px; background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; }
         .progress { height: 100%; background-color: #ef4444; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="font-sans">
 <div th:insert="~{fragments/header :: header}"></div>
-<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left: Product + Reviews -->
-        <div class="lg:col-span-2 space-y-6">
+
+<!-- Semi-transparent white wrapper for all content like blog -->
+<div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-xl">
+        <main class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left: Product + Reviews -->
+                <div class="lg:col-span-2 space-y-6">
             <!-- Product header -->
             <div class="bg-white shadow rounded-lg p-4 flex items-center space-x-3">
                 <img th:src="${productImage}" alt="product" class="w-16 h-16 rounded object-cover border"/>
@@ -56,8 +71,8 @@
             <div class="space-y-4">
                 <div class="bg-white shadow rounded-lg p-4" th:each="rv : ${reviews}" th:unless="${reviews == null}">
                     <div class="flex items-center justify-between">
-                        <div class="font-semibold" th:text="${rv.user != null ? rv.user.fullName : 'Customer'}">User</div>
-                        <div class="text-xs text-gray-500" th:text="${#dates.format(rv.createdAt, 'dd/MM/yyyy')}">2 weeks ago</div>
+                        <div class="font-semibold" th:text="${rv.name != null ? rv.name : 'Customer'}">User</div>
+                        <div class="text-xs text-gray-500" th:text="${rv.date}">2 weeks ago</div>
                     </div>
                     <div class="flex items-center mt-1">
                         <i class="fa-star fas text-yellow-400" th:classappend="${rv.rating >= 1} ? '' : 'far text-gray-300'"></i>
@@ -152,8 +167,11 @@
                 </div>
             </div>
         </div>
+            </div>
+        </main>
     </div>
-</main>
+</div>
+
 <div th:insert="~{fragments/footer :: footer}"></div>
 <script>
     document.addEventListener('DOMContentLoaded', () => {

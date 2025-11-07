@@ -1,5 +1,6 @@
 package com.mmo.entity;
 
+import com.mmo.util.EncryptionUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,8 +21,13 @@ public class ProductVariantAccount {
     @JoinColumn(name = "variant_id", nullable = false)
     private ProductVariant variant;
 
+    // This field stores ENCRYPTED data in database
     @Column(name = "account_data", columnDefinition = "TEXT", nullable = false)
     private String accountData;
+
+    // Transient field for plain text access (not stored in DB)
+    @Transient
+    private String plainAccountData;
 
     @Column(name = "status", columnDefinition = "ENUM('Available', 'Sold') NOT NULL DEFAULT 'Available'")
     private String status = "Available";
@@ -61,5 +67,56 @@ public class ProductVariantAccount {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by", insertable = false, updatable = false)
     private User deletedByUser;
+
+    /**
+     * Get decrypted account data
+     * @return Plain text account data
+     */
+    public String getPlainAccountData() {
+        if (plainAccountData == null && accountData != null && !accountData.isEmpty()) {
+            try {
+                plainAccountData = EncryptionUtil.decrypt(accountData);
+            } catch (Exception e) {
+                // If decryption fails, data might not be encrypted yet (legacy data)
+                plainAccountData = accountData;
+            }
+        }
+        return plainAccountData;
+    }
+
+    /**
+     * Set plain text account data (will be encrypted before saving)
+     * @param plainData Plain text account data
+     */
+    public void setPlainAccountData(String plainData) {
+        this.plainAccountData = plainData;
+        // Encryption will happen in @PrePersist and @PreUpdate
+    }
+
+    /**
+     * Encrypt data before inserting into database
+     */
+    @PrePersist
+    @PreUpdate
+    private void encryptData() {
+        if (plainAccountData != null && !plainAccountData.isEmpty()) {
+            this.accountData = EncryptionUtil.encrypt(plainAccountData);
+        }
+    }
+
+    /**
+     * Decrypt data after loading from database
+     */
+    @PostLoad
+    private void decryptData() {
+        if (accountData != null && !accountData.isEmpty()) {
+            try {
+                this.plainAccountData = EncryptionUtil.decrypt(accountData);
+            } catch (Exception e) {
+                // If decryption fails, data might not be encrypted yet (legacy data)
+                this.plainAccountData = accountData;
+            }
+        }
+    }
 }
 

@@ -295,7 +295,7 @@ public class OrderController {
             for (ProductVariantAccount acc : accounts) {
                 java.util.Map<String,Object> m = new java.util.HashMap<>();
                 m.put("id", acc.getId());
-                m.put("accountData", acc.getAccountData());
+                m.put("accountData", acc.getPlainAccountData());
                 m.put("activated", acc.isActivated());
                 m.put("activatedAt", acc.getActivatedAt());
                 list.add(m);
@@ -341,7 +341,7 @@ public class OrderController {
             payload.put("id", acc.getId());
             payload.put("activated", acc.isActivated());
             payload.put("activatedAt", acc.getActivatedAt());
-            payload.put("accountData", acc.getAccountData());
+            payload.put("accountData", acc.getPlainAccountData());
             return ResponseEntity.ok(payload);
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
@@ -381,7 +381,7 @@ public class OrderController {
             java.util.Map<String,Object> payload = new java.util.HashMap<>();
             payload.put("ok", true);
             payload.put("id", acc.getId());
-            payload.put("accountData", acc.getAccountData());
+            payload.put("accountData", acc.getPlainAccountData());
             payload.put("activatedAt", acc.getActivatedAt());
             return ResponseEntity.ok(payload);
         } catch (Exception ex) {
