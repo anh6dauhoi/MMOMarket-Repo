@@ -55,7 +55,7 @@ public class ProductVariantAccountService {
             if (dedupe && isDup) { skipped++; continue; }
             ProductVariantAccount acc = new ProductVariantAccount();
             acc.setVariant(variant);
-            acc.setAccountData(buildAccountData(r));
+            acc.setPlainAccountData(buildAccountData(r)); // Will be encrypted automatically
             acc.setStatus("Available");
             acc.setDelete(false);
             acc.setCreatedBy(user.getId());
@@ -105,7 +105,7 @@ public class ProductVariantAccountService {
             if (dedupe && isDup) { skipped++; continue; }
             ProductVariantAccount acc = new ProductVariantAccount();
             acc.setVariant(variant);
-            acc.setAccountData(buildAccountData(r)); // store as username:password
+            acc.setPlainAccountData(buildAccountData(r)); // Will be encrypted automatically
             acc.setStatus("Available");
             acc.setDelete(false);
             acc.setCreatedBy(user.getId());
@@ -184,17 +184,19 @@ public class ProductVariantAccountService {
             Long categoryId = variant.getProduct().getCategory().getId();
 
             // Query all accounts across all variants in the same category
-            List<String> list = entityManager.createQuery(
-                    "select a.accountData from ProductVariantAccount a " +
+            // Load entities to decrypt account data automatically
+            List<ProductVariantAccount> accounts = entityManager.createQuery(
+                    "select a from ProductVariantAccount a " +
                     "where a.variant.product.category.id = :categoryId " +
                     "and a.isDelete = false",
-                    String.class)
+                    ProductVariantAccount.class)
                     .setParameter("categoryId", categoryId)
                     .getResultList();
 
             Set<String> usernames = new HashSet<>();
-            if (list != null) {
-                for (String s : list) {
+            if (accounts != null) {
+                for (ProductVariantAccount acc : accounts) {
+                    String s = acc.getPlainAccountData(); // Automatically decrypted
                     if (s == null) continue;
                     int idx = s.indexOf(':');
                     String u = idx >= 0 ? s.substring(0, idx) : s;

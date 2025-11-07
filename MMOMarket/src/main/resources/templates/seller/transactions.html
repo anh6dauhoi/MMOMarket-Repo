@@ -570,6 +570,30 @@
     let currentAccountData = null;
     let accountDataVisible = false;
 
+    /**
+     * Format account data from "username:password" to structured display
+     * @param {string} rawData - Raw account data in format "username:password"
+     * @returns {string} Formatted account data with labels
+     */
+    function formatAccountData(rawData) {
+        if (!rawData || typeof rawData !== 'string') {
+            return 'No data available';
+        }
+
+        // Split by colon
+        const parts = rawData.split(':');
+
+        if (parts.length >= 2) {
+            const account = parts[0].trim();
+            const password = parts.slice(1).join(':').trim(); // In case password contains ":"
+
+            return `Account | Seri: ${account}\nPassword | PIN: ${password}`;
+        } else {
+            // Fallback if format is not recognized
+            return rawData;
+        }
+    }
+
     function fmt(n) {
         if (n === null || n === undefined) return '0';
         // Vietnamese format: use dot (.) as thousand separator
@@ -704,7 +728,7 @@
         const iconShow = document.getElementById('iconShowAccount');
 
         if (!accountDataVisible) {
-            // Show account data
+            // Show account data (already formatted by backend)
             accountDataEl.textContent = currentAccountData;
             accountDataEl.classList.remove('text-gray-500', 'select-none');
             accountDataEl.classList.add('text-gray-900');

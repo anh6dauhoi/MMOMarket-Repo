@@ -479,6 +479,31 @@
                 .catch(err => { alert(typeof err === 'string' ? err : 'Activation failed'); });
         }catch(e){ alert('Activation failed'); }
     }
+
+    /**
+     * Format account data from "username:password" to structured display
+     * @param {string} rawData - Raw account data in format "username:password"
+     * @returns {string} Formatted account data with labels
+     */
+    function formatAccountData(rawData) {
+        if (!rawData || typeof rawData !== 'string') {
+            return 'No data available';
+        }
+
+        // Split by colon
+        const parts = rawData.split(':');
+
+        if (parts.length >= 2) {
+            const account = parts[0].trim();
+            const password = parts.slice(1).join(':').trim(); // In case password contains ":"
+
+            return `Account | Seri: ${account}\nPassword | PIN: ${password}`;
+        } else {
+            // Fallback if format is not recognized
+            return rawData;
+        }
+    }
+
     function toggleAccountVisibility(btn){
         try{
             const item = btn.closest('.account-item');
@@ -510,8 +535,9 @@
                     if(!window.accountDataCache) window.accountDataCache = {};
                     window.accountDataCache[accountId] = data.accountData;
 
-                    // Display the data
-                    accData.textContent = data.accountData;
+                    // Format and display the data
+                    const formattedData = formatAccountData(data.accountData);
+                    accData.textContent = formattedData;
                     accData.classList.remove('text-gray-500', 'select-none');
                     accData.classList.add('text-gray-900');
 
@@ -555,9 +581,10 @@
                     copy.classList.remove('bg-red-500','hover:bg-red-600');
                     copy.removeAttribute('data-clip');
                 } else {
-                    // Show cached data
+                    // Show cached data with formatting
                     const cachedData = window.accountDataCache[accountId];
-                    accData.textContent = cachedData;
+                    const formattedData = formatAccountData(cachedData);
+                    accData.textContent = formattedData;
                     accData.classList.remove('text-gray-500', 'select-none');
                     accData.classList.add('text-gray-900');
                     item.setAttribute('data-shown', 'true');
@@ -565,7 +592,7 @@
                     labelSpan.textContent = 'Hide Info';
                     if(icon){ icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
 
-                    // Enable copy button
+                    // Enable copy button (store original unformatted data for copying)
                     copy.disabled = false;
                     copy.classList.remove('bg-gray-300','cursor-not-allowed');
                     copy.classList.add('bg-red-500','hover:bg-red-600','text-white');

@@ -8,15 +8,31 @@
     <title th:unless="${q != null and q != ''}">Search</title>
     <!-- Replace with your CSS pipeline if needed -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+            min-height: 100vh;
+        }
+        @media (max-width: 640px) {
+            body { background-position: top center; }
+        }
+    </style>
 </head>
 
-<body class="bg-gray-50 text-gray-900">
+<body class="font-sans text-gray-900">
 <!-- header fragment -->
 <div th:replace="~{fragments/header :: header}"></div>
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <div class="flex flex-col lg:flex-row gap-8">
-        <section class="flex-1">
+
+<!-- Semi-transparent white wrapper for all content like blog -->
+<div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-xl">
+        <main>
+            <div class="flex flex-col lg:flex-row gap-8">
+                <section class="flex-1">
             <div class="mb-6 relative">
                 <form th:action="@{/search}" method="get" class="flex items-center">
                     <input id="search-q" name="q" th:value="${q}"
@@ -185,9 +201,12 @@
                     No products found.
                 </div>
             </div>
+
         </section>
+            </div>
+        </main>
     </div>
-</main>
+</div>
 
 <div th:replace="~{fragments/footer :: footer}"></div>
 <!-- small JS for accessibility (no heavy dependencies) -->

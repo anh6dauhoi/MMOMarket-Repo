@@ -189,10 +189,21 @@ public class ReviewController {
         List<Review> reviews = reviewRepository.findByProductIdAndIsDeleteFalseOrderByCreatedAtDesc(productId);
         int totalReviews = reviews != null ? reviews.size() : 0;
         int[] buckets = new int[]{0,0,0,0,0,0};
+        List<Map<String, Object>> reviewItems = new ArrayList<>();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         if (reviews != null) {
             for (Review r : reviews) {
                 int star = (r.getRating() != null) ? Math.max(1, Math.min(5, r.getRating())) : 0;
                 buckets[star]++;
+                Map<String, Object> it = new HashMap<>();
+                String fullName = null;
+                try { fullName = r.getUser() != null ? r.getUser().getFullName() : null; } catch (Exception ignored) {}
+                if (fullName == null || fullName.isBlank()) fullName = "Khách hàng";
+                it.put("name", fullName);
+                it.put("rating", star);
+                it.put("comment", r.getComment() != null ? r.getComment() : "");
+                it.put("date", r.getCreatedAt() != null ? sdf.format(r.getCreatedAt()) : "");
+                reviewItems.add(it);
             }
         }
         List<Map<String, Object>> distribution = new ArrayList<>();
@@ -214,7 +225,7 @@ public class ReviewController {
         model.addAttribute("avgRounded", avgRounded);
         model.addAttribute("totalReviews", totalReviews);
         model.addAttribute("distribution", distribution);
-        model.addAttribute("reviews", reviews);
+        model.addAttribute("reviews", reviewItems);
 
         // my review payload
         Map<String,Object> my = new HashMap<>();

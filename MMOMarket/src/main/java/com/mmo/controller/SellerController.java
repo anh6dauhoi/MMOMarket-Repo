@@ -1364,7 +1364,7 @@ public class SellerController {
                         .getResultList();
 
                 if (accounts != null && !accounts.isEmpty()) {
-                    // Build account data string with all accounts
+                    // Build account data string with all accounts formatted properly
                     StringBuilder accountDataBuilder = new StringBuilder();
                     for (int i = 0; i < accounts.size(); i++) {
                         com.mmo.entity.ProductVariantAccount acc = accounts.get(i);
@@ -1373,7 +1373,24 @@ public class SellerController {
                             accountDataBuilder.append("═══════════════════════════════════════\n\n");
                         }
                         accountDataBuilder.append("Account #").append(i + 1).append(":\n");
-                        accountDataBuilder.append(acc.getAccountData() != null ? acc.getAccountData() : "No data available");
+
+                        // Get plain account data and format it properly
+                        String plainData = acc.getPlainAccountData() != null ? acc.getPlainAccountData() : "";
+                        if (plainData != null && !plainData.isEmpty()) {
+                            // Split by colon to get account and password
+                            String[] parts = plainData.split(":", 2); // Split into max 2 parts
+                            if (parts.length >= 2) {
+                                String account = parts[0].trim();
+                                String password = parts[1].trim();
+                                accountDataBuilder.append("Account | Seri: ").append(account).append("\n");
+                                accountDataBuilder.append("Password | PIN: ").append(password);
+                            } else {
+                                // Fallback if format is not recognized
+                                accountDataBuilder.append(plainData);
+                            }
+                        } else {
+                            accountDataBuilder.append("No data available");
+                        }
                     }
                     data.put("deliveredAccountData", accountDataBuilder.toString());
                 } else {
@@ -2193,7 +2210,7 @@ public class SellerController {
             // Map to DTOs and optional search filtering (by username contains)
             java.util.List<Map<String, Object>> items = new java.util.ArrayList<>();
             for (ProductVariantAccount a : rows) {
-                String ad = a.getAccountData() == null ? "" : a.getAccountData();
+                String ad = a.getPlainAccountData() == null ? "" : a.getPlainAccountData();
                 String uname = ad;
                 String pass = "";
                 int idx = ad.indexOf(':');
@@ -2270,13 +2287,14 @@ public class SellerController {
 
             // Duplicate check within the same variant (exclude current account id)
             Long vid = acc.getVariant().getId();
-            java.util.List<String> list = entityManager.createQuery(
-                    "select a.accountData from ProductVariantAccount a where a.variant.id = :vid and a.isDelete = false and a.id <> :id",
-                    String.class
+            java.util.List<ProductVariantAccount> accounts = entityManager.createQuery(
+                    "select a from ProductVariantAccount a where a.variant.id = :vid and a.isDelete = false and a.id <> :id",
+                    ProductVariantAccount.class
             ).setParameter("vid", vid).setParameter("id", acc.getId()).getResultList();
             java.util.Set<String> usernames = new java.util.HashSet<>();
-            if (list != null) {
-                for (String s : list) {
+            if (accounts != null) {
+                for (ProductVariantAccount a : accounts) {
+                    String s = a.getPlainAccountData(); // Automatically decrypted
                     if (s == null) continue;
                     int idx = s.indexOf(':');
                     String u = (idx >= 0 ? s.substring(0, idx) : s);
@@ -2290,8 +2308,8 @@ public class SellerController {
                 ));
             }
 
-            // Update accountData preserving simple format username:password
-            acc.setAccountData(username + ":" + password);
+            // Update accountData preserving simple format username:password (will be encrypted)
+            acc.setPlainAccountData(username + ":" + password);
             entityManager.merge(acc);
             return ResponseEntity.ok(Map.of(
                     "message", "Updated successfully",
