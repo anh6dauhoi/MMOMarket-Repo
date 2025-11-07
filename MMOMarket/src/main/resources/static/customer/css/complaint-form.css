@@ -1,0 +1,132 @@
+/* Complaint Form Custom Styles */
+
+/* Glass Card Effect */
+.glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Evidence Preview Styles */
+.evidence-preview {
+    position: relative;
+    display: inline-block;
+    margin: 0.5rem;
+    transition: transform 0.2s;
+}
+
+.evidence-preview:hover {
+    transform: scale(1.05);
+}
+
+.evidence-preview img,
+.evidence-preview video {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 0.75rem;
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.evidence-preview .remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+}
+
+.evidence-preview .remove-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+/* Progress Steps */
+.progress-step {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.progress-step::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 20px);
+    width: calc(100% - 40px);
+    height: 2px;
+    background: #e5e7eb;
+}
+
+.progress-step:last-child::after {
+    display: none;
+}
+
+.step-active .step-circle {
+    background: #ef4444;
+    color: white;
+}
+
+.step-completed .step-circle {
+    background: #10b981;
+    color: white;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+    .evidence-preview img,
+    .evidence-preview video {
+        max-width: 120px;
+        max-height: 120px;
+    }
+}
+
+/* Animation for toast notifications */
+@keyframes slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+
+/* Form Input Focus States */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Step Number Badges */
+.step-number-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+

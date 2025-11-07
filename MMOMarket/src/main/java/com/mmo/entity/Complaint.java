@@ -57,6 +57,9 @@ public class Complaint {
     @Column(name = "seller_final_response", columnDefinition = "TEXT")
     private String sellerFinalResponse;
 
+    @Column(name = "escalation_reason", columnDefinition = "TEXT")
+    private String escalationReason;
+
     @Column(name = "admin_decision_notes", columnDefinition = "TEXT")
     private String adminDecisionNotes;
 
@@ -71,6 +74,10 @@ public class Complaint {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_at", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", insertable = false, updatable = false)
     private Date updatedAt;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "responded_at")
+    private Date respondedAt;
 
     @Column(name = "created_by")
     private Long createdBy;

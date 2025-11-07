@@ -17,11 +17,14 @@ public class ChatService {
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
     private final ChatSseService chatSseService;
+    private final NotificationService notificationService;
 
-    public ChatService(ChatRepository chatRepository, UserRepository userRepository, ChatSseService chatSseService) {
+    public ChatService(ChatRepository chatRepository, UserRepository userRepository,
+                      ChatSseService chatSseService, NotificationService notificationService) {
         this.chatRepository = chatRepository;
         this.userRepository = userRepository;
         this.chatSseService = chatSseService;
+        this.notificationService = notificationService;
     }
 
     public List<ConversationSummaryDto> listConversations(Long currentUserId) {
@@ -125,8 +128,31 @@ public class ChatService {
         chat.setDelete(false);
         Chat saved = chatRepository.save(chat);
         ChatMessageDto dto = new ChatMessageDto(saved);
+
         // Broadcast to both sender and receiver via SSE
         chatSseService.broadcast(dto);
+
+        // Send notification to receiver
+        try {
+            String senderName = sender.getFullName() != null && !sender.getFullName().isEmpty()
+                ? sender.getFullName()
+                : sender.getEmail();
+
+            // Truncate message if too long
+            String messagePreview = message.trim();
+            if (messagePreview.length() > 100) {
+                messagePreview = messagePreview.substring(0, 97) + "...";
+            }
+
+            String notificationTitle = "💬 New message from " + senderName;
+            String notificationContent = messagePreview;
+
+            notificationService.createNotificationForUser(receiverId, notificationTitle, notificationContent);
+        } catch (Exception e) {
+            // Log but don't fail the chat message
+            System.err.println("Failed to send chat notification: " + e.getMessage());
+        }
+
         return dto;
     }
 
@@ -150,6 +176,39 @@ public class ChatService {
         Chat saved = chatRepository.save(chat);
         ChatMessageDto dto = new ChatMessageDto(saved);
         chatSseService.broadcast(dto);
+
+        // Send notification to receiver
+        try {
+            String senderName = sender.getFullName() != null && !sender.getFullName().isEmpty()
+                ? sender.getFullName()
+                : sender.getEmail();
+
+            // Create notification based on file type
+            String notificationTitle = "💬 New message from " + senderName;
+            String notificationContent;
+
+            if ("image".equals(fileType)) {
+                notificationContent = "📷 Sent an image" + (fileName != null ? ": " + fileName : "");
+            } else if ("video".equals(fileType)) {
+                notificationContent = "🎥 Sent a video" + (fileName != null ? ": " + fileName : "");
+            } else {
+                notificationContent = "📎 Sent a file" + (fileName != null ? ": " + fileName : "");
+            }
+
+            // Add message if present
+            if (message != null && !message.trim().isEmpty() && !message.trim().equals("Sent a file")) {
+                notificationContent += " - " + message.trim();
+                if (notificationContent.length() > 150) {
+                    notificationContent = notificationContent.substring(0, 147) + "...";
+                }
+            }
+
+            notificationService.createNotificationForUser(receiverId, notificationTitle, notificationContent);
+        } catch (Exception e) {
+            // Log but don't fail the chat message
+            System.err.println("Failed to send chat notification: " + e.getMessage());
+        }
+
         return dto;
     }
 

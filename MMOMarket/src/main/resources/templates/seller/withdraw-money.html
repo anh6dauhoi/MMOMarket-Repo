@@ -1225,11 +1225,21 @@
                     } catch (_) { window.location.reload(); }
                 } else if (res.status === 400) {
                     if (txt && txt.startsWith('MSG_OTP_EXPIRED')) {
-                        setUpdateOtpMsg('OTP has expired. Please request a new OTP.', false);
+                        setUpdateOtpMsg('⏰ OTP has expired. Please request a new OTP.', false);
                     } else if (txt && txt.startsWith('MSG_OTP_INVALID')) {
-                        setUpdateOtpMsg('OTP is incorrect or already used.', false);
+                        setUpdateOtpMsg('❌ OTP is incorrect or already used. Please try again.', false);
                     } else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) {
-                        setUpdateOtpMsg('Please enter the 6-digit OTP sent to your email.', false);
+                        setUpdateOtpMsg('📧 Please enter the 6-digit OTP sent to your email.', false);
+                    } else if (txt.includes('Warning') || txt.includes('⚠️')) {
+                        // Special handling for warning after 3+ attempts
+                        setUpdateOtpMsg(txt, false);
+                        const updateOtpMsg = document.getElementById('updateOtpMsg');
+                        if (updateOtpMsg) {
+                            updateOtpMsg.className = 'mt-2 text-sm text-red-700 bg-yellow-50 border border-yellow-300 rounded p-3';
+                        }
+                    } else if (txt.includes('Attempt')) {
+                        // Show attempt counter
+                        setUpdateOtpMsg(txt, false);
                     } else {
                         setUpdateOtpMsg(txt || 'Failed to update bank information.', false);
                     }
@@ -1521,9 +1531,9 @@
                 } else if (res.status === 400) {
                     // Server-side validation messages
                     if (txt && txt.startsWith('MSG_OTP_EXPIRED')) {
-                        setOtpMsg('OTP has expired. Please request a new OTP.', false);
+                        setOtpMsg('⏰ OTP has expired. Please request a new OTP.', false);
                     } else if (txt && txt.startsWith('MSG_OTP_INVALID')) {
-                        setOtpMsg('OTP is incorrect or already used.', false);
+                        setOtpMsg('❌ OTP is incorrect or already used. Please try again.', false);
                     } else if (txt && txt.startsWith('MSG16')) {
                         setOtpMsg('Minimum withdrawal amount is 50,000.', false);
                     } else if (txt && txt.startsWith('MSG07')) {
@@ -1531,7 +1541,18 @@
                     } else if (txt && txt.startsWith('MSG17')) {
                         setOtpMsg('Bank information is invalid for this user.', false);
                     } else if (txt && txt.startsWith('MSG_OTP_REQUIRED')) {
-                        setOtpMsg('Please enter the 6-digit OTP sent to your email.', false);
+                        setOtpMsg('📧 Please enter the 6-digit OTP sent to your email.', false);
+                    } else if (txt.includes('Warning') || txt.includes('⚠️')) {
+                        // Special handling for warning after 3+ attempts
+                        setOtpMsg(txt, false);
+                        // Make it more visible with background color
+                        const otpMsg = document.getElementById('otpModalMsg');
+                        if (otpMsg) {
+                            otpMsg.className = 'mt-2 text-sm text-red-700 bg-yellow-50 border border-yellow-300 rounded p-3';
+                        }
+                    } else if (txt.includes('Attempt')) {
+                        // Show attempt counter
+                        setOtpMsg(txt, false);
                     } else {
                         setOtpMsg(txt || 'Failed to create withdrawal. Please try again.', false);
                     }

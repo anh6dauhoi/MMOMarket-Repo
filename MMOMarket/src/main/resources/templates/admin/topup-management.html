@@ -12,12 +12,6 @@
                 <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Top-up Management</h1>
                 <p class="text-sm text-gray-500">Monitor and manage user coin deposits</p>
             </div>
-            <div class="flex items-center space-x-2">
-                <span class="px-3 py-1.5 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-300">
-                    <i class="fas fa-coins mr-1"></i>
-                    <span th:text="${total * size}">0</span> Total
-                </span>
-            </div>
         </div>
 
         <!-- Compact Search & Filter Controls -->
@@ -130,12 +124,22 @@
                         <div class="text-xs text-gray-600 max-w-xs truncate" th:text="${dep.content != null ? dep.content : 'N/A'}">Content</div>
                     </td>
                     <td class="py-3 px-4 whitespace-nowrap">
-                        <button type="button"
-                                class="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
-                                th:attr="data-id=${dep.id}"
-                                onclick="openTopupModal(this)">
-                            <i class="fas fa-eye mr-1.5"></i>Details
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button"
+                                    class="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    th:attr="data-id=${dep.id}"
+                                    onclick="openTopupModal(this)">
+                                <i class="fas fa-eye mr-1.5"></i>Details
+                            </button>
+                            <!-- Retry button - only show for Failed/Rejected status -->
+                            <button type="button"
+                                    th:if="${#strings.contains(#strings.toUpperCase(dep.status), 'FAILED') or #strings.contains(#strings.toUpperCase(dep.status), 'REJECTED')}"
+                                    class="inline-flex items-center px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    th:attr="data-id=${dep.id}"
+                                    onclick="retryDepositDirect(this)">
+                                <i class="fas fa-redo mr-1.5"></i>Retry
+                            </button>
+                        </div>
                     </td>
                 </tr>
 
@@ -195,12 +199,22 @@
                 </div>
 
                 <div class="text-center mt-3 pt-3 border-t border-gray-200">
-                    <button type="button"
-                            class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm w-full justify-center"
-                            th:attr="data-id=${dep.id}"
-                            onclick="openTopupModal(this)">
-                        <i class="fas fa-eye mr-1.5"></i>View Details
-                    </button>
+                    <div class="flex gap-2">
+                        <button type="button"
+                                class="flex-1 inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm justify-center"
+                                th:attr="data-id=${dep.id}"
+                                onclick="openTopupModal(this)">
+                            <i class="fas fa-eye mr-1.5"></i>Details
+                        </button>
+                        <!-- Retry button for mobile - only show for Failed/Rejected -->
+                        <button type="button"
+                                th:if="${#strings.contains(#strings.toUpperCase(dep.status), 'FAILED') or #strings.contains(#strings.toUpperCase(dep.status), 'REJECTED')}"
+                                class="flex-1 inline-flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm justify-center"
+                                th:attr="data-id=${dep.id}"
+                                onclick="retryDepositDirect(this)">
+                            <i class="fas fa-redo mr-1.5"></i>Retry
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -366,9 +380,14 @@
                 </div>
 
                 <!-- Modal Footer (Fixed) -->
-                <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-end flex-shrink-0">
+                <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-between items-center flex-shrink-0">
+                    <button id="retryDepositBtn"
+                            class="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition duration-150 text-sm hidden"
+                            onclick="retryDeposit()">
+                        <i class="fas fa-redo mr-2"></i>Retry with Sepay
+                    </button>
                     <button onclick="document.getElementById('closeTopupModal').click()"
-                            class="px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition duration-150 text-sm">
+                            class="px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition duration-150 text-sm ml-auto">
                         Close
                     </button>
                 </div>
@@ -414,7 +433,10 @@
                     coins = $('t-coins'), st = $('t-status'), stx = $('t-status-text'), iconWrap = $('t-status-icon-header'),
                     gateway = $('t-gateway'), sepayTx = $('t-sepay-tx'), sepayRef = $('t-sepay-ref'),
                     tdate = $('t-transaction-date'), tcreated = $('t-created'), tupd = $('t-updated'), content = $('t-content'),
-                    dyn = $('t-dynamic-area');
+                    dyn = $('t-dynamic-area'), retryBtn = $('retryDepositBtn');
+
+                // Store deposit ID globally for retry function
+                window.currentDepositId = id;
 
                 tx.textContent = id ? '#' + id : (data.id || '');
                 un.textContent = data.userName || '';
@@ -439,15 +461,19 @@
                 if (S.includes('APPROVED') || S.includes('COMPLETED')) {
                     icon.classList.add('fa-check-circle', 'text-green-600');
                     stx.textContent = 'Top-up Completed';
+                    retryBtn.classList.add('hidden');
                 } else if (S.includes('PENDING')) {
                     icon.classList.add('fa-clock', 'text-yellow-600');
                     stx.textContent = 'Top-up Pending';
-                } else if (S.includes('REJECTED')) {
+                    retryBtn.classList.add('hidden');
+                } else if (S.includes('REJECTED') || S.includes('FAILED')) {
                     icon.classList.add('fa-times-circle', 'text-red-600');
-                    stx.textContent = 'Top-up Rejected';
+                    stx.textContent = 'Top-up Rejected/Failed';
+                    retryBtn.classList.remove('hidden');
                 } else {
                     icon.classList.add('fa-question', 'text-gray-600');
                     stx.textContent = data.status || 'Unknown Status';
+                    retryBtn.classList.add('hidden');
                 }
 
                 dyn.innerHTML = '';
@@ -485,6 +511,126 @@
                     });
                 }
             })();
+
+            // Retry deposit function
+            window.retryDeposit = async function() {
+                const depositId = window.currentDepositId;
+                if (!depositId) {
+                    alert('No deposit ID found');
+                    return;
+                }
+
+                const retryBtn = document.getElementById('retryDepositBtn');
+                const originalText = retryBtn.innerHTML;
+
+                // Get CSRF token from meta tags
+                const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+                const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+                // Disable button and show loading
+                retryBtn.disabled = true;
+                retryBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+
+                try {
+                    const headers = {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    };
+
+                    // Add CSRF token to headers if available
+                    if (csrfToken && csrfHeader) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+
+                    const response = await fetch(`/admin/coin-deposits/${depositId}/retry`, {
+                        method: 'POST',
+                        headers: headers
+                    });
+
+                    // Check if response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server returned non-JSON response. Please ensure you are logged in as admin.');
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Success! ' + result.message + '\n\nThe page will reload to show updated data.');
+                        window.location.reload();
+                    } else {
+                        alert('Retry failed: ' + result.message);
+                        retryBtn.disabled = false;
+                        retryBtn.innerHTML = originalText;
+                    }
+                } catch (error) {
+                    console.error('Error retrying deposit:', error);
+                    alert('Error: ' + error.message + '\n\nPlease make sure:\n1. You are logged in as admin\n2. The server is running\n3. The deposit ID is valid');
+                    retryBtn.disabled = false;
+                    retryBtn.innerHTML = originalText;
+                }
+            };
+
+            // Retry deposit directly from table/list (not from modal)
+            window.retryDepositDirect = async function(button) {
+                const depositId = button.getAttribute('data-id');
+                if (!depositId) {
+                    alert('No deposit ID found');
+                    return;
+                }
+
+                // Confirm before retry
+                if (!confirm('Are you sure you want to retry this deposit?\n\nThis will search Sepay for matching transaction and update the deposit if found.')) {
+                    return;
+                }
+
+                const originalText = button.innerHTML;
+
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+                const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+                // Disable button and show loading
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Processing...';
+
+                try {
+                    const headers = {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    };
+
+                    if (csrfToken && csrfHeader) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+
+                    const response = await fetch(`/admin/coin-deposits/${depositId}/retry`, {
+                        method: 'POST',
+                        headers: headers
+                    });
+
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server returned non-JSON response. Please ensure you are logged in as admin.');
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('✅ Success!\n\n' + result.message + '\n\nThe page will reload to show updated data.');
+                        window.location.reload();
+                    } else {
+                        alert('❌ Retry Failed\n\n' + result.message);
+                        button.disabled = false;
+                        button.innerHTML = originalText;
+                    }
+                } catch (error) {
+                    console.error('Error retrying deposit:', error);
+                    alert('❌ Error: ' + error.message + '\n\nPlease check:\n1. You are logged in as admin\n2. Server is running\n3. Deposit ID is valid');
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }
+            };
         </script>
 
     </div>

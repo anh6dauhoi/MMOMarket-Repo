@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="content"
+     th:with="page=${currentPage != null ? currentPage : 0},
+              size=${10},
+              total=${totalPages != null ? totalPages : 1},
+              complaintCount=${complaints != null ? #lists.size(complaints) : 0},
+              currentSort=${currentSort != null ? currentSort : 'date_desc'}">
+    <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
+
+        <!-- Toast Notification -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
+        </div>
+
+        <!-- Title & Stats Row -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-6 space-y-4 md:space-y-0">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-exclamation-circle text-red-600 mr-2"></i>Complaint Management
+                </h1>
+                <p class="text-sm text-gray-500">Review and manage customer complaints</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="px-3 py-1.5 bg-yellow-50 text-yellow-700 text-xs font-semibold rounded-full border border-yellow-300">
+                    <i class="fas fa-hourglass-half mr-1"></i>
+                    <span th:text="${escalatedCount != null ? escalatedCount : 0}">0</span> Escalated
+                </span>
+            </div>
+        </div>
+
+        <!-- Compact Search & Filter Controls -->
+        <div class="mb-6 bg-red-50 p-4 rounded-lg border border-red-300 shadow-sm">
+            <form method="get" action="/admin/complaints">
+                <div class="flex flex-wrap items-end gap-3">
+                    <!-- Search Input -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-search text-red-600 mr-1"></i>Search
+                        </label>
+                        <input name="search"
+                               class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white shadow-sm text-sm"
+                               placeholder="Search by complaint ID, customer, or seller..."
+                               type="text"
+                               th:value="${currentSearch != null ? currentSearch : ''}">
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="w-44">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-tag text-red-600 mr-1"></i>Status
+                        </label>
+                        <select name="status" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="" th:selected="${currentStatus == null or currentStatus == ''}">All Status</option>
+                            <option value="NEW" th:selected="${currentStatus == 'NEW'}">New</option>
+                            <option value="IN_PROGRESS" th:selected="${currentStatus == 'IN_PROGRESS'}">In Progress</option>
+                            <option value="PENDING_CONFIRMATION" th:selected="${currentStatus == 'PENDING_CONFIRMATION'}">Pending Confirmation</option>
+                            <option value="ESCALATED" th:selected="${currentStatus == 'ESCALATED'}">Escalated</option>
+                            <option value="RESOLVED" th:selected="${currentStatus == 'RESOLVED'}">Resolved</option>
+                            <option value="CLOSED_BY_ADMIN" th:selected="${currentStatus == 'CLOSED_BY_ADMIN'}">Closed by Admin</option>
+                            <option value="CANCELLED" th:selected="${currentStatus == 'CANCELLED'}">Cancelled</option>
+                        </select>
+                    </div>
+
+                    <!-- Type Filter -->
+                    <div class="w-44">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-list-ul text-red-600 mr-1"></i>Type
+                        </label>
+                        <select name="type" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="" th:selected="${currentType == null or currentType == ''}">All Types</option>
+                            <option value="ITEM_NOT_WORKING" th:selected="${currentType == 'ITEM_NOT_WORKING'}">Item Not Working</option>
+                            <option value="ITEM_NOT_AS_DESCRIBED" th:selected="${currentType == 'ITEM_NOT_AS_DESCRIBED'}">Not As Described</option>
+                            <option value="FRAUD_SUSPICION" th:selected="${currentType == 'FRAUD_SUSPICION'}">Fraud Suspicion</option>
+                            <option value="OTHER" th:selected="${currentType == 'OTHER'}">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="w-44">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-sort text-red-600 mr-1"></i>Sort By
+                        </label>
+                        <select name="sort" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="date_desc" th:selected="${currentSort == null or currentSort == 'date_desc'}">Newest First</option>
+                            <option value="date_asc" th:selected="${currentSort == 'date_asc'}">Oldest First</option>
+                            <option value="priority_desc" th:selected="${currentSort == 'priority_desc'}">Priority ↓</option>
+                            <option value="status_asc" th:selected="${currentSort == 'status_asc'}">Status A-Z</option>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-md text-sm whitespace-nowrap">
+                            <i class="fas fa-filter mr-1.5"></i>Apply
+                        </button>
+                        <a th:href="@{/admin/complaints}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200 text-sm whitespace-nowrap">
+                            <i class="fas fa-redo mr-1.5"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-lg border border-red-200 shadow-sm">
+            <table class="min-w-full bg-white">
+                <!-- Header: red theme matching other admin pages -->
+                <thead class="bg-red-600">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Customer</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Seller</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Type</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Date</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+
+                <tr class="hover:bg-red-50 transition duration-150" th:each="complaint,iter : ${complaints}">
+                    <td class="py-3 px-4 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${page * size + iter.index + 1}">1</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                                <span class="text-white font-semibold text-sm" th:text="${complaint.customer != null and complaint.customer.fullName != null ? #strings.substring(complaint.customer.fullName, 0, 1).toUpperCase() : 'C'}">C</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${complaint.customer != null ? complaint.customer.fullName : 'N/A'}">Customer Name</div>
+                                <div class="text-xs text-gray-500" th:text="${complaint.customer != null ? complaint.customer.email : 'N/A'}">customer@email.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-green-400 to-green-500 rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                                <span class="text-white font-semibold text-sm" th:text="${complaint.seller != null and complaint.seller.fullName != null ? #strings.substring(complaint.seller.fullName, 0, 1).toUpperCase() : 'S'}">S</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${complaint.seller != null ? complaint.seller.fullName : 'N/A'}">Seller Name</div>
+                                <div class="text-xs text-gray-500" th:text="${complaint.seller != null ? complaint.seller.email : 'N/A'}">seller@email.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full"
+                              th:with="type=${complaint.complaintType != null ? complaint.complaintType.name() : 'OTHER'}"
+                              th:classappend="${type == 'ITEM_NOT_WORKING'} ? 'bg-orange-100 text-orange-800 border border-orange-300' : (${type == 'ITEM_NOT_AS_DESCRIBED'} ? 'bg-purple-100 text-purple-800 border border-purple-300' : (${type == 'FRAUD_SUSPICION'} ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-gray-100 text-gray-800 border border-gray-300'))">
+                            <i th:class="${type == 'ITEM_NOT_WORKING'} ? 'fas fa-tools mr-1' : (${type == 'ITEM_NOT_AS_DESCRIBED'} ? 'fas fa-file-alt mr-1' : (${type == 'FRAUD_SUSPICION'} ? 'fas fa-exclamation-triangle mr-1' : 'fas fa-question mr-1'))"></i>
+                            <span th:text="${type == 'ITEM_NOT_WORKING'} ? 'Not Working' : (${type == 'ITEM_NOT_AS_DESCRIBED'} ? 'Not As Described' : (${type == 'FRAUD_SUSPICION'} ? 'Fraud' : 'Other'))">Type</span>
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span class="px-3 py-1.5 inline-flex items-center text-xs leading-5 font-bold rounded-full shadow-sm"
+                              th:with="status=${complaint.status != null ? complaint.status.name() : 'NEW'}"
+                              th:classappend="${status == 'NEW'} ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' :
+                                            (${status == 'IN_PROGRESS'} ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300' :
+                                            (${status == 'PENDING_CONFIRMATION'} ? 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300' :
+                                            (${status == 'ESCALATED'} ? 'bg-red-100 text-red-800 border-2 border-red-400' :
+                                            (${status == 'RESOLVED'} ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300' :
+                                            (${status == 'CLOSED_BY_ADMIN'} ? 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300' :
+                                            (${status == 'CANCELLED'} ? 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 border border-gray-400' : 'bg-gray-100 text-gray-800 border border-gray-300'))))))">
+                            <i th:class="${status == 'NEW'} ? 'fas fa-star mr-1.5' :
+                                       (${status == 'IN_PROGRESS'} ? 'fas fa-spinner mr-1.5' :
+                                       (${status == 'PENDING_CONFIRMATION'} ? 'fas fa-hourglass-half mr-1.5' :
+                                       (${status == 'ESCALATED'} ? 'fas fa-arrow-up mr-1.5' :
+                                       (${status == 'RESOLVED'} ? 'fas fa-check-circle mr-1.5' :
+                                       (${status == 'CLOSED_BY_ADMIN'} ? 'fas fa-lock mr-1.5' :
+                                       (${status == 'CANCELLED'} ? 'fas fa-times-circle mr-1.5' : 'fas fa-circle mr-1.5'))))))"></i>
+                            <span th:text="${status == 'NEW'} ? 'New' :
+                                         (${status == 'IN_PROGRESS'} ? 'In Progress' :
+                                         (${status == 'PENDING_CONFIRMATION'} ? 'Pending' :
+                                         (${status == 'ESCALATED'} ? 'Escalated' :
+                                         (${status == 'RESOLVED'} ? 'Resolved' :
+                                         (${status == 'CLOSED_BY_ADMIN'} ? 'Closed' :
+                                         (${status == 'CANCELLED'} ? 'Cancelled' : 'Unknown'))))))">Status</span>
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="flex items-center text-xs text-gray-600">
+                            <i class="fas fa-calendar-alt text-gray-400 mr-1.5"></i>
+                            <span th:text="${complaint.createdAt != null ? #dates.format(complaint.createdAt,'yyyy-MM-dd') : ''}">2024-01-01</span>
+                        </div>
+                        <div class="flex items-center text-xs text-gray-500 mt-1">
+                            <i class="fas fa-clock text-gray-400 mr-1.5"></i>
+                            <span th:text="${complaint.createdAt != null ? #dates.format(complaint.createdAt,'HH:mm') : ''}">12:00</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-2">
+                            <a th:href="@{/admin/complaints/{id}(id=${complaint.id})}"
+                               class="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm">
+                                <i class="fas fa-eye mr-1.5"></i>View
+                            </a>
+                            <button th:if="${complaint.status == 'ESCALATED'}"
+                                    type="button"
+                                    class="inline-flex items-center px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                    th:attr="data-id=${complaint.id}"
+                                    onclick="openResolveModal(this)">
+                                <i class="fas fa-gavel mr-1.5"></i>Resolve
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(complaints)}">
+                    <td class="text-center py-16 text-gray-400" colspan="7">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">No complaints found</p>
+                        <p class="text-sm">Try adjusting your filters or search criteria</p>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition duration-150" th:each="complaint,iter : ${complaints}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-3 py-1.5 inline-flex items-center text-xs leading-5 font-bold rounded-full shadow-sm"
+                              th:with="status=${complaint.status != null ? complaint.status.name() : 'NEW'}"
+                              th:classappend="${status == 'NEW'} ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' :
+                                            (${status == 'IN_PROGRESS'} ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300' :
+                                            (${status == 'PENDING_CONFIRMATION'} ? 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300' :
+                                            (${status == 'ESCALATED'} ? 'bg-red-100 text-red-800 border-2 border-red-400' :
+                                            (${status == 'RESOLVED'} ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300' :
+                                            (${status == 'CLOSED_BY_ADMIN'} ? 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300' :
+                                            (${status == 'CANCELLED'} ? 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 border border-gray-400' : 'bg-gray-100 text-gray-800 border border-gray-300'))))))">
+                            <i th:class="${status == 'NEW'} ? 'fas fa-star mr-1.5' :
+                                       (${status == 'IN_PROGRESS'} ? 'fas fa-spinner mr-1.5' :
+                                       (${status == 'PENDING_CONFIRMATION'} ? 'fas fa-hourglass-half mr-1.5' :
+                                       (${status == 'ESCALATED'} ? 'fas fa-arrow-up mr-1.5' :
+                                       (${status == 'RESOLVED'} ? 'fas fa-check-circle mr-1.5' :
+                                       (${status == 'CLOSED_BY_ADMIN'} ? 'fas fa-lock mr-1.5' :
+                                       (${status == 'CANCELLED'} ? 'fas fa-times-circle mr-1.5' : 'fas fa-circle mr-1.5'))))))"></i>
+                            <span th:text="${status == 'NEW'} ? 'New' :
+                                         (${status == 'IN_PROGRESS'} ? 'In Progress' :
+                                         (${status == 'PENDING_CONFIRMATION'} ? 'Pending' :
+                                         (${status == 'ESCALATED'} ? 'Escalated' :
+                                         (${status == 'RESOLVED'} ? 'Resolved' :
+                                         (${status == 'CLOSED_BY_ADMIN'} ? 'Closed' :
+                                         (${status == 'CANCELLED'} ? 'Cancelled' : 'Unknown'))))))">Status</span>
+                        </span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500 flex items-center">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            <span th:text="${complaint.createdAt != null ? #dates.format(complaint.createdAt,'yyyy-MM-dd') : ''}">Date</span>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-0.5">
+                            <span th:text="${complaint.createdAt != null ? #dates.format(complaint.createdAt,'HH:mm') : ''}">Time</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 mb-3 text-sm">
+                    <div class="flex items-center">
+                        <i class="fas fa-user text-blue-500 mr-2 w-4"></i>
+                        <span class="font-medium text-gray-700">Customer:</span>
+                        <span class="ml-2 text-gray-600 truncate" th:text="${complaint.customer != null ? complaint.customer.fullName : 'N/A'}">Name</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-store text-green-500 mr-2 w-4"></i>
+                        <span class="font-medium text-gray-700">Seller:</span>
+                        <span class="ml-2 text-gray-600 truncate" th:text="${complaint.seller != null ? complaint.seller.fullName : 'N/A'}">Name</span>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-list text-purple-500 mr-2 w-4 mt-0.5"></i>
+                        <span class="font-medium text-gray-700">Type:</span>
+                        <span class="ml-2 px-2 py-0.5 inline-flex items-center text-xs leading-4 font-semibold rounded-full"
+                              th:with="type=${complaint.complaintType != null ? complaint.complaintType.name() : 'OTHER'}"
+                              th:classappend="${type == 'ITEM_NOT_WORKING'} ? 'bg-orange-100 text-orange-700' : (${type == 'ITEM_NOT_AS_DESCRIBED'} ? 'bg-purple-100 text-purple-700' : (${type == 'FRAUD_SUSPICION'} ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'))"
+                              th:text="${type == 'ITEM_NOT_WORKING'} ? 'Not Working' : (${type == 'ITEM_NOT_AS_DESCRIBED'} ? 'Not As Described' : (${type == 'FRAUD_SUSPICION'} ? 'Fraud' : 'Other'))">Type</span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <a th:href="@{/admin/complaints/{id}(id=${complaint.id})}"
+                       class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200">
+                        <i class="fas fa-eye mr-1.5"></i>View Details
+                    </a>
+                    <button th:if="${complaint.status.name() == 'ESCALATED'}"
+                            type="button"
+                            class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition duration-200"
+                            th:attr="data-id=${complaint.id}"
+                            onclick="openResolveModal(this)">
+                        <i class="fas fa-gavel mr-1.5"></i>Resolve
+                    </button>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(complaints)}" class="text-center py-16 text-gray-400">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p class="text-lg font-medium">No complaints found</p>
+                <p class="text-sm">Try adjusting your filters</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${total > 1}" class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="text-sm text-gray-600">
+                Showing <span class="font-semibold" th:text="${page * size + 1}">1</span>
+                to <span class="font-semibold" th:text="${page * size + complaintCount}">10</span>
+                of <span class="font-semibold" th:text="${total * size}">100</span> complaints
+            </div>
+
+            <nav class="flex items-center space-x-2">
+                <!-- Previous Button -->
+                <a th:if="${page > 0}"
+                   th:href="@{/admin/complaints(page=${page - 1}, search=${currentSearch}, status=${currentStatus}, type=${currentType}, sort=${currentSort})}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <span th:if="${page == 0}"
+                      class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
+                    <i class="fas fa-chevron-left"></i>
+                </span>
+
+                <!-- Page Numbers -->
+                <div class="hidden sm:flex space-x-2">
+                    <a th:each="i : ${#numbers.sequence(0, total - 1)}"
+                       th:if="${i >= page - 2 and i <= page + 2}"
+                       th:href="@{/admin/complaints(page=${i}, search=${currentSearch}, status=${currentStatus}, type=${currentType}, sort=${currentSort})}"
+                       th:classappend="${i == page} ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                       class="px-4 py-2 text-sm font-medium border rounded-lg transition">
+                        <span th:text="${i + 1}">1</span>
+                    </a>
+                </div>
+
+                <!-- Current Page (Mobile) -->
+                <span class="sm:hidden px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-lg">
+                    <span th:text="${page + 1}">1</span>
+                </span>
+
+                <!-- Next Button -->
+                <a th:if="${page < total - 1}"
+                   th:href="@{/admin/complaints(page=${page + 1}, search=${currentSearch}, status=${currentStatus}, type=${currentType}, sort=${currentSort})}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <span th:if="${page == total - 1}"
+                      class="px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            </nav>
+        </div>
+
+    </div>
+
+    <!-- Admin Resolve Modal -->
+    <div id="resolveModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-red-600 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
+                <h3 class="text-xl font-bold">
+                    <i class="fas fa-gavel mr-2"></i>Resolve Complaint
+                </h3>
+                <button onclick="closeResolveModal()" class="text-white hover:text-gray-200 transition">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <form id="resolveForm" onsubmit="handleResolveSubmit(event)">
+                    <input type="hidden" id="resolveComplaintId" name="complaintId">
+
+                    <!-- Decision Type -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-balance-scale text-red-600 mr-2"></i>Decision
+                        </label>
+                        <select name="decision" id="decisionType" required
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                            <option value="">-- Select Decision --</option>
+                            <option value="FAVOR_CUSTOMER">Favor Customer (Refund/Compensation)</option>
+                            <option value="FAVOR_SELLER">Favor Seller (Reject Complaint)</option>
+                            <option value="NEUTRAL">Neutral (Partial Resolution)</option>
+                        </select>
+                    </div>
+
+                    <!-- Decision Notes -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-file-alt text-red-600 mr-2"></i>Decision Notes <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="notes" id="decisionNotes" rows="6" required
+                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                  placeholder="Provide detailed explanation of your decision. This will be visible to both customer and seller."></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Minimum 20 characters</p>
+                    </div>
+
+                    <!-- Action Items (Optional) -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-tasks text-red-600 mr-2"></i>Action Items (Optional)
+                        </label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" name="refund" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700">Issue Refund to Customer</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="warningSeller" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700">Send Warning to Seller</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="compensate" value="true" class="form-checkbox h-4 w-4 text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700">Provide Compensation Points</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex space-x-3 pt-4 border-t">
+                        <button type="button" onclick="closeResolveModal()"
+                                class="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit"
+                                class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-lg">
+                            <i class="fas fa-check mr-2"></i>Submit Decision
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        toastMessage.textContent = message;
+
+        if (type === 'success') {
+            toast.classList.remove('bg-red-500');
+            toast.classList.add('bg-green-500');
+        } else {
+            toast.classList.remove('bg-green-500');
+            toast.classList.add('bg-red-500');
+        }
+
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3000);
+    }
+
+    // Open resolve modal
+    function openResolveModal(button) {
+        const complaintId = button.getAttribute('data-id');
+        document.getElementById('resolveComplaintId').value = complaintId;
+        document.getElementById('resolveModal').classList.remove('hidden');
+        document.getElementById('resolveModal').classList.add('flex');
+    }
+
+    // Close resolve modal
+    function closeResolveModal() {
+        document.getElementById('resolveModal').classList.add('hidden');
+        document.getElementById('resolveModal').classList.remove('flex');
+        document.getElementById('resolveForm').reset();
+    }
+
+    // Handle resolve form submission
+    function handleResolveSubmit(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const complaintId = formData.get('complaintId');
+        const decision = formData.get('decision');
+        const notes = formData.get('notes');
+
+        if (!decision || !notes || notes.length < 20) {
+            showToast('Please fill in all required fields correctly', 'error');
+            return;
+        }
+
+        // Get CSRF token
+        const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+        // Prepare data
+        const data = {
+            decision: decision,
+            notes: notes,
+            refund: formData.get('refund') === 'true',
+            warningSeller: formData.get('warningSeller') === 'true',
+            compensate: formData.get('compensate') === 'true'
+        };
+
+        // Send request
+        fetch(`/admin/complaints/${complaintId}/resolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [header]: token
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Failed to resolve complaint');
+        })
+        .then(data => {
+            showToast('Complaint resolved successfully', 'success');
+            closeResolveModal();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error resolving complaint. Please try again.', 'error');
+        });
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('resolveModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeResolveModal();
+        }
+    });
+</script>
+
+</html>
+

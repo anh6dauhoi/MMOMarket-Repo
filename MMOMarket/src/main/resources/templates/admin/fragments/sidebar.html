@@ -121,6 +121,17 @@
                     </svg>
                     Complain Management
                 </a>
+                <a th:href="@{/admin/flag-management}"
+                   th:classappend="${uri.startsWith('/admin/flag-management')} ? ' bg-red-50 text-red-800' : ''"
+                   th:attr="aria-current=${uri.startsWith('/admin/flag-management')} ? 'page' : null"
+                   class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-red-50 text-gray-700 hover:text-red-700 transition duration-150">
+                    <svg th:classappend="${uri.startsWith('/admin/flag-management')} ? ' text-red-600' : ''" class="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500 transition duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"/>
+                    </svg>
+                    Flag Management
+                </a>
                 <a th:href="@{/admin/withdraw-management}"
                    th:classappend="${uri.startsWith('/admin/withdraw-management')} ? ' bg-red-50 text-red-800' : ''"
                    th:attr="aria-current=${uri.startsWith('/admin/withdraw-management')} ? 'page' : null"

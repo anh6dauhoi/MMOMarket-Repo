@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>File Complaint - Order #<span th:text="${order.id}">0</span></title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" th:href="@{/customer/css/complaint-form.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+        }
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+</head>
+<body class="min-h-screen flex flex-col">
+<div th:insert="~{fragments/header :: header}"></div>
+
+<main class="flex-grow py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Sidebar -->
+            <div class="md:col-span-1">
+                <div th:replace="~{customer/account-setting :: sidebar}"></div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="md:col-span-3">
+                <!-- Progress Steps -->
+                <div class="glass-card rounded-xl shadow-lg p-4 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="progress-step step-completed flex-1">
+                    <div class="flex items-center">
+                        <div class="step-circle w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-bold shadow-lg z-10">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="ml-3 text-sm font-semibold text-gray-700 hidden sm:inline">Order Placed</span>
+                    </div>
+                </div>
+                <div class="progress-step step-completed flex-1">
+                    <div class="flex items-center">
+                        <div class="step-circle w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-bold shadow-lg z-10">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="ml-3 text-sm font-semibold text-gray-700 hidden sm:inline">Account Activated</span>
+                    </div>
+                </div>
+                <div class="progress-step step-active flex-1">
+                    <div class="flex items-center">
+                        <div class="step-circle w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center font-bold shadow-lg z-10">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <span class="ml-3 text-sm font-semibold text-red-600 hidden sm:inline">File Complaint</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card rounded-xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-red-600 text-white px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-file-alt mr-3"></i>
+                            File a Complaint
+                        </h1>
+                        <p class="text-red-100 text-sm mt-1">Order #<span th:text="${order.id}"></span></p>
+                    </div>
+                    <a th:href="@{/account/orders/{id}(id=${order.id})}"
+                       class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors inline-flex items-center space-x-2 text-sm">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="hidden sm:inline">Back</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <!-- Order Information Card -->
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 mb-6 border border-gray-200">
+                    <div class="flex items-center mb-3">
+                        <i class="fas fa-box text-red-500 mr-2"></i>
+                        <h2 class="text-base font-bold text-gray-900">Order Information</h2>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-lg p-3 shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">Product Name</p>
+                            <p class="font-semibold text-gray-900 text-sm truncate" th:text="${productName}">Product Name</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">Category</p>
+                            <p class="font-semibold text-sm">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold"
+                                      th:classappend="${categoryType == 'warning'} ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
+                                    <i class="fas mr-1" th:classappend="${categoryType == 'warning'} ? 'fa-exclamation-triangle' : 'fa-check-circle'"></i>
+                                    <span th:text="${categoryType == 'warning'} ? 'Warning' : 'Common'">Common</span>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">Order Date</p>
+                            <p class="font-semibold text-gray-900 text-sm" th:text="${#dates.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 00:00</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">Total Price</p>
+                            <p class="font-semibold text-gray-900 text-sm">
+                                <i class="fas fa-coins text-yellow-500 mr-1"></i>
+                                <span class="format-price" th:attr="data-price=${order.totalPrice}">0</span> coins
+                            </p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 shadow-sm sm:col-span-2">
+                            <p class="text-xs text-gray-500 mb-1">Complaint Deadline</p>
+                            <p class="font-semibold text-sm flex items-center">
+                                <i class="fas mr-2" th:classappend="${isExpired} ? 'fa-times-circle text-red-600' : 'fa-clock text-green-600'"></i>
+                                <span th:classappend="${isExpired} ? 'text-red-600' : 'text-green-600'" th:text="${deadlineText}">3 days from order date</span>
+                                <span th:if="${!isExpired}" class="text-xs text-gray-500 ml-2" th:text="${'(' + #dates.format(deadlineDate, 'dd/MM/yyyy HH:mm') + ')'}"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Previous Complaint Warning (if reopening) -->
+                <div th:if="${hasResolvedComplaint != null and hasResolvedComplaint}"
+                     class="bg-yellow-50 border-l-4 border-yellow-400 rounded-xl p-5 mb-6 shadow-md">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <h3 class="text-sm font-bold text-yellow-800 mb-2">
+                                <i class="fas fa-history mr-1"></i>Previous Complaint Detected
+                            </h3>
+                            <p class="text-sm text-yellow-700 mb-3">
+                                You have previously filed
+                                <strong th:text="${resolvedComplaintCount}">1</strong>
+                                complaint<span th:if="${resolvedComplaintCount > 1}">s</span> for this order that
+                                <span th:if="${lastResolvedComplaint != null and lastResolvedComplaint.status.name() == 'RESOLVED'}">
+                                    <strong class="text-green-600">was resolved</strong>
+                                </span>
+                                <span th:if="${lastResolvedComplaint != null and lastResolvedComplaint.status.name() == 'CLOSED_BY_ADMIN'}">
+                                    <strong class="text-blue-600">was closed by admin</strong>
+                                </span>.
+                            </p>
+                            <div class="bg-white rounded-lg p-3 mb-3 border border-yellow-200">
+                                <p class="text-xs font-semibold text-gray-700 mb-1">
+                                    <i class="fas fa-info-circle text-yellow-600 mr-1"></i>Last Complaint Details:
+                                </p>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <span class="text-gray-500">ID:</span>
+                                        <a th:href="@{/account/complaints/{id}(id=${lastResolvedComplaint.id})}"
+                                           class="font-bold text-blue-600 hover:underline ml-1" target="_blank">
+                                            #<span th:text="${lastResolvedComplaint.id}">0</span>
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">Status:</span>
+                                        <span class="font-semibold text-gray-800 ml-1"
+                                              th:text="${lastResolvedComplaint.status}">RESOLVED</span>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <span class="text-gray-500">Resolved At:</span>
+                                        <span class="font-semibold text-gray-800 ml-1"
+                                              th:text="${lastResolvedComplaint.updatedAt != null ? #dates.format(lastResolvedComplaint.updatedAt, 'dd/MM/yyyy HH:mm') : 'N/A'}">
+                                            01/01/2025 00:00
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-yellow-100 rounded-lg p-3 border border-yellow-300">
+                                <p class="text-xs font-semibold text-yellow-800 mb-2">
+                                    <i class="fas fa-lightbulb mr-1"></i>Important Notes:
+                                </p>
+                                <ul class="text-xs text-yellow-800 space-y-1 ml-4 list-disc">
+                                    <li>Filing a new complaint indicates the issue has NOT been resolved</li>
+                                    <li>This will create a <strong>NEW</strong> complaint case</li>
+                                    <li>Please provide NEW evidence and detailed explanation</li>
+                                    <li>Admin will review your complaint history when making decisions</li>
+                                    <li>Abuse of the complaint system may result in account restrictions</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Complaint Form -->
+                <form th:action="@{/account/orders/{id}/complaint(id=${order.id})}" method="post" enctype="multipart/form-data" id="complaintForm">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+                    <!-- Form Title -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center">
+                            <i class="fas fa-edit text-red-500 mr-2"></i>
+                            Complaint Details
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-1">Please provide detailed information about your issue</p>
+                    </div>
+
+                    <!-- Complaint Type -->
+                    <div class="mb-5">
+                        <label for="complaintType" class="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                            <span class="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">1</span>
+                            <i class="fas fa-tags text-red-500 mr-2"></i>
+                            Select Complaint Type <span class="text-red-500 ml-1">*</span>
+                        </label>
+                        <select name="complaintType" id="complaintType" required
+                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all text-sm">
+                            <option value="">-- Choose a type --</option>
+                            <option value="ITEM_NOT_WORKING">🔴 Item Not Working</option>
+                            <option value="ITEM_NOT_AS_DESCRIBED">📝 Item Not As Described</option>
+                            <option value="FRAUD_SUSPICION">⚠️ Fraud Suspicion</option>
+                            <option value="OTHER">❓ Other Issue</option>
+                        </select>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-5">
+                        <label for="description" class="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                            <span class="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
+                            <i class="fas fa-comment-alt text-red-500 mr-2"></i>
+                            Describe Your Issue <span class="text-red-500 ml-1">*</span>
+                        </label>
+                        <textarea name="description" id="description" rows="5" required
+                                  class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all text-sm"
+                                  placeholder="Please describe your issue in detail. What exactly went wrong? When did it happen? What error message did you see?"></textarea>
+                        <div class="flex items-center justify-between mt-1">
+                            <p class="text-xs text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Minimum 20 characters required
+                            </p>
+                            <p class="text-xs text-gray-400" id="charCount">0 / 20</p>
+                        </div>
+                    </div>
+
+                    <!-- Evidence Upload -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                            <span class="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">3</span>
+                            <i class="fas fa-paperclip text-red-500 mr-2"></i>
+                            Upload Evidence <span class="text-red-500 ml-1">*</span>
+                            <span th:if="${categoryType == 'warning'}" class="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-bold">
+                                <i class="fas fa-video mr-1"></i>Video Required
+                            </span>
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-red-400 transition-colors bg-gray-50">
+                            <input type="file" name="evidence" id="evidence" multiple accept="image/*,video/*"
+                                   class="hidden" onchange="handleFileSelect(event)">
+                            <label for="evidence" class="cursor-pointer block">
+                                <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 block mb-3"></i>
+                                <span class="block text-base font-semibold text-gray-700 mb-1">Click or drag files here to upload</span>
+                                <span class="block text-sm text-gray-500">
+                                    <span th:if="${categoryType == 'warning'}">
+                                        <i class="fas fa-video text-red-600 mr-1"></i>
+                                        <strong class="text-red-600">Warning category:</strong> Must include ONE unedited video showing the entire activation process
+                                    </span>
+                                    <span th:unless="${categoryType == 'warning'}">
+                                        <i class="fas fa-images text-gray-600 mr-1"></i>
+                                        Images (JPG, PNG) or Videos (MP4, AVI) - Max 50MB per file
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+                        <div id="evidencePreview" class="mt-4"></div>
+                    </div>
+
+                    <!-- Important Notes -->
+                    <div class="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 rounded-r-xl p-4 mb-5 shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-lightbulb text-yellow-500 text-xl"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-bold text-yellow-900 mb-2 flex items-center">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Evidence Requirements - Please Read Carefully
+                                </h3>
+                                <div class="text-xs text-yellow-800 space-y-2">
+                                    <div th:if="${categoryType == 'warning'}" class="bg-white/50 rounded-lg p-3">
+                                        <p class="font-bold mb-2 flex items-center">
+                                            <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>
+                                            For Warning Category Products:
+                                        </p>
+                                        <ul class="list-disc pl-5 space-y-1">
+                                            <li><strong>Required:</strong> ONE continuous video without any cuts or edits</li>
+                                            <li><strong>Must show:</strong> Product info → Copy → Switch to platform → Paste → Error message</li>
+                                            <li><strong>Quality:</strong> Screen must be clearly visible throughout</li>
+                                        </ul>
+                                    </div>
+                                    <div th:unless="${categoryType == 'warning'}" class="bg-white/50 rounded-lg p-3">
+                                        <p class="font-bold mb-2 flex items-center">
+                                            <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                                            For Common Category Products:
+                                        </p>
+                                        <ul class="list-disc pl-5 space-y-1">
+                                            <li>Clear images or videos showing the issue</li>
+                                            <li>Screenshots of error messages (if any)</li>
+                                            <li>Proof that product doesn't match description</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error Messages -->
+                    <div th:if="${error}" class="bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 mb-5 shadow-sm animate-shake">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-times-circle text-red-500 text-xl"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-semibold text-red-700" th:text="${error}"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t-2 border-gray-200">
+                        <a th:href="@{/account/orders/{id}(id=${order.id})}"
+                           class="w-full sm:w-auto px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all border border-gray-300 inline-flex items-center justify-center space-x-2">
+                            <i class="fas fa-times"></i>
+                            <span>Cancel</span>
+                        </a>
+                        <button type="submit"
+                                class="w-full sm:w-auto px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 inline-flex items-center justify-center space-x-2">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Submit Complaint</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:insert="~{fragments/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    function formatWithDots(n){
+        const num = Math.round(Number(String(n).replace(/[^0-9.-]+/g,'')) || 0);
+        return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.format-price').forEach(el => {
+            const v = el.getAttribute('data-price');
+            if (v == null) return;
+            el.textContent = formatWithDots(v);
+        });
+
+        // Character counter for description
+        const descriptionField = document.getElementById('description');
+        const charCount = document.getElementById('charCount');
+        if (descriptionField && charCount) {
+            descriptionField.addEventListener('input', function() {
+                const count = this.value.length;
+                charCount.textContent = count + ' / 20';
+                if (count >= 20) {
+                    charCount.classList.remove('text-gray-400');
+                    charCount.classList.add('text-green-600', 'font-semibold');
+                } else {
+                    charCount.classList.remove('text-green-600', 'font-semibold');
+                    charCount.classList.add('text-gray-400');
+                }
+            });
+        }
+    });
+
+    let selectedFiles = [];
+
+    function handleFileSelect(event) {
+        const files = Array.from(event.target.files);
+        selectedFiles = selectedFiles.concat(files);
+        displayEvidencePreview();
+    }
+
+    function displayEvidencePreview() {
+        const preview = document.getElementById('evidencePreview');
+        preview.innerHTML = '';
+
+        if (selectedFiles.length > 0) {
+            const header = document.createElement('div');
+            header.className = 'mb-3 flex items-center justify-between';
+            header.innerHTML = `
+                <p class="text-sm font-semibold text-gray-700">
+                    <i class="fas fa-images text-red-500 mr-2"></i>
+                    Selected Files (${selectedFiles.length})
+                </p>
+                <button type="button" onclick="clearAllFiles()" class="text-xs text-red-600 hover:text-red-800 font-semibold">
+                    <i class="fas fa-trash mr-1"></i>Clear All
+                </button>
+            `;
+            preview.appendChild(header);
+
+            const container = document.createElement('div');
+            container.className = 'flex flex-wrap gap-2';
+            preview.appendChild(container);
+        }
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'evidence-preview';
+
+            if (file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.alt = file.name;
+                div.appendChild(img);
+            } else if (file.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(file);
+                video.controls = false;
+                video.muted = true;
+                const playIcon = document.createElement('div');
+                playIcon.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-xl';
+                playIcon.innerHTML = '<i class="fas fa-play-circle text-white text-3xl"></i>';
+                div.appendChild(video);
+                div.appendChild(playIcon);
+            }
+
+            const removeBtn = document.createElement('div');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            removeBtn.onclick = () => removeFile(index);
+            removeBtn.title = 'Remove file';
+            div.appendChild(removeBtn);
+
+            const fileName = document.createElement('p');
+            fileName.className = 'text-xs text-gray-600 mt-1 truncate max-w-[150px] text-center';
+            fileName.textContent = file.name;
+            fileName.title = file.name;
+            div.appendChild(fileName);
+
+            document.querySelector('#evidencePreview .flex')?.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        displayEvidencePreview();
+        updateFileInput();
+    }
+
+    function clearAllFiles() {
+        selectedFiles = [];
+        displayEvidencePreview();
+        updateFileInput();
+    }
+
+    function updateFileInput() {
+        const input = document.getElementById('evidence');
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        input.files = dt.files;
+    }
+
+    // Form validation with better UX
+    document.getElementById('complaintForm').addEventListener('submit', function(e) {
+        const description = document.getElementById('description').value;
+        const complaintType = document.getElementById('complaintType').value;
+        const categoryType = /*[[${categoryType}]]*/ 'common';
+
+        if (!complaintType) {
+            e.preventDefault();
+            showError('Please select a complaint type');
+            return false;
+        }
+
+        if (description.length < 20) {
+            e.preventDefault();
+            showError('Description must be at least 20 characters long (currently ' + description.length + ' characters)');
+            document.getElementById('description').focus();
+            return false;
+        }
+
+        if (selectedFiles.length === 0) {
+            e.preventDefault();
+            showError('Please upload at least one piece of evidence');
+            return false;
+        }
+
+        // Validate video requirement for warning category
+        if (categoryType === 'warning') {
+            const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
+            if (!hasVideo) {
+                e.preventDefault();
+                showError('Warning category products require video evidence showing the complete activation process');
+                return false;
+            }
+        }
+
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i><span>Submitting...</span>';
+
+        return true;
+    });
+
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 animate-slide-in';
+        errorDiv.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-3"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(errorDiv);
+        setTimeout(() => errorDiv.remove(), 5000);
+    }
+</script>
+</body>
+</html>

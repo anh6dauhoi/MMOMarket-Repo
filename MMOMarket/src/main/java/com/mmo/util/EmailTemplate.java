@@ -151,6 +151,38 @@ public class EmailTemplate {
                 "</div>";
     }
 
+    public static String sellerRegistrationOtpEmail(String code) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+                "<div style=\"background:linear-gradient(90deg,#22c55e 0,#38bdf8 100%);padding:24px 0;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<h2 style=\"color:#fff;font-size:22px;font-weight:800;margin:0;letter-spacing:0.5px;\">🎉 Seller Registration Verification - MMOMarket</h2>" +
+                "</div>" +
+                "<div style=\"padding:28px 24px 24px 24px;\">" +
+                "<p style=\"font-size:16px;color:#222;margin:0 0 12px;\">You are registering as a <b>Seller</b> on MMOMarket.</p>" +
+                "<p style=\"font-size:15px;color:#444;margin:0 0 18px;\">Please enter the OTP code below within <b>5 minutes</b> to complete your seller registration:</p>" +
+                "<div style=\"text-align:center;margin:20px 0 16px;\">" +
+                "<span style=\"display:inline-block;background:#22c55e;color:#fff;font-size:34px;font-weight:800;letter-spacing:8px;padding:16px 36px;border-radius:10px;box-shadow:0 3px 10px rgba(34,197,94,0.15);\">" + code + "</span>" +
+                "</div>" +
+                "<div style=\"background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:14px;color:#15803d;margin:0 0 8px;\"><b>📝 Registration details:</b></p>" +
+                "<ul style=\"font-size:13px;color:#166534;margin:0;padding-left:20px;\">" +
+                "<li>Registration fee: <b>200,000 coins</b></li>" +
+                "<li>The fee will be deducted from your account balance</li>" +
+                "<li>Your shop will be activated immediately upon successful verification</li>" +
+                "</ul>" +
+                "</div>" +
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin:10px 0 16px;\">" +
+                "<p style=\"font-size:13px;color:#92400e;margin:0;\"><b>Security note:</b> MMOMarket will <u>never</u> ask you to enter OTP outside the official website/app. If you did <u>not</u> request seller registration, <b>do not share this code</b> and change your password immediately.</p>" +
+                "</div>" +
+                "<div style=\"text-align:center;margin:10px 0 0;\">" +
+                "<a href='http://localhost:8080/seller/register' style='display:inline-block;background:#22c55e;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 2px 8px rgba(34,197,94,0.15);'>Complete Registration</a>" +
+                "</div>" +
+                "</div>" +
+                "<div style=\"background:#f7f7f9;color:#aaa;font-size:12px;text-align:center;padding:14px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
     public static String withdrawalBankInfoUpdatedEmail(String userName, String oldBankInfo, String newBankInfo, String updatedDate) {
         return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
                 "<div style=\"max-width:520px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
@@ -357,6 +389,162 @@ public class EmailTemplate {
                 "</div>" +
                 "</div>" +
                 "<div style=\"background:#f7f7f9;color:#aaa;font-size:13px;text-align:center;padding:16px 8px;border-radius:0 0 16px 16px;\">&copy; 2025 MMOMarket. All rights reserved.</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    /**
+     * Email template for admin when a complaint is escalated
+     */
+    public static String complaintEscalatedToAdminEmail(String adminName, String requesterName,
+                                                        String requesterType, String productName,
+                                                        String transactionId, String complaintType,
+                                                        String complaintId, String reason, String escalatedDate) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:600px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+
+                // Header
+                "<div style=\"background:linear-gradient(135deg,#7c3aed 0%,#dc2626 100%);padding:28px 24px;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<div style=\"font-size:48px;margin-bottom:8px;\">🚨</div>" +
+                "<h2 style=\"color:#fff;font-size:24px;font-weight:800;margin:0;letter-spacing:0.5px;\">Complaint Escalated - Admin Required</h2>" +
+                "<p style=\"color:rgba(255,255,255,0.9);font-size:14px;margin:8px 0 0;font-weight:500;\">Urgent - Dispute Resolution Needed</p>" +
+                "</div>" +
+
+                // Content
+                "<div style=\"padding:32px 28px;\">" +
+                "<p style=\"font-size:16px;color:#111827;margin:0 0 20px;line-height:1.6;\">Hello <b>" + escape(adminName) + "</b>,</p>" +
+                "<p style=\"font-size:15px;color:#374151;margin:0 0 24px;line-height:1.6;\">A complaint has been escalated to admin team by the <b>" + escape(requesterType) + "</b>. This requires your immediate attention and decision.</p>" +
+
+                // Escalation Info Box
+                "<div style=\"background:#fef2f2;border-left:4px solid #7c3aed;padding:20px;border-radius:8px;margin:0 0 24px;\">" +
+                "<h3 style=\"font-size:14px;color:#6b21a8;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 16px;font-weight:700;\">🔔 Escalation Information</h3>" +
+                "<table style=\"width:100%;border-collapse:collapse;\">" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;width:40%;\">Escalated By:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(requesterName) + " (" + escape(requesterType) + ")</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Complaint ID:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">#" + escape(complaintId) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Escalation Date:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(escalatedDate) + "</td></tr>" +
+                "</table>" +
+                "</div>" +
+
+                // Order Information Box
+                "<div style=\"background:#eff6ff;border-left:4px solid #3b82f6;padding:20px;border-radius:8px;margin:0 0 24px;\">" +
+                "<h3 style=\"font-size:14px;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 16px;font-weight:700;\">📦 Dispute Details</h3>" +
+                "<table style=\"width:100%;border-collapse:collapse;\">" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;width:40%;\">Product:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(productName) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Transaction ID:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">#" + escape(transactionId) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Complaint Type:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(complaintType) + "</td></tr>" +
+                "</table>" +
+                "</div>" +
+
+                // Escalation Reason Box
+                "<div style=\"background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:8px;margin:0 0 28px;\">" +
+                "<h3 style=\"font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px;font-weight:700;\">📝 Escalation Reason</h3>" +
+                "<div style=\"color:#1f2937;font-size:14px;line-height:1.7;white-space:pre-line;\">" + escape(reason) + "</div>" +
+                "</div>" +
+
+                // SLA Warning Box
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;margin:0 0 28px;\">" +
+                "<p style=\"font-size:13px;color:#78350f;margin:0;line-height:1.6;\"><b>⏰ SLA Notice:</b> Please review this complaint and make a decision within <b>3-5 business days</b>. Both customer and seller are waiting for admin resolution. Review all evidence files and chat history before making a final decision.</p>" +
+                "</div>" +
+
+                // CTA Buttons
+                "<div style=\"text-align:center;margin:0 0 20px;\">" +
+                "<a href='http://localhost:8080/admin/complaints/" + escape(complaintId) + "' style='display:inline-block;background:#7c3aed;color:#fff;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 4px 12px rgba(124,58,237,0.25);margin:0 8px 8px;'>Review Complaint</a>" +
+                "<a href='http://localhost:8080/admin/complaint-management' style='display:inline-block;background:#dc2626;color:#fff;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 4px 12px rgba(220,38,38,0.25);margin:0 8px 8px;'>All Complaints</a>" +
+                "</div>" +
+
+                // Important Note
+                "<div style=\"border-top:1px solid #e5e7eb;padding-top:20px;margin-top:20px;\">" +
+                "<p style=\"font-size:13px;color:#6b7280;margin:0;line-height:1.6;text-align:center;\"><b>Important:</b> Your decision on this complaint will be final and binding for both parties. Please review all evidence carefully before making a judgment.</p>" +
+                "</div>" +
+                "</div>" +
+
+                // Footer
+                "<div style=\"background:#f7f7f9;color:#9ca3af;font-size:12px;text-align:center;padding:20px 16px;border-radius:0 0 16px 16px;\">" +
+                "<p style=\"margin:0 0 8px;\">This is an automated notification from MMOMarket Complaint System</p>" +
+                "<p style=\"margin:0;\">&copy; 2025 MMOMarket. All rights reserved.</p>" +
+                "</div>" +
+                "</div>" +
+                "</div>";
+    }
+
+    /**
+     * Email template for seller when a complaint is filed against their order
+     * @param sellerName Seller's full name
+     * @param customerName Customer's full name
+     * @param productName Product name
+     * @param orderId Order ID
+     * @param complaintType Type of complaint (formatted)
+     * @param complaintId Complaint ID
+     * @param description Complaint description
+     * @param filedDate Date when complaint was filed
+     * @return HTML email content
+     */
+    public static String complaintFiledEmail(String sellerName, String customerName, String productName,
+                                            String orderId, String complaintType, String complaintId,
+                                            String description, String filedDate) {
+        return "<div style=\"font-family:'Inter',Arial,sans-serif;background:#f7f7f9;padding:32px;\">" +
+                "<div style=\"max-width:600px;margin:auto;background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.08);overflow:hidden;\">" +
+
+                // Header
+                "<div style=\"background:linear-gradient(135deg,#dc2626 0%,#f59e0b 100%);padding:28px 24px;text-align:center;border-radius:16px 16px 0 0;\">" +
+                "<div style=\"font-size:48px;margin-bottom:8px;\">⚠️</div>" +
+                "<h2 style=\"color:#fff;font-size:24px;font-weight:800;margin:0;letter-spacing:0.5px;\">New Complaint Filed</h2>" +
+                "<p style=\"color:rgba(255,255,255,0.9);font-size:14px;margin:8px 0 0;font-weight:500;\">Action Required - Customer Dispute</p>" +
+                "</div>" +
+
+                // Content
+                "<div style=\"padding:32px 28px;\">" +
+                "<p style=\"font-size:16px;color:#111827;margin:0 0 20px;line-height:1.6;\">Hello <b>" + escape(sellerName) + "</b>,</p>" +
+                "<p style=\"font-size:15px;color:#374151;margin:0 0 24px;line-height:1.6;\">A customer has filed a complaint regarding one of your orders. Please review the details below and respond as soon as possible.</p>" +
+
+                // Order Information Box
+                "<div style=\"background:#fef2f2;border-left:4px solid #dc2626;padding:20px;border-radius:8px;margin:0 0 24px;\">" +
+                "<h3 style=\"font-size:14px;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 16px;font-weight:700;\">📦 Order Information</h3>" +
+                "<table style=\"width:100%;border-collapse:collapse;\">" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;width:40%;\">Product:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(productName) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Order ID:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">#" + escape(orderId) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Customer:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(customerName) + "</td></tr>" +
+                "</table>" +
+                "</div>" +
+
+                // Complaint Details Box
+                "<div style=\"background:#fff7ed;border-left:4px solid #f59e0b;padding:20px;border-radius:8px;margin:0 0 24px;\">" +
+                "<h3 style=\"font-size:14px;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 16px;font-weight:700;\">🔍 Complaint Details</h3>" +
+                "<table style=\"width:100%;border-collapse:collapse;\">" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;width:40%;\">Complaint Type:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(complaintType) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Complaint ID:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">#" + escape(complaintId) + "</td></tr>" +
+                "<tr><td style=\"padding:6px 0;color:#6b7280;font-size:14px;\">Filed Date:</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">" + escape(filedDate) + "</td></tr>" +
+                "</table>" +
+                "</div>" +
+
+                // Description Box
+                "<div style=\"background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:8px;margin:0 0 28px;\">" +
+                "<h3 style=\"font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px;font-weight:700;\">📝 Customer's Description</h3>" +
+                "<div style=\"color:#1f2937;font-size:14px;line-height:1.7;white-space:pre-line;\">" + escape(description) + "</div>" +
+                "</div>" +
+
+                // Action Required Box
+                "<div style=\"background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;margin:0 0 28px;\">" +
+                "<p style=\"font-size:13px;color:#78350f;margin:0;line-height:1.6;\"><b>⏰ Action Required:</b> Please log in to your seller dashboard to review the full complaint details including evidence files (images/videos). You should respond to this complaint within <b>48 hours</b> to avoid negative impact on your seller rating.</p>" +
+                "</div>" +
+
+                // CTA Buttons
+                "<div style=\"text-align:center;margin:0 0 20px;\">" +
+                "<a href='http://localhost:8080/seller/complaints' style='display:inline-block;background:#dc2626;color:#fff;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 4px 12px rgba(220,38,38,0.25);margin:0 8px 8px;'>View Complaint Details</a>" +
+                "<a href='http://localhost:8080/chat' style='display:inline-block;background:#3b82f6;color:#fff;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;font-size:15px;box-shadow:0 4px 12px rgba(59,130,246,0.25);margin:0 8px 8px;'>Chat with Customer</a>" +
+                "</div>" +
+
+                // Important Note
+                "<div style=\"border-top:1px solid #e5e7eb;padding-top:20px;margin-top:20px;\">" +
+                "<p style=\"font-size:13px;color:#6b7280;margin:0;line-height:1.6;text-align:center;\"><b>Important:</b> Evidence files (images/videos) uploaded by the customer can be viewed in the complaint details page and in your chat messages. Please review them carefully before responding.</p>" +
+                "</div>" +
+                "</div>" +
+
+                // Footer
+                "<div style=\"background:#f7f7f9;color:#9ca3af;font-size:12px;text-align:center;padding:20px 16px;border-radius:0 0 16px 16px;\">" +
+                "<p style=\"margin:0 0 8px;\">This is an automated notification from MMOMarket Complaint System</p>" +
+                "<p style=\"margin:0;\">&copy; 2025 MMOMarket. All rights reserved.</p>" +
+                "</div>" +
                 "</div>" +
                 "</div>";
     }

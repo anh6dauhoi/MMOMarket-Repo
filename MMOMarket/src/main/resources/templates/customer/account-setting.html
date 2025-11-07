@@ -97,10 +97,11 @@
                                 </svg>
                                 <span>My Wishlist</span>
                             </a>
-                            <a class="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                               href="#">
+                            <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
+                               th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/account/complaints') ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
+                               th:href="@{/account/complaints}">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                                           stroke-linecap="round" stroke-linejoin="round"
                                           stroke-width="2"></path>
                                 </svg>
@@ -117,9 +118,9 @@
                                 </svg>
                                 <span>My Notifications</span>
                             </a>
-                            <!-- Register Seller: only visible when not ACTIVE, with dynamic active highlight on /account/settings -->
+                            <!-- Register Seller: only visible when shop is not Active -->
                             <a class="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors"
-                               th:if="${registration == null or registration.status == null or !#strings.toUpperCase(registration.status).contains('ACTIVE')}"
+                               th:if="${currentUser != null and (currentUser.shopStatus == null or !#strings.equalsIgnoreCase(currentUser.shopStatus, 'Active'))}"
                                th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI != null and #httpServletRequest.requestURI.contains('/account/settings') ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'}"
                                th:href="@{/account/settings}">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

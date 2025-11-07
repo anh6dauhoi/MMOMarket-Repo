@@ -215,11 +215,16 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="button" onclick="document.getElementById('fileInput').click()" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="Attach file">
+                        <button type="button" onclick="document.getElementById('fileInput').click()" class="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0 self-end" title="Attach file">
                             <i class="fas fa-paperclip text-xl"></i>
                         </button>
-                        <input type="text" id="messageInput" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
-                        <button type="submit" class="bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0" id="sendButton" title="Send message">
+                        <textarea
+                               id="messageInput"
+                               placeholder="Type a message... (Shift+Enter for new line)"
+                               rows="1"
+                               class="flex-1 px-4 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none overflow-y-auto"
+                               style="max-height: 120px; min-height: 40px;"></textarea>
+                        <button type="submit" class="bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 transition flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0 self-end" id="sendButton" title="Send message (Enter)">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </form>
@@ -441,7 +446,7 @@
                 <div class="flex justify-end" data-msg-id="${msg.id}">
                     <div class="max-w-[70%]">
                         <div class="bg-red-500 text-white rounded-2xl rounded-tr-none px-4 py-2 shadow">
-                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="break-words">${escapeHtml(msg.message)}</p>` : ''}
+                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="break-words whitespace-pre-line">${escapeHtml(msg.message)}</p>` : ''}
                             ${fileContent}
                         </div>
                         <div class="text-xs text-gray-500 mt-1 mr-2 text-right">${time}</div>
@@ -455,7 +460,7 @@
                     </div>
                     <div>
                         <div class="bg-white rounded-2xl rounded-tl-none px-4 py-2 shadow">
-                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="text-gray-800 break-words">${escapeHtml(msg.message)}</p>` : ''}
+                            ${msg.message && msg.message.trim() !== 'Sent a file' ? `<p class="text-gray-800 break-words whitespace-pre-line">${escapeHtml(msg.message)}</p>` : ''}
                             ${fileContent}
                         </div>
                         <span class="text-xs text-gray-500 mt-1 ml-2">${time}</span>
@@ -520,18 +525,28 @@
                     formData.append('file', selectedFile);
                     formData.append('_csrf', csrfToken);
                     const response = await fetch('/chat/send-file', { method: 'POST', body: formData });
-                    if (response.ok) { messageInput.value = ''; cancelFileUpload(); }
+                    if (response.ok) {
+                        messageInput.value = '';
+                        messageInput.style.height = 'auto'; // Reset height
+                        cancelFileUpload();
+                    }
                     else { const err = await response.json().catch(() => ({})); alert(err.error || 'Cannot send file'); }
                 } else {
                     const response = await fetch('/chat/send', {
                         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: new URLSearchParams({ receiverId: selectedReceiverId, message: message, _csrf: csrfToken })
                     });
-                    if (response.ok) { messageInput.value = ''; }
+                    if (response.ok) {
+                        messageInput.value = '';
+                        messageInput.style.height = 'auto'; // Reset height
+                    }
                     else { const err = await response.json().catch(() => ({})); alert(err.error || 'Cannot send message'); }
                 }
             } catch (error) { console.error('Error sending message:', error); alert('Failed to send message. Please try again.'); }
-            finally { sendButton.disabled = false; }
+            finally {
+                sendButton.disabled = false;
+                messageInput.focus(); // Focus back on input
+            }
         });
 
         function scrollToBottom() { const container = document.getElementById('messagesContainer'); if (container) container.scrollTop = container.scrollHeight; }
@@ -631,8 +646,29 @@
             document.getElementById('chatArea').classList.remove('hidden');
             document.getElementById('messagesContainer').innerHTML = '<div class="text-center text-gray-400 py-8"><p>Start your conversation</p></div>';
         }
-        document.getElementById('messageInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('chatForm').dispatchEvent(new Event('submit')); }
+
+        // Textarea auto-resize functionality
+        const messageInput = document.getElementById('messageInput');
+
+        function autoResizeTextarea() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        }
+
+        // Auto-resize on input
+        messageInput.addEventListener('input', autoResizeTextarea);
+
+        // Handle Enter/Shift+Enter
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                // Enter without Shift: Send message
+                e.preventDefault();
+                document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+            } else if (e.key === 'Enter' && e.shiftKey) {
+                // Shift+Enter: Allow new line (default behavior)
+                // No need to prevent default, let it create new line
+                setTimeout(autoResizeTextarea, 0);
+            }
         });
 
         // Search functionality
@@ -655,7 +691,7 @@
         function performSearch(query) {
             clearHighlights(); const queryLower = query.toLowerCase(); const messages = document.querySelectorAll('#messagesContainer > div'); searchResults = [];
             messages.forEach((msgEl) => {
-                const textElement = msgEl.querySelector('p.break-words'); if (!textElement) return;
+                const textElement = msgEl.querySelector('p.whitespace-pre-line'); if (!textElement) return;
                 const originalText = textElement.textContent; if (originalText.toLowerCase().includes(queryLower)) {
                     searchResults.push({ element: msgEl, textElement: textElement, originalText: originalText });
                     const regex = new RegExp(`(${escapeRegex(query)})`, 'gi'); const highlightedText = originalText.replace(regex, '<mark class="search-highlight">$1</mark>'); textElement.innerHTML = highlightedText;
@@ -668,7 +704,7 @@
             clearHighlights(); searchResults = []; currentSearchIndex = -1; document.getElementById('searchInput').value = ''; document.getElementById('clearSearchBtn').classList.add('hidden'); document.getElementById('searchResults').classList.add('hidden'); updateSearchNavigation();
         }
         function clearHighlights() {
-            document.querySelectorAll('#messagesContainer p.break-words').forEach(textEl => {
+            document.querySelectorAll('#messagesContainer p.whitespace-pre-line').forEach(textEl => {
                 const marks = textEl.querySelectorAll('mark.search-highlight'); marks.forEach(mark => { const text = document.createTextNode(mark.textContent); mark.parentNode.replaceChild(text, mark); });
             });
             document.querySelectorAll('#messagesContainer > div').forEach(msgEl => { msgEl.classList.remove('search-active'); });

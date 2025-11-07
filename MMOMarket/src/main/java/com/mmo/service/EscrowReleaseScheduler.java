@@ -72,5 +72,75 @@ public class EscrowReleaseScheduler {
             }
         }
     }
+
+    /**
+     * Auto-resolve complaints that are in PENDING_CONFIRMATION status for more than 3 days
+     * If customer doesn't respond within 3 days, automatically accept seller's solution
+     * Run every hour
+     */
+    @Transactional
+    @Scheduled(cron = "0 0 * * * *")
+//    @Scheduled(cron = "0 */1 * * * *") // For testing: run every minute
+    public void autoResolveExpiredPendingComplaints() {
+        try {
+            // Calculate date 3 days ago
+            long threeDaysInMillis = 3L * 24 * 60 * 60 * 1000;
+            Date threeDaysAgo = new Date(System.currentTimeMillis() - threeDaysInMillis);
+
+            // Find all complaints with PENDING_CONFIRMATION status that were updated more than 3 days ago
+            List<Complaint> expiredComplaints = complaintRepository.findByStatusAndUpdatedAtBefore(
+                    Complaint.ComplaintStatus.PENDING_CONFIRMATION,
+                    threeDaysAgo
+            );
+
+            if (expiredComplaints.isEmpty()) {
+                return;
+            }
+
+            log.info("Auto-resolve scan found {} expired PENDING_CONFIRMATION complaints", expiredComplaints.size());
+
+            for (Complaint complaint : expiredComplaints) {
+                try {
+                    // Auto-resolve the complaint
+                    complaint.setStatus(Complaint.ComplaintStatus.RESOLVED);
+                    complaint.setUpdatedAt(new Date());
+                    complaintRepository.save(complaint);
+
+                    log.info("Auto-resolved complaint #{} (customer did not respond within 3 days)", complaint.getId());
+
+                    // Notify customer
+                    try {
+                        if (complaint.getCustomer() != null) {
+                            notificationService.createNotificationForUser(
+                                    complaint.getCustomer().getId(),
+                                    "Complaint Auto-Resolved",
+                                    "Complaint #" + complaint.getId() + " has been automatically resolved as you did not respond within 3 days. The seller's solution has been accepted."
+                            );
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to notify customer for complaint #{}", complaint.getId(), e);
+                    }
+
+                    // Notify seller
+                    try {
+                        if (complaint.getSeller() != null) {
+                            notificationService.createNotificationForUser(
+                                    complaint.getSeller().getId(),
+                                    "Complaint Auto-Resolved",
+                                    "Complaint #" + complaint.getId() + " has been automatically resolved as the customer did not respond within 3 days."
+                            );
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to notify seller for complaint #{}", complaint.getId(), e);
+                    }
+
+                } catch (Exception ex) {
+                    log.error("Failed to auto-resolve complaint #{}: {}", complaint.getId(), ex.getMessage(), ex);
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Error in autoResolveExpiredPendingComplaints: {}", ex.getMessage(), ex);
+        }
+    }
 }
 
