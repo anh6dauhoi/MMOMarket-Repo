@@ -6,6 +6,7 @@ import com.mmo.entity.User;
 import com.mmo.service.AuthService;
 import com.mmo.service.ChatService;
 import com.mmo.service.ChatSseService;
+import com.mmo.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,14 +34,17 @@ public class ChatController {
     private final ChatService chatService;
     private final AuthService authService;
     private final ChatSseService chatSseService;
+    private final FileStorageService fileStorageService;
 
     @Value("${upload.chat.dir:uploads/chat}")
     private String uploadDir;
 
-    public ChatController(ChatService chatService, AuthService authService, ChatSseService chatSseService) {
+    public ChatController(ChatService chatService, AuthService authService, ChatSseService chatSseService,
+                         FileStorageService fileStorageService) {
         this.chatService = chatService;
         this.authService = authService;
         this.chatSseService = chatSseService;
+        this.fileStorageService = fileStorageService;
     }
 
     /**
@@ -158,17 +162,6 @@ public class ChatController {
                                       Authentication authentication) {
         Map<String, Object> res = new HashMap<>();
         try {
-            if (file.isEmpty()) {
-                res.put("error", "File is empty");
-                return ResponseEntity.badRequest().body(res);
-            }
-
-            // Validate file size (max 50MB)
-            if (file.getSize() > 50 * 1024 * 1024) {
-                res.put("error", "File size must be less than 50MB");
-                return ResponseEntity.badRequest().body(res);
-            }
-
             User current = getCurrentUser(authentication);
 
             if (current == null) {
@@ -176,27 +169,11 @@ public class ChatController {
                 return ResponseEntity.status(401).body(res);
             }
 
-            // Create upload directory if not exists
-            File uploadDirFile = new File(uploadDir);
-            if (!uploadDirFile.exists()) {
-                boolean created = uploadDirFile.mkdirs();
-                if (!created) {
-                    res.put("error", "Failed to create upload directory");
-                    return ResponseEntity.status(500).body(res);
-                }
-            }
+            // Validate file using FileStorageService
+            fileStorageService.validateFile(file, 50 * 1024 * 1024); // 50MB max
 
-            // Generate unique filename
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String uniqueFilename = UUID.randomUUID() + extension;
-            Path filePath = Paths.get(uploadDir, uniqueFilename);
-
-            // Save file
-            Files.write(filePath, file.getBytes());
+            // Upload file using FileStorageService (automatically uses Google Drive or local)
+            String fileUrl = fileStorageService.uploadFile(file, "chat", current.getId());
 
             // Determine file type
             String contentType = file.getContentType();
@@ -209,15 +186,14 @@ public class ChatController {
                 }
             }
 
-            // Save to database
-            String filePathStr = "/" + uploadDir + "/" + uniqueFilename;
+            // Save to database with file URL (can be Google Drive URL or local path)
             ChatMessageDto dto = chatService.sendWithFile(
                 current.getId(),
                 receiverId,
                 message,
-                filePathStr,
+                fileUrl,
                 fileType,
-                originalFilename,
+                file.getOriginalFilename(),
                 file.getSize()
             );
 

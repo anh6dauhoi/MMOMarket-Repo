@@ -92,7 +92,7 @@
                                         #
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider">
-                                        Product ID
+                                        Order ID
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-primary-600 uppercase tracking-wider">
                                         Product Name
@@ -117,8 +117,12 @@
                                 <tbody class="bg-white divide-y divide-primary-50">
                                 <tr th:each="review, iterStat : ${reviews}" class="hover:bg-primary-50 transition-all">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" th:text="${iterStat.index + 1}"></td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                                        th:text="${review.product.id}">101</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <span th:if="${review.order != null}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            #<span th:text="${review.order.id}">123</span>
+                                        </span>
+                                        <span th:if="${review.order == null}" class="text-gray-400 text-xs">N/A</span>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                                         th:text="${review.product.name}">Product Name</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

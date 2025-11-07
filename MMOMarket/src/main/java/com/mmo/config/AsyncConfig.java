@@ -32,5 +32,16 @@ public class AsyncConfig {
         t.initialize();
         return t;
     }
+
+    @Bean(name = "fileUploadExecutor")
+    public Executor fileUploadExecutor() {
+        ThreadPoolTaskExecutor t = new ThreadPoolTaskExecutor();
+        t.setCorePoolSize(3);
+        t.setMaxPoolSize(10);
+        t.setQueueCapacity(100);
+        t.setThreadNamePrefix("file-upload-");
+        t.initialize();
+        return t;
+    }
 }
 

@@ -4,6 +4,7 @@ import com.mmo.entity.Orders;
 import com.mmo.entity.User;
 import com.mmo.repository.OrdersRepository;
 import com.mmo.repository.UserRepository;
+import com.mmo.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +49,9 @@ public class OrderController {
 
     @Autowired
     private ProductVariantAccountRepository productVariantAccountRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Autowired
     private ReviewRepository reviewRepository; // NEW for review eligibility
@@ -107,10 +111,6 @@ public class OrderController {
             orderPage = ordersRepository.findByCustomerIdOrderByCreatedAtDesc(customerId, pageable);
         }
 
-        // Precompute counts by product to avoid per-row queries
-        Map<Long, Long> purchasesByProduct = new HashMap<>();
-        Map<Long, Long> reviewsByProduct = new HashMap<>();
-
         // Map to lightweight view models
         List<Map<String, Object>> items = new ArrayList<>();
         int startIndex = page * size;
@@ -132,21 +132,15 @@ public class OrderController {
                 withinWindow = days <= 30;
             }
 
-            // counts per product
-            purchasesByProduct.computeIfAbsent(o.getProductId(), pid ->
-                    ordersRepository.countByCustomerIdAndProductIdAndStatus(customerId, pid, Orders.QueueStatus.COMPLETED));
-            reviewsByProduct.computeIfAbsent(o.getProductId(), pid ->
-                    reviewRepository.countByUser_IdAndProduct_Id(customerId, pid));
+            // NEW LOGIC: Check if THIS specific order has been reviewed
+            boolean hasReviewedThisOrder = reviewRepository.existsByUser_IdAndOrder_IdAndIsDeleteFalse(customerId, o.getId());
 
-            long purchases = purchasesByProduct.getOrDefault(o.getProductId(), 0L);
-            long reviewsCnt = reviewsByProduct.getOrDefault(o.getProductId(), 0L);
-
-            boolean canReview = userActive && completed && withinWindow && (reviewsCnt < purchases);
-            boolean hasAnyReview = reviewsCnt > 0;
+            // Can review if: user active, order completed, within 30 days, and not yet reviewed THIS order
+            boolean canReview = userActive && completed && withinWindow && !hasReviewedThisOrder;
 
             row.put("canReview", canReview);
-            row.put("reviewed", hasAnyReview);
-            row.put("feedbackWindowExpired", !withinWindow); // NEW: expose window status
+            row.put("reviewed", hasReviewedThisOrder); // Show if THIS order has been reviewed
+            row.put("feedbackWindowExpired", !withinWindow);
             // Provide a view URL for convenience in the template
             row.put("reviewViewUrl", "/account/orders/" + o.getId() + "/review/view");
 
@@ -741,37 +735,26 @@ public class OrderController {
                 }
             }
 
-            // Upload evidence files
+            // Upload evidence files using FileStorageService
             java.util.List<String> evidenceUrls = new java.util.ArrayList<>();
-            String uploadDir = "uploads/complaints";
-            java.io.File uploadDirFile = new java.io.File(uploadDir);
-            if (!uploadDirFile.exists()) {
-                boolean created = uploadDirFile.mkdirs();
-                if (!created) {
-                    redirectAttributes.addFlashAttribute("error", "Failed to create upload directory");
-                    return "redirect:/account/orders/" + id + "/complaint";
-                }
-            }
 
             for (org.springframework.web.multipart.MultipartFile file : evidenceFiles) {
                 if (file.isEmpty()) continue;
 
-                // Validate file size (max 50MB)
-                if (file.getSize() > 50 * 1024 * 1024) {
-                    redirectAttributes.addFlashAttribute("error", "File size must be less than 50MB per file");
+                try {
+                    // Validate file using FileStorageService (max 50MB)
+                    fileStorageService.validateFile(file, 50 * 1024 * 1024);
+
+                    // Upload file using FileStorageService (automatically uses Google Drive or local)
+                    String fileUrl = fileStorageService.uploadFile(file, "complaints", customer.getId());
+                    evidenceUrls.add(fileUrl);
+                } catch (IllegalArgumentException ex) {
+                    redirectAttributes.addFlashAttribute("error", ex.getMessage());
+                    return "redirect:/account/orders/" + id + "/complaint";
+                } catch (java.io.IOException ex) {
+                    redirectAttributes.addFlashAttribute("error", "Failed to upload file: " + ex.getMessage());
                     return "redirect:/account/orders/" + id + "/complaint";
                 }
-
-                String originalFilename = file.getOriginalFilename();
-                String extension = "";
-                if (originalFilename != null && originalFilename.contains(".")) {
-                    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                }
-                String uniqueFilename = java.util.UUID.randomUUID() + extension;
-                java.nio.file.Path filePath = java.nio.file.Paths.get(uploadDir, uniqueFilename);
-
-                java.nio.file.Files.write(filePath, file.getBytes());
-                evidenceUrls.add("/" + uploadDir + "/" + uniqueFilename);
             }
 
             // Get seller from product

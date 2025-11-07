@@ -121,6 +121,9 @@ public class SellerController {
     @Autowired
     private com.mmo.service.ComplaintService complaintService;
 
+    @Autowired
+    private FileStorageService fileStorageService;
+
     private static final long REGISTRATION_FEE = 200_000L;
 
     @GetMapping("/register")
@@ -2343,48 +2346,21 @@ public class SellerController {
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body("No file uploaded");
             }
-            String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase();
-            if (!(contentType.equals("image/png") || contentType.equals("image/jpeg") || contentType.equals("image/jpg") || contentType.equals("image/webp"))) {
-                return ResponseEntity.badRequest().body("Only PNG, JPG, JPEG, WEBP are allowed");
-            }
-            if (file.getSize() > 10L * 1024 * 1024) { // 10MB safety
-                return ResponseEntity.badRequest().body("File too large (max 10MB)");
-            }
 
-            // Build absolute upload directory under project root: <user.dir>/uploads/products/{sellerId}
-            String rootDir = System.getProperty("user.dir");
-            java.nio.file.Path uploadDir = java.nio.file.Paths
-                    .get(rootDir, "uploads", "products", String.valueOf(user.getId()))
-                    .toAbsolutePath()
-                    .normalize();
-            java.nio.file.Files.createDirectories(uploadDir);
+            // Validate file using FileStorageService (max 10MB for images)
+            fileStorageService.validateFile(file, 10 * 1024 * 1024);
 
-            // Create safe filename with timestamp + uuid + proper extension
-            String original = file.getOriginalFilename();
-            String ext = ".png";
-            if (original != null && original.contains(".")) {
-                String e = original.substring(original.lastIndexOf('.')).toLowerCase();
-                if (e.matches("\u002E(jpe?g|png|webp)")) ext = e;
-            } else {
-                if (contentType.contains("jpeg")) ext = ".jpg";
-                else if (contentType.contains("png")) ext = ".png";
-                else if (contentType.contains("webp")) ext = ".webp";
-            }
-            String filename = System.currentTimeMillis() + "-" + java.util.UUID.randomUUID() + ext;
+            // Upload file using FileStorageService (automatically uses Google Drive or local)
+            String publicUrl = fileStorageService.uploadFile(file, "products", user.getId());
 
-            // Resolve absolute destination and copy stream (avoid Servlet Part.write relative path behavior)
-            java.nio.file.Path dest = uploadDir.resolve(filename);
-            try (java.io.InputStream is = file.getInputStream()) {
-                java.nio.file.Files.copy(is, dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            String publicUrl = "/uploads/products/" + user.getId() + "/" + filename;
             return ResponseEntity.ok(java.util.Map.of(
                     "url", publicUrl,
-                    "name", filename,
+                    "name", file.getOriginalFilename(),
                     "size", file.getSize(),
-                    "contentType", contentType
+                    "contentType", file.getContentType() == null ? "" : file.getContentType()
             ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
@@ -4140,6 +4116,7 @@ public class SellerController {
                     "SELECT r FROM Review r " +
                             "LEFT JOIN FETCH r.product p " +
                             "LEFT JOIN FETCH r.user u " +
+                            "LEFT JOIN FETCH r.order o " +  // NEW: Fetch order info
                             "WHERE r.isDelete = false AND p.seller.id = :sellerId"
             );
 

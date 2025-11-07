@@ -34,4 +34,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     // NEW: find latest review by this user for a product (not deleted)
     Optional<Review> findFirstByUser_IdAndProduct_IdAndIsDeleteFalseOrderByCreatedAtDesc(Long userId, Long productId);
+
+    // NEW: Check if user has reviewed specific order
+    boolean existsByUser_IdAndOrder_IdAndIsDeleteFalse(Long userId, Long orderId);
+
+    // NEW: Find review for specific order
+    Optional<Review> findByUser_IdAndOrder_IdAndIsDeleteFalse(Long userId, Long orderId);
 }

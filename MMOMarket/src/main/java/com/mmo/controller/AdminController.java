@@ -68,6 +68,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import com.mmo.service.ChatService;
 import com.mmo.service.AuthService;
+import com.mmo.service.FileStorageService;
+import com.mmo.service.FileStorageService;
 
 import com.mmo.repository.ShopPointPurchaseRepository;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -126,6 +128,9 @@ public class AdminController {
 
     @Autowired
     private com.mmo.service.SepayApiService sepayApiService;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     // NEW: Admin Dashboard route
     @GetMapping({"", "/"})
@@ -346,14 +351,15 @@ public class AdminController {
             String proofFile = null;
             try {
                 if (proof != null && !proof.isEmpty()) {
-                    Path dir = Paths.get("uploads", "withdrawals");
-                    Files.createDirectories(dir);
-                    String filename = "proof-" + id + "-" + System.currentTimeMillis() + "-" + proof.getOriginalFilename();
-                    Path target = dir.resolve(filename);
-                    Files.copy(proof.getInputStream(), target);
-                    proofFile = target.toString().replace('\\', '/');
+                    // Validate and upload file using FileStorageService
+                    fileStorageService.validateFile(proof, 10 * 1024 * 1024); // 10MB max for withdrawal proofs
+                    proofFile = fileStorageService.uploadFile(proof, "withdrawals", admin.getId());
                 }
-            } catch (Exception ignored) {}
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("File validation error: " + ex.getMessage());
+            } catch (Exception ex) {
+                return ResponseEntity.status(500).body("Failed to upload proof: " + ex.getMessage());
+            }
 
             Withdrawal processed = withdrawalService.processWithdrawal(id, "Approved", proofFile, null, false);
             User seller = processed.getSeller();
@@ -618,24 +624,22 @@ public class AdminController {
 
         java.util.Map<String, String> errors = new java.util.LinkedHashMap<>();
 
-        // Handle file uploads for policies
+        // Handle file uploads for policies using FileStorageService
         try {
-            // Use absolute path under application root to match WebMvcConfig's /uploads/** mapping
-            String rootDir = System.getProperty("user.dir");
-            java.nio.file.Path dir = java.nio.file.Paths.get(rootDir, "uploads", "policies");
-            java.nio.file.Files.createDirectories(dir);
-
             if (policyComplaint != null && !policyComplaint.isEmpty()) {
                 String original = policyComplaint.getOriginalFilename();
                 String lower = original != null ? original.toLowerCase() : "";
                 if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
                     errors.put("system_complaint", "Only PDF, DOC, or DOCX files are allowed.");
                 } else {
-                    String filename = "complaint-" + System.currentTimeMillis() + "-" + (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
-                    java.nio.file.Path target = dir.resolve(filename);
-                    policyComplaint.transferTo(target.toFile());
-                    String publicUrl = "/uploads/policies/" + filename;
-                    params.put("system_complaint", publicUrl);
+                    try {
+                        // Validate and upload file using FileStorageService
+                        fileStorageService.validateFile(policyComplaint, 10 * 1024 * 1024); // 10MB max for policies
+                        String publicUrl = fileStorageService.uploadFile(policyComplaint, "policies", admin != null ? admin.getId() : 0L);
+                        params.put("system_complaint", publicUrl);
+                    } catch (IllegalArgumentException ex) {
+                        errors.put("system_complaint", ex.getMessage());
+                    }
                 }
             }
 
@@ -645,11 +649,14 @@ public class AdminController {
                 if (!(lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
                     errors.put("system_contract", "Only PDF, DOC, or DOCX files are allowed.");
                 } else {
-                    String filename = "seller-agreement-" + System.currentTimeMillis() + "-" + (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
-                    java.nio.file.Path target = dir.resolve(filename);
-                    policySellerAgreement.transferTo(target.toFile());
-                    String publicUrl = "/uploads/policies/" + filename;
-                    params.put("system_contract", publicUrl);
+                    try {
+                        // Validate and upload file using FileStorageService
+                        fileStorageService.validateFile(policySellerAgreement, 10 * 1024 * 1024); // 10MB max for policies
+                        String publicUrl = fileStorageService.uploadFile(policySellerAgreement, "policies", admin != null ? admin.getId() : 0L);
+                        params.put("system_contract", publicUrl);
+                    } catch (IllegalArgumentException ex) {
+                        errors.put("system_contract", ex.getMessage());
+                    }
                 }
             }
         } catch (Exception ex) {
@@ -1809,39 +1816,17 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("No file uploaded");
             }
 
-            // Validate file type
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                return ResponseEntity.badRequest().body("Only image files are allowed");
-            }
+            // Validate file using FileStorageService (max 5MB for blog images)
+            fileStorageService.validateFile(file, 5 * 1024 * 1024);
 
-            // Validate file size (max 5MB)
-            if (file.getSize() > 5 * 1024 * 1024) {
-                return ResponseEntity.badRequest().body("File size must not exceed 5MB");
-            }
-
-            // Create uploads directory if it doesn't exist
-            String uploadDir = "uploads/blogs/";
-            java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
-            if (!java.nio.file.Files.exists(uploadPath)) {
-                java.nio.file.Files.createDirectories(uploadPath);
-            }
-
-            // Generate unique filename
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".")
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".jpg";
-            String filename = java.util.UUID.randomUUID().toString() + extension;
-
-            // Save file
-            java.nio.file.Path filePath = uploadPath.resolve(filename);
-            file.transferTo(filePath.toFile());
+            // Upload file using FileStorageService (automatically uses Google Drive or local)
+            String imageUrl = fileStorageService.uploadFile(file, "blogs", admin.getId());
 
             // Return URL
-            String imageUrl = "/" + uploadDir + filename;
             return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
 
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
         } catch (Exception ex) {
             ex.printStackTrace();
             return ResponseEntity.status(500).body("Failed to upload image: " + ex.getMessage());

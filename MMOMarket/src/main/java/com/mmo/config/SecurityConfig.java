@@ -2,6 +2,7 @@ package com.mmo.config;
 
 import com.mmo.repository.UserRepository;
 import com.mmo.entity.User;
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -84,6 +85,8 @@ public class SecurityConfig {
         http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests((requests) -> requests
+                        // Allow async dispatches to pass through security checks
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/webhook/sepay").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/webhook/sepay").permitAll()
                         // Public pages for guests (view only)
