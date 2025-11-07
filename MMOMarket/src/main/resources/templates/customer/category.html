@@ -216,14 +216,14 @@
                     <!-- Previous Button -->
                     <th:block th:if="${categoryId != null}">
                         <a th:if="${currentPage > 1}"
-                           th:href="@{/category/{id}(id=${categoryId}, page=${currentPage > 2 ? currentPage - 1 : null}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
+                           th:href="@{/category/{id}(id=${categoryId}, page=${currentPage - 1}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
                            class="px-4 py-2 rounded-md border border-gray-300 text-sm bg-white hover:bg-red-50 transition font-medium">
                             Prev
                         </a>
                     </th:block>
                     <th:block th:unless="${categoryId != null}">
                         <a th:if="${currentPage > 1}"
-                           th:href="@{/category(page=${currentPage > 2 ? currentPage - 1 : null}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
+                           th:href="@{/category(page=${currentPage - 1}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
                            class="px-4 py-2 rounded-md border border-gray-300 text-sm bg-white hover:bg-red-50 transition font-medium">
                             Prev
                         </a>
@@ -242,13 +242,13 @@
                         <!-- First page link if not in visible range -->
                         <th:block th:if="${adjustedStart > 1}">
                             <th:block th:if="${categoryId != null}">
-                                <a th:href="@{/category/{id}(id=${categoryId}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
+                                <a th:href="@{/category/{id}(id=${categoryId}, page=1, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
                                    class="w-10 h-10 grid place-items-center rounded-full text-sm transition border border-gray-300 bg-white text-gray-700 hover:bg-red-50 font-medium">
                                     1
                                 </a>
                             </th:block>
                             <th:block th:unless="${categoryId != null}">
-                                <a th:href="@{/category(maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
+                                <a th:href="@{/category(page=1, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
                                    class="w-10 h-10 grid place-items-center rounded-full text-sm transition border border-gray-300 bg-white text-gray-700 hover:bg-red-50 font-medium">
                                     1
                                 </a>
@@ -267,13 +267,13 @@
                             <!-- Other pages (clickable links) -->
                             <th:block th:unless="${pageNum == currentPage}">
                                 <th:block th:if="${categoryId != null}">
-                                    <a th:href="@{/category/{id}(id=${categoryId}, page=${pageNum > 1 ? pageNum : null}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
+                                    <a th:href="@{/category/{id}(id=${categoryId}, page=${pageNum}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
                                        th:text="${pageNum}"
                                        class="w-10 h-10 grid place-items-center rounded-full text-sm transition border border-gray-300 bg-white text-gray-700 hover:bg-red-50 font-medium">
                                     </a>
                                 </th:block>
                                 <th:block th:unless="${categoryId != null}">
-                                    <a th:href="@{/category(page=${pageNum > 1 ? pageNum : null}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
+                                    <a th:href="@{/category(page=${pageNum}, maxPrice=${maxPrice != 500000 ? maxPrice : null}, minRating=${minRating > 0 ? minRating : null}, sort=${sort != 'newest' ? sort : null})}"
                                        th:text="${pageNum}"
                                        class="w-10 h-10 grid place-items-center rounded-full text-sm transition border border-gray-300 bg-white text-gray-700 hover:bg-red-50 font-medium">
                                     </a>

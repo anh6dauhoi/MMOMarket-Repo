@@ -57,7 +57,6 @@
                             <span th:text="${#numbers.formatDecimal((averageRating != null ? averageRating : 0.0), 1, 1, 'POINT')}">0.0</span>
                             <span>/ 5.0</span>
                         </span>
-                        <span th:if="${shopLevel != null}" style="color:#fff; font-weight:600;">Lv. <span th:text="${shopLevel}">0</span></span>
                     </div>
                 </div>
             </div>
@@ -73,7 +72,8 @@
         </section>
 
         <!-- Top search -->
-        <form id="shop-search-form" class="mb-8" method="get" th:action="@{/shop(id=${shopIdentifier})}">
+        <form id="shop-search-form" class="mb-8" method="get" th:action="@{/shop}">
+            <input type="hidden" name="id" th:value="${shopIdentifier}" />
             <div class="top-search">
                 <input id="shop-search-input" name="q" type="search" placeholder="Search products in this shop..." class="chip flex-1"
                        th:value="${q != null ? q : ''}" />
@@ -84,60 +84,81 @@
 
         <!-- Toolbar -->
         <section>
-            <h2 class="mb-4 text-[#F53E32]">All Products</h2>
+            <div class="flex items-center justify-between mb-6">
+                <h2></h2>
+                <button type="button" id="clearAllFilters" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 bg-white hover:border-[#F53E32] hover:text-[#F53E32] font-semibold transition-all shadow-sm hover:shadow-md"
+                        style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear Filters
+                </button>
+            </div>
 
             <!-- Filters -->
-            <form th:action="@{/shop(id=${shopIdentifier})}" method="get" class="flex flex-wrap items-end gap-4 mb-8">
+            <form id="filterForm" th:action="@{/shop}" method="get" class="bg-gradient-to-br from-white to-[#fff6f4] rounded-2xl p-6 border-2 border-[#fbeee6] shadow-md mb-8">
+                <input type="hidden" name="id" th:value="${shopIdentifier}" />
                 <input type="hidden" name="q" th:value="${q != null ? q : ''}" />
 
-                <div class="flex flex-col">
-                    <label class="text-sm text-gray-600 mb-1">Category</label>
-                    <select name="categoryId" class="chip">
-                        <option value="" th:selected="${selectedCategoryId == null}">All</option>
-                        <option th:each="cat : ${categories}"
-                                th:value="${cat.id}"
-                                th:text="${cat.name}"
-                                th:selected="${selectedCategoryId != null and selectedCategoryId == cat.id}">
-                        </option>
-                    </select>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Category Filter -->
+                    <div class="filter-group">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            Category
+                        </label>
+                        <select name="categoryId" class="filter-select w-full px-4 py-2.5 rounded-lg border-2 border-[#fbeee6] bg-white focus:border-[#F53E32] focus:ring-2 focus:ring-[#F53E32]/20 transition-all outline-none font-medium text-gray-700">
+                            <option value="" th:selected="${selectedCategoryId == null}">🏷️ All Categories</option>
+                            <option th:each="cat : ${categories}"
+                                    th:value="${cat.id}"
+                                    th:text="${cat.name}"
+                                    th:selected="${selectedCategoryId != null and selectedCategoryId == cat.id}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Rating Filter -->
+                    <div class="filter-group">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                            Minimum Rating
+                        </label>
+                        <select name="minRating" class="filter-select w-full px-4 py-2.5 rounded-lg border-2 border-[#fbeee6] bg-white focus:border-[#F53E32] focus:ring-2 focus:ring-[#F53E32]/20 transition-all outline-none font-medium text-gray-700">
+                            <option value="0" th:selected="${minRating == null or minRating == 0}">⭐ All Ratings</option>
+                            <option value="1" th:selected="${minRating == 1}">⭐ 1+ Stars</option>
+                            <option value="2" th:selected="${minRating == 2}">⭐⭐ 2+ Stars</option>
+                            <option value="3" th:selected="${minRating == 3}">⭐⭐⭐ 3+ Stars</option>
+                            <option value="4" th:selected="${minRating == 4}">⭐⭐⭐⭐ 4+ Stars</option>
+                            <option value="5" th:selected="${minRating == 5}">⭐⭐⭐⭐⭐ 5 Stars</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="filter-group">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                            </svg>
+                            Sort By
+                        </label>
+                        <select name="sort" class="filter-select w-full px-4 py-2.5 rounded-lg border-2 border-[#fbeee6] bg-white focus:border-[#F53E32] focus:ring-2 focus:ring-[#F53E32]/20 transition-all outline-none font-medium text-gray-700">
+                            <option value="newest" th:selected="${sort == null or sort == 'newest'}">🆕 Newest First</option>
+                            <option value="price-low-to-high" th:selected="${sort == 'price-low-to-high'}">💰 Price: Low to High</option>
+                            <option value="price-high-to-low" th:selected="${sort == 'price-high-to-low'}">💎 Price: High to Low</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="flex flex-col">
-                    <label class="text-sm text-gray-600 mb-1">Min price</label>
-                    <input type="number" min="0" name="minPrice" placeholder="0" class="chip"
-                           th:value="${minPrice != null ? minPrice : ''}">
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm text-gray-600 mb-1">Max price</label>
-                    <input type="number" min="0" name="maxPrice" placeholder="500000" class="chip"
-                           th:value="${maxPrice != null ? maxPrice : ''}">
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm text-gray-600 mb-1">Rating</label>
-                    <select name="minRating" class="chip">
-                        <option value="0" th:selected="${minRating == null or minRating == 0}">All</option>
-                        <option value="1" th:selected="${minRating == 1}">1+</option>
-                        <option value="2" th:selected="${minRating == 2}">2+</option>
-                        <option value="3" th:selected="${minRating == 3}">3+</option>
-                        <option value="4" th:selected="${minRating == 4}">4+</option>
-                        <option value="5" th:selected="${minRating == 5}">5</option>
-                    </select>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm text-gray-600 mb-1">Sort by</label>
-                    <select name="sort" class="chip">
-                        <option value="newest" th:selected="${sort == null or sort == 'newest'}">Newest</option>
-                        <option value="price-low-to-high" th:selected="${sort == 'price-low-to-high'}">Price: Low to High</option>
-                        <option value="price-high-to-low" th:selected="${sort == 'price-high-to-low'}">Price: High to Low</option>
-                    </select>
-                </div>
-                <button type="submit" class="px-6 py-3 border border-[#F53E32] text-[#F53E32] rounded-xl bg-white/60 hover:bg-[#F53E32] hover:text-white font-semibold shadow transition-all">Apply</button>
             </form>
 
             <!-- Products Grid -->
-            <!-- show 4 columns on medium+ screens -->
+            <!-- show 4 columns on medium+ screens, 3 rows = 12 products -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                 <div th:each="item : ${products}"
-                     class="product-card product-item bg-white rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 cursor-pointer shadow-lg">
+                     class="product-card bg-white rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 cursor-pointer shadow-lg">
                     <a th:href="@{/products(id=${item.product.id})}">
                         <img th:src="${item.product.image != null ? item.product.image : '/images/default.jpg'}"
                              th:alt="${item.product.name}"
@@ -164,13 +185,48 @@
                            th:text="'⭐ ' + ${#numbers.formatDecimal(item.averageRating,1,1,'POINT')} + ' / 5'">⭐ 0.0 / 5</p>
                     </div>
                 </div>
-                <div th:if="${#lists.isEmpty(products)}" class="col-span-full text-center text-gray-500 py-10" id="no-results">
+                <div th:if="${#lists.isEmpty(products)}" class="col-span-full text-center text-gray-500 py-10">
                     No products found.
                 </div>
             </div>
 
-            <!-- Pagination (client-side) -->
-            <div id="paginationControls" class="mt-12 flex items-center justify-center gap-3"></div>
+            <!-- Server-side Pagination -->
+            <th:block th:if="${totalPages != null}">
+                <div th:if="${totalPages > 1}" class="mt-12 flex items-center justify-center gap-3">
+                    <!-- Previous Button -->
+                    <a th:if="${currentPage > 1}"
+                       th:href="@{/shop(id=${shopIdentifier}, categoryId=${selectedCategoryId}, minRating=${minRating}, sort=${sort}, q=${q}, page=${currentPage - 1})}"
+                       class="px-4 py-2 rounded-lg border-2 border-[#fbeee6] text-sm bg-white hover:bg-[#F53E32] hover:text-white hover:border-[#F53E32] transition font-semibold">
+                        ← Previous
+                    </a>
+                    <span th:if="${currentPage == 1}" class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm bg-gray-100 text-gray-400 cursor-not-allowed font-semibold">
+                        ← Previous
+                    </span>
+
+                    <!-- Page Numbers -->
+                    <th:block th:each="i : ${#numbers.sequence(1, totalPages)}">
+                        <!-- Show first page, last page, current page and 2 pages around current -->
+                        <a th:if="${i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2)}"
+                           th:href="@{/shop(id=${shopIdentifier}, categoryId=${selectedCategoryId}, minRating=${minRating}, sort=${sort}, q=${q}, page=${i})}"
+                           th:class="${i == currentPage} ? 'pagination-btn active' : 'pagination-btn'"
+                           th:text="${i}">1</a>
+
+                        <!-- Show dots -->
+                        <span th:if="${i == 2 && currentPage > 4}" class="px-2 text-gray-400">...</span>
+                        <span th:if="${i == totalPages - 1 && currentPage < totalPages - 3}" class="px-2 text-gray-400">...</span>
+                    </th:block>
+
+                    <!-- Next Button -->
+                    <a th:if="${currentPage < totalPages}"
+                       th:href="@{/shop(id=${shopIdentifier}, categoryId=${selectedCategoryId}, minRating=${minRating}, sort=${sort}, q=${q}, page=${currentPage + 1})}"
+                       class="px-4 py-2 rounded-lg border-2 border-[#fbeee6] text-sm bg-white hover:bg-[#F53E32] hover:text-white hover:border-[#F53E32] transition font-semibold">
+                        Next →
+                    </a>
+                    <span th:if="${currentPage >= totalPages}" class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm bg-gray-100 text-gray-400 cursor-not-allowed font-semibold">
+                        Next →
+                    </span>
+                </div>
+            </th:block>
         </section>
     </main>
 </div>
@@ -181,126 +237,6 @@
     // Debounce helper
     function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); }; }
 
-    // --- Pagination config ---
-    const PAGE_SIZE = 8; // 8 products per page
-    let currentPage = 1;
-
-    function getAllProductItems() { return Array.from(document.querySelectorAll('.product-item')); }
-    function getVisibleItems() { return getAllProductItems().filter(el => !el.classList.contains('hidden')); }
-
-    function renderPage(page) {
-        const all = getAllProductItems();
-        const visible = getVisibleItems();
-        const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
-        currentPage = Math.min(Math.max(1, page), totalPages);
-
-        // hide everything first
-        all.forEach(i => { i.style.display = 'none'; i.classList.remove('visible-by-page'); });
-
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const end = start + PAGE_SIZE;
-        visible.forEach((el, idx) => {
-            if (idx >= start && idx < end) { el.style.display = ''; el.classList.add('visible-by-page'); }
-        });
-
-        updateNoResultsAndControls();
-    }
-
-    function updatePaginationControls() {
-        const visible = getVisibleItems();
-        const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
-        const container = document.getElementById('paginationControls');
-        container.innerHTML = '';
-        if (visible.length === 0) return;
-
-        // Prev button (category-like style)
-        const prev = document.createElement('button');
-        prev.type = 'button';
-        prev.className = 'px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition';
-        prev.innerText = 'Prev';
-        prev.disabled = currentPage <= 1;
-        prev.onclick = () => { if (currentPage > 1) renderPage(currentPage - 1); };
-        container.appendChild(prev);
-
-        // page numbers (condensed, up to 7 buttons)
-        const maxButtons = 7;
-        let startPage = Math.max(1, currentPage - 3);
-        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-        if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
-
-        if (startPage > 1) {
-            container.appendChild(makePageButton(1));
-            if (startPage > 2) {
-                const dots = document.createElement('span'); dots.className='px-2 text-gray-400'; dots.innerText='...'; container.appendChild(dots);
-            }
-        }
-
-        for (let p = startPage; p <= endPage; p++) container.appendChild(makePageButton(p));
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                const dots = document.createElement('span'); dots.className='px-2 text-gray-400'; dots.innerText='...'; container.appendChild(dots);
-            }
-            container.appendChild(makePageButton(totalPages));
-        }
-
-        // Next button (category-like style)
-        const next = document.createElement('button');
-        next.type = 'button';
-        next.className = 'px-3 py-1 rounded-md border text-sm bg-white hover:bg-red-50 transition';
-        next.innerText = 'Next';
-        next.disabled = currentPage >= totalPages;
-        next.onclick = () => { if (currentPage < totalPages) renderPage(currentPage + 1); };
-        container.appendChild(next);
-    }
-
-    function makePageButton(p) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'w-10 h-10 grid place-items-center rounded-full text-sm transition';
-        btn.style.border = '1px solid #e5e7eb';
-        btn.innerText = p;
-        if (p === currentPage) {
-            // category-like active style
-            btn.classList.add('bg-red-600', 'text-white', 'shadow');
-            btn.style.border = '1px solid rgba(245,62,50,0.9)';
-        } else {
-            btn.classList.add('text-gray-700', 'hover:bg-red-50');
-        }
-        btn.onclick = () => renderPage(p);
-        return btn;
-    }
-
-    function updateNoResultsAndControls() {
-        const visible = getVisibleItems();
-        const noResults = document.getElementById('no-results');
-        if (visible.length === 0) {
-            if (noResults) { noResults.classList.remove('hidden'); noResults.style.display = ''; noResults.textContent = 'No products match your search.'; }
-        } else {
-            if (noResults) { noResults.classList.add('hidden'); noResults.style.display = 'none'; }
-        }
-        updatePaginationControls();
-    }
-
-    function applyPaginationReset() { currentPage = 1; renderPage(currentPage); }
-
-    // Filter product cards by query (name, shop, price) and re-run pagination
-    function filterShopProducts(query){
-        const q = (query || '').trim().toLowerCase();
-        const items = document.querySelectorAll('.product-item');
-        items.forEach(item => {
-            const titleEl = item.querySelector('.product-title');
-            const shopEl = item.querySelector('.product-shop');
-            const priceEl = item.querySelector('.product-price');
-            const title = titleEl ? titleEl.textContent.trim().toLowerCase() : '';
-            const shop = shopEl ? shopEl.textContent.trim().toLowerCase() : '';
-            const price = priceEl ? priceEl.textContent.trim().toLowerCase() : '';
-            const match = q === '' || title.includes(q) || shop.includes(q) || price.includes(q);
-            item.classList.toggle('hidden', !match);
-        });
-        applyPaginationReset();
-    }
-
     // small helper for formatting with dots
     function formatWithDots(n){
         const num = Math.round(Number(n) || 0);
@@ -308,18 +244,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', function(){
-        // existing init
         const input = document.getElementById('shop-search-input');
         const clearBtn = document.getElementById('shop-search-clear');
         const searchForm = document.getElementById('shop-search-form');
-        input && input.addEventListener('input', debounce(function(e){ filterShopProducts(e.target.value); }, 220));
+
+        // Clear search button
         clearBtn && clearBtn.addEventListener('click', function(){
             if (input) input.value = '';
-            // submit GET without q (or with empty q) => key=value in URL
             if (searchForm) searchForm.submit();
         });
-        // initial pagination render
-        filterShopProducts(input ? input.value : '');
 
         // format all prices on page
         document.querySelectorAll('.format-price').forEach(el => {
@@ -327,6 +260,55 @@
             if (v == null) return;
             el.textContent = formatWithDots(v);
         });
+
+        // Auto-submit filter form when any filter changes
+        const filterForm = document.getElementById('filterForm');
+        const filterSelects = filterForm.querySelectorAll('.filter-select');
+        const clearAllBtn = document.getElementById('clearAllFilters');
+
+        // Check if any filter is active
+        function hasActiveFilters() {
+            const categoryId = filterForm.querySelector('[name="categoryId"]').value;
+            const minRating = filterForm.querySelector('[name="minRating"]').value;
+            const sort = filterForm.querySelector('[name="sort"]').value;
+
+            return categoryId !== '' ||
+                   (minRating !== '0' && minRating !== '') ||
+                   (sort !== 'newest' && sort !== '');
+        }
+
+        // Update clear button visibility
+        function updateClearButton() {
+            if (hasActiveFilters()) {
+                clearAllBtn.style.display = 'inline-flex';
+            } else {
+                clearAllBtn.style.display = 'none';
+            }
+        }
+
+        // Auto-submit on select change
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+
+        // Clear all filters button
+        clearAllBtn.addEventListener('click', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const shopId = urlParams.get('id');
+            const searchQuery = urlParams.get('q');
+
+            // Build URL with only shop ID and search query (if present)
+            let newUrl = window.location.pathname + '?id=' + shopId;
+            if (searchQuery) {
+                newUrl += '&q=' + encodeURIComponent(searchQuery);
+            }
+            window.location.href = newUrl;
+        });
+
+        // Initial check
+        updateClearButton();
     });
 </script>
 </body>

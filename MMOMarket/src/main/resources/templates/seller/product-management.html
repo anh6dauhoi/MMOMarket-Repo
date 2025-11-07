@@ -307,11 +307,11 @@
                     <label class="text-sm font-semibold text-primary-900 mb-1.5 block" for="epImageFile">
                         <i class="fa-solid fa-image text-primary-600 mr-1"></i>Upload Image
                     </label>
-                    <input id="epImageFile" type="file" required accept="image/png,image/jpeg,image/jpg,image/webp" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition-all"/>
+                    <input id="epImageFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition-all"/>
                     <div id="errImage" class="mt-1 text-sm text-red-600 hidden" aria-live="polite"></div>
                     <div class="flex items-center gap-2 text-xs text-gray-500 mt-2">
                         <i class="fa-solid fa-info-circle text-primary-500"></i>
-                        <span>PNG, JPG, JPEG, WEBP. Maximum 10MB.</span>
+                        <span>PNG, JPG, JPEG, WEBP. Maximum 10MB. <span id="epImageHint" class="font-semibold text-primary-600 hidden"></span></span>
                     </div>
                     <img id="epPreview" src="" alt="preview" class="w-full h-56 object-contain rounded-lg border-2 border-primary-200 bg-gradient-to-br from-primary-50 to-purple-50 mt-3 hidden"/>
                 </div>
@@ -494,11 +494,13 @@
             const data = await res.json();
             document.getElementById('epName').value = data.name || '';
             document.getElementById('epDesc').value = data.description || '';
-            // set hidden image url and preview
+            // set hidden image url and preview - show existing image
             const imageHidden = document.getElementById('epImageUrl'); if (imageHidden) imageHidden.value = data.image || '';
             const prev = document.getElementById('epPreview'); if (prev) { if (data.image) { prev.src = data.image; prev.classList.remove('hidden'); } else { prev.src=''; prev.classList.add('hidden'); } }
             const catSel = document.getElementById('epCategory'); if (data.categoryId && catSel) { catSel.value = String(data.categoryId); }
-            const file = document.getElementById('epImageFile'); if (file) { try { file.value=''; } catch(_){} }
+            const file = document.getElementById('epImageFile'); if (file) { try { file.value=''; file.removeAttribute('required'); } catch(_){} }
+            // Show hint for edit mode
+            const hint = document.getElementById('epImageHint'); if (hint) hint.classList.remove('hidden');
             const title = document.getElementById('epTitleText'); if (title) title.textContent = 'Edit Product';
             const save = document.getElementById('epSaveBtn'); if (save) save.textContent = 'Save';
             clearFieldErrors();
@@ -534,7 +536,9 @@
             const imageHidden = document.getElementById('epImageUrl'); if (imageHidden) imageHidden.value = '';
             const catSel = document.getElementById('epCategory'); if (catSel) catSel.selectedIndex = 0;
             const prev = document.getElementById('epPreview'); if (prev) { prev.src=''; prev.classList.add('hidden'); }
-            const file = document.getElementById('epImageFile'); if (file) { try { file.value=''; } catch(_){} }
+            const file = document.getElementById('epImageFile'); if (file) { try { file.value=''; file.setAttribute('required', 'required'); } catch(_){} }
+            // Hide hint for create mode
+            const hint = document.getElementById('epImageHint'); if (hint) hint.classList.add('hidden');
             const title = document.getElementById('epTitleText'); if (title) title.textContent = 'Add Product';
             const save = document.getElementById('epSaveBtn'); if (save) save.textContent = 'Create';
             clearFieldErrors();

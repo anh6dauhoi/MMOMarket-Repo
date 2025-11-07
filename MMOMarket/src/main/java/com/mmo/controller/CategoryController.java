@@ -38,24 +38,21 @@ public class CategoryController {
     @GetMapping(value = "/category", params = "id")
     public String categoryByQuery(
             @RequestParam("id") Long id,
-            @RequestParam(value = "maxPrice", required = false) Long maxPrice,
             @RequestParam(value = "minRating", required = false) Integer minRating,
             @RequestParam(value = "sort", required = false) String sort,
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             Model model) {
-        return category(id, maxPrice, minRating, sort, page, model);
+        return category(id, minRating, sort, page, model);
     }
 
     @GetMapping("/category/{id}")
     public String category(
             @PathVariable("id") Long categoryId,
-            @RequestParam(value = "maxPrice", required = false) Long maxPrice,
             @RequestParam(value = "minRating", required = false) Integer minRating,
             @RequestParam(value = "sort", required = false) String sort,
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             Model model) {
         // Defaults
-        if (maxPrice == null) maxPrice = 500000L;
         if (minRating == null) minRating = 0;
         if (sort == null || sort.isBlank()) sort = "newest";
 
@@ -80,7 +77,7 @@ public class CategoryController {
         // Fetch products by category with pagination (use 0-based pageIndex internally)
         int pageSize = 12; // 12 products per page
         Map<String, Object> pageData = productService.getProductsByCategoryWithPagination(
-            effectiveCategoryId, 0L, maxPrice, sort, minRating, pageIndex, pageSize);
+            effectiveCategoryId, 0L, 999999999L, sort, minRating, pageIndex, pageSize);
 
         List<Map<String, Object>> products = (List<Map<String, Object>>) pageData.get("content");
 
@@ -121,7 +118,6 @@ public class CategoryController {
         System.out.println("=================================");
 
         // Add filter state
-        model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("minRating", minRating);
         model.addAttribute("sort", sort);
         // Use null to omit id param when building /category links
@@ -132,13 +128,11 @@ public class CategoryController {
 
     @GetMapping("/category")
     public String allProducts(
-            @RequestParam(value = "maxPrice", required = false) Long maxPrice,
             @RequestParam(value = "minRating", required = false) Integer minRating,
             @RequestParam(value = "sort", required = false) String sort,
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
             Model model) {
         // Defaults
-        if (maxPrice == null) maxPrice = 500000L;
         if (minRating == null) minRating = 0;
         if (sort == null || sort.isBlank()) sort = "newest";
 
@@ -155,7 +149,7 @@ public class CategoryController {
         // Fetch all products with pagination (use 0-based pageIndex internally)
         int pageSize = 12; // 12 products per page
         Map<String, Object> pageData = productService.getProductsByCategoryWithPagination(
-            null, 0L, maxPrice, sort, minRating, pageIndex, pageSize);
+            null, 0L, 999999999L, sort, minRating, pageIndex, pageSize);
 
         List<Map<String, Object>> products = (List<Map<String, Object>>) pageData.get("content");
 
@@ -196,7 +190,6 @@ public class CategoryController {
         System.out.println("=====================================");
 
         // Add filter state
-        model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("minRating", minRating);
         model.addAttribute("sort", sort);
         model.addAttribute("categoryId", null);

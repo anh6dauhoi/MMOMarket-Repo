@@ -17,4 +17,7 @@ public interface OrdersRepository extends JpaRepository<Orders, Long> {
 
     @Query("SELECT o FROM Orders o JOIN FETCH o.product p WHERE o.customerId = :customerId AND LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Orders> findByCustomerIdAndProductNameContaining(@Param("customerId") Long customerId, @Param("search") String search, Pageable pageable);
+
+    // NEW: count completed purchases for a customer-product pair (to enforce 1 review per purchase)
+    long countByCustomerIdAndProductIdAndStatus(Long customerId, Long productId, Orders.QueueStatus status);
 }

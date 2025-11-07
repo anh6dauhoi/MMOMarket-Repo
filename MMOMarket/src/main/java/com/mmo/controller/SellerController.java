@@ -442,13 +442,13 @@ public class SellerController {
         double ordersChange = 0.0;
 
         if (previousRevenue > 0) {
-            revenueChange = ((double)(totalRevenue - previousRevenue) / previousRevenue) * 100;
+            revenueChange = ((double) (totalRevenue - previousRevenue) / previousRevenue) * 100;
         } else if (totalRevenue > 0) {
             revenueChange = 100.0;
         }
 
         if (previousOrders > 0) {
-            ordersChange = ((double)(totalOrders - previousOrders) / previousOrders) * 100;
+            ordersChange = ((double) (totalOrders - previousOrders) / previousOrders) * 100;
         } else if (totalOrders > 0) {
             ordersChange = 100.0;
         }
@@ -461,15 +461,15 @@ public class SellerController {
 
         // Get top selling products (limit to 5)
         List<com.mmo.entity.Product> topProducts = productRepository.findTopSellingProductsBySeller(
-            sellerId,
-            org.springframework.data.domain.PageRequest.of(0, 5)
+                sellerId,
+                org.springframework.data.domain.PageRequest.of(0, 5)
         );
 
         // Calculate sales count and percentage for each product
         List<com.mmo.dto.TopProductDTO> topProductDTO = new ArrayList<>();
         long totalSales = topProducts.stream()
-            .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
-            .sum();
+                .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
+                .sum();
 
         for (com.mmo.entity.Product product : topProducts) {
             Long salesCount = productRepository.countSalesForProduct(product.getId());
@@ -480,12 +480,12 @@ public class SellerController {
                 percentage = ((double) salesCount / totalSales) * 100;
             }
 
-           com.mmo.dto.TopProductDTO dto = new com.mmo.dto.TopProductDTO(
-                product.getId(),
-                product.getName(),
-                product.getImage(),
-                salesCount,
-                percentage
+            com.mmo.dto.TopProductDTO dto = new com.mmo.dto.TopProductDTO(
+                    product.getId(),
+                    product.getName(),
+                    product.getImage(),
+                    salesCount,
+                    percentage
             );
             topProductDTO.add(dto);
         }
@@ -934,8 +934,8 @@ public class SellerController {
         // Build dynamic query with filters
         StringBuilder jpql = new StringBuilder(
                 "select new com.mmo.dto.SellerTransactionListItem(t.id, p.name, v.variantName, t.quantity, t.coinSeller, t.status, t.createdAt) " +
-                "from Transaction t join t.product p join t.variant v " +
-                "where t.seller.id = :sid and t.isDelete = false");
+                        "from Transaction t join t.product p join t.variant v " +
+                        "where t.seller.id = :sid and t.isDelete = false");
 
         // Add search filter
         if (search != null && !search.trim().isEmpty()) {
@@ -955,7 +955,7 @@ public class SellerController {
         }
 
         var query = entityManager.createQuery(jpql.toString(), SellerTransactionListItem.class)
-            .setParameter("sid", seller.getId());
+                .setParameter("sid", seller.getId());
 
         if (search != null && !search.trim().isEmpty()) {
             query.setParameter("search", "%" + search.trim().toLowerCase() + "%");
@@ -1002,7 +1002,8 @@ public class SellerController {
                     if (it.getCoinSeller() != null) completedEarned += it.getCoinSeller();
                 }
                 case "CANCELLED", "REFUNDED" -> cancelled++;
-                default -> {}
+                default -> {
+                }
             }
         }
         model.addAttribute("totalEarned", totalEarned);
@@ -1048,7 +1049,9 @@ public class SellerController {
             data.put("commission", tx.getCommission());
             data.put("coinSeller", tx.getCoinSeller());
 
-            String productName = null, categoryName = null, variantName = null; Long variantPrice = null; Long productId = null, variantId = null;
+            String productName = null, categoryName = null, variantName = null;
+            Long variantPrice = null;
+            Long productId = null, variantId = null;
             if (tx.getProduct() != null) {
                 productName = tx.getProduct().getName();
                 productId = tx.getProduct().getId();
@@ -1072,10 +1075,10 @@ public class SellerController {
             // Get all accounts associated with this transaction
             try {
                 List<com.mmo.entity.ProductVariantAccount> accounts = entityManager
-                    .createQuery("SELECT a FROM ProductVariantAccount a WHERE a.transaction.id = :txId AND a.isDelete = false",
+                        .createQuery("SELECT a FROM ProductVariantAccount a WHERE a.transaction.id = :txId AND a.isDelete = false",
                                 com.mmo.entity.ProductVariantAccount.class)
-                    .setParameter("txId", tx.getId())
-                    .getResultList();
+                        .setParameter("txId", tx.getId())
+                        .getResultList();
 
                 if (accounts != null && !accounts.isEmpty()) {
                     // Build account data string with all accounts
@@ -1159,8 +1162,8 @@ public class SellerController {
         }
 
         StringBuilder jpql = new StringBuilder(
-            "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.customer.id, c.customer.fullName, c.description) " +
-            "from Complaint c where c.seller.id = :sid and c.isDelete = false"
+                "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.customer.id, c.customer.fullName, c.description) " +
+                        "from Complaint c where c.seller.id = :sid and c.isDelete = false"
         );
         if (status != null) jpql.append(" and c.status = :status");
         if (type != null) jpql.append(" and c.complaintType = :type");
@@ -1311,7 +1314,7 @@ public class SellerController {
             try {
                 String notifTitle = action.equals("APPROVE") ? "Seller Approved Your Complaint" : "Seller Responded to Your Complaint";
                 String notifMessage = "The seller has responded to your complaint #" + complaint.getId() +
-                                     " for transaction #" + complaint.getTransactionId() + ". Please check the details.";
+                        " for transaction #" + complaint.getTransactionId() + ". Please check the details.";
                 notificationService.createNotificationForUser(complaint.getCustomer().getId(), notifTitle, notifMessage);
             } catch (Exception e) {
                 // Log but don't fail
@@ -2949,6 +2952,12 @@ public class SellerController {
 
         Map<String, String> fieldErrors = new HashMap<>();
         if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
+        else {
+            String variantNameNoSpaces = variantName.replaceAll("\\s+", "");
+            if (variantNameNoSpaces.length() > 50) {
+                fieldErrors.put("variantName", "Variant name must not exceed 50 characters (excluding spaces)");
+            }
+        }
         if (price == null) fieldErrors.put("price", "Price is required");
         else if (price < 0) fieldErrors.put("price", "Invalid price");
         if (!fieldErrors.isEmpty())
@@ -3017,6 +3026,12 @@ public class SellerController {
 
         Map<String, String> fieldErrors = new HashMap<>();
         if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
+        else {
+            String variantNameNoSpaces = variantName.replaceAll("\\s+", "");
+            if (variantNameNoSpaces.length() > 50) {
+                fieldErrors.put("variantName", "Variant name must not exceed 50 characters (excluding spaces)");
+            }
+        }
         if (price == null) fieldErrors.put("price", "Price is required");
         else if (price < 0) fieldErrors.put("price", "Invalid price");
         if (!fieldErrors.isEmpty())
@@ -3232,7 +3247,13 @@ public class SellerController {
             Map<String, String> fieldErrors = new HashMap<>();
             if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
             else if (name.length() < 3) fieldErrors.put("name", "Name must be at least 3 characters");
-            else if (name.length() > 255) fieldErrors.put("name", "Name must be at most 255 characters");
+
+            else {
+                String nameNoSpaces = name.replaceAll("\\s+", "");
+                if (nameNoSpaces.length() > 50) {
+                    fieldErrors.put("name", "Product name must not exceed 50 characters (excluding spaces)");
+                }
+            }
             Category cat = null;
             if (categoryId == null) fieldErrors.put("categoryId", "Category is required");
             else {
@@ -3242,8 +3263,11 @@ public class SellerController {
             // Require description for creation
             if (description == null || description.isBlank()) {
                 fieldErrors.put("description", "Description is required");
-            } else if (description.length() > 5000) {
-                fieldErrors.put("description", "Description must be at most 5000 characters");
+            } else {
+                String descriptionNoSpaces = description.replaceAll("\\s+", "");
+                if (descriptionNoSpaces.length() > 500) {
+                    fieldErrors.put("description", "Description must not exceed 500 characters (excluding spaces)");
+                }
             }
             // Require image URL for creation and validate format
             if (image == null || image.isBlank()) {
@@ -3335,7 +3359,12 @@ public class SellerController {
             Map<String, String> fieldErrors = new HashMap<>();
             if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
             else if (name.length() < 3) fieldErrors.put("name", "Name must be at least 3 characters");
-            else if (name.length() > 255) fieldErrors.put("name", "Name must be at most 255 characters");
+            else {
+                String nameNoSpaces = name.replaceAll("\\s+", "");
+                if (nameNoSpaces.length() > 50) {
+                    fieldErrors.put("name", "Product name must not exceed 50 characters (excluding spaces)");
+                }
+            }
             Category cat = null;
             if (categoryId == null) fieldErrors.put("categoryId", "Category is required");
             else {
@@ -3345,13 +3374,14 @@ public class SellerController {
             // Require description on update
             if (description == null || description.isBlank()) {
                 fieldErrors.put("description", "Description is required");
-            } else if (description.length() > 5000) {
-                fieldErrors.put("description", "Description must be at most 5000 characters");
-            }
-            // Require image URL for creation and validate format
-            if (image == null || image.isBlank()) {
-                fieldErrors.put("image", "Image is required");
             } else {
+                String descriptionNoSpaces = description.replaceAll("\\s+", "");
+                if (descriptionNoSpaces.length() > 500) {
+                    fieldErrors.put("description", "Description must not exceed 500 characters (excluding spaces)");
+                }
+            }
+            // For update: image is optional, but if provided must be valid
+            if (image != null && !image.isBlank()) {
                 if (image.length() > 255) fieldErrors.put("image", "Image URL must be at most 255 characters");
                 String lower = image.toLowerCase();
                 boolean okPrefix = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
@@ -3368,11 +3398,13 @@ public class SellerController {
             p.setDescription(description);
             p.setCategory(cat);
 
-            // Update image: if key exists in body, update it (even if null/empty to clear)
-            // If key doesn't exist, keep existing image
-            if (body.containsKey("image")) {
-                p.setImage(image != null && !image.isBlank() ? image : null);
+            // Update image: only if a new image URL is provided
+            // If image is provided and not blank, update it
+            // If image is null or blank, keep the existing image
+            if (image != null && !image.isBlank()) {
+                p.setImage(image);
             }
+            // Note: we don't clear the image if not provided (unlike create where it's required)
 
             // Persist changes
             entityManager.merge(p);
@@ -3693,83 +3725,84 @@ public class SellerController {
         } catch (Exception ex) {
             return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
         }
-
-    // ==================== REVIEWS MANAGEMENT ====================
-    @GetMapping("/reviews")
-    public String sellerReviews(@RequestParam(name = "page", defaultValue = "0") int page,
-                                @RequestParam(name = "search", defaultValue = "") String search,
-                                @RequestParam(name = "sort", defaultValue = "rating_desc") String sort,
-                                Authentication authentication,
-                                Model model) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return "redirect:/authen/login";
-        }
-
-        User seller = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
-                .setParameter("email", authentication.getName())
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-
-        if (seller == null) {
-            return "redirect:/authen/login";
-        }
-
-        // Build JPQL query to get reviews for seller's products
-        StringBuilder sb = new StringBuilder(
-            "SELECT r FROM Review r " +
-            "LEFT JOIN FETCH r.product p " +
-            "LEFT JOIN FETCH r.user u " +
-            "WHERE r.isDelete = false AND p.seller.id = :sellerId"
-        );
-
-        if (search != null && !search.isBlank()) {
-            sb.append(" AND (LOWER(p.name) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(u.id AS string) LIKE :search OR CAST(r.id AS string) LIKE :search)");
-        }
-
-        // Determine ordering
-        String orderField = "r.rating";
-        String orderDir = "DESC";
-        if (sort != null) {
-            String s = sort.trim().toLowerCase();
-            if ("rating_asc".equals(s)) {
-                orderField = "r.rating";
-                orderDir = "ASC";
-            } else if ("rating_desc".equals(s)) {
-                orderField = "r.rating";
-                orderDir = "DESC";
-            } else if ("date_asc".equals(s)) {
-                orderField = "r.createdAt";
-                orderDir = "ASC";
-            } else if ("date_desc".equals(s)) {
-                orderField = "r.createdAt";
-                orderDir = "DESC";
-            }
-        }
-        sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
-
-        jakarta.persistence.TypedQuery<com.mmo.entity.Review> query = entityManager.createQuery(sb.toString(), com.mmo.entity.Review.class);
-        query.setParameter("sellerId", seller.getId());
-
-        if (search != null && !search.isBlank()) {
-            query.setParameter("search", "%" + search + "%");
-        }
-
-        List<com.mmo.entity.Review> all = query.getResultList();
-        int total = all.size();
-        int totalPages = (int) Math.ceil((double) total / 10);
-        List<com.mmo.entity.Review> pageList = all.stream()
-                .skip((long) page * 10)
-                .limit(10)
-                .toList();
-
-        model.addAttribute("reviews", pageList);
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("currentSort", sort);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("pageTitle", "Reviews Management");
-
-        return "seller/reviews";
     }
-}
+        // ==================== REVIEWS MANAGEMENT ====================
+        @GetMapping("/reviews")
+        public String sellerReviews ( @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "search", defaultValue = "") String search,
+        @RequestParam(name = "sort", defaultValue = "rating_desc") String sort,
+        Authentication authentication,
+        Model model){
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return "redirect:/authen/login";
+            }
+
+            User seller = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                    .setParameter("email", authentication.getName())
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+
+            if (seller == null) {
+                return "redirect:/authen/login";
+            }
+
+            // Build JPQL query to get reviews for seller's products
+            StringBuilder sb = new StringBuilder(
+                    "SELECT r FROM Review r " +
+                            "LEFT JOIN FETCH r.product p " +
+                            "LEFT JOIN FETCH r.user u " +
+                            "WHERE r.isDelete = false AND p.seller.id = :sellerId"
+            );
+
+            if (search != null && !search.isBlank()) {
+                sb.append(" AND (LOWER(p.name) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(u.id AS string) LIKE :search OR CAST(r.id AS string) LIKE :search)");
+            }
+
+            // Determine ordering
+            String orderField = "r.rating";
+            String orderDir = "DESC";
+            if (sort != null) {
+                String s = sort.trim().toLowerCase();
+                if ("rating_asc".equals(s)) {
+                    orderField = "r.rating";
+                    orderDir = "ASC";
+                } else if ("rating_desc".equals(s)) {
+                    orderField = "r.rating";
+                    orderDir = "DESC";
+                } else if ("date_asc".equals(s)) {
+                    orderField = "r.createdAt";
+                    orderDir = "ASC";
+                } else if ("date_desc".equals(s)) {
+                    orderField = "r.createdAt";
+                    orderDir = "DESC";
+                }
+            }
+            sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
+
+            jakarta.persistence.TypedQuery<com.mmo.entity.Review> query = entityManager.createQuery(sb.toString(), com.mmo.entity.Review.class);
+            query.setParameter("sellerId", seller.getId());
+
+            if (search != null && !search.isBlank()) {
+                query.setParameter("search", "%" + search + "%");
+            }
+
+            List<com.mmo.entity.Review> all = query.getResultList();
+            int total = all.size();
+            int totalPages = (int) Math.ceil((double) total / 10);
+            List<com.mmo.entity.Review> pageList = all.stream()
+                    .skip((long) page * 10)
+                    .limit(10)
+                    .toList();
+
+            model.addAttribute("reviews", pageList);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("pageTitle", "Reviews Management");
+
+            return "seller/reviews";
+        }
+    }
+

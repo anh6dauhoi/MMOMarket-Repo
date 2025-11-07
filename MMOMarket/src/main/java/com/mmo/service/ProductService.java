@@ -103,7 +103,7 @@ public class ProductService {
     public List<Map<String, Object>> getProductsByCategory(Long categoryId, Long minPrice, Long maxPrice, String sort, Integer minRating) {
         // Defaults
         if (minPrice == null) minPrice = 0L;
-        if (maxPrice == null) maxPrice = 500000L;
+        if (maxPrice == null) maxPrice = 999999999L; // Set to very high value
         if (sort == null || sort.isBlank()) sort = "newest";
         if (minRating == null) minRating = 0;
 
@@ -171,7 +171,7 @@ public class ProductService {
                                                                      String sort, Integer minRating, int page, int size) {
         // Defaults
         if (minPrice == null) minPrice = 0L;
-        if (maxPrice == null) maxPrice = 500000L;
+        if (maxPrice == null) maxPrice = 999999999L; // Set to very high value
         if (sort == null || sort.isBlank()) sort = "newest";
         if (minRating == null) minRating = 0;
 
@@ -286,25 +286,28 @@ public class ProductService {
         return result;
     }
 
-    public List<Map<String, Object>> getSellerProductsWithFilters(Long sellerId,
+    public Map<String, Object> getSellerProductsWithFilters(Long sellerId,
                                                                   Long categoryId,
                                                                   Long minPrice,
                                                                   Long maxPrice,
                                                                   String sort,
                                                                   Integer minRating,
-                                                                  String query) {
+                                                                  String query,
+                                                                  int page,
+                                                                  int size) {
         if (minPrice == null) minPrice = 0L;
-        if (maxPrice == null) maxPrice = 500000L;
+        if (maxPrice == null) maxPrice = 999999999L; // Set to very high value to include all products
         if (sort == null || sort.isBlank()) sort = "newest";
         if (minRating == null) minRating = 0;
 
-        PageRequest page = PageRequest.of(0, 20);
+        // Fetch all products first for filtering
+        PageRequest pageRequest = PageRequest.of(0, 1000);
 
         List<Product> products;
         if (categoryId == null || categoryId <= 0) {
-            products = productRepository.findBySellerWithPrice(sellerId, minPrice, maxPrice, page);
+            products = productRepository.findBySellerWithPrice(sellerId, minPrice, maxPrice, pageRequest);
         } else {
-            products = productRepository.findBySellerAndCategoryWithPrice(sellerId, categoryId, minPrice, maxPrice, page);
+            products = productRepository.findBySellerAndCategoryWithPrice(sellerId, categoryId, minPrice, maxPrice, pageRequest);
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -360,7 +363,26 @@ public class ProductService {
             });
         }
 
-        return result;
+        // Calculate pagination
+        int totalItems = result.size();
+        int totalPages = totalItems > 0 ? (int) Math.ceil((double) totalItems / size) : 0;
+        int start = page * size;
+        int end = Math.min(start + size, totalItems);
+
+        List<Map<String, Object>> paginatedResult = new ArrayList<>();
+        if (start < totalItems) {
+            paginatedResult = result.subList(start, end);
+        }
+
+        // Return map with products and pagination info
+        Map<String, Object> response = new HashMap<>();
+        response.put("products", paginatedResult);
+        response.put("currentPage", page);
+        response.put("totalPages", totalPages);
+        response.put("totalItems", totalItems);
+        response.put("pageSize", size);
+
+        return response;
     }
 
     public Map<String, Object> getProductDetail(Long productId) {

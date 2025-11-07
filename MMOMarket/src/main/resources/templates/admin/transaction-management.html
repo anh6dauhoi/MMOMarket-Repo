@@ -1,5 +1,5 @@
 tôi đa<div th:fragment="content"
-     th:with="page=${currentPage != null ? currentPage : 0},
+     th:with="page=${currentPage != null ? currentPage : 1},
               size=${10},
               total=${totalPages != null and totalPages > 0 ? totalPages : 1},
               txCount=${transactions != null ? #lists.size(transactions) : 0}">
@@ -25,7 +25,7 @@ tôi đa<div th:fragment="content"
                                     isAmountAsc=${currentSortVal == 'amount_asc'},
                                     isAmountDesc=${currentSortVal == 'amount_desc'},
                                     nextSort=${isAmountAsc ? 'amount_desc' : 'amount_asc'},
-                                    sortUrl='/admin/transactions?page=0&sort=' + ${nextSort} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
+                                    sortUrl='/admin/transactions?page=1&sort=' + ${nextSort} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
                            th:href="${sortUrl}"
                            class="flex items-center space-x-1 hover:text-red-900 cursor-pointer">
                             <span>Amount</span>
@@ -78,26 +78,26 @@ tôi đa<div th:fragment="content"
              th:with="sortParam=${currentSort != null and currentSort != 'date_desc' ? '&sort=' + currentSort : ''},
                       searchParam=${currentSearch != null and !currentSearch.isEmpty() ? '&search=' + currentSearch : ''}">
             <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Showing <span th:text="${txCount > 0 ? (page * size + 1) : 0}">0</span>
-                to <span th:text="${page * size + txCount}">0</span>
+                Showing <span th:text="${txCount > 0 ? ((page - 1) * size + 1) : 0}">0</span>
+                to <span th:text="${(page - 1) * size + txCount}">0</span>
                 of <span th:text="${total * size}">0</span> results
             </div>
             <div class="flex space-x-1 flex-wrap justify-center">
                 <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
                    th:with="url='/admin/transactions?page=' + ${page - 1} + ${searchParam} + ${sortParam}"
-                   th:href="${url}" th:if="${page > 0}">Previous</a>
+                   th:href="${url}" th:if="${page > 1}">Previous</a>
 
                 <a class="px-2 sm:px-3 py-1 border rounded-md"
                    th:classappend="${i == page} ? 'bg-green-500 text-white' : 'hover:bg-gray-100'"
-                   th:each="i : ${#numbers.sequence(0, total - 1)}"
+                   th:each="i : ${#numbers.sequence(1, total)}"
                    th:with="url='/admin/transactions?page=' + ${i} + ${searchParam} + ${sortParam}"
                    th:href="${url}"
-                   th:if="${i == 0 or i == page or i == page - 1 or i == page + 1 or i == total - 1}"
-                   th:text="${i + 1}">1</a>
+                   th:if="${i == 1 or i == page or i == page - 1 or i == page + 1 or i == total}"
+                   th:text="${i}">1</a>
 
                 <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
                    th:with="url='/admin/transactions?page=' + ${page + 1} + ${searchParam} + ${sortParam}"
-                   th:href="${url}" th:if="${page < total - 1}">Next</a>
+                   th:href="${url}" th:if="${page < total}">Next</a>
             </div>
         </div>
 

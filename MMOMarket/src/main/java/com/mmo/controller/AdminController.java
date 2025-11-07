@@ -735,12 +735,15 @@ public class AdminController {
 
 
     @GetMapping("/transactions")
-    public String transactionManagement(@RequestParam(name = "page", defaultValue = "0") int page,
+    public String transactionManagement(@RequestParam(name = "page", defaultValue = "1") int page,
                                         @RequestParam(name = "search", defaultValue = "") String search,
                                         @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
                                         Model model) {
         try {
             final int pageSize = 10;
+
+            // Convert from 1-based to 0-based page index
+            int pageIndex = Math.max(0, page - 1);
 
             // Build WHERE clause and parameters once
             String where = " WHERE t.isDelete = false" +
@@ -773,8 +776,8 @@ public class AdminController {
 
             // Compute total pages and clamp current page
             int totalPages = (int) Math.ceil(total / (double) pageSize);
-            if (page < 0) page = 0;
-            if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+            if (pageIndex < 0) pageIndex = 0;
+            if (totalPages > 0 && pageIndex >= totalPages) pageIndex = totalPages - 1;
 
             // 2) Paged select query with FETCH joins for view rendering
             StringBuilder listSb = new StringBuilder(
@@ -791,12 +794,12 @@ public class AdminController {
             if (search != null && !search.isBlank()) {
                 listQuery.setParameter("search", "%" + search + "%");
             }
-            listQuery.setFirstResult(page * pageSize);
+            listQuery.setFirstResult(pageIndex * pageSize);
             listQuery.setMaxResults(pageSize);
             List<Transaction> pageList = listQuery.getResultList();
 
             model.addAttribute("transactions", pageList);
-            model.addAttribute("currentPage", page);
+            model.addAttribute("currentPage", page);  // Pass 1-based page to view
             model.addAttribute("currentSearch", search);
             model.addAttribute("currentSort", sort);
             model.addAttribute("totalPages", totalPages);
@@ -807,7 +810,7 @@ public class AdminController {
         } catch (Exception ex) {
             ex.printStackTrace();
             model.addAttribute("transactions", new java.util.ArrayList<>());
-            model.addAttribute("currentPage", 0);
+            model.addAttribute("currentPage", 1);  // Use 1-based default
             model.addAttribute("currentSearch", "");
             model.addAttribute("totalPages", 1);
             model.addAttribute("pageTitle", "Transaction Management");
