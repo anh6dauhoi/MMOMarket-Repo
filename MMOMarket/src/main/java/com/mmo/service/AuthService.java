@@ -7,8 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Random;
+import java.util.zip.CRC32;
 
 @Service
 public class AuthService {
@@ -67,5 +69,42 @@ public class AuthService {
     public void sendVerificationCodeEmail(String email, String code) throws MessagingException {
         // Delegate to async email service with retry; keep signature for controller compatibility
         emailService.sendVerificationCodeEmailAsync(email, code);
+    }
+
+    /**
+     * Generate unique deposit code for user
+     * Format: MMO + 2-5 alphanumeric (from base36 userId) + 6 digits (deterministic checksum)
+     */
+    public String generateDepositCode(User user) {
+        long id = user.getId() != null ? user.getId() : new Random().nextLong();
+        String mid = Long.toString(Math.abs(id), 36).toUpperCase();
+        if (mid.length() < 2) {
+            mid = (mid + "XX").substring(0, 2);
+        }
+        if (mid.length() > 5) {
+            mid = mid.substring(mid.length() - 5);
+        }
+        // Deterministic 6-digit numeric suffix based on email+id
+        String seed = (user.getEmail() != null ? user.getEmail() : "") + id;
+        CRC32 crc = new CRC32();
+        crc.update(seed.getBytes(StandardCharsets.UTF_8));
+        long val = Math.abs(crc.getValue() % 1_000_000L);
+        String suffix = String.format("%06d", val);
+        return "MMO" + mid + suffix;
+    }
+
+    /**
+     * Ensure user has a deposit code, generate and save if missing
+     */
+    public void ensureDepositCode(User user) {
+        if (user.getDepositCode() == null || user.getDepositCode().isBlank()) {
+            // Ensure we have an id before generating code for base36
+            if (user.getId() == null) {
+                user = userRepository.save(user);
+            }
+            String code = generateDepositCode(user);
+            user.setDepositCode(code);
+            userRepository.save(user);
+        }
     }
 }

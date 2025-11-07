@@ -12,7 +12,9 @@
     <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
     <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <!-- reCAPTCHA TEMPORARILY DISABLED -->
+    <!-- TODO: Re-enable before production -->
+    <!-- <script src="https://www.google.com/recaptcha/api.js" async defer></script> -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { background: url('/images/home.jpg') no-repeat center center fixed; background-size: cover; }
@@ -48,11 +50,13 @@
                 <div class="text-right">
                     <a class="text-red-500 hover:text-red-600 font-medium text-sm" href="/authen/login">Have an account?</a>
                 </div>
-                <!-- reCAPTCHA Widget -->
+                <!-- reCAPTCHA Widget - TEMPORARILY DISABLED -->
+                <!--
                 <div class="flex justify-center">
                     <div class="g-recaptcha" th:attr="data-sitekey=${recaptchaSiteKey}"></div>
                 </div>
                 <div id="recaptchaError" class="text-red-500 text-sm text-center hidden">Please complete the CAPTCHA verification.</div>
+                -->
                 <button id="regSubmit" class="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-md hover:bg-red-600 transition duration-200 font-medium text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed" type="submit" disabled>
                     Sign up
                 </button>
@@ -83,7 +87,7 @@
     const submitBtn = document.getElementById('regSubmit');
     const pwHint = document.getElementById('regPwHint');
     const matchHint = document.getElementById('regMatchHint');
-    const recaptchaError = document.getElementById('recaptchaError');
+    // const recaptchaError = document.getElementById('recaptchaError'); // DISABLED
     const form = document.getElementById('registerForm');
 
     function validPw(v){ return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(v); }
@@ -101,7 +105,8 @@
     cpw.addEventListener('input', update);
     update();
 
-    // Validate reCAPTCHA before form submission
+    // Validate reCAPTCHA before form submission - TEMPORARILY DISABLED
+    /*
     form.addEventListener('submit', function(e) {
         const recaptchaResponse = grecaptcha.getResponse();
         if (!recaptchaResponse) {
@@ -112,6 +117,7 @@
         recaptchaError.classList.add('hidden');
         return true;
     });
+    */
 </script>
 </body>
 </html>

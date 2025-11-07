@@ -73,12 +73,15 @@ public class AuthController {
                           @RequestParam(value = "g-recaptcha-response", required = false) String recaptchaResponse,
                           Model model) {
         try {
-            // Verify reCAPTCHA first
+            // Verify reCAPTCHA first - TEMPORARILY DISABLED
+            // TODO: Re-enable reCAPTCHA verification before production
+            /*
             if (!recaptchaService.verifyRecaptcha(recaptchaResponse)) {
                 model.addAttribute("message", "CAPTCHA verification failed. Please try again.");
                 model.addAttribute("email", email);
                 return "authen/register";
             }
+            */
 
             // Kiểm tra mật khẩu xác nhận
             if (!password.equals(confirmPassword)) {
@@ -102,6 +105,9 @@ public class AuthController {
 
             // Đăng ký user (đồng bộ)
             User user = authService.register(email, password, fullName != null ? fullName : "Unknown");
+
+            // Tạo deposit code cho user mới đăng ký
+            authService.ensureDepositCode(user);
 
             // Tạo OTP + gửi email hoàn toàn bất đồng bộ để điều hướng nhanh
             emailExecutor.execute(() -> {
