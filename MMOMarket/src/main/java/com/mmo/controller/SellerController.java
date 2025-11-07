@@ -3,6 +3,12 @@ package com.mmo.controller;
 import com.mmo.dto.CreateWithdrawalRequest;
 import com.mmo.dto.SellerRegistrationForm;
 import com.mmo.dto.SellerWithdrawalResponse;
+
+import com.mmo.entity.*;
+import com.mmo.repository.CategoryRepository;
+import com.mmo.repository.UserRepository;
+import com.mmo.service.*;
+
 import com.mmo.dto.SellerTransactionListItem;
 import com.mmo.dto.SellerComplaintListItem;
 import com.mmo.entity.Complaint;
@@ -17,6 +23,7 @@ import com.mmo.service.NotificationService;
 import com.mmo.service.SellerBankInfoService;
 import com.mmo.service.SystemConfigurationService;
 import com.mmo.util.Bank;
+
 import com.mmo.util.EmailTemplate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -55,6 +62,12 @@ public class SellerController {
     private UserRepository userRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProductVariantAccountService productVariantAccountService;
+
+    @Autowired
     private SellerBankInfoService sellerBankInfoService;
 
     @Autowired
@@ -78,12 +91,18 @@ public class SellerController {
     private EntityManager entityManager;
 
     // Inject repositories used for delete-shop logic
-    @Autowired private com.mmo.repository.ProductRepository productRepository;
-    @Autowired private com.mmo.repository.ProductVariantRepository productVariantRepository;
-    @Autowired private com.mmo.repository.ProductVariantAccountRepository productVariantAccountRepository;
-    @Autowired private com.mmo.repository.ReviewRepository reviewRepository;
-    @Autowired private com.mmo.repository.TransactionRepository transactionRepository;
-    @Autowired private com.mmo.repository.ShopInfoRepository shopInfoRepository;
+    @Autowired
+    private com.mmo.repository.ProductRepository productRepository;
+    @Autowired
+    private com.mmo.repository.ProductVariantRepository productVariantRepository;
+    @Autowired
+    private com.mmo.repository.ProductVariantAccountRepository productVariantAccountRepository;
+    @Autowired
+    private com.mmo.repository.ReviewRepository reviewRepository;
+    @Autowired
+    private com.mmo.repository.TransactionRepository transactionRepository;
+    @Autowired
+    private com.mmo.repository.ShopInfoRepository shopInfoRepository;
 
     // OTP dependencies
     @Autowired
@@ -140,7 +159,8 @@ public class SellerController {
                         null
                 );
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         if (agreementUrl == null || agreementUrl.isBlank()) {
             agreementUrl = "/contracts/seller-contract.pdf"; // default static file
         }
@@ -705,13 +725,13 @@ public class SellerController {
         double ordersChange = 0.0;
 
         if (previousRevenue > 0) {
-            revenueChange = ((double)(totalRevenue - previousRevenue) / previousRevenue) * 100;
+            revenueChange = ((double) (totalRevenue - previousRevenue) / previousRevenue) * 100;
         } else if (totalRevenue > 0) {
             revenueChange = 100.0;
         }
 
         if (previousOrders > 0) {
-            ordersChange = ((double)(totalOrders - previousOrders) / previousOrders) * 100;
+            ordersChange = ((double) (totalOrders - previousOrders) / previousOrders) * 100;
         } else if (totalOrders > 0) {
             ordersChange = 100.0;
         }
@@ -724,15 +744,15 @@ public class SellerController {
 
         // Get top selling products (limit to 5)
         List<com.mmo.entity.Product> topProducts = productRepository.findTopSellingProductsBySeller(
-            sellerId,
-            org.springframework.data.domain.PageRequest.of(0, 5)
+                sellerId,
+                org.springframework.data.domain.PageRequest.of(0, 5)
         );
 
         // Calculate sales count and percentage for each product
         List<com.mmo.dto.TopProductDTO> topProductDTO = new ArrayList<>();
         long totalSales = topProducts.stream()
-            .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
-            .sum();
+                .mapToLong(p -> productRepository.countSalesForProduct(p.getId()))
+                .sum();
 
         for (com.mmo.entity.Product product : topProducts) {
             Long salesCount = productRepository.countSalesForProduct(product.getId());
@@ -743,12 +763,12 @@ public class SellerController {
                 percentage = ((double) salesCount / totalSales) * 100;
             }
 
-           com.mmo.dto.TopProductDTO dto = new com.mmo.dto.TopProductDTO(
-                product.getId(),
-                product.getName(),
-                product.getImage(),
-                salesCount,
-                percentage
+            com.mmo.dto.TopProductDTO dto = new com.mmo.dto.TopProductDTO(
+                    product.getId(),
+                    product.getName(),
+                    product.getImage(),
+                    salesCount,
+                    percentage
             );
             topProductDTO.add(dto);
         }
@@ -879,7 +899,8 @@ public class SellerController {
                     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Offload OTP creation + persistence + email to executor; return immediately
         try {
@@ -896,9 +917,11 @@ public class SellerController {
                     String subject = "[MMOMarket] OTP Xác minh rút tiền";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
@@ -1014,8 +1037,14 @@ public class SellerController {
             if (req == null || req.getOtp() == null || !req.getOtp().matches("\\d{6}")) {
                 int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
                 if (attempts >= 5) {
-                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
-                    try { session.invalidate(); } catch (Exception ignored) {}
+                    try {
+                        new SecurityContextLogoutHandler().logout(request, null, authentication);
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        session.invalidate();
+                    } catch (Exception ignored) {
+                    }
                     redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
                     return "redirect:/authen/login";
                 } else if (attempts >= 3) {
@@ -1040,8 +1069,14 @@ public class SellerController {
             if (optVerification.isEmpty()) {
                 int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
                 if (attempts >= 5) {
-                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
-                    try { session.invalidate(); } catch (Exception ignored) {}
+                    try {
+                        new SecurityContextLogoutHandler().logout(request, null, authentication);
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        session.invalidate();
+                    } catch (Exception ignored) {
+                    }
                     redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
                     return "redirect:/authen/login";
                 } else if (attempts >= 3) {
@@ -1056,8 +1091,14 @@ public class SellerController {
             if (verification.getExpiryDate() == null || verification.getExpiryDate().before(new Date())) {
                 int attempts = incSellerOtpAttempts(session, seller.getId(), "withdraw_create");
                 if (attempts >= 5) {
-                    try { new SecurityContextLogoutHandler().logout(request, null, authentication); } catch (Exception ignored) {}
-                    try { session.invalidate(); } catch (Exception ignored) {}
+                    try {
+                        new SecurityContextLogoutHandler().logout(request, null, authentication);
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        session.invalidate();
+                    } catch (Exception ignored) {
+                    }
                     redirectAttributes.addFlashAttribute("errorMessage", "Too many OTP failures. You have been logged out. Please sign in again.");
                     return "redirect:/authen/login";
                 } else if (attempts >= 3) {
@@ -1176,8 +1217,8 @@ public class SellerController {
         // Build dynamic query with filters
         StringBuilder jpql = new StringBuilder(
                 "select new com.mmo.dto.SellerTransactionListItem(t.id, p.name, v.variantName, t.quantity, t.coinSeller, t.status, t.createdAt) " +
-                "from Transaction t join t.product p join t.variant v " +
-                "where t.seller.id = :sid and t.isDelete = false");
+                        "from Transaction t join t.product p join t.variant v " +
+                        "where t.seller.id = :sid and t.isDelete = false");
 
         // Add search filter
         if (search != null && !search.trim().isEmpty()) {
@@ -1197,7 +1238,7 @@ public class SellerController {
         }
 
         var query = entityManager.createQuery(jpql.toString(), SellerTransactionListItem.class)
-            .setParameter("sid", seller.getId());
+                .setParameter("sid", seller.getId());
 
         if (search != null && !search.trim().isEmpty()) {
             query.setParameter("search", "%" + search.trim().toLowerCase() + "%");
@@ -1244,7 +1285,8 @@ public class SellerController {
                     if (it.getCoinSeller() != null) completedEarned += it.getCoinSeller();
                 }
                 case "CANCELLED", "REFUNDED" -> cancelled++;
-                default -> {}
+                default -> {
+                }
             }
         }
         model.addAttribute("totalEarned", totalEarned);
@@ -1290,7 +1332,9 @@ public class SellerController {
             data.put("commission", tx.getCommission());
             data.put("coinSeller", tx.getCoinSeller());
 
-            String productName = null, categoryName = null, variantName = null; Long variantPrice = null; Long productId = null, variantId = null;
+            String productName = null, categoryName = null, variantName = null;
+            Long variantPrice = null;
+            Long productId = null, variantId = null;
             if (tx.getProduct() != null) {
                 productName = tx.getProduct().getName();
                 productId = tx.getProduct().getId();
@@ -1314,10 +1358,10 @@ public class SellerController {
             // Get all accounts associated with this transaction
             try {
                 List<com.mmo.entity.ProductVariantAccount> accounts = entityManager
-                    .createQuery("SELECT a FROM ProductVariantAccount a WHERE a.transaction.id = :txId AND a.isDelete = false",
+                        .createQuery("SELECT a FROM ProductVariantAccount a WHERE a.transaction.id = :txId AND a.isDelete = false",
                                 com.mmo.entity.ProductVariantAccount.class)
-                    .setParameter("txId", tx.getId())
-                    .getResultList();
+                        .setParameter("txId", tx.getId())
+                        .getResultList();
 
                 if (accounts != null && !accounts.isEmpty()) {
                     // Build account data string with all accounts
@@ -1401,8 +1445,10 @@ public class SellerController {
         }
 
         StringBuilder jpql = new StringBuilder(
-            "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.respondedAt, c.customer.id, c.customer.fullName, c.description) " +
-            "from Complaint c where c.seller.id = :sid and c.isDelete = false"
+          
+        "select new com.mmo.dto.SellerComplaintListItem(c.id, c.transactionId, c.complaintType, c.status, c.createdAt, c.updatedAt, c.respondedAt, c.customer.id, c.customer.fullName, c.description) " +
+        "from Complaint c where c.seller.id = :sid and c.isDelete = false"
+        
         );
         if (status != null) jpql.append(" and c.status = :status");
         if (type != null) jpql.append(" and c.complaintType = :type");
@@ -1555,7 +1601,7 @@ public class SellerController {
             try {
                 String notifTitle = action.equals("APPROVE") ? "Seller Approved Your Complaint" : "Seller Responded to Your Complaint";
                 String notifMessage = "The seller has responded to your complaint #" + complaint.getId() +
-                                     " for transaction #" + complaint.getTransactionId() + ". Please check the details.";
+                        " for transaction #" + complaint.getTransactionId() + ". Please check the details.";
                 notificationService.createNotificationForUser(complaint.getCustomer().getId(), notifTitle, notifMessage);
             } catch (Exception e) {
                 // Log but don't fail
@@ -1879,9 +1925,32 @@ public class SellerController {
     // Helper DTO for supported bank options (matches template usage: b.displayName)
     private static class BankOption {
         private final String displayName;
-        BankOption(String displayName) { this.displayName = displayName; }
-        public String getDisplayName() { return displayName; }
+
+        BankOption(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
     }
+
+
+    private List<BankOption> defaultBanks() {
+        return Arrays.asList(
+                new BankOption("Vietcombank"),
+                new BankOption("Techcombank"),
+                new BankOption("VietinBank"),
+                new BankOption("BIDV"),
+                new BankOption("Agribank"),
+                new BankOption("MB Bank"),
+                new BankOption("ACB"),
+                new BankOption("Sacombank"),
+                new BankOption("TPBank"),
+                new BankOption("VPBank")
+        );
+    }
+
 
     @PostMapping("/withdrawals/{id}/update-bank")
     @Transactional
@@ -1898,7 +1967,8 @@ public class SellerController {
                 return "redirect:/seller/withdraw-money";
             }
             String email = authentication.getName();
-            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc) email = oidc.getEmail();
+            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc)
+                email = oidc.getEmail();
             else if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) {
                 Object mailAttr = ou.getAttributes().get("email");
                 if (mailAttr != null) email = mailAttr.toString();
@@ -1966,7 +2036,8 @@ public class SellerController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
             }
             String email = authentication.getName();
-            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc) email = oidc.getEmail();
+            if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidc)
+                email = oidc.getEmail();
             else if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) {
                 Object mailAttr = ou.getAttributes().get("email");
                 if (mailAttr != null) email = mailAttr.toString();
@@ -1979,7 +2050,8 @@ public class SellerController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Withdrawal not found");
             }
             Date createdAt = withdrawal.getCreatedAt();
-            if (createdAt == null) return ResponseEntity.badRequest().body("This withdrawal cannot be edited at this time.");
+            if (createdAt == null)
+                return ResponseEntity.badRequest().body("This withdrawal cannot be edited at this time.");
             long diffMs = System.currentTimeMillis() - createdAt.getTime();
             boolean within24h = diffMs <= 24L * 60L * 60L * 1000L;
             String status = withdrawal.getStatus();
@@ -2047,7 +2119,8 @@ public class SellerController {
                 if (user.getEmail() != null && !user.getEmail().isBlank()) {
                     emailService.sendEmailAsync(user.getEmail(), subject, html);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             Map<String, Object> res = new HashMap<>();
             res.put("message", "Bank info updated successfully");
@@ -2060,6 +2133,545 @@ public class SellerController {
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
+    }
+
+    // List variant accounts with status filter and simple paging
+    @GetMapping(path = "/products/variants/{variantId}/accounts", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> listVariantAccounts(@PathVariable Long variantId,
+                                                 @RequestParam(name = "status", required = false, defaultValue = "all") String status,
+                                                 @RequestParam(name = "page", required = false, defaultValue = "1") Integer page,
+                                                 @RequestParam(name = "size", required = false, defaultValue = "50") Integer size,
+                                                 @RequestParam(name = "search", required = false) String search,
+                                                 Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            // Load variant and verify ownership
+            ProductVariant variant = entityManager.find(ProductVariant.class, variantId);
+            if (variant == null || variant.getProduct() == null || variant.getProduct().getSeller() == null || !Objects.equals(variant.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+
+            String st = status == null ? "all" : status.trim().toLowerCase(Locale.ROOT);
+            if (!st.equals("all") && !st.equals("available") && !st.equals("sold")) st = "all";
+            int p = (page == null || page < 1) ? 1 : page;
+            int sz = (size == null || size < 1 || size > 200) ? 50 : size; // cap to 200 per page
+            int offset = (p - 1) * sz;
+            String like = (search == null || search.isBlank()) ? null : search.trim().toLowerCase(Locale.ROOT);
+
+            // Build base HQL
+            String base = "FROM ProductVariantAccount a WHERE a.isDelete = false AND a.variant.id = :vid";
+            String baseCount = "SELECT COUNT(a) " + base;
+            if (st.equals("available")) base += " AND a.status = 'Available'";
+            else if (st.equals("sold")) base += " AND a.status = 'Sold'";
+            base += " ORDER BY a.createdAt DESC";
+
+            // Fetch page
+            jakarta.persistence.TypedQuery<ProductVariantAccount> q = entityManager.createQuery("SELECT a " + base, ProductVariantAccount.class)
+                    .setParameter("vid", variantId)
+                    .setFirstResult(offset)
+                    .setMaxResults(sz);
+            java.util.List<ProductVariantAccount> rows = q.getResultList();
+
+            // Total count
+            Long total = entityManager.createQuery(baseCount + (st.equals("available") ? " AND a.status = 'Available'" : st.equals("sold") ? " AND a.status = 'Sold'" : ""), Long.class)
+                    .setParameter("vid", variantId)
+                    .getSingleResult();
+
+            // Map to DTOs and optional search filtering (by username contains)
+            java.util.List<Map<String, Object>> items = new java.util.ArrayList<>();
+            for (ProductVariantAccount a : rows) {
+                String ad = a.getAccountData() == null ? "" : a.getAccountData();
+                String uname = ad;
+                String pass = "";
+                int idx = ad.indexOf(':');
+                if (idx >= 0) {
+                    uname = ad.substring(0, idx);
+                    pass = ad.substring(idx + 1);
+                }
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", a.getId());
+                m.put("username", uname);
+                m.put("password", pass);
+                m.put("status", a.getStatus());
+                m.put("createdAt", a.getCreatedAt());
+                items.add(m);
+            }
+            if (like != null) {
+                items.removeIf(it -> {
+                    Object u = it.get("username");
+                    return u == null || !u.toString().toLowerCase(Locale.ROOT).contains(like);
+                });
+            }
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("items", items);
+            res.put("total", total);
+            res.put("page", p);
+            res.put("size", sz);
+            return ResponseEntity.ok(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Update a single account's username/password when status is Available
+    @PutMapping(path = "/products/variants/accounts/{accountId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateVariantAccount(@PathVariable Long accountId,
+                                                  @RequestBody Map<String, Object> body,
+                                                  Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariantAccount acc = entityManager.find(ProductVariantAccount.class, accountId);
+            if (acc == null || acc.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Account not found"));
+            if (acc.getVariant() == null || acc.getVariant().getProduct() == null || acc.getVariant().getProduct().getSeller() == null || !Objects.equals(acc.getVariant().getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+            // Only allow edit when status is Available
+            String st = acc.getStatus();
+            if (st == null || !st.equalsIgnoreCase("Available")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Only accounts with status 'Available' can be edited"));
+            }
+
+            String username = body.get("username") != null ? body.get("username").toString().trim() : null;
+            String password = body.get("password") != null ? body.get("password").toString().trim() : null;
+            Map<String, String> fieldErrors = new HashMap<>();
+            if (username == null || username.isEmpty()) fieldErrors.put("username", "Username is required");
+            if (password == null || password.isEmpty()) fieldErrors.put("password", "Password is required");
+            if (!fieldErrors.isEmpty())
+                return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+
+            // Duplicate check within the same variant (exclude current account id)
+            Long vid = acc.getVariant().getId();
+            java.util.List<String> list = entityManager.createQuery(
+                    "select a.accountData from ProductVariantAccount a where a.variant.id = :vid and a.isDelete = false and a.id <> :id",
+                    String.class
+            ).setParameter("vid", vid).setParameter("id", acc.getId()).getResultList();
+            java.util.Set<String> usernames = new java.util.HashSet<>();
+            if (list != null) {
+                for (String s : list) {
+                    if (s == null) continue;
+                    int idx = s.indexOf(':');
+                    String u = (idx >= 0 ? s.substring(0, idx) : s);
+                    if (u != null) usernames.add(u.trim());
+                }
+            }
+            if (usernames.contains(username)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Duplicate username detected. This account already exists in this variant.",
+                        "fieldErrors", Map.of("username", "Duplicate username")
+                ));
+            }
+
+            // Update accountData preserving simple format username:password
+            acc.setAccountData(username + ":" + password);
+            entityManager.merge(acc);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Updated successfully",
+                    "id", acc.getId(),
+                    "username", username,
+                    "status", acc.getStatus()
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Upload product image and return public URL
+    @PostMapping(path = "/products/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> uploadProductImage(@RequestParam("file") MultipartFile file,
+                                                Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body("No file uploaded");
+            }
+            String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase();
+            if (!(contentType.equals("image/png") || contentType.equals("image/jpeg") || contentType.equals("image/jpg") || contentType.equals("image/webp"))) {
+                return ResponseEntity.badRequest().body("Only PNG, JPG, JPEG, WEBP are allowed");
+            }
+            if (file.getSize() > 10L * 1024 * 1024) { // 10MB safety
+                return ResponseEntity.badRequest().body("File too large (max 10MB)");
+            }
+
+            // Build absolute upload directory under project root: <user.dir>/uploads/products/{sellerId}
+            String rootDir = System.getProperty("user.dir");
+            java.nio.file.Path uploadDir = java.nio.file.Paths
+                    .get(rootDir, "uploads", "products", String.valueOf(user.getId()))
+                    .toAbsolutePath()
+                    .normalize();
+            java.nio.file.Files.createDirectories(uploadDir);
+
+            // Create safe filename with timestamp + uuid + proper extension
+            String original = file.getOriginalFilename();
+            String ext = ".png";
+            if (original != null && original.contains(".")) {
+                String e = original.substring(original.lastIndexOf('.')).toLowerCase();
+                if (e.matches("\u002E(jpe?g|png|webp)")) ext = e;
+            } else {
+                if (contentType.contains("jpeg")) ext = ".jpg";
+                else if (contentType.contains("png")) ext = ".png";
+                else if (contentType.contains("webp")) ext = ".webp";
+            }
+            String filename = System.currentTimeMillis() + "-" + java.util.UUID.randomUUID() + ext;
+
+            // Resolve absolute destination and copy stream (avoid Servlet Part.write relative path behavior)
+            java.nio.file.Path dest = uploadDir.resolve(filename);
+            try (java.io.InputStream is = file.getInputStream()) {
+                java.nio.file.Files.copy(is, dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            String publicUrl = "/uploads/products/" + user.getId() + "/" + filename;
+            return ResponseEntity.ok(java.util.Map.of(
+                    "url", publicUrl,
+                    "name", filename,
+                    "size", file.getSize(),
+                    "contentType", contentType
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
+        }
+    }
+
+    // NEW: Product management page
+    @GetMapping("/product-management")
+    public String showProductManagement(Model model, RedirectAttributes redirectAttributes,
+                                        @RequestParam(value = "sortPrice", required = false) String sortPrice,
+                                        @RequestParam(value = "status", required = false) String status,
+                                        @RequestParam(value = "page", required = false) Integer pageParam) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                email = ((UserDetails) principal).getUsername();
+            } else if (principal instanceof OidcUser) {
+                email = ((OidcUser) principal).getEmail();
+            } else if (principal instanceof OAuth2User) {
+                Object mailAttr = ((OAuth2User) principal).getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            } else {
+                email = authentication.getName();
+            }
+        }
+        if (email == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+        boolean activeShop = user.getShopStatus() != null && user.getShopStatus().equalsIgnoreCase("Active");
+        if (!activeShop) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Your shop is not Active. Please complete registration.");
+            return "redirect:/seller/register";
+        }
+
+        // Normalize status: default 'all' to show all products
+        String statusNorm = status == null ? "all" : status.trim().toLowerCase();
+        if (!(statusNorm.equals("active") || statusNorm.equals("hidden") || statusNorm.equals("all"))) {
+            statusNorm = "all";
+        }
+
+        // Pagination defaults
+        final int pageSize = 10; // 10 products per page
+        int page = (pageParam == null || pageParam < 1) ? 1 : pageParam;
+
+        // Build where clause according to status
+        String baseWhere = "p.seller.id = :sid";
+        if (statusNorm.equals("active")) {
+            baseWhere += " AND p.isDelete = false";
+        } else if (statusNorm.equals("hidden")) {
+            baseWhere += " AND p.isDelete = true";
+        }
+
+        // Count total items matching filter
+        long totalItems = 0L;
+        try {
+            String countQ = "SELECT COUNT(p) FROM Product p WHERE " + baseWhere;
+            jakarta.persistence.TypedQuery<Long> tq = entityManager.createQuery(countQ, Long.class).setParameter("sid", user.getId());
+            totalItems = tq.getSingleResult();
+        } catch (Exception e) {
+            totalItems = 0L;
+        }
+        int totalPages = (int) Math.max(1, (totalItems + pageSize - 1) / pageSize);
+        if (page > totalPages) page = totalPages;
+        int offset = (page - 1) * pageSize;
+
+        // Fetch paged products
+        java.util.List<com.mmo.entity.Product> products = new java.util.ArrayList<>();
+        try {
+            String selectQ = "SELECT p FROM Product p WHERE " + baseWhere + " ORDER BY p.createdAt DESC";
+            jakarta.persistence.TypedQuery<com.mmo.entity.Product> pq = entityManager.createQuery(selectQ, com.mmo.entity.Product.class)
+                    .setParameter("sid", user.getId())
+                    .setFirstResult(offset)
+                    .setMaxResults(pageSize);
+            products = pq.getResultList();
+        } catch (Exception e) {
+            products = java.util.Collections.emptyList();
+        }
+
+        java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+        for (com.mmo.entity.Product p : products) {
+            java.util.Map<String, Object> row = new java.util.HashMap<>();
+            row.put("id", p.getId());
+            row.put("name", p.getName());
+            row.put("category", p.getCategory());
+            row.put("isDelete", p.isDelete());
+            row.put("createdAt", p.getCreatedAt());
+            row.put("updatedAt", p.getUpdatedAt());
+
+            // Resolve image for thumbnail
+            String displayImage = null;
+            for (String getter : List.of("getImageUrl", "getImage", "getThumbnail")) {
+                try {
+                    var m = p.getClass().getMethod(getter);
+                    Object v = m.invoke(p);
+                    if (v instanceof String s && s != null && !s.isBlank()) {
+                        displayImage = s;
+                        break;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            row.put("image", displayImage);
+
+            // Variants + lowest price (include ALL variants including hidden ones for seller management)
+            java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductId(p.getId());
+            row.put("variantCount", variants != null ? variants.size() : 0);
+            Long lowest = (variants == null || variants.isEmpty()) ? 0L : variants.stream().map(com.mmo.entity.ProductVariant::getPrice).filter(java.util.Objects::nonNull).min(Long::compareTo).orElse(0L);
+            row.put("lowestPrice", lowest);
+
+            // Total sold from repository
+            Long totalSold = productRepository.getTotalSoldForProduct(p.getId());
+            row.put("totalSold", totalSold != null ? totalSold : 0L);
+
+            rows.add(row);
+        }
+
+        // Optional sorting by lowestPrice (applied in-memory to current page results)
+        if (sortPrice != null) {
+            String sp = sortPrice.trim().toLowerCase();
+            if (sp.equals("asc") || sp.equals("desc")) {
+                rows.sort((a, b) -> {
+                    Long la = (Long) a.getOrDefault("lowestPrice", 0L);
+                    Long lb = (Long) b.getOrDefault("lowestPrice", 0L);
+                    int cmp = Long.compare(la, lb);
+                    return sp.equals("asc") ? cmp : -cmp;
+                });
+            }
+        }
+        model.addAttribute("sortPrice", sortPrice == null ? "" : sortPrice.toLowerCase());
+        model.addAttribute("status", statusNorm);
+        model.addAttribute("products", rows);
+
+        // Categories for edit dropdown (filter not deleted)
+        java.util.List<com.mmo.entity.Category> cats = categoryRepository.findAll();
+        if (cats != null) {
+            cats.removeIf(c -> c == null || c.isDelete());
+        }
+        model.addAttribute("categories", cats);
+
+        // Pagination model attributes
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalItems", totalItems);
+        model.addAttribute("pageSize", pageSize);
+        java.util.List<Integer> pageNumbers = new java.util.ArrayList<>();
+        for (int i = 1; i <= totalPages; i++) pageNumbers.add(i);
+        model.addAttribute("pageNumbers", pageNumbers);
+        model.addAttribute("prevPage", page > 1 ? page - 1 : null);
+        model.addAttribute("nextPage", page < totalPages ? page + 1 : null);
+
+        // Calculate 1-based start/end indices for the current page (for "Showing X to Y of Z results")
+        long startItem = totalItems == 0 ? 0 : (long) offset + 1L;
+        long endItem = totalItems == 0 ? 0 : (long) offset + rows.size();
+        if (endItem > totalItems) endItem = totalItems;
+        model.addAttribute("startItem", startItem);
+        model.addAttribute("endItem", endItem);
+
+        return "seller/product-management";
+    }
+
+    // Get product JSON for edit modal prefill
+    @GetMapping(path = "/products/{id}/json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getProductJson(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        com.mmo.entity.Product p = opt.get();
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", p.getId());
+        data.put("name", p.getName());
+        data.put("description", p.getDescription());
+        data.put("categoryId", p.getCategory() != null ? p.getCategory().getId() : null);
+        // resolve image
+        String displayImage = null;
+        for (String getter : List.of("getImageUrl", "getImage", "getThumbnail")) {
+            try {
+                var m = p.getClass().getMethod(getter);
+                Object v = m.invoke(p);
+                if (v instanceof String s && !s.isBlank()) {
+                    displayImage = s;
+                    break;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        data.put("image", displayImage);
+        data.put("isDelete", p.isDelete());
+
+        // Fetch ShopInfo via HQL like shop-info to ensure correct level
+        try {
+            ShopInfo shop = entityManager.createQuery(
+                            "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                    .setParameter("u", user)
+                    .getResultStream().findFirst().orElse(null);
+            if (shop != null) {
+                try {
+                    entityManager.refresh(shop);
+                } catch (Exception ignored) {
+                }
+                data.put("shopLevel", shop.getShopLevel() != null ? shop.getShopLevel() : 0);
+                data.put("shopPoints", shop.getPoints() != null ? shop.getPoints() : 0);
+            }
+        } catch (Exception ignored) {
+        }
+
+        return ResponseEntity.ok(data);
+    }
+
+    // Render seller product detail page (full page view)
+    @GetMapping(path = "/products/{id}/detail")
+    public String showProductDetailPage(@PathVariable Long id, Model model, Authentication authentication, RedirectAttributes redirectAttributes) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please login to continue.");
+            return "redirect:/login";
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "User not found.");
+            return "redirect:/login";
+        }
+        java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
+        if (opt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Product not found.");
+            return "redirect:/seller/product-management";
+        }
+        com.mmo.entity.Product p = opt.get();
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "You are not authorized to view this product.");
+            return "redirect:/seller/product-management";
+        }
+        model.addAttribute("productId", p.getId());
+        model.addAttribute("productName", p.getName());
+        // Fetch ShopInfo via HQL like shop-info to ensure correct level
+        try {
+            ShopInfo shop = entityManager.createQuery(
+                            "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                    .setParameter("u", user)
+                    .getResultStream().findFirst().orElse(null);
+            if (shop != null) {
+                try {
+                    entityManager.refresh(shop);
+                } catch (Exception ignored) {
+                }
+                model.addAttribute("shop", shop);
+            }
+        } catch (Exception ignored) {
+        }
+        return "seller/product-detail";
+    }
+
+    // Toggle hide/show product
+    @PostMapping(path = "/products/{id}/toggle-hide", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> toggleHideProduct(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        com.mmo.entity.Product p = entityManager.find(com.mmo.entity.Product.class, id);
+        if (p == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+        boolean next = !p.isDelete();
+        p.setDelete(next);
+        p.setDeletedBy(next ? user.getId() : null);
+        entityManager.merge(p);
+        return ResponseEntity.ok(Map.of("id", p.getId(), "hidden", next));
     }
 
     // NEW: Send OTP for shop deletion verification
@@ -2099,7 +2711,8 @@ public class SellerController {
                     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Offload OTP creation + persistence + email to executor; return immediately
         try {
@@ -2116,9 +2729,11 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Shop Cancellation (OTP)";
                     String html = EmailTemplate.deleteShopOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
@@ -2159,9 +2774,9 @@ public class SellerController {
 
             // Business rule a.1: No listed products
             Long remainingProducts = entityManager.createQuery(
-                    "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
-                .setParameter("sellerId", user.getId())
-                .getSingleResult();
+                            "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
+                    .setParameter("sellerId", user.getId())
+                    .getSingleResult();
             if (remainingProducts != null && remainingProducts > 0) {
                 return ResponseEntity.ok(Map.of("ok", false, "message", "You must remove all listed products before deleting your shop."));
             }
@@ -2241,9 +2856,9 @@ public class SellerController {
 
             // Business rule a.1: No listed products — ensure no non-deleted products remain
             Long remainingProducts = entityManager.createQuery(
-                    "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
-                .setParameter("sellerId", user.getId())
-                .getSingleResult();
+                            "SELECT COUNT(p) FROM Product p WHERE p.seller.id = :sellerId AND p.isDelete = false", Long.class)
+                    .setParameter("sellerId", user.getId())
+                    .getSingleResult();
             if (remainingProducts != null && remainingProducts > 0) {
                 return ResponseEntity.badRequest().body("You must remove all listed products before deleting your shop.");
             }
@@ -2297,14 +2912,15 @@ public class SellerController {
             try {
                 user.setShopStatus("Inactive");
                 userRepository.save(user);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             // Create notification for user
             try {
                 notificationService.createNotificationForUser(
-                    user.getId(),
-                    "Shop Registration Cancelled",
-                    "Your shop has been successfully cancelled. You can register a new shop again at any time."
+                        user.getId(),
+                        "Shop Registration Cancelled",
+                        "Your shop has been successfully cancelled. You can register a new shop again at any time."
                 );
             } catch (Exception e) {
                 // Log error but don't fail the operation
@@ -2346,7 +2962,8 @@ public class SellerController {
                     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Please wait " + (60 - seconds) + "s before requesting a new OTP.");
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         try {
             User target = user;
@@ -2362,9 +2979,11 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Points Purchase (OTP)";
                     String html = EmailTemplate.buyPointsOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
         return ResponseEntity.ok("OTP has been sent to your email.");
     }
 
@@ -2426,6 +3045,20 @@ public class SellerController {
             case 6 -> 40_000_000L;
             case 7 -> 50_000_000L;
             default -> 0L;
+        };
+    }
+
+    private long getMaxPriceByLevel(short level) {
+        return switch (level) {
+            case 0 -> 50_000L;        // Level 0: max 50k
+            case 1 -> 100_000L;       // Level 1: max 100k
+            case 2 -> 300_000L;       // Level 2: max 300k
+            case 3 -> 500_000L;       // Level 3: max 500k
+            case 4 -> 1_000_000L;     // Level 4: max 1M
+            case 5 -> 2_000_000L;     // Level 5: max 2M
+            case 6 -> 4_000_000L;     // Level 6: max 4M
+            case 7 -> Long.MAX_VALUE; // Level 7: unlimited
+            default -> 50_000L;       // Default: max 50k
         };
     }
 
@@ -2508,6 +3141,281 @@ public class SellerController {
         }
     }
 
+    // Get shop price limit info
+    @GetMapping(path = "/shop/price-limit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getShopPriceLimit(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+        }
+
+        // Fetch ShopInfo via HQL to ensure consistent lookup
+        ShopInfo shop = null;
+        try {
+            shop = entityManager.createQuery(
+                            "SELECT s FROM ShopInfo s WHERE s.user = :u AND s.isDelete = false", ShopInfo.class)
+                    .setParameter("u", user)
+                    .getResultStream().findFirst().orElse(null);
+        } catch (Exception ignored) {
+        }
+        if (shop == null) {
+            return ResponseEntity.ok(Map.of(
+                    "level", 0,
+                    "maxPrice", 50_000L,
+                    "message", "Shop not found. Default limit applies."
+            ));
+        }
+
+        // Refresh from database to get latest shop_level (updated by DB trigger)
+        try {
+            entityManager.refresh(shop);
+        } catch (Exception ignored) {
+        }
+        short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        long maxPrice = getMaxPriceByLevel(shopLevel);
+        long currentPoints = shop.getPoints() == null ? 0L : shop.getPoints();
+        long nextLevelThreshold = shopLevel < 7 ? levelThreshold(shopLevel + 1) : 0L;
+        long nextLevelMaxPrice = shopLevel < 7 ? getMaxPriceByLevel((short) (shopLevel + 1)) : Long.MAX_VALUE;
+
+        return ResponseEntity.ok(Map.of(
+                "level", shopLevel,
+                "maxPrice", maxPrice,
+                "currentPoints", currentPoints,
+                "nextLevel", shopLevel < 7 ? (shopLevel + 1) : 7,
+                "nextLevelThreshold", nextLevelThreshold,
+                "nextLevelMaxPrice", nextLevelMaxPrice,
+                "pointsToNextLevel", Math.max(0L, nextLevelThreshold - currentPoints)
+        ));
+    }
+
+    // List variants for a product (JSON)
+    @GetMapping(path = "/products/{id}/variants", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> listVariants(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        com.mmo.entity.Product p = opt.get();
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+
+        // Get ALL variants including hidden ones (seller should see all their variants)
+        java.util.List<com.mmo.entity.ProductVariant> variants = productVariantRepository.findByProductId(p.getId());
+
+        java.util.List<com.mmo.dto.ProductVariantDto> dtos = new java.util.ArrayList<>();
+        for (com.mmo.entity.ProductVariant v : variants) {
+            long stock = 0L;
+            long sold = 0L;
+            try {
+                // available accounts = status 'Available'
+                stock = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Available");
+            } catch (Exception ignored) {
+            }
+            try {
+                // sold accounts = status 'Sold'
+                sold = productVariantAccountRepository.countByVariant_IdAndIsDeleteFalseAndStatus(v.getId(), "Sold");
+            } catch (Exception ignored) {
+            }
+            dtos.add(new com.mmo.dto.ProductVariantDto(v.getId(), v.getVariantName(), v.getPrice(), stock, sold, v.isDelete()));
+        }
+        return ResponseEntity.ok(dtos);
+    }
+
+    // Create a new variant for a product
+    @PostMapping(path = "/products/{id}/variants", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> createVariant(@PathVariable Long id, @RequestBody Map<String, Object> body, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        // Get shop info to check level
+        ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
+        if (shop == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Shop not found"));
+        }
+        // Refresh from database to get latest shop_level (updated by DB trigger)
+        entityManager.refresh(shop);
+        short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        long maxPrice = getMaxPriceByLevel(shopLevel);
+
+        java.util.Optional<com.mmo.entity.Product> opt = productRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
+        com.mmo.entity.Product p = opt.get();
+        if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), user.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+
+        String variantName = body.get("variantName") != null ? body.get("variantName").toString().trim() : null;
+        Long price = null;
+        try {
+            if (body.get("price") instanceof Number n) price = n.longValue();
+            else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString());
+        } catch (Exception ignored) {
+        }
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
+        else {
+            String variantNameNoSpaces = variantName.replaceAll("\\s+", "");
+            if (variantNameNoSpaces.length() > 50) {
+                fieldErrors.put("variantName", "Variant name must not exceed 50 characters (excluding spaces)");
+            }
+        }
+        if (price == null) fieldErrors.put("price", "Price is required");
+        else if (price < 0) fieldErrors.put("price", "Invalid price");
+        if (!fieldErrors.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+
+        // Check price limit based on shop level
+        if (price > maxPrice) {
+            String formattedMax = String.format("%,d", maxPrice);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "Price exceeds your shop level limit. Your level " + shopLevel + " allows max price: " + formattedMax + " Coins",
+                    "fieldErrors", Map.of("price", "Price exceeds your shop level limit. Max: " + formattedMax + " Coins"),
+                    "maxPrice", maxPrice,
+                    "currentLevel", shopLevel
+            ));
+        }
+
+        com.mmo.entity.ProductVariant v = new com.mmo.entity.ProductVariant();
+        v.setProduct(p);
+        v.setVariantName(variantName);
+        v.setPrice(price);
+        v.setDelete(false);
+        v.setCreatedBy(user.getId());
+        entityManager.persist(v);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "Created", "id", v.getId()));
+    }
+
+    // Update a variant
+    @PutMapping(path = "/products/variants/{variantId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateVariant(@PathVariable Long variantId, @RequestBody Map<String, Object> body, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        // Get shop info to check level
+        ShopInfo shop = shopInfoRepository.findByUserIdAndIsDeleteFalse(user.getId()).orElseGet(() -> shopInfoRepository.findByUser_Id(user.getId()).orElse(null));
+        if (shop == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Shop not found"));
+        }
+        // Refresh from database to get latest shop_level (updated by DB trigger)
+        entityManager.refresh(shop);
+        short shopLevel = shop.getShopLevel() == null ? 0 : shop.getShopLevel();
+        long maxPrice = getMaxPriceByLevel(shopLevel);
+
+        com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
+        if (v == null || v.isDelete())
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Not found"));
+        if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+
+        String variantName = body.get("variantName") != null ? body.get("variantName").toString().trim() : null;
+        Long price = null;
+        try {
+            if (body.get("price") instanceof Number n) price = n.longValue();
+            else if (body.get("price") != null) price = Long.parseLong(body.get("price").toString());
+        } catch (Exception ignored) {
+        }
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        if (variantName == null || variantName.isBlank()) fieldErrors.put("variantName", "Variant name is required");
+        else {
+            String variantNameNoSpaces = variantName.replaceAll("\\s+", "");
+            if (variantNameNoSpaces.length() > 50) {
+                fieldErrors.put("variantName", "Variant name must not exceed 50 characters (excluding spaces)");
+            }
+        }
+        if (price == null) fieldErrors.put("price", "Price is required");
+        else if (price < 0) fieldErrors.put("price", "Invalid price");
+        if (!fieldErrors.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+
+        // Check price limit
+        if (price > maxPrice) {
+            String formattedMax = String.format("%,d", maxPrice);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "Price exceeds your shop level limit. Your level " + shopLevel + " allows max price: " + formattedMax + " Coins",
+                    "fieldErrors", Map.of("price", "Price exceeds your shop level limit. Max: " + formattedMax + " Coins"),
+                    "maxPrice", maxPrice,
+                    "currentLevel", shopLevel
+            ));
+        }
+
+        v.setVariantName(variantName);
+        v.setPrice(price);
+        entityManager.merge(v);
+        return ResponseEntity.ok(Map.of("message", "Updated"));
+    }
+
+
+    // Toggle hide/show variant (soft delete toggle)
+    @PostMapping(path = "/products/variants/{variantId}/toggle-hide", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> toggleHideVariant(@PathVariable Long variantId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+
+        com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
+        if (v == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Variant not found");
+        if (v.getProduct() == null || v.getProduct().getSeller() == null ||
+                !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+        boolean next = !v.isDelete();
+        v.setDelete(next);
+        v.setDeletedBy(next ? user.getId() : null);
+        entityManager.merge(v);
+        return ResponseEntity.ok(Map.of("id", v.getId(), "hidden", next));
+    }
+
+
     private void sendWithdrawalOtpForUser(User user) {
         try {
             if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
@@ -2524,9 +3432,11 @@ public class SellerController {
                     String subject = "[MMOMarket] OTP Xác minh rút tiền";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendSellerRegistrationOtpForUser(User user) {
@@ -2568,6 +3478,7 @@ public class SellerController {
             return ResponseEntity.badRequest().body(baseMessage + " (Attempt " + attempts + "/5)");
         }
     }
+
     private void sendDeleteShopOtpForUser(User user) {
         try {
             if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
@@ -2584,10 +3495,13 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Shop Cancellation (OTP)";
                     String html = EmailTemplate.deleteShopOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
+
     private void sendBuyPointsOtpForUser(User user) {
         try {
             if (user == null || user.getEmail() == null || user.getEmail().isBlank()) return;
@@ -2604,17 +3518,24 @@ public class SellerController {
                     String subject = "[MMOMarket] Confirm Points Purchase (OTP)";
                     String html = EmailTemplate.buyPointsOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
-                } catch (Exception ignored) { }
+                } catch (Exception ignored) {
+                }
             });
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
+
     private ResponseEntity<String> handleOtpFailForWithdraw(HttpSession session, HttpServletRequest request, Authentication authentication, User user, Long uid, String action, String baseMessage) {
         int attempts = incSellerOtpAttempts(session, uid, action);
         if (attempts >= 5) {
             try {
                 new SecurityContextLogoutHandler().logout(request, null, authentication);
-            } catch (Exception ignored) { }
-            try { session.invalidate(); } catch (Exception ignored) { }
+            } catch (Exception ignored) {
+            }
+            try {
+                session.invalidate();
+            } catch (Exception ignored) {
+            }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Too many OTP failures. You have been logged out. Please sign in again.");
         } else if (attempts >= 3) {
             try {
@@ -2639,6 +3560,7 @@ public class SellerController {
     private String sellerOtpAttemptsKey(Long uid, String action) {
         return "sellerOtpAttempts:" + uid + ":" + action;
     }
+
     private int incSellerOtpAttempts(HttpSession session, Long uid, String action) {
         String key = sellerOtpAttemptsKey(uid, action);
         Integer cur = (Integer) session.getAttribute(key);
@@ -2646,89 +3568,611 @@ public class SellerController {
         session.setAttribute(key, next);
         return next;
     }
+
     private void clearSellerOtpAttempts(HttpSession session, Long uid, String action) {
         session.removeAttribute(sellerOtpAttemptsKey(uid, action));
     }
+
     private static String safeString(Object s) {
         return s == null ? "" : s.toString();
     }
 
-    // ==================== REVIEWS MANAGEMENT ====================
-    @GetMapping("/reviews")
-    public String sellerReviews(@RequestParam(name = "page", defaultValue = "0") int page,
-                                @RequestParam(name = "search", defaultValue = "") String search,
-                                @RequestParam(name = "sort", defaultValue = "rating_desc") String sort,
-                                Authentication authentication,
-                                Model model) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return "redirect:/authen/login";
-        }
-
-        User seller = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
-                .setParameter("email", authentication.getName())
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-
-        if (seller == null) {
-            return "redirect:/authen/login";
-        }
-
-        // Build JPQL query to get reviews for seller's products
-        StringBuilder sb = new StringBuilder(
-            "SELECT r FROM Review r " +
-            "LEFT JOIN FETCH r.product p " +
-            "LEFT JOIN FETCH r.user u " +
-            "WHERE r.isDelete = false AND p.seller.id = :sellerId"
-        );
-
-        if (search != null && !search.isBlank()) {
-            sb.append(" AND (LOWER(p.name) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(u.id AS string) LIKE :search OR CAST(r.id AS string) LIKE :search)");
-        }
-
-        // Determine ordering
-        String orderField = "r.rating";
-        String orderDir = "DESC";
-        if (sort != null) {
-            String s = sort.trim().toLowerCase();
-            if ("rating_asc".equals(s)) {
-                orderField = "r.rating";
-                orderDir = "ASC";
-            } else if ("rating_desc".equals(s)) {
-                orderField = "r.rating";
-                orderDir = "DESC";
-            } else if ("date_asc".equals(s)) {
-                orderField = "r.createdAt";
-                orderDir = "ASC";
-            } else if ("date_desc".equals(s)) {
-                orderField = "r.createdAt";
-                orderDir = "DESC";
+    // Create product via JSON (used by Product Management modal)
+    @PostMapping(path = "/products", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> createProductJson(@RequestBody Map<String, Object> body,
+                                               Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
             }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            boolean activeShop = seller.getShopStatus() != null && seller.getShopStatus().equalsIgnoreCase("Active");
+            if (!activeShop) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Your shop is not Active."));
+            }
+
+            String name = body.get("name") != null ? body.get("name").toString().trim() : null;
+            String description = body.get("description") != null ? body.get("description").toString().trim() : null;
+            String image = body.get("image") != null ? body.get("image").toString().trim() : null;
+            Long categoryId = null;
+            if (body.get("categoryId") instanceof Number n) categoryId = n.longValue();
+            else if (body.get("categoryId") != null) {
+                try {
+                    categoryId = Long.parseLong(body.get("categoryId").toString());
+                } catch (Exception ignored) {
+                }
+            }
+
+            Map<String, String> fieldErrors = new HashMap<>();
+            if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
+            else if (name.length() < 3) fieldErrors.put("name", "Name must be at least 3 characters");
+
+            else {
+                String nameNoSpaces = name.replaceAll("\\s+", "");
+                if (nameNoSpaces.length() > 50) {
+                    fieldErrors.put("name", "Product name must not exceed 50 characters (excluding spaces)");
+                }
+            }
+            Category cat = null;
+            if (categoryId == null) fieldErrors.put("categoryId", "Category is required");
+            else {
+                cat = entityManager.find(Category.class, categoryId);
+                if (cat == null || cat.isDelete()) fieldErrors.put("categoryId", "Invalid category");
+            }
+            // Require description for creation
+            if (description == null || description.isBlank()) {
+                fieldErrors.put("description", "Description is required");
+            } else {
+                String descriptionNoSpaces = description.replaceAll("\\s+", "");
+                if (descriptionNoSpaces.length() > 500) {
+                    fieldErrors.put("description", "Description must not exceed 500 characters (excluding spaces)");
+                }
+            }
+            // Require image URL for creation and validate format
+            if (image == null || image.isBlank()) {
+                fieldErrors.put("image", "Image is required");
+            } else {
+                if (image.length() > 255) fieldErrors.put("image", "Image URL must be at most 255 characters");
+                String lower = image.toLowerCase();
+                boolean okPrefix = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
+                boolean okExt = lower.matches(".*\\.(png|jpe?g|webp)(\\?.*)?$");
+                if (!okPrefix || !okExt)
+                    fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
+            }
+            if (!fieldErrors.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+            }
+
+            com.mmo.entity.Product p = new com.mmo.entity.Product();
+            p.setSeller(seller);
+            p.setCategory(cat);
+            p.setName(name);
+            p.setDescription(description);
+            p.setDelete(false);
+            p.setCreatedBy(seller.getId());
+            if (image != null && !image.isBlank()) {
+                try {
+                    p.getClass().getMethod("setImage", String.class).invoke(p, image);
+                } catch (Exception ignored) {
+                    p.setImage(image);
+                }
+            }
+            entityManager.persist(p);
+            entityManager.flush(); // Force immediate database insert
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("message", "Created successfully");
+            res.put("id", p.getId());
+            res.put("name", p.getName());
+            res.put("categoryName", p.getCategory() != null ? p.getCategory().getName() : null);
+            res.put("image", image);
+            res.put("description", p.getDescription());
+            return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
         }
-        sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
-
-        jakarta.persistence.TypedQuery<com.mmo.entity.Review> query = entityManager.createQuery(sb.toString(), com.mmo.entity.Review.class);
-        query.setParameter("sellerId", seller.getId());
-
-        if (search != null && !search.isBlank()) {
-            query.setParameter("search", "%" + search + "%");
-        }
-
-        List<com.mmo.entity.Review> all = query.getResultList();
-        int total = all.size();
-        int totalPages = (int) Math.ceil((double) total / 10);
-        List<com.mmo.entity.Review> pageList = all.stream()
-                .skip((long) page * 10)
-                .limit(10)
-                .toList();
-
-        model.addAttribute("reviews", pageList);
-        model.addAttribute("currentPage", page);
-        model.addAttribute("currentSearch", search);
-        model.addAttribute("currentSort", sort);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("pageTitle", "Reviews Management");
-
-        return "seller/reviews";
     }
-}
+
+    // Update product via JSON (used by Product Management modal)
+    @PutMapping(path = "/products/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateProductJson(@PathVariable Long id,
+                                               @RequestBody Map<String, Object> body,
+                                               Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User seller = userRepository.findByEmail(email).orElse(null);
+            if (seller == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+
+            com.mmo.entity.Product p = entityManager.find(com.mmo.entity.Product.class, id);
+            if (p == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Product not found"));
+            }
+            if (p.getSeller() == null || !Objects.equals(p.getSeller().getId(), seller.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "You are not authorized to edit this product"));
+            }
+
+            String name = body.get("name") != null ? body.get("name").toString().trim() : null;
+            String description = body.get("description") != null ? body.get("description").toString().trim() : null;
+            String image = body.get("image") != null ? body.get("image").toString().trim() : null;
+            Long categoryId = null;
+            if (body.get("categoryId") instanceof Number n) categoryId = n.longValue();
+            else if (body.get("categoryId") != null) {
+                try {
+                    categoryId = Long.parseLong(body.get("categoryId").toString());
+                } catch (Exception ignored) {
+                }
+            }
+
+            Map<String, String> fieldErrors = new HashMap<>();
+            if (name == null || name.isBlank()) fieldErrors.put("name", "Name is required");
+            else if (name.length() < 3) fieldErrors.put("name", "Name must be at least 3 characters");
+            else {
+                String nameNoSpaces = name.replaceAll("\\s+", "");
+                if (nameNoSpaces.length() > 50) {
+                    fieldErrors.put("name", "Product name must not exceed 50 characters (excluding spaces)");
+                }
+            }
+            Category cat = null;
+            if (categoryId == null) fieldErrors.put("categoryId", "Category is required");
+            else {
+                cat = entityManager.find(Category.class, categoryId);
+                if (cat == null || cat.isDelete()) fieldErrors.put("categoryId", "Invalid category");
+            }
+            // Require description on update
+            if (description == null || description.isBlank()) {
+                fieldErrors.put("description", "Description is required");
+            } else {
+                String descriptionNoSpaces = description.replaceAll("\\s+", "");
+                if (descriptionNoSpaces.length() > 500) {
+                    fieldErrors.put("description", "Description must not exceed 500 characters (excluding spaces)");
+                }
+            }
+            // For update: image is optional, but if provided must be valid
+            if (image != null && !image.isBlank()) {
+                if (image.length() > 255) fieldErrors.put("image", "Image URL must be at most 255 characters");
+                String lower = image.toLowerCase();
+                boolean okPrefix = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
+                boolean okExt = lower.matches(".*\\.(png|jpe?g|webp)(\\?.*)?$");
+                if (!okPrefix || !okExt)
+                    fieldErrors.put("image", "Image URL must be http(s) or site-relative and end with .png/.jpg/.jpeg/.webp");
+            }
+            if (!fieldErrors.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "fieldErrors", fieldErrors));
+            }
+
+            // Update fields
+            p.setName(name);
+            p.setDescription(description);
+            p.setCategory(cat);
+
+            // Update image: only if a new image URL is provided
+            // If image is provided and not blank, update it
+            // If image is null or blank, keep the existing image
+            if (image != null && !image.isBlank()) {
+                p.setImage(image);
+            }
+            // Note: we don't clear the image if not provided (unlike create where it's required)
+
+            // Persist changes
+            entityManager.merge(p);
+            entityManager.flush();
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("message", "Updated successfully");
+            res.put("id", p.getId());
+            res.put("name", p.getName());
+            res.put("categoryName", p.getCategory() != null ? p.getCategory().getName() : null);
+            res.put("image", p.getImage());
+            res.put("description", p.getDescription());
+            return ResponseEntity.ok(res);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Download Excel template for uploading accounts to a variant (username,password)
+    @GetMapping(path = "/products/variants/{variantId}/template")
+    public ResponseEntity<byte[]> downloadVariantTemplate(@PathVariable Long variantId, Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
+            if (v == null || v.isDelete()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            byte[] bytes = productVariantAccountService.buildTemplateCsv();
+            String filename = "variant-" + variantId + "-template.csv";
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .contentType(org.springframework.http.MediaType.parseMediaType("text/csv"))
+                    .body(bytes);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    // Preview or confirm upload of accounts for a variant via Excel/CSV
+    @PostMapping(path = "/products/variants/{variantId}/upload-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> uploadVariantAccounts(@PathVariable Long variantId,
+                                                   @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                                   @RequestParam(name = "preview", required = false, defaultValue = "false") boolean preview,
+                                                   @RequestParam(name = "dedupe", required = false, defaultValue = "true") boolean dedupe,
+                                                   Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            com.mmo.entity.ProductVariant v = entityManager.find(com.mmo.entity.ProductVariant.class, variantId);
+            if (v == null || v.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (v.getProduct() == null || v.getProduct().getSeller() == null || !Objects.equals(v.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "No file uploaded"));
+            }
+
+            if (preview) {
+                var pr = productVariantAccountService.previewUpload(user, v, file, dedupe);
+                java.util.List<java.util.Map<String, Object>> rows = new java.util.ArrayList<>();
+                for (var r : pr.getRows())
+                    rows.add(Map.of(
+                            "username", r.getUsername(),
+                            "password", r.getPassword(),
+                            "duplicate", r.isDuplicate(),
+                            "invalid", r.isInvalid(),
+                            "rowIndex", r.getRowIndex()
+                    ));
+                return ResponseEntity.ok(Map.of(
+                        "count", pr.getCount(),
+                        "duplicateCount", pr.getDuplicateCount(),
+                        "invalidCount", pr.getInvalidCount(),
+                        "rows", rows
+                ));
+            } else {
+                try {
+                    var ur = productVariantAccountService.confirmUpload(user, v, file, dedupe);
+                    return ResponseEntity.ok(Map.of("created", ur.getCreated(), "skipped", ur.getSkipped()));
+                } catch (IllegalArgumentException iae) {
+                    // Invalid rows: respond 400 with message
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", iae.getMessage()));
+                }
+            }
+        } catch (org.springframework.web.multipart.MultipartException mex) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Upload error: " + mex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Preview edited rows from JSON (supports inline edit/delete during preview) with pagination
+    @PostMapping(path = "/products/variants/{variantId}/upload-json/preview", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> previewVariantAccountsJson(@PathVariable Long variantId,
+                                                        @RequestBody Map<String, Object> body,
+                                                        Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariant variant = entityManager.find(ProductVariant.class, variantId);
+            if (variant == null || variant.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (variant.getProduct() == null || variant.getProduct().getSeller() == null || !Objects.equals(variant.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+
+            // Parse rows from body
+            Object rowsObj = body.get("rows");
+            if (!(rowsObj instanceof List<?> rawList)) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Invalid payload: rows must be an array"));
+            }
+            List<ProductVariantAccountService.SimpleRow> simple = new ArrayList<>();
+            int idx = 1;
+            for (Object o : rawList) {
+                if (!(o instanceof Map)) {
+                    idx++;
+                    continue;
+                }
+                Map<?, ?> m = (Map<?, ?>) o;
+                boolean deleted = false;
+                Object del = m.get("deleted");
+                if (del instanceof Boolean b) deleted = b;
+                else if (del != null) {
+                    deleted = Boolean.parseBoolean(del.toString());
+                }
+                if (!deleted) {
+                    String u = m.get("username") != null ? m.get("username").toString() : null;
+                    String p = m.get("password") != null ? m.get("password").toString() : null;
+                    simple.add(new ProductVariantAccountService.SimpleRow(u, p));
+                }
+                idx++;
+            }
+            var pr = productVariantAccountService.previewRows(user, variant, simple);
+
+            // Pagination parameters
+            int pageSize = 10;
+            int offset = 0;
+            try {
+                Object ps = body.get("pageSize");
+                if (ps instanceof Number n) pageSize = Math.max(1, Math.min(200, n.intValue()));
+                else if (ps != null) pageSize = Math.max(1, Math.min(200, Integer.parseInt(ps.toString())));
+            } catch (Exception ignored) {
+            }
+            try {
+                Object of = body.get("offset");
+                if (of instanceof Number n) offset = Math.max(0, n.intValue());
+                else if (of != null) offset = Math.max(0, Integer.parseInt(of.toString()));
+            } catch (Exception ignored) {
+            }
+
+            List<ProductVariantAccountService.PreviewRow> all = pr.getRows();
+            int to = Math.min(all.size(), offset + pageSize);
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (int i = offset; i < to; i++) {
+                var r = all.get(i);
+                items.add(Map.of(
+                        "username", r.getUsername(),
+                        "password", r.getPassword(),
+                        "duplicate", r.isDuplicate(),
+                        "invalid", r.isInvalid(),
+                        "rowIndex", r.getRowIndex()
+                ));
+            }
+            return ResponseEntity.ok(Map.of(
+                    "count", pr.getCount(),
+                    "duplicateCount", pr.getDuplicateCount(),
+                    "invalidCount", pr.getInvalidCount(),
+                    "items", items,
+                    "offset", offset,
+                    "pageSize", pageSize
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Confirm edited rows from JSON (skip rows flagged as deleted; validate and dedupe)
+    @PostMapping(path = "/products/variants/{variantId}/upload-json/confirm", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> confirmVariantAccountsJson(@PathVariable Long variantId,
+                                                        @RequestBody Map<String, Object> body,
+                                                        Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariant variant = entityManager.find(ProductVariant.class, variantId);
+            if (variant == null || variant.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Variant not found"));
+            if (variant.getProduct() == null || variant.getProduct().getSeller() == null || !Objects.equals(variant.getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+
+            Object rowsObj = body.get("rows");
+            if (!(rowsObj instanceof List<?> rawList)) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Invalid payload: rows must be an array"));
+            }
+            boolean dedupe = true;
+            try {
+                Object d = body.get("dedupe");
+                if (d instanceof Boolean b) dedupe = b;
+                else if (d != null) dedupe = Boolean.parseBoolean(d.toString());
+            } catch (Exception ignored) {
+            }
+
+            List<ProductVariantAccountService.SimpleRow> simple = new ArrayList<>();
+            for (Object o : rawList) {
+                if (!(o instanceof Map)) continue;
+                Map<?, ?> m = (Map<?, ?>) o;
+                boolean deleted = false;
+                Object del = m.get("deleted");
+                if (del instanceof Boolean b) deleted = b;
+                else if (del != null) {
+                    deleted = Boolean.parseBoolean(del.toString());
+                }
+                if (deleted) continue; // skip rows flagged as deleted
+                String u = m.get("username") != null ? m.get("username").toString() : null;
+                String p = m.get("password") != null ? m.get("password").toString() : null;
+                simple.add(new ProductVariantAccountService.SimpleRow(u, p));
+            }
+
+            try {
+                var ur = productVariantAccountService.confirmRows(user, variant, simple, dedupe);
+                return ResponseEntity.ok(Map.of("created", ur.getCreated(), "skipped", ur.getSkipped()));
+            } catch (IllegalArgumentException iae) {
+                return ResponseEntity.badRequest().body(Map.of("message", iae.getMessage()));
+            }
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+
+    // Delete a single account (soft delete) when status is Available
+    @DeleteMapping(path = "/products/variants/accounts/{accountId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> deleteVariantAccount(@PathVariable Long accountId,
+                                                  Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+            }
+            String email = authentication.getName();
+            if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+            else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+                Object mailAttr = ou.getAttributes().get("email");
+                if (mailAttr != null) email = mailAttr.toString();
+            }
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Unauthorized"));
+
+            ProductVariantAccount acc = entityManager.find(ProductVariantAccount.class, accountId);
+            if (acc == null || acc.isDelete())
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Account not found"));
+            if (acc.getVariant() == null || acc.getVariant().getProduct() == null || acc.getVariant().getProduct().getSeller() == null || !Objects.equals(acc.getVariant().getProduct().getSeller().getId(), user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Forbidden"));
+            }
+            // Only allow delete when status is Available
+            String st = acc.getStatus();
+            if (st == null || !st.equalsIgnoreCase("Available")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Only accounts with status 'Available' can be deleted"));
+            }
+
+            acc.setDelete(true);
+            acc.setDeletedBy(user.getId());
+            entityManager.merge(acc);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Deleted successfully",
+                    "id", acc.getId()
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("message", "Internal error: " + ex.getMessage()));
+        }
+    }
+        // ==================== REVIEWS MANAGEMENT ====================
+        @GetMapping("/reviews")
+        public String sellerReviews ( @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "search", defaultValue = "") String search,
+        @RequestParam(name = "sort", defaultValue = "rating_desc") String sort,
+        Authentication authentication,
+        Model model){
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return "redirect:/authen/login";
+            }
+
+            User seller = entityManager.createQuery("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)", User.class)
+                    .setParameter("email", authentication.getName())
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+
+            if (seller == null) {
+                return "redirect:/authen/login";
+            }
+
+            // Build JPQL query to get reviews for seller's products
+            StringBuilder sb = new StringBuilder(
+                    "SELECT r FROM Review r " +
+                            "LEFT JOIN FETCH r.product p " +
+                            "LEFT JOIN FETCH r.user u " +
+                            "WHERE r.isDelete = false AND p.seller.id = :sellerId"
+            );
+
+            if (search != null && !search.isBlank()) {
+                sb.append(" AND (LOWER(p.name) LIKE LOWER(:search) OR CAST(p.id AS string) LIKE :search OR CAST(u.id AS string) LIKE :search OR CAST(r.id AS string) LIKE :search)");
+            }
+
+            // Determine ordering
+            String orderField = "r.rating";
+            String orderDir = "DESC";
+            if (sort != null) {
+                String s = sort.trim().toLowerCase();
+                if ("rating_asc".equals(s)) {
+                    orderField = "r.rating";
+                    orderDir = "ASC";
+                } else if ("rating_desc".equals(s)) {
+                    orderField = "r.rating";
+                    orderDir = "DESC";
+                } else if ("date_asc".equals(s)) {
+                    orderField = "r.createdAt";
+                    orderDir = "ASC";
+                } else if ("date_desc".equals(s)) {
+                    orderField = "r.createdAt";
+                    orderDir = "DESC";
+                }
+            }
+            sb.append(" ORDER BY ").append(orderField).append(" ").append(orderDir);
+
+            jakarta.persistence.TypedQuery<com.mmo.entity.Review> query = entityManager.createQuery(sb.toString(), com.mmo.entity.Review.class);
+            query.setParameter("sellerId", seller.getId());
+
+            if (search != null && !search.isBlank()) {
+                query.setParameter("search", "%" + search + "%");
+            }
+
+            List<com.mmo.entity.Review> all = query.getResultList();
+            int total = all.size();
+            int totalPages = (int) Math.ceil((double) total / 10);
+            List<com.mmo.entity.Review> pageList = all.stream()
+                    .skip((long) page * 10)
+                    .limit(10)
+                    .toList();
+
+            model.addAttribute("reviews", pageList);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("pageTitle", "Reviews Management");
+
+            return "seller/reviews";
+        }
+    }
+

@@ -1,8 +1,36 @@
 package com.mmo.controller;
 
-import com.mmo.dto.*;
+
+import com.mmo.dto.ProcessWithdrawalRequest;
+import com.mmo.dto.AdminWithdrawalResponse;
+import com.mmo.dto.WithdrawalDetailResponse;
+import com.mmo.dto.CoinDepositDetailResponse;
+import com.mmo.dto.TransactionDetailResponse;
 import com.mmo.entity.*;
+import com.mmo.entity.ShopPointPurchase;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.mmo.dto.*;
+import com.mmo.entity.User;
+import com.mmo.entity.Withdrawal;
+import com.mmo.entity.CoinDeposit;
 import jakarta.persistence.TypedQuery;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -40,9 +68,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import com.mmo.service.ChatService;
 import com.mmo.service.AuthService;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.mmo.entity.ShopPointPurchase;
+
 import com.mmo.repository.ShopPointPurchaseRepository;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin")
@@ -775,6 +803,90 @@ public class AdminController {
 
 
     @GetMapping("/transactions")
+    public String transactionManagement(@RequestParam(name = "page", defaultValue = "1") int page,
+                                        @RequestParam(name = "search", defaultValue = "") String search,
+                                        @RequestParam(name = "sort", defaultValue = "date_desc") String sort,
+                                        Model model) {
+        try {
+            final int pageSize = 10;
+
+            // Convert from 1-based to 0-based page index
+            int pageIndex = Math.max(0, page - 1);
+
+            // Build WHERE clause and parameters once
+            String where = " WHERE t.isDelete = false" +
+                    (search != null && !search.isBlank()
+                            ? " AND (LOWER(c.fullName) LIKE LOWER(:search) OR LOWER(s.fullName) LIKE LOWER(:search) OR LOWER(p.title) LIKE LOWER(:search) OR CAST(t.id AS string) LIKE :search)"
+                            : "");
+
+            // Determine ORDER BY clause based on sort parameter
+            String orderBy;
+            if (sort != null && sort.startsWith("amount_")) {
+                orderBy = sort.endsWith("asc") ? " ORDER BY t.amount ASC" : " ORDER BY t.amount DESC";
+            } else {
+                orderBy = " ORDER BY t.createdAt DESC";
+            }
+
+            // 1) Count query (no FETCH joins)
+            StringBuilder countSb = new StringBuilder(
+                    "SELECT COUNT(t) FROM Transaction t " +
+                            "LEFT JOIN t.customer c " +
+                            "LEFT JOIN t.seller s " +
+                            "LEFT JOIN t.product p " +
+                            "LEFT JOIN t.variant v"
+            );
+            countSb.append(where);
+            jakarta.persistence.Query countQuery = entityManager.createQuery(countSb.toString());
+            if (search != null && !search.isBlank()) {
+                countQuery.setParameter("search", "%" + search + "%");
+            }
+            long total = (long) countQuery.getSingleResult();
+
+            // Compute total pages and clamp current page
+            int totalPages = (int) Math.ceil(total / (double) pageSize);
+            if (pageIndex < 0) pageIndex = 0;
+            if (totalPages > 0 && pageIndex >= totalPages) pageIndex = totalPages - 1;
+
+            // 2) Paged select query with FETCH joins for view rendering
+            StringBuilder listSb = new StringBuilder(
+                    "SELECT t FROM Transaction t " +
+                            "LEFT JOIN FETCH t.customer c " +
+                            "LEFT JOIN FETCH t.seller s " +
+                            "LEFT JOIN FETCH t.product p " +
+                            "LEFT JOIN FETCH t.variant v"
+            );
+            listSb.append(where);
+            listSb.append(orderBy);
+
+            jakarta.persistence.TypedQuery<Transaction> listQuery = entityManager.createQuery(listSb.toString(), Transaction.class);
+            if (search != null && !search.isBlank()) {
+                listQuery.setParameter("search", "%" + search + "%");
+            }
+            listQuery.setFirstResult(pageIndex * pageSize);
+            listQuery.setMaxResults(pageSize);
+            List<Transaction> pageList = listQuery.getResultList();
+
+            model.addAttribute("transactions", pageList);
+            model.addAttribute("currentPage", page);  // Pass 1-based page to view
+            model.addAttribute("currentSearch", search);
+            model.addAttribute("currentSort", sort);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("pageSize", pageSize);
+            model.addAttribute("pageTitle", "Transaction Management");
+            model.addAttribute("body", "admin/transaction-management");
+            return "admin/layout";
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            model.addAttribute("transactions", new java.util.ArrayList<>());
+            model.addAttribute("currentPage", 1);  // Use 1-based default
+            model.addAttribute("currentSearch", "");
+            model.addAttribute("totalPages", 1);
+            model.addAttribute("pageTitle", "Transaction Management");
+            model.addAttribute("body", "admin/transaction-management");
+        }
+        return "admin/layout";
+    }
+
     public String transactionsManagement(@RequestParam(name = "status", defaultValue = "All") String txStatus,
                                          @RequestParam(name = "orderStatus", defaultValue = "All") String orderStatus,
                                          @RequestParam(name = "page", defaultValue = "0") int page,
@@ -1099,6 +1211,7 @@ public class AdminController {
             return ResponseEntity.status(500).body(java.util.Map.of("error", ex.getMessage()));
         }
     }
+
     // ==================== CATEGORY MANAGEMENT ====================
 
     @GetMapping("/categories")
@@ -1417,9 +1530,11 @@ public class AdminController {
             model.addAttribute("pageTitle", "Deleted Categories");
             model.addAttribute("body", "admin/deleted-categories");
             model.addAttribute("errorMessage", "Failed to load deleted categories: " + ex.getMessage());
+
             return "admin/layout";
         }
     }
+
 
     @GetMapping("/categories/deleted/list")
     @ResponseBody
@@ -1472,10 +1587,21 @@ public class AdminController {
         // Build dynamic query
         StringBuilder jpql = new StringBuilder("SELECT b FROM Blog b WHERE b.isDelete = false");
 
-        // Filter by search keyword
+
         if (search != null && !search.trim().isEmpty()) {
             jpql.append(" AND (LOWER(b.title) LIKE LOWER(:search) OR LOWER(b.content) LIKE LOWER(:search))");
         }
+
+
+        if (status != null && !status.trim().isEmpty()) {
+            if (status.equals("popular")) {
+                jpql.append(" AND b.likes >= 100");
+            } else if (status.equals("new")) {
+                jpql.append(" AND b.createdAt >= :sevenDaysAgo");
+            }
+        }
+
+        // Add sorting - avoid SIZE() for comments as it's slow
 
         // Filter by status (Active/Inactive)
         if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("All")) {
@@ -1531,6 +1657,12 @@ public class AdminController {
 
         if (search != null && !search.trim().isEmpty()) {
             query.setParameter("search", "%" + search.trim() + "%");
+        }
+
+        if (status != null && status.equals("new")) {
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.add(java.util.Calendar.DAY_OF_MONTH, -7);
+            query.setParameter("sevenDaysAgo", cal.getTime());
         }
 
 
@@ -1655,6 +1787,7 @@ public class AdminController {
         }
     }
 
+
     @PostMapping("/blogs/upload-image")
     @ResponseBody
     public ResponseEntity<?> uploadBlogImage(@RequestParam("image") org.springframework.web.multipart.MultipartFile file,
@@ -1714,6 +1847,7 @@ public class AdminController {
             return ResponseEntity.status(500).body("Failed to upload image: " + ex.getMessage());
         }
     }
+
 
     // ==================== SHOP MANAGEMENT ====================
 
@@ -2174,6 +2308,7 @@ public class AdminController {
             return ResponseEntity.status(500).body("Internal error: " + ex.getMessage());
         }
     }
+
 
     @GetMapping("/shops/deleted")
     public String deletedShops(@RequestParam(name = "page", defaultValue = "0") int page, Model model) {
@@ -2641,7 +2776,6 @@ public class AdminController {
                 redirectAttributes.addFlashAttribute("errorMessage", "New password must be at least 6 characters");
                 return "redirect:/admin/change-password";
             }
-
             // Check for uppercase letter
             if (!newPassword.matches(".*[A-Z].*")) {
                 redirectAttributes.addFlashAttribute("errorMessage", "New password must include at least one uppercase letter");
@@ -2661,6 +2795,7 @@ public class AdminController {
             }
 
             if (!newPassword.equals(request.getConfirmPassword())) {
+
                 redirectAttributes.addFlashAttribute("errorMessage", "New password and confirm password do not match");
                 return "redirect:/admin/change-password";
             }

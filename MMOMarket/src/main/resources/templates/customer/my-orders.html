@@ -17,6 +17,8 @@
         @media (max-width: 640px) {
             body { background-position: top center; }
         }
+        .btn-review { @apply px-2 py-1 rounded text-white text-xs font-semibold bg-green-500 hover:bg-green-600 transition; }
+        .btn-reviewed { @apply px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-600 cursor-default; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -115,14 +117,46 @@
                                             <i class="fas fa-eye"></i>
                                             <span>View</span>
                                         </a>
-                                        <button class="btn-disabled inline-flex items-center space-x-1" disabled title="Coming soon">
+
+                                        <!-- Active feedback button -->
+                                        <a th:if="${o['canReview']}"
+                                           class="inline-flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-semibold bg-red-500 hover:bg-red-600 text-white transition shadow-sm"
+                                           th:href="@{/account/orders/{orderId}/review(orderId=${o['id']})}"
+                                           title="Write your review">
                                             <i class="fas fa-star"></i>
+                                            <span>Feedback</span>
+                                        </a>
+
+                                        <!-- Reviewed button -->
+                                        <a th:if="${!o['canReview'] and o['reviewed']}"
+                                           class="inline-flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-semibold bg-red-400 hover:bg-red-500 text-white transition shadow-sm"
+                                           th:href="${o['reviewViewUrl']}"
+                                           title="View your review">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span>Reviewed</span>
+                                        </a>
+
+                                        <!-- Window expired: greyed Feedback button -->
+                                        <button th:if="${!o['canReview'] and !o['reviewed'] and o['feedbackWindowExpired']}"
+                                                class="inline-flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-semibold bg-gray-200 text-gray-400 cursor-not-allowed"
+                                                disabled
+                                                title="Feedback period ended (30 days)">
+                                            <i class="fas fa-star"></i>
+                                            <span>Feedback</span>
                                         </button>
                                         <a class="inline-flex items-center space-x-1 px-2 py-1 text-xs font-semibold rounded bg-red-500 hover:bg-red-600 text-white transition-colors"
                                            th:href="@{/account/orders/{id}(id=${o['id']})}"
                                            title="File complaint">
                                             <i class="fas fa-exclamation-circle"></i>
                                         </a>
+                                        <!-- Other cases: disabled button -->
+                                        <button th:if="${!o['canReview'] and !o['reviewed'] and !o['feedbackWindowExpired']}"
+                                                class="inline-flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                disabled
+                                                title="Not available">
+                                            <i class="fas fa-ban"></i>
+                                            <span>N/A</span>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

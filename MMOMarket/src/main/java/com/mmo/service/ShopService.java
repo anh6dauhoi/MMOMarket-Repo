@@ -164,20 +164,25 @@ public class ShopService {
                 // Prefer ShopInfo for shop metadata (primary + fallback)
                 String shopName = null;
                 Long shopId = null;
+                Short level = null;
                 try {
                     Optional<ShopInfo> shopInfoOpt = shopInfoRepository.findByUserIdAndIsDeleteFalse(seller.getId());
-                    if (shopInfoOpt != null && shopInfoOpt.isPresent() && shopInfoOpt.get().getShopName() != null && !shopInfoOpt.get().getShopName().isEmpty()) {
-                        shopName = shopInfoOpt.get().getShopName();
-                        shopId = shopInfoOpt.get().getId();
+                    if (shopInfoOpt != null && shopInfoOpt.isPresent()) {
+                        ShopInfo si = shopInfoOpt.get();
+                        if (si.getShopName() != null && !si.getShopName().isEmpty()) shopName = si.getShopName();
+                        shopId = si.getId();
+                        level = si.getShopLevel();
                     }
                 } catch (Exception ignored) {}
 
                 if (shopName == null) {
                     try {
                         Optional<ShopInfo> shopInfoFallback = shopInfoRepository.findByUser_Id(seller.getId());
-                        if (shopInfoFallback != null && shopInfoFallback.isPresent() && shopInfoFallback.get().getShopName() != null && !shopInfoFallback.get().getShopName().isEmpty()) {
-                            shopName = shopInfoFallback.get().getShopName();
-                            if (shopId == null) shopId = shopInfoFallback.get().getId();
+                        if (shopInfoFallback != null && shopInfoFallback.isPresent()) {
+                            ShopInfo si = shopInfoFallback.get();
+                            if (si.getShopName() != null && !si.getShopName().isEmpty()) shopName = si.getShopName();
+                            if (shopId == null) shopId = si.getId();
+                            if (level == null) level = si.getShopLevel();
                         }
                     } catch (Exception ignored) {}
                 }
@@ -201,6 +206,10 @@ public class ShopService {
                 data.put("totalSold", totalSold);
                 data.put("successRate", successRate);
                 data.put("avatar", "/images/default-avatar.svg");
+                // Add level and tier name
+                short lv = level == null ? (short)0 : level;
+                data.put("shopLevel", lv);
+                data.put("tierName", com.mmo.util.TierNameUtil.getTierName(lv));
                 sellerData.add(data);
             }
         }
@@ -221,20 +230,25 @@ public class ShopService {
                 // Prefer ShopInfo first (primary + fallback)
                 String shopName2 = null;
                 Long shopId2 = null;
+                Short level2 = null;
                 try {
                     Optional<ShopInfo> shopInfoOpt2 = shopInfoRepository.findByUserIdAndIsDeleteFalse(userId);
-                    if (shopInfoOpt2 != null && shopInfoOpt2.isPresent() && shopInfoOpt2.get().getShopName() != null && !shopInfoOpt2.get().getShopName().isEmpty()) {
-                        shopName2 = shopInfoOpt2.get().getShopName();
-                        shopId2 = shopInfoOpt2.get().getId();
+                    if (shopInfoOpt2 != null && shopInfoOpt2.isPresent()) {
+                        ShopInfo si = shopInfoOpt2.get();
+                        if (si.getShopName() != null && !si.getShopName().isEmpty()) shopName2 = si.getShopName();
+                        shopId2 = si.getId();
+                        level2 = si.getShopLevel();
                     }
                 } catch (Exception ignored) {}
 
                 if (shopName2 == null) {
                     try {
                         Optional<ShopInfo> shopInfoFallback2 = shopInfoRepository.findByUser_Id(userId);
-                        if (shopInfoFallback2 != null && shopInfoFallback2.isPresent() && shopInfoFallback2.get().getShopName() != null && !shopInfoFallback2.get().getShopName().isEmpty()) {
-                            shopName2 = shopInfoFallback2.get().getShopName();
-                            if (shopId2 == null) shopId2 = shopInfoFallback2.get().getId();
+                        if (shopInfoFallback2 != null && shopInfoFallback2.isPresent()) {
+                            ShopInfo si = shopInfoFallback2.get();
+                            if (si.getShopName() != null && !si.getShopName().isEmpty()) shopName2 = si.getShopName();
+                            if (shopId2 == null) shopId2 = si.getId();
+                            if (level2 == null) level2 = si.getShopLevel();
                         }
                     } catch (Exception ignored) {}
                 }
@@ -262,6 +276,9 @@ public class ShopService {
                 data.put("totalSold", totalSold);
                 data.put("successRate", successRate);
                 data.put("avatar", "/images/default-avatar.svg");
+                short lv2 = level2 == null ? (short)0 : level2;
+                data.put("shopLevel", lv2);
+                data.put("tierName", com.mmo.util.TierNameUtil.getTierName(lv2));
                 sellerData.add(data);
             }
         }

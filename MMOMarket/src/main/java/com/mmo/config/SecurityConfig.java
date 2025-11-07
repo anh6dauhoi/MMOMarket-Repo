@@ -91,13 +91,22 @@ public class SecurityConfig {
                                 "/", "/homepage",
                                 "/category", "/category/**",
                                 "/productdetail", "/products", "/products/**",
+                                "/shop", "/shop/**", /* shop pages (view only) */
+                                "/search", /* search page */
                                 "/blog", /* list only */
+                                "/blog/**", /* blog detail (view only, like/comment require auth) */
                                 "/blog/infinite", /* list API */
                                 "/contact",
                                 "/api/categories"
                         ).permitAll()
                         // allow guests to submit contact form
                         .requestMatchers(HttpMethod.POST, "/contact").permitAll()
+                        // Blog POST endpoints - let controller handle authentication and return JSON 401
+                        .requestMatchers(HttpMethod.POST,
+                                "/blog/*/like",
+                                "/blog/*/comment",
+                                "/blog/comment/*/like"
+                        ).permitAll()
                         // admin area
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")
                         // Chat endpoints - require authentication

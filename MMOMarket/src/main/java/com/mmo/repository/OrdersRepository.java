@@ -21,4 +21,6 @@ public interface OrdersRepository extends JpaRepository<Orders, Long> {
     Page<Orders> findByCustomerIdAndProductNameContaining(@Param("customerId") Long customerId, @Param("search") String search, Pageable pageable);
 
     List<Orders> findByTransactionId(Long transactionId);
+    // NEW: count completed purchases for a customer-product pair (to enforce 1 review per purchase)
+    long countByCustomerIdAndProductIdAndStatus(Long customerId, Long productId, Orders.QueueStatus status);
 }

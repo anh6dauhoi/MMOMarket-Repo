@@ -22,12 +22,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.mmo.entity.ProductVariant;
 import com.mmo.entity.ProductVariantAccount;
 import com.mmo.repository.ProductVariantRepository;
 import com.mmo.repository.ProductVariantAccountRepository;
+import com.mmo.repository.ReviewRepository; // NEW
 
 @Controller
 public class OrderController {
@@ -44,6 +48,9 @@ public class OrderController {
 
     @Autowired
     private ProductVariantAccountRepository productVariantAccountRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository; // NEW for review eligibility
 
     private String resolveEmail(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) return null;
@@ -73,6 +80,7 @@ public class OrderController {
             return "redirect:/authen/login";
         }
         Long customerId = userOpt.get().getId();
+        boolean userActive = !userOpt.get().isDelete(); // active flag
 
         // Build pageable with sorting
         Pageable pageable;
@@ -99,6 +107,10 @@ public class OrderController {
             orderPage = ordersRepository.findByCustomerIdOrderByCreatedAtDesc(customerId, pageable);
         }
 
+        // Precompute counts by product to avoid per-row queries
+        Map<Long, Long> purchasesByProduct = new HashMap<>();
+        Map<Long, Long> reviewsByProduct = new HashMap<>();
+
         // Map to lightweight view models
         List<Map<String, Object>> items = new ArrayList<>();
         int startIndex = page * size;
@@ -111,6 +123,33 @@ public class OrderController {
             row.put("status", o.getStatus() != null ? o.getStatus().name() : "");
             row.put("totalPrice", o.getTotalPrice());
             row.put("createdAt", o.getCreatedAt());
+
+            boolean completed = (o.getStatus() == Orders.QueueStatus.COMPLETED);
+            Date baseDate = o.getCreatedAt();
+            boolean withinWindow = false;
+            if (baseDate != null) {
+                long days = java.time.temporal.ChronoUnit.DAYS.between(baseDate.toInstant(), java.time.Instant.now());
+                withinWindow = days <= 30;
+            }
+
+            // counts per product
+            purchasesByProduct.computeIfAbsent(o.getProductId(), pid ->
+                    ordersRepository.countByCustomerIdAndProductIdAndStatus(customerId, pid, Orders.QueueStatus.COMPLETED));
+            reviewsByProduct.computeIfAbsent(o.getProductId(), pid ->
+                    reviewRepository.countByUser_IdAndProduct_Id(customerId, pid));
+
+            long purchases = purchasesByProduct.getOrDefault(o.getProductId(), 0L);
+            long reviewsCnt = reviewsByProduct.getOrDefault(o.getProductId(), 0L);
+
+            boolean canReview = userActive && completed && withinWindow && (reviewsCnt < purchases);
+            boolean hasAnyReview = reviewsCnt > 0;
+
+            row.put("canReview", canReview);
+            row.put("reviewed", hasAnyReview);
+            row.put("feedbackWindowExpired", !withinWindow); // NEW: expose window status
+            // Provide a view URL for convenience in the template
+            row.put("reviewViewUrl", "/account/orders/" + o.getId() + "/review/view");
+
             items.add(row);
         }
 
@@ -119,6 +158,7 @@ public class OrderController {
         model.addAttribute("totalPages", orderPage.getTotalPages());
         model.addAttribute("pageSize", orderPage.getSize());
         model.addAttribute("totalElements", orderPage.getTotalElements());
+        model.addAttribute("userActive", userActive); // pass active flag
 
         return "customer/my-orders";
     }

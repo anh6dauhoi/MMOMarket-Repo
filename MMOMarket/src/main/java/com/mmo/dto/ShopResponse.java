@@ -23,6 +23,7 @@ public class ShopResponse {
     private Double rating;
     private BigDecimal commission;
     private Short shopLevel;
+    private String tierName;
     private String signedContract;
     private Date createdAt;
     private String deletedBy;
@@ -53,6 +54,7 @@ public class ShopResponse {
         response.setRating(rating);
         response.setCommission(shop.getCommission());
         response.setShopLevel(shop.getShopLevel());
+        response.setTierName(com.mmo.util.TierNameUtil.getTierName(shop.getShopLevel()));
         response.setCreatedAt(shop.getCreatedAt());
         response.setDelete(shop.isDelete());
 
@@ -63,3 +65,4 @@ public class ShopResponse {
         return response;
     }
 }
+

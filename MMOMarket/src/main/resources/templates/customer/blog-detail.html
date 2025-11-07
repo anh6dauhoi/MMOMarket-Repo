@@ -133,15 +133,30 @@
 
     // 401-aware JSON handler (redirect to login if unauthenticated)
     function handleFetchJson(response) {
-        if (response && response.status === 401) {
-            const hdr = response.headers ? response.headers.get('X-Redirect') : null;
-            const fallback = '/authen/login?redirect=' + encodeURIComponent(location.pathname + location.search + location.hash);
-            return Promise.resolve({ redirect: hdr || fallback, _status: 401 });
+        // Check if response is HTML (Spring Security redirect to login page)
+        const contentType = response.headers.get('content-type');
+        const isHtml = contentType && contentType.includes('text/html');
+
+        // If we get HTML response, it means we're being redirected to login
+        if (isHtml || response.status === 401 || response.status === 302 || response.status === 303) {
+            // User is not authenticated - redirect to login
+            const returnUrl = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
+            const loginUrl = '/authen/login?redirect=' + returnUrl;
+
+            // Show alert before redirecting
+            alert('You need to log in to perform this action.');
+            window.location.href = loginUrl;
+
+            return Promise.resolve({ redirect: loginUrl, _status: 401 });
         }
+
         if (response.ok) {
             return response.text().then(text => {
                 try { return text ? JSON.parse(text) : {}; }
-                catch (e) { throw new Error(text || 'Invalid JSON response'); }
+                catch (e) {
+                    console.error('Failed to parse JSON:', text);
+                    throw new Error('Invalid JSON response');
+                }
             });
         }
         return response.text().then(text => { throw new Error(text || ('HTTP ' + response.status)); });

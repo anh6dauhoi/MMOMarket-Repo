@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title th:text="${productName != null ? productName + ' - Product Detail' : 'Product Detail'}">Product Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
+    <!-- Expose current shop level from server just like shop-info.html -->
+    <meta name="shop-level" th:content="${shop != null && shop.shopLevel != null ? shop.shopLevel : 0}" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+
+        /* Card Styles */
+        .card {
+            border: 2px solid #e0e7ff;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+        }
+
+        .sticky-th {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .tn {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Button Styles */
+        .btn {
+            display:inline-flex;
+            align-items:center;
+            gap:.5rem;
+            padding:.625rem 1rem;
+            border-radius:.75rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color:#fff;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color:#fff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-light {
+            background:#ffffff;
+            border: 2px solid #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-light:hover {
+            background:#f9fafb;
+            border-color: #d1d5db;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Badge Styles */
+        .badge {
+            display:inline-flex;
+            align-items:center;
+            gap:.35rem;
+            padding:.375rem .875rem;
+            border-radius:9999px;
+            font-size:.8125rem;
+            font-weight:700;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .badge-blue {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color:#1e40af;
+            border: 2px solid #93c5fd;
+        }
+
+        .badge-amber {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color:#92400e;
+            border: 2px solid #fcd34d;
+        }
+
+        .badge-emerald {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color:#065f46;
+            border: 2px solid #6ee7b7;
+        }
+
+        .btn-ic {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.625rem;
+        }
+
+        .btn-ic-sm {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+        }
+
+        /* Animation */
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Status Filter Buttons */
+        .pd-status-filter {
+            color: #6b7280;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+
+        .pd-status-filter:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: #4f46e5;
+        }
+
+        .pd-status-filter.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Table Row Hover */
+        #variantsTable tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        #variantsTable tbody tr:hover {
+            background: #f0f9ff !important;
+            transform: scale(1.01);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="flex-1">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div th:replace="~{seller/sidebar :: sidebar}"></div>
+            <div class="lg:col-span-3">
+                <div class="bg-white border-2 border-primary-400 rounded-2xl shadow-lg p-6 md:p-8 animate-fade-in">
+                    <div class="flex items-start justify-between mb-6 pb-4 border-b-2 border-primary-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                                <i class="fa-solid fa-box text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h1 id="pdTitleRoot" class="text-2xl font-bold text-primary-900" th:text="${productName}">Product name</h1>
+                                <p class="text-sm text-gray-500 mt-1">Manage product details and variants</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="/seller/product-management" class="px-4 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-all duration-200 hover:shadow-md flex items-center gap-2">
+                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>Back</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div id="pdRoot" th:attr="data-product-id=${productId}">
+                        <!-- Product Info + variants -->
+                        <div>
+                            <div class="grid grid-cols-1 gap-6">
+
+                                <div class="mt-2">
+                                    <div class="bg-white border-2 border-primary-300 rounded-2xl p-6 shadow-lg mb-4">
+                                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+                                                    <i class="fa-solid fa-layer-group text-white text-xl"></i>
+                                                </div>
+                                                <div>
+                                                    <h2 class="text-2xl font-bold text-gray-900">Product Variants</h2>
+                                                    <p class="text-sm text-gray-500 mt-0.5">Manage pricing and inventory</p>
+                                                </div>
+                                            </div>
+                                            <button type="button" onclick="showAddVariantForm()" class="btn btn-success shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                                                <i class="fa-solid fa-plus"></i>
+                                                <span>Add New Variant</span>
+                                            </button>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200 shadow-md hover:shadow-lg transition-all duration-200">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="text-sm font-medium text-blue-700 mb-1">Total Variants</p>
+                                                        <p class="text-3xl font-bold text-blue-900" id="pdVariantCount">0</p>
+                                                    </div>
+                                                    <div class="w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg">
+                                                        <i class="fa-solid fa-list text-white text-2xl"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border-2 border-emerald-200 shadow-md hover:shadow-lg transition-all duration-200">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="text-sm font-medium text-emerald-700 mb-1">In Stock</p>
+                                                        <p class="text-3xl font-bold text-emerald-900" id="pdTotalStock">0</p>
+                                                    </div>
+                                                    <div class="w-14 h-14 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg">
+                                                        <i class="fa-solid fa-box text-white text-2xl"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border-2 border-amber-200 shadow-md hover:shadow-lg transition-all duration-200">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="text-sm font-medium text-amber-700 mb-1">Total Sold</p>
+                                                        <p class="text-3xl font-bold text-amber-900" id="pdTotalSold">0</p>
+                                                    </div>
+                                                    <div class="w-14 h-14 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg">
+                                                        <i class="fa-solid fa-cart-shopping text-white text-2xl"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-2 bg-gray-50 rounded-xl p-3 border border-gray-200">
+                                            <span class="text-sm font-medium text-gray-700">Filter by Status:</span>
+                                            <div class="flex bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                                            <button type="button" onclick="pd_filterVariantsByStatus('all')"
+                                                    class="pd-status-filter px-3 py-1.5 rounded text-sm font-medium transition-all active"
+                                                    data-status="all">
+                                                All
+                                            </button>
+                                            <button type="button" onclick="pd_filterVariantsByStatus('active')"
+                                                    class="pd-status-filter px-3 py-1.5 rounded text-sm font-medium transition-all"
+                                                    data-status="active">
+                                                Active
+                                            </button>
+                                            <button type="button" onclick="pd_filterVariantsByStatus('hidden')"
+                                                    class="pd-status-filter px-3 py-1.5 rounded text-sm font-medium transition-all"
+                                                    data-status="hidden">
+                                                Hidden
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 mt-4">
+                                        <div>
+                                            <table id="variantsTable" class="w-full text-left text-xs border-collapse">
+                                                <thead>
+                                                    <tr class="bg-gradient-to-r from-primary-600 to-purple-600 text-white sticky-th">
+                                                        <th class="px-2 py-2 font-semibold text-center w-12">#</th>
+                                                        <th class="px-2 py-2 font-semibold">Name</th>
+                                                        <th class="px-2 py-2 cursor-pointer hover:bg-white/10 transition-all font-semibold w-28" onclick="pd_sortVariantsByPrice()" title="Click to sort by price" tabindex="0" role="button" onkeydown="if(event.key==='Enter' || event.key===' '){ pd_sortVariantsByPrice(); event.preventDefault(); }">
+                                                            <div class="flex items-center gap-1 justify-center">
+                                                                <i class="fa-solid fa-coins text-yellow-400 text-xs"></i>
+                                                                <span>Price</span>
+                                                                <i id="pdPriceSortIcon" class="fa-solid fa-sort text-white/60 text-xs"></i>
+                                                            </div>
+                                                        </th>
+                                                        <th class="px-2 py-2 font-semibold text-center w-20">
+                                                            <div class="flex items-center gap-1 justify-center">
+                                                                <i class="fa-solid fa-box text-emerald-400 text-xs"></i>
+                                                                <span>Stock</span>
+                                                            </div>
+                                                        </th>
+                                                        <th class="px-2 py-2 font-semibold text-center w-20">
+                                                            <div class="flex items-center gap-1 justify-center">
+                                                                <i class="fa-solid fa-chart-line text-blue-400 text-xs"></i>
+                                                                <span>Sold</span>
+                                                            </div>
+                                                        </th>
+                                                        <th class="px-2 py-2 font-semibold text-center w-24">Status</th>
+                                                        <th class="px-2 py-2 font-semibold text-center w-40">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Variant modal will be injected dynamically; inline form removed -->
+
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- Close pdRoot -->
+                </div> <!-- Close main white card -->
+            </div> <!-- Close lg:col-span-3 -->
+        </div> <!-- Close grid -->
+    </div>
+    </div><!-- Close max-w-7xl container -->
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<div id="pdToastRoot" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+<script th:inline="javascript">
+(function(){
+    // --- Utilities & config ---
+    function getProductIdFromRoot(){ var el=document.getElementById('pdRoot'); if(el&&el.dataset&&el.dataset.productId) return Number(el.dataset.productId); var m=window.location.pathname.match(/\/seller\/products\/(\d+)\/detail\/?$/); return m?Number(m[1]):null; }
+    var currentProductId = getProductIdFromRoot();
+
+    function getCsrf(){ var meta=document.querySelector('meta[name="_csrf"]'); var mh=document.querySelector('meta[name="_csrf_header"]'); return { value: meta?meta.content:null, headerName: mh?mh.content:'X-CSRF-TOKEN' }; }
+    function csrfHeaders(){ var c=getCsrf(); var h={}; if(c.value){ h[c.headerName]=c.value; h['X-CSRF-TOKEN']=c.value; } return h; }
+
+    function pd_fmtInt(n){ if(n==null||isNaN(n)) return '0'; try{return Number(n).toLocaleString('en-US');}catch(e){return String(n);} }
+    function pd_escapeHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+    // --- Toast ---
+    function showToast(message,type){ if(!message) return; var host=document.getElementById('toastHost'); if(!host) return; var theme = { success:{bar:'bg-green-500', icon:'fa-solid fa-circle-check text-green-600', title:'Success'}, error:{bar:'bg-red-500', icon:'fa-solid fa-triangle-exclamation text-red-600', title:'Error'}, info:{bar:'bg-blue-500', icon:'fa-solid fa-circle-info text-blue-600', title:'Info'} }[type]||{bar:'bg-gray-500',icon:'fa-regular fa-bell text-gray-600',title:'Notice'}; var wrap=document.createElement('div'); wrap.className='pointer-events-auto flex items-start gap-3 bg-white shadow-xl rounded-xl border border-gray-100 relative overflow-hidden transform transition-all duration-300 translate-x-4 opacity-0'; var bar=document.createElement('div'); bar.className='w-1 '+theme.bar; wrap.appendChild(bar); var inner=document.createElement('div'); inner.className='p-3 pr-8'; inner.innerHTML = '<div class="flex items-start gap-2"><i class="'+theme.icon+' mt-0.5"></i><div class="min-w-0"><div class="text-sm font-semibold text-gray-900">'+theme.title+'</div><div class="text-sm text-gray-700 break-words">'+pd_escapeHtml(message)+'</div></div></div>'; wrap.appendChild(inner); var close=document.createElement('button'); close.className='absolute top-2 right-2 text-gray-400 hover:text-gray-600'; close.innerHTML='&times;'; close.onclick=function(){ dismiss(); }; wrap.appendChild(close); host.appendChild(wrap); requestAnimationFrame(function(){ wrap.classList.remove('translate-x-4','opacity-0'); wrap.classList.add('translate-x-0','opacity-100'); }); var ttl= type==='error'?5000:3200; var t=setTimeout(dismiss,ttl); wrap.addEventListener('mouseenter',function(){ if(t){ clearTimeout(t); t=null; }}); wrap.addEventListener('mouseleave',function(){ if(!t) t=setTimeout(dismiss,1800); }); function dismiss(){ wrap.classList.add('opacity-0','translate-x-4'); setTimeout(function(){ try{ host.removeChild(wrap);}catch(_){ } },200); }
+    }
+
+    // --- State ---
+    var pd_variantListCache = [];
+    var pd_editingVariantId = null;
+    var pd_shopPriceLimit = null; // { level, maxPrice }
+
+    // --- Shop price limit helpers ---
+    function pd_levelToMaxPrice(level){ switch(Number(level)||0){ case 0: return 50000; case 1: return 100000; case 2: return 300000; case 3: return 500000; case 4: return 1000000; case 5: return 2000000; case 6: return 4000000; case 7: return Number.MAX_SAFE_INTEGER; default: return 50000; } }
+    function pd_getShopLevelFromServer(){ try{ var meta=document.querySelector('meta[name="shop-level"]'); if(!meta||meta.content==null||meta.content==='') return null; var l=parseInt(meta.content,10); if(isNaN(l)) return null; return Math.max(0,Math.min(7,l)); }catch(e){return null;} }
+    function pd_fetchShopPriceLimit(){ var lvl=pd_getShopLevelFromServer(); if(lvl!=null){ pd_shopPriceLimit={level:lvl,maxPrice:pd_levelToMaxPrice(lvl)}; pd_updatePriceLimitDisplay(); return; } fetch('/seller/shop/price-limit',{credentials:'same-origin'}).then(function(r){ if(!r.ok) throw r; return r.json(); }).then(function(data){ if(data&&typeof data==='object'){ var level=(data.level!=null)?Number(data.level):0; var max=(data.maxPrice!=null)?Number(data.maxPrice):(level!=null?pd_levelToMaxPrice(level):50000); pd_shopPriceLimit={level:Math.max(0,Math.min(7,level)), maxPrice:max}; } else pd_shopPriceLimit={level:0,maxPrice:50000}; pd_updatePriceLimitDisplay(); }).catch(function(e){ console.error('fetch price limit',e); pd_shopPriceLimit={level:0,maxPrice:50000}; pd_updatePriceLimitDisplay(); }); }
+    function pd_updatePriceLimitDisplay(){ if(!pd_shopPriceLimit) return; var unlimited = (pd_shopPriceLimit.level>=7) || (pd_shopPriceLimit.maxPrice===Number.MAX_SAFE_INTEGER); var formatted = pd_fmtInt(pd_shopPriceLimit.maxPrice); var limitSpan=document.getElementById('vfPriceLimit'); if(limitSpan){ if(unlimited) limitSpan.innerHTML='<span class="text-emerald-600">(Unlimited)</span>'; else limitSpan.innerHTML='(Max: <span class="font-semibold">'+formatted+'</span> coins - Level '+pd_shopPriceLimit.level+')'; } }
+    function pd_validatePrice(price){ pd_clearPriceError(); var help=document.getElementById('vfPriceHelp'); if(help) help.classList.add('hidden'); if(price==null||isNaN(price)||price<0){ pd_setPriceError('Please enter a valid price'); return false; } if(!pd_shopPriceLimit) return true; var unlimited=(pd_shopPriceLimit.level>=7)||(pd_shopPriceLimit.maxPrice===Number.MAX_SAFE_INTEGER); if(!unlimited && price>pd_shopPriceLimit.maxPrice){ pd_setPriceError('Price exceeds your shop level limit (Max: '+pd_fmtInt(pd_shopPriceLimit.maxPrice)+' pts)'); return false; } pd_clearPriceError(); return true; }
+
+    // --- Inline validation helpers ---
+    function pd_setNameError(msg){ var d=document.getElementById('vfNameError'); var i=document.getElementById('vfName'); if(d){ if(msg){ d.classList.remove('hidden'); d.querySelector('span').textContent=msg; } else { d.classList.add('hidden'); d.querySelector('span').textContent=''; } } if(i){ if(msg){ i.classList.add('border-red-500'); i.classList.remove('border-primary-200'); } else { i.classList.remove('border-red-500'); i.classList.add('border-primary-200'); } } }
+    function pd_clearNameError(){ pd_setNameError(null); }
+    function pd_setPriceError(msg){ var d=document.getElementById('vfPriceError'); var i=document.getElementById('vfPrice'); if(d){ if(msg){ d.classList.remove('hidden'); d.querySelector('span').textContent=msg; } else { d.classList.add('hidden'); d.querySelector('span').textContent=''; } } if(i){ if(msg){ i.classList.add('border-red-500'); i.classList.remove('border-primary-200'); } else { i.classList.remove('border-red-500'); i.classList.add('border-primary-200'); } } }
+    function pd_clearPriceError(){ pd_setPriceError(null); }
+
+    // --- Product & variants loading ---
+    function pd_loadProductAndVariants(pid){ if(!pid) return; fetch('/seller/products/'+pid+'/json',{credentials:'same-origin'}).then(function(r){ if(!r.ok) throw r; return r.json(); }).then(function(p){ try{ document.getElementById('pdTitleRoot').innerText = p.name || 'Product Detail'; document.getElementById('pdDescRoot').innerText = p.description || 'No description available'; var img=(p.image&&String(p.image).trim()!=='')?p.image:'/images/default-avatar.svg'; var main=document.getElementById('pdMainImage'); if(main){ main.src=img; main.onerror=function(){ this.src='/images/default-avatar.svg'; this.onerror=null; }; } }catch(e){} }).catch(function(e){ console.error('load product json',e); }); fetch('/seller/products/'+pid+'/variants',{credentials:'same-origin'}).then(function(r){ if(!r.ok) throw r; return r.json(); }).then(function(list){ pd_renderVariants(list||[]); try{ var params=new URLSearchParams(window.location.search); var vstatus=(params.get('vstatus')||'all').toLowerCase(); if(vstatus!=='all'&&vstatus!=='active'&&vstatus!=='hidden') vstatus='all'; pd_filterVariantsByStatus(vstatus); }catch(e){} }).catch(function(e){ console.error('load variants',e); pd_renderVariants([]); }); }
+
+    // --- Render table ---
+    function pd_renderVariants(list){ pd_variantListCache = Array.isArray(list)?list.slice():[]; var tbody=document.querySelector('#variantsTable tbody'); if(!tbody) return; tbody.innerHTML=''; var totalStock=0,totalSold=0; if(!Array.isArray(list)||list.length===0){ var tr=document.createElement('tr'); tr.innerHTML='<td colspan="7" class="px-4 py-8 text-center"><div class="flex flex-col items-center gap-2"><div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"><i class="fa-solid fa-inbox text-2xl text-gray-300"></i></div><p class="text-gray-500 text-sm font-medium">No variants found</p><p class="text-xs text-gray-400">Click "Add New Variant" to create one</p></div></td>'; tbody.appendChild(tr); document.getElementById('pdVariantCount').innerText='0'; document.getElementById('pdTotalStock').innerText='0'; document.getElementById('pdTotalSold').innerText='0'; return; } document.getElementById('pdVariantCount').innerText=String(list.length); list.forEach(function(v,idx){ var stock=Number(v.stock||0), sold=Number(v.sold||0); totalStock+=stock; totalSold+=sold; var isHidden = !!(v.delete||v.isDelete); var statusBadge = isHidden? '<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-md text-xs font-semibold border border-gray-300"><i class="fa-solid fa-eye-slash text-[10px]"></i><span>Hidden</span></span>' : '<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs font-semibold border border-emerald-300"><i class="fa-solid fa-eye text-[10px]"></i><span>Active</span></span>'; var tr=document.createElement('tr'); tr.setAttribute('data-variant-id',v.id); tr.className=(idx%2===0)?'bg-white hover:bg-blue-50':'bg-gray-50 hover:bg-blue-50'; if(isHidden) tr.classList.add('opacity-60'); tr.style.transition='all 0.2s ease'; tr.innerHTML = '<td class="px-2 py-2 text-center"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 font-bold text-xs">'+(idx+1)+'</span></td>' + '<td class="px-2 py-2"><span class="font-semibold text-gray-900 text-xs">'+pd_escapeHtml(v.variantName||'')+'</span></td>' + '<td class="px-2 py-2 tn text-center"><div class="flex items-center gap-1 justify-center"><i class="fa-solid fa-coins text-yellow-500 text-xs"></i><span class="font-bold text-primary-700 text-xs">'+pd_fmtInt(v.price)+'</span></div></td>' + '<td class="px-2 py-2 tn text-center"><span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md font-semibold border border-emerald-200 text-xs"><i class="fa-solid fa-box text-[10px]"></i>'+pd_fmtInt(stock)+'</span></td>' + '<td class="px-2 py-2 tn text-center"><span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-semibold border border-blue-200 text-xs"><i class="fa-solid fa-chart-line text-[10px]"></i>'+pd_fmtInt(sold)+'</span></td>' + '<td class="px-2 py-2 text-center">'+statusBadge+'</td>' + '<td class="px-2 py-2"><div class="flex items-center justify-center gap-1">' + '<button onclick="pd_onAddStock('+v.id+')" class="btn btn-success btn-ic-sm" title="Add accounts"><i class="fa-solid fa-file-arrow-up text-xs"></i></button>' + '<button onclick="pd_onViewAccounts('+v.id+')" class="btn btn-light btn-ic-sm" title="Accounts"><i class="fa-solid fa-list text-xs"></i></button>' + '<button onclick="pd_toggleHideVariant('+v.id+')" class="btn btn-light btn-ic-sm" title="'+(isHidden?'Show':'Hide')+' variant"><i class="fa-solid fa-eye'+(isHidden?'':'-slash')+' text-xs"></i></button>' + '<button onclick="pd_onEditVariant('+v.id+')" class="btn btn-primary btn-ic-sm" title="Edit variant"><i class="fa-regular fa-pen-to-square text-xs"></i></button>' + '</div></td>'; tbody.appendChild(tr); }); document.getElementById('pdTotalStock').innerText = pd_fmtInt(totalStock); document.getElementById('pdTotalSold').innerText = pd_fmtInt(totalSold); }
+
+    // --- Filtering & sorting ---
+    var pd_currentPriceSortOrder = 'none';
+    function pd_sortVariantsByPrice(){ if(pd_currentPriceSortOrder==='none') pd_currentPriceSortOrder='asc'; else if(pd_currentPriceSortOrder==='asc') pd_currentPriceSortOrder='desc'; else pd_currentPriceSortOrder='none'; var icon=document.getElementById('pdPriceSortIcon'); if(icon){ if(pd_currentPriceSortOrder==='asc') icon.className='fa-solid fa-sort-up text-white'; else if(pd_currentPriceSortOrder==='desc') icon.className='fa-solid fa-sort-down text-white'; else icon.className='fa-solid fa-sort text-white/60'; } if(pd_currentPriceSortOrder==='none'){ pd_renderVariants(pd_variantListCache); } else { var sorted = (pd_variantListCache||[]).slice().sort(function(a,b){ var A=Number(a.price||0), B=Number(b.price||0); return pd_currentPriceSortOrder==='asc'?A-B:B-A; }); pd_renderVariants(sorted); } var activeFilter = document.querySelector('.pd-status-filter.active'); if(activeFilter){ var status=activeFilter.getAttribute('data-status'); if(status&&status!=='all') pd_filterVariantsByStatus(status); } }
+    function pd_filterVariantsByStatus(status){ var buttons=document.querySelectorAll('.pd-status-filter'); buttons.forEach(function(btn){ if(btn.getAttribute('data-status')===status) btn.classList.add('active'); else btn.classList.remove('active'); }); var rows=document.querySelectorAll('#variantsTable tbody tr[data-variant-id]'); var visible=0; rows.forEach(function(row){ var badge=row.querySelector('td:nth-child(6) span'); var isHidden = badge && badge.textContent.includes('Hidden'); var show=false; if(status==='all') show=true; else if(status==='active' && !isHidden) show=true; else if(status==='hidden' && isHidden) show=true; if(show){ row.style.display=''; visible++; } else row.style.display='none'; }); document.getElementById('pdVariantCount').innerText = String(visible); try{ var params=new URLSearchParams(window.location.search); if(status && status!=='all') params.set('vstatus',status); else params.delete('vstatus'); var newUrl = window.location.pathname + (params.toString()?('?'+params.toString()):''); if(newUrl!==window.location.href) window.history.replaceState(null,'',newUrl); }catch(e){} }
+
+    // --- CSV upload modal (reused) ---
+    function pd_createUploadModalHtml(){ if(document.getElementById('pdUploadModal')) return; var div=document.createElement('div'); div.id='pdUploadModal'; div.className='fixed inset-0 z-50 hidden items-center justify-center bg-black/50 overflow-auto p-4'; div.innerHTML = `
+        <div class="bg-white border-2 border-primary-400 rounded-2xl p-4 md:p-6 w-full max-w-3xl mx-4 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
+            <div class="flex items-start justify-between mb-4 pb-4 border-b-2 border-primary-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                        <i class="fa-solid fa-file-csv text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-primary-900">Upload Accounts (CSV)</h3>
+                        <p class="text-sm text-gray-500 mt-1">Import bulk accounts from CSV file</p>
+                    </div>
+                </div>
+                <button onclick="pd_closeUploadModal();return false;" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                    <div class="text-sm text-blue-900">
+                        <p class="font-semibold mb-1">Instructions:</p>
+                        <ol class="list-decimal list-inside space-y-1 text-blue-800">
+                            <li>Download the CSV template below</li>
+                            <li>Fill in <strong>Account|Seri</strong> and <strong>Password|PIN</strong> columns</li>
+                            <li>Preview your data to check for errors</li>
+                            <li>Click Upload & Confirm to complete</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-4 flex flex-wrap items-center gap-3">
+                <a id="pdTemplateLink" class="btn btn-primary"><i class="fa-solid fa-download"></i> Download Template</a>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-primary-700 mb-2">Choose CSV File</label>
+                <input id="pdExcelFile" type="file" accept=".csv" class="block w-full border-2 border-primary-200 rounded-lg px-3 py-2" />
+                <div class="text-xs text-gray-500 mt-2 flex items-center gap-2"><i class="fa-solid fa-info-circle text-blue-500"></i><span>Only CSV format is supported. Duplicate accounts will be automatically skipped.</span></div>
+            </div>
+            <div class="mb-4 flex gap-2">
+                <button id="pdPreviewBtn" onclick="pd_previewExcel();return false;" class="btn btn-light">Preview</button>
+                <button id="pdConfirmBtn" onclick="pd_confirmUpload();return false;" class="btn btn-primary">Upload & Confirm</button>
+            </div>
+            <div id="pdStatusMsg" class="hidden mb-4 text-sm"></div>
+            <div id="pdPreviewArea" class="mt-4 hidden">
+                <div class="overflow-auto max-h-96 border-2 border-primary-200 rounded-xl shadow-inner">
+                    <table id="pdPreviewTable" class="w-full text-xs border-collapse">
+                        <thead class="bg-gradient-to-r from-primary-600 to-purple-600 text-white sticky top-0">
+                            <tr>
+                                <th class="px-2 py-2 text-center font-semibold w-12">#</th>
+                                <th class="px-2 py-2 text-left font-semibold">Username|Seri</th>
+                                <th class="px-2 py-2 text-left font-semibold">Password|PIN</th>
+                                <th class="px-2 py-2 text-center font-semibold w-24">Duplicate</th>
+                                <th class="px-2 py-2 text-center font-semibold w-24">Invalid</th>
+                                <th class="px-2 py-2 text-center font-semibold w-36">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                    <div id="pdPreviewSummary" class="text-xs text-gray-600"></div>
+                    <div class="flex items-center gap-2">
+                        <button id="pdShowMoreBtn" class="btn btn-light">Show more</button>
+                        <button id="pdConfirmEditedBtn" class="btn btn-primary"><i class="fa-solid fa-cloud-upload-alt"></i><span class="ml-1">Confirm Upload</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>`; document.body.appendChild(div); }
+
+    var pd_currentVariantForUpload = null;
+    function pd_openAddModal(variantId){ pd_createUploadModalHtml(); pd_currentVariantForUpload=variantId; var m=document.getElementById('pdUploadModal'); if(!m) return; m.classList.remove('hidden'); m.style.display='flex'; var link=document.getElementById('pdTemplateLink'); if(link) link.href='/seller/products/variants/'+variantId+'/template'; var f=document.getElementById('pdExcelFile'); if(f) f.value=null; var pa=document.getElementById('pdPreviewArea'); if(pa) pa.classList.add('hidden'); var tb=document.querySelector('#pdPreviewTable tbody'); if(tb) tb.innerHTML=''; var sm=document.getElementById('pdStatusMsg'); if(sm){ sm.className='hidden mb-3 text-sm'; sm.innerText=''; } }
+    function pd_closeUploadModal(){ var m=document.getElementById('pdUploadModal'); if(m){ m.classList.add('hidden'); m.style.display='none'; } pd_currentVariantForUpload=null; }
+
+    var pd_previewRowsAll = []; // full array [{username,password,duplicate,invalid,deleted}]
+    var pd_previewOffset = 0;  // number of non-deleted rows already rendered
+    var pd_previewPageSize = 10;
+
+    function pd_countNonDeleted(){ var n=0; for(var i=0;i<pd_previewRowsAll.length;i++){ var r=pd_previewRowsAll[i]; if(r && !r.deleted) n++; } return n; }
+    function pd_indexAmongNonDeleted(idx){ var c=0; for(var i=0;i<pd_previewRowsAll.length;i++){ var r=pd_previewRowsAll[i]; if(!r) continue; if(!r.deleted){ if(i===idx) return c; c++; } } return 0; }
+
+    function pd_setStatus(msg, type){
+        var statusEl = document.getElementById('pdStatusMsg');
+        if(!statusEl) return;
+        statusEl.classList.remove('hidden');
+        statusEl.className = 'mb-4 text-sm px-4 py-3 rounded-lg border-2 ';
+        if(type === 'success'){
+            statusEl.className += 'bg-green-50 border-green-300 text-green-800';
+        } else if(type === 'error'){
+            statusEl.className += 'bg-red-50 border-red-300 text-red-800';
+        } else {
+            statusEl.className += 'bg-blue-50 border-blue-300 text-blue-800';
+        }
+        statusEl.textContent = msg;
+    }
+
+    function disableUploadButtons(disabled){
+        var previewBtn = document.getElementById('pdPreviewBtn');
+        var confirmBtn = document.getElementById('pdConfirmBtn');
+        if(previewBtn) previewBtn.disabled = disabled;
+        if(confirmBtn) confirmBtn.disabled = disabled;
+        if(disabled){
+            if(previewBtn) previewBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            if(confirmBtn) confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            if(previewBtn) previewBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            if(confirmBtn) confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    function pd_previewExcel(){
+        if(!pd_currentVariantForUpload) return pd_setStatus('No variant selected','error');
+        var f=document.getElementById('pdExcelFile');
+        if(!f||!f.files||f.files.length===0) return pd_setStatus('Please choose a CSV file before preview','error');
+        var file=f.files[0];
+        var fd=new FormData(); fd.append('file',file);
+        var headers=csrfHeaders();
+        pd_setStatus('Reading file, please wait…','info');
+        disableUploadButtons(true);
+        fetch('/seller/products/variants/'+pd_currentVariantForUpload+'/upload-excel?preview=true&dedupe=true',{ method:'POST', body:fd, headers:headers, credentials:'same-origin' })
+            .then(function(r){ if(!r.ok){ return r.json().catch(function(){ return {message:'Preview failed'}; }).then(function(o){ throw new Error(o.message||'Preview failed'); }); } return r.json(); })
+            .then(function(resp){
+                var area=document.getElementById('pdPreviewArea'); if(area) area.classList.remove('hidden');
+                pd_previewRowsAll = (resp.rows||[]).map(function(r){ return { username: r.username||'', password: r.password||'', duplicate: !!r.duplicate, invalid: !!r.invalid, rowIndex: r.rowIndex||0, deleted: false }; });
+                pd_previewOffset = 0;
+                pd_renderPreviewPage();
+                var sm=document.getElementById('pdPreviewSummary'); if(sm){ var invalid=Number(resp.invalidCount||0), dup=Number(resp.duplicateCount||0), total=Number(resp.count||pd_previewRowsAll.length); sm.innerText='Total rows: '+total+' • Duplicates: '+dup+' • Invalid: '+invalid; }
+                pd_bindPreviewActions();
+                pd_setStatus('✅ Preview successful. You can edit rows, then Confirm Upload.','success');
+            })
+            .catch(function(e){ console.error('preview',e); pd_setStatus('Preview failed: '+(e.message||e),'error'); })
+            .finally(function(){ disableUploadButtons(false); });
+    }
+
+    function pd_bindPreviewActions(){
+        var showMore=document.getElementById('pdShowMoreBtn'); if(showMore){ showMore.onclick=function(){ pd_renderPreviewPage(true); return false; }; }
+        var confirmBtn=document.getElementById('pdConfirmEditedBtn'); if(confirmBtn){ confirmBtn.onclick=function(){ pd_confirmEditedRows(); return false; }; }
+    }
+
+    function pd_renderPreviewPage(append){
+        var tbody=document.querySelector('#pdPreviewTable tbody'); if(!tbody) return;
+        if(!append){ tbody.innerHTML=''; pd_previewOffset = 0; }
+        // Determine starting point among non-deleted
+        var need = pd_previewPageSize;
+        var renderedThisCall = 0;
+        var nonDelSeen = 0;
+        // First, skip rows equal to pd_previewOffset non-deleted
+        var startIdx = 0;
+        for(var s=0; s<pd_previewRowsAll.length && nonDelSeen < pd_previewOffset; s++){
+            var sr = pd_previewRowsAll[s];
+            if(sr && !sr.deleted) nonDelSeen++;
+            startIdx = s+1;
+        }
+        for(var i=startIdx; i<pd_previewRowsAll.length && renderedThisCall < need; i++){
+            var r = pd_previewRowsAll[i];
+            if(!r || r.deleted) continue;
+            var tr=document.createElement('tr');
+            tr.setAttribute('data-pd-row', String(i));
+            tr.className=(i%2===0)?'bg-white hover:bg-blue-50':'bg-gray-50 hover:bg-blue-50';
+            tr.style.transition='all 0.2s ease';
+
+            var dupBadge = r.duplicate? '<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-amber-300"><i class="fa-solid fa-exclamation-triangle text-[10px]"></i>Yes</span>' : '<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-green-300"><i class="fa-solid fa-check text-[10px]"></i>No</span>';
+            var invBadge = r.invalid? '<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-red-300"><i class="fa-solid fa-times text-[10px]"></i>Yes</span>' : '<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-green-300"><i class="fa-solid fa-check text-[10px]"></i>No</span>';
+
+            tr.innerHTML = '<td class="px-2 py-1.5 text-center"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 text-gray-700 font-semibold text-xs">'+(pd_previewOffset + renderedThisCall + 1)+'</span></td>'+
+                '<td class="px-2 py-1.5"><span class="pv-username font-medium text-gray-900">'+pd_escapeHtml(r.username)+'</span><input class="pv-username-input hidden w-full border border-gray-300 rounded px-1.5 py-1 mt-1 text-xs" value="'+pd_escapeHtml(r.username)+'" /></td>'+
+                '<td class="px-2 py-1.5"><span class="pv-password font-medium text-gray-900">'+pd_escapeHtml(r.password)+'</span><input class="pv-password-input hidden w-full border border-gray-300 rounded px-1.5 py-1 mt-1 text-xs" value="'+pd_escapeHtml(r.password)+'" /></td>'+
+                '<td class="px-2 py-1.5 text-center pv-dup">'+dupBadge+'</td>'+
+                '<td class="px-2 py-1.5 text-center pv-inv">'+invBadge+'</td>'+
+                '<td class="px-2 py-1.5 text-center whitespace-nowrap">'+
+                  '<button class="btn btn-light btn-ic-sm pv-edit" title="Edit"><i class="fa-regular fa-pen-to-square text-xs"></i></button> '+
+                  '<button class="btn btn-primary btn-ic-sm hidden pv-save" title="Save"><i class="fa-solid fa-save text-xs"></i></button> '+
+                  '<button class="btn btn-light btn-ic-sm hidden pv-cancel" title="Cancel"><i class="fa-solid fa-xmark text-xs"></i></button> '+
+                  '<button class="btn btn-light btn-ic-sm pv-del" title="Delete"><i class="fa-solid fa-trash text-xs"></i></button>'+
+                '</td>';
+            tbody.appendChild(tr);
+            renderedThisCall++;
+        }
+        pd_previewOffset += renderedThisCall;
+        var totalNonDel = pd_countNonDeleted();
+        var showMore=document.getElementById('pdShowMoreBtn'); if(showMore){ var done = (pd_previewOffset >= totalNonDel); showMore.disabled = done; showMore.classList[done?'add':'remove']('opacity-50'); }
+        // attach row events
+        tbody.querySelectorAll('tr[data-pd-row]').forEach(function(tr){
+            var idx = parseInt(tr.getAttribute('data-pd-row'),10);
+            var eBtn=tr.querySelector('.pv-edit'); var sBtn=tr.querySelector('.pv-save'); var cBtn=tr.querySelector('.pv-cancel'); var dBtn=tr.querySelector('.pv-del');
+            var uSpan=tr.querySelector('.pv-username'); var pSpan=tr.querySelector('.pv-password'); var uInp=tr.querySelector('.pv-username-input'); var pInp=tr.querySelector('.pv-password-input');
+            if(eBtn){ eBtn.onclick=function(){ if(uSpan) uSpan.classList.add('hidden'); if(pSpan) pSpan.classList.add('hidden'); if(uInp) uInp.classList.remove('hidden'); if(pInp) pInp.classList.remove('hidden'); eBtn.classList.add('hidden'); if(sBtn) sBtn.classList.remove('hidden'); if(cBtn) cBtn.classList.remove('hidden'); if(uInp){ uInp.focus(); uInp.select && uInp.select(); } }; }
+            if(cBtn){ cBtn.onclick=function(){ if(uSpan){ uSpan.classList.remove('hidden'); if(uInp) uInp.value = pd_previewRowsAll[idx].username; } if(pSpan){ pSpan.classList.remove('hidden'); if(pInp) pInp.value = pd_previewRowsAll[idx].password; } if(uInp) uInp.classList.add('hidden'); if(pInp) pInp.classList.add('hidden'); if(eBtn) eBtn.classList.remove('hidden'); if(sBtn) sBtn.classList.add('hidden'); if(cBtn) cBtn.classList.add('hidden'); }; }
+            if(sBtn){ sBtn.onclick=function(){ var newU = uInp?uInp.value.trim():''; var newP = pInp?pInp.value.trim():''; pd_previewRowsAll[idx].username = newU; pd_previewRowsAll[idx].password = newP; pd_recheckPreviewRow(idx, tr); }; }
+            if(dBtn){ dBtn.onclick=function(){ pd_deletePreviewRow(idx, tr); }; }
+        });
+    }
+
+    function pd_deletePreviewRow(idx, tr){
+        if(!pd_previewRowsAll[idx]) return;
+        pd_previewRowsAll[idx].deleted = true;
+        // Remove the row visually
+        try{ tr.parentNode && tr.parentNode.removeChild(tr); }catch(_){ }
+        // Adjust counters and potentially enable Show More if more items remain
+        var totalNonDel = pd_countNonDeleted();
+        var showMore=document.getElementById('pdShowMoreBtn'); if(showMore){ var done = (pd_previewOffset >= totalNonDel); showMore.disabled = done; showMore.classList[done?'add':'remove']('opacity-50'); }
+    }
+
+    function pd_recheckPreviewRow(idx, tr){
+        var rows = pd_previewRowsAll.map(function(r){ return { username: r.username, password: r.password, deleted: !!r.deleted }; });
+        var headers = Object.assign({ 'Content-Type':'application/json' }, csrfHeaders());
+        var body = { rows: rows, pageSize: 1, offset: pd_indexAmongNonDeleted(idx) };
+        fetch('/seller/products/variants/'+pd_currentVariantForUpload+'/upload-json/preview',{ method:'POST', headers:headers, credentials:'same-origin', body: JSON.stringify(body) })
+            .then(function(r){ if(!r.ok) return r.json().then(function(o){ throw new Error(o.message||'Preview error'); }); return r.json(); })
+            .then(function(resp){
+                var item = (resp.items && resp.items.length>0)? resp.items[0] : null;
+                if(!item) return;
+                pd_previewRowsAll[idx].duplicate = !!item.duplicate;
+                pd_previewRowsAll[idx].invalid = !!item.invalid;
+                var dup=tr.querySelector('.pv-dup');
+                var inv=tr.querySelector('.pv-inv');
+                var uSpan=tr.querySelector('.pv-username');
+                var pSpan=tr.querySelector('.pv-password');
+                var uInp=tr.querySelector('.pv-username-input');
+                var pInp=tr.querySelector('.pv-password-input');
+                var eBtn=tr.querySelector('.pv-edit');
+                var sBtn=tr.querySelector('.pv-save');
+                var cBtn=tr.querySelector('.pv-cancel');
+
+                var dupBadge = item.duplicate? '<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-amber-300"><i class="fa-solid fa-exclamation-triangle text-[10px]"></i>Yes</span>' : '<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-green-300"><i class="fa-solid fa-check text-[10px]"></i>No</span>';
+                var invBadge = item.invalid? '<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-red-300"><i class="fa-solid fa-times text-[10px]"></i>Yes</span>' : '<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-green-300"><i class="fa-solid fa-check text-[10px]"></i>No</span>';
+
+                if(dup) dup.innerHTML = dupBadge;
+                if(inv) inv.innerHTML = invBadge;
+                if(uSpan) uSpan.textContent = pd_previewRowsAll[idx].username;
+                if(pSpan) pSpan.textContent = pd_previewRowsAll[idx].password;
+                if(uSpan) uSpan.classList.remove('hidden');
+                if(pSpan) pSpan.classList.remove('hidden');
+                if(uInp) uInp.classList.add('hidden');
+                if(pInp) pInp.classList.add('hidden');
+                if(eBtn) eBtn.classList.remove('hidden');
+                if(sBtn) sBtn.classList.add('hidden');
+                if(cBtn) cBtn.classList.add('hidden');
+            })
+            .catch(function(e){ console.error('recheck',e); showToast(e.message||'Recheck failed','error'); });
+    }
+
+    function pd_confirmEditedRows(){
+        var headers = Object.assign({ 'Content-Type':'application/json' }, csrfHeaders());
+        var rows = pd_previewRowsAll.map(function(r){ return { username: r.username, password: r.password, deleted: !!r.deleted }; });
+        fetch('/seller/products/variants/'+pd_currentVariantForUpload+'/upload-json/confirm',{ method:'POST', headers:headers, credentials:'same-origin', body: JSON.stringify({ rows: rows, dedupe: true }) })
+            .then(function(r){ if(!r.ok){ return r.json().catch(function(){ return {message:'Confirm failed'}; }).then(function(o){ throw new Error(o.message||'Confirm failed'); }); } return r.json(); })
+            .then(function(resp){ showToast('Upload successful! Created: '+(resp.created||0)+', Skipped: '+(resp.skipped||0),'success'); pd_loadProductAndVariants(currentProductId); setTimeout(function(){ pd_closeUploadModal(); },600); })
+            .catch(function(e){ console.error('confirm',e); showToast(e.message||'Confirm failed','error'); });
+    }
+    // Shim for legacy button/assignment to avoid ReferenceError and allow script to continue
+    function pd_confirmUpload(){
+        return pd_confirmEditedRows();
+    }
+
+    // --- Variant modal ---
+    function pd_createVariantModalHtml(){ if(document.getElementById('pdVariantModal')) return; var div=document.createElement('div'); div.id='pdVariantModal'; div.className='fixed inset-0 z-50 hidden items-center justify-center bg-black/50 overflow-auto p-4'; div.tabIndex=-1; div.innerHTML=`<div class="bg-white border-2 border-primary-400 rounded-2xl p-6 md:p-8 w-full max-w-2xl mx-4 shadow-2xl animate-fade-in">`+
+        `<div class="flex items-start justify-between mb-4 pb-4 border-b-2 border-primary-100">`+
+        `<div class="flex items-center gap-3"><div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center"><i class="fa-solid fa-edit text-white text-xl"></i></div><div><h3 id="vfTitle" class="text-xl font-bold text-primary-900">Add Variant</h3></div></div>`+
+        `<button onclick="pd_hideVariantForm();return false;" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fa-solid fa-times text-2xl"></i></button></div>`+
+        `<div class="grid grid-cols-1 md:grid-cols-2 gap-3"><div class="md:col-span-1"><label for="vfName" class="block text-xs font-semibold text-primary-700 mb-1">Variant Name</label><input id="vfName" name="vfName" type="text" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5" placeholder="e.g., Basic, Premium, VIP" /><div id="vfNameError" class="hidden mt-1 text-xs text-red-600 font-medium flex items-center gap-1"><i class="fa-solid fa-exclamation-circle"></i><span></span></div></div><div class="md:col-span-1"><label for="vfPrice" class="block text-xs font-semibold text-primary-700 mb-1">Price (points) <span id="vfPriceLimit" class="text-primary-600 font-normal"></span></label><input id="vfPrice" name="vfPrice" type="number" class="mt-1 w-full border-2 border-primary-200 rounded-lg px-3 py-2.5" placeholder="0" /><div id="vfPriceError" class="hidden mt-1 text-xs text-red-600 font-medium flex items-center gap-1"><i class="fa-solid fa-exclamation-circle"></i><span></span></div><div id="vfPriceHelp" class="hidden mt-1 text-xs text-blue-600 font-medium flex items-center gap-1"><i class="fa-solid fa-info-circle"></i><span></span></div></div></div>`+
+        `<div class="mt-4 flex justify-end gap-2"><button onclick="pd_hideVariantForm();return false;" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-gray-700">Cancel</button><button id="vfSaveBtn" onclick="pd_onSaveVariant();return false;" class="btn btn-primary"><i class="fa-solid fa-save"></i>Save</button></div></div>`; document.body.appendChild(div); }
+    function pd_openVariantModal(){ pd_createVariantModalHtml(); var m=document.getElementById('pdVariantModal'); if(!m) return; m.classList.remove('hidden'); m.style.display='flex'; try{ m.focus(); }catch(e){} m._keydownHandler=function(e){ if(e && (e.key==='Escape' || e.key==='Esc')) pd_hideVariantForm(); }; m.addEventListener('keydown', m._keydownHandler); setTimeout(function(){ try{ var name=document.getElementById('vfName'); if(name){ name.focus(); name.select && name.select(); } }catch(_){ } },60); }
+    function pd_closeVariantModal(){ var m=document.getElementById('pdVariantModal'); if(m){ if(m._keydownHandler){ try{ m.removeEventListener('keydown', m._keydownHandler); }catch(_){ } m._keydownHandler=null; } m.classList.add('hidden'); m.style.display='none'; } }
+
+    // --- Variant form actions ---
+    function pd_showAddVariantForm(){ pd_editingVariantId=null; pd_openVariantModal(); var title=document.getElementById('vfTitle'); if(title) title.innerText='Add Variant'; var name=document.getElementById('vfName'), price=document.getElementById('vfPrice'); if(name) name.value=''; if(price) price.value=''; pd_clearNameError(); pd_clearPriceError(); var help=document.getElementById('vfPriceHelp'); if(help) help.classList.add('hidden'); pd_updatePriceLimitDisplay(); if(price){ price.removeEventListener('input',pd_onPriceInput); price.addEventListener('input',pd_onPriceInput); } if(name){ name.removeEventListener('input',pd_onNameInput); name.addEventListener('input',pd_onNameInput); } }
+    function pd_onPriceInput(e){ var raw=e.target.value; if(raw===''||raw==null){ pd_clearPriceError(); return; } var num=Number(raw); pd_validatePrice(num); }
+    function pd_onNameInput(e){ var v=(e&&e.target?e.target.value:(document.getElementById('vfName')?document.getElementById('vfName').value:'')); if(v && v.trim().length>0) pd_clearNameError(); }
+    function pd_hideVariantForm(){ pd_closeVariantModal(); pd_editingVariantId=null; var ev=document.getElementById('vfPriceError'); var hv=document.getElementById('vfPriceHelp'); var pi=document.getElementById('vfPrice'); if(ev) ev.classList.add('hidden'); if(hv) hv.classList.add('hidden'); if(pi){ pi.classList.remove('border-red-500'); pi.classList.add('border-primary-200'); } }
+
+    function pd_onSaveVariant(){ var nameEl=document.getElementById('vfName'), priceEl=document.getElementById('vfPrice'); var variantName = nameEl?nameEl.value.trim():''; var priceVal = priceEl?priceEl.value:''; var price=null; try{ price = priceVal===''?null: Number(priceVal); }catch(e){ price=null; } var ok=true; if(!variantName){ pd_setNameError('Please enter variant name'); if(ok) nameEl && nameEl.focus(); ok=false; } if(priceVal===''){ pd_setPriceError('Price is required'); if(ok) priceEl && priceEl.focus(); ok=false; } else if(!pd_validatePrice(price)){ if(ok) priceEl && priceEl.focus(); ok=false; } if(!ok) return; var headers = Object.assign({ 'Content-Type':'application/json' }, csrfHeaders()); if(pd_editingVariantId==null){ fetch('/seller/products/'+currentProductId+'/variants',{ method:'POST', headers:headers, credentials:'same-origin', body: JSON.stringify({ variantName: variantName, price: price }) }).then(function(r){ if(!r.ok){ return r.json().catch(function(){ return {message:'Failed'}; }).then(function(o){ var fe = o && o.fieldErrors?o.fieldErrors:null; if(fe){ if(fe.variantName) pd_setNameError(fe.variantName); if(fe.price) pd_setPriceError(fe.price); return; } var msg=(o&&o.message)?o.message:'Failed'; if(/Variant name is required/i.test(msg)){ pd_setNameError('Variant name is required'); return; } if(/Invalid price/i.test(msg)){ pd_setPriceError('Invalid price'); return; } if(/Price exceeds your shop level limit/i.test(msg)){ pd_setPriceError(msg); pd_updatePriceLimitDisplay(); return; } pd_setPriceError(msg); }); } return r.json(); }).then(function(resp){ if(!resp) return; pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); showToast('Variant created successfully','success'); }).catch(function(){ /* errors handled */ }); } else { fetch('/seller/products/variants/'+pd_editingVariantId,{ method:'PUT', headers:headers, credentials:'same-origin', body: JSON.stringify({ variantName: variantName, price: price }) }).then(function(r){ if(!r.ok){ return r.json().catch(function(){ return {message:'Failed'}; }).then(function(o){ var fe=o&&o.fieldErrors?o.fieldErrors:null; if(fe){ if(fe.variantName) pd_setNameError(fe.variantName); if(fe.price) pd_setPriceError(fe.price); return; } var msg=(o&&o.message)?o.message:'Failed'; if(/Variant name is required/i.test(msg)){ pd_setNameError('Variant name is required'); return; } if(/Invalid price/i.test(msg)){ pd_setPriceError('Invalid price'); return; } if(/Price exceeds your shop level limit/i.test(msg)){ pd_setPriceError(msg); pd_updatePriceLimitDisplay(); return; } pd_setPriceError(msg); }); } return r.json(); }).then(function(resp){ if(!resp) return; pd_hideVariantForm(); pd_loadProductAndVariants(currentProductId); showToast('Variant updated successfully','success'); }).catch(function(){ /* handled */ }); } }
+
+    function pd_onEditVariant(variantId){ var v=(pd_variantListCache||[]).find(function(it){ return it && Number(it.id)===Number(variantId); }); pd_editingVariantId=variantId; pd_openVariantModal(); var title=document.getElementById('vfTitle'); if(title) title.innerText='Edit Variant'; var name=document.getElementById('vfName'), price=document.getElementById('vfPrice'); if(name) name.value = v && v.variantName? v.variantName : ''; if(price) price.value = v && v.price!=null? v.price : ''; pd_clearNameError(); pd_clearPriceError(); var help=document.getElementById('vfPriceHelp'); if(help) help.classList.add('hidden'); if(price){ price.removeEventListener('input',pd_onPriceInput); price.addEventListener('input',pd_onPriceInput); } if(name){ name.removeEventListener('input',pd_onNameInput); name.addEventListener('input',pd_onNameInput); } pd_updatePriceLimitDisplay(); }
+
+    function pd_toggleHideVariant(variantId){ var headers=csrfHeaders(); fetch('/seller/products/variants/'+variantId+'/toggle-hide',{ method:'POST', headers:headers, credentials:'same-origin' }).then(function(r){ if(!r.ok) return r.json().catch(function(){ return {message:'Toggle failed'}; }).then(function(o){ throw new Error(o.message||'Toggle failed'); }); return r.json(); }).then(function(data){ var cached=(pd_variantListCache||[]).find(function(v){ return v && Number(v.id)===Number(variantId); }); if(cached){ cached.delete = data.hidden; cached.isDelete = data.hidden; } var tr=document.querySelector('tr[data-variant-id="'+variantId+'"]'); if(tr){ var statusBadge=tr.querySelector('td:nth-child(6) span'); if(statusBadge){ if(data.hidden){ statusBadge.className='inline-flex items-center gap-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold'; statusBadge.innerHTML='<i class="fa-solid fa-eye-slash text-xs"></i><span>Hidden</span>'; tr.classList.add('opacity-60'); } else { statusBadge.className='inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold'; statusBadge.innerHTML='<i class="fa-solid fa-eye text-xs"></i><span>Active</span>'; tr.classList.remove('opacity-60'); } } var toggleBtn = tr.querySelector('button[onclick*="pd_toggleHideVariant"]'); if(toggleBtn){ var icon = toggleBtn.querySelector('i'); if(icon) icon.className = 'fa-solid fa-eye' + (data.hidden ? '' : '-slash'); toggleBtn.title = (data.hidden?'Show':'Hide')+' variant'; } } var activeFilterBtn=document.querySelector('.pd-status-filter.active'); var currentFilter = activeFilterBtn?activeFilterBtn.getAttribute('data-status'):'all'; var shouldSwitch=false; if(currentFilter==='active' && data.hidden) shouldSwitch=true; else if(currentFilter==='hidden' && !data.hidden) shouldSwitch=true; if(shouldSwitch) pd_filterVariantsByStatus('all'); showToast('Variant status updated','success'); }).catch(function(e){ console.error('toggle variant',e); showToast(e.message||'Toggle failed','error'); }); }
+
+    // --- Accounts modal ---
+    function pd_createAccountsModal(){ if(document.getElementById('pdAccountsModal')) return; var div=document.createElement('div'); div.id='pdAccountsModal'; div.className='fixed inset-0 z-50 hidden items-center justify-center bg-black/50 overflow-auto p-4'; div.innerHTML = `
+        <div class="bg-white border-2 border-primary-400 rounded-2xl p-4 md:p-5 w-full max-w-3xl mx-4 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between mb-3 pb-3 border-b-2 border-primary-100">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center"><i class="fa-solid fa-users text-white text-lg"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold text-primary-900">Variant Accounts</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">View and edit Available accounts</p>
+                    </div>
+                </div>
+                <button onclick="pd_closeAccounts();return false;" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-600 font-medium">Status:</label>
+                    <select id="accFilterStatus" class="border border-gray-300 rounded-lg px-2 py-1 text-xs">
+                        <option value="all">All</option>
+                        <option value="available">Available</option>
+                        <option value="sold">Sold</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="accSearch" class="border border-gray-300 rounded-lg px-2 py-1 text-xs" type="text" placeholder="Search username" />
+                    <button onclick="pd_reloadAccounts();return false;" class="px-2 py-1 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-medium transition-colors"><i class="fa-solid fa-magnifying-glass text-xs"></i></button>
+                </div>
+            </div>
+            <div class="overflow-auto border border-gray-300 rounded-lg shadow-sm max-h-[50vh]">
+                <table class="w-full text-xs border-collapse">
+                    <thead class="bg-gradient-to-r from-primary-600 to-purple-600 text-white">
+                        <tr class="sticky top-0">
+                            <th class="px-2 py-1.5 text-center w-10">#</th>
+                            <th class="px-2 py-1.5 text-left">Username|Seri</th>
+                            <th class="px-2 py-1.5 text-left">Password|PIN</th>
+                            <th class="px-2 py-1.5 text-center w-20">Status</th>
+                            <th class="px-2 py-1.5 text-center w-32">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accTableBody"></tbody>
+                </table>
+            </div>
+            <div class="flex items-center justify-between mt-2">
+                <div id="accSummary" class="text-xs text-gray-600 font-medium"></div>
+                <div class="flex items-center gap-2">
+                    <button id="accShowMoreBtn" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors">Show more</button>
+                </div>
+            </div>
+        </div>`; document.body.appendChild(div); }
+
+    var pd_accountsVariantId = null;
+    var pd_accountsLoaded = 0; // count of items loaded so far
+    var pd_accountsPage = 1;
+    var pd_accountsSize = 10; // show 10 per page
+    var pd_accountsTotal = 0;
+    function pd_onViewAccounts(variantId){ pd_createAccountsModal(); pd_accountsVariantId = variantId; pd_accountsPage=1; pd_accountsLoaded=0; pd_accountsTotal=0; var modal=document.getElementById('pdAccountsModal'); if(modal){ modal.classList.remove('hidden'); modal.style.display='flex'; }
+        // bind events
+        try{
+            var sel=document.getElementById('accFilterStatus');
+            if(sel){ sel.removeEventListener('change', pd_reloadAccounts); sel.addEventListener('change', pd_reloadAccounts); }
+            var si=document.getElementById('accSearch');
+            if(si){ si.onkeydown=function(e){ if(e && (e.key==='Enter' || e.keyCode===13)){ pd_reloadAccounts(); e.preventDefault && e.preventDefault(); } }; }
+            var more=document.getElementById('accShowMoreBtn'); if(more){ more.onclick=function(){ pd_accountsPage++; pd_loadAccounts(true); return false; }; }
+        }catch(_){ }
+        pd_loadAccounts(false); }
+    function pd_closeAccounts(){ var m=document.getElementById('pdAccountsModal'); if(m){ m.classList.add('hidden'); m.style.display='none'; } pd_accountsVariantId=null; }
+    function pd_reloadAccounts(){ pd_accountsPage=1; pd_accountsLoaded=0; pd_accountsTotal=0; pd_loadAccounts(false); }
+    function pd_loadAccounts(append){ if(!pd_accountsVariantId) return; var statusSel=document.getElementById('accFilterStatus'); var status = statusSel?statusSel.value:'all'; var qEl=document.getElementById('accSearch'); var q = qEl?qEl.value.trim():''; var url='/seller/products/variants/'+pd_accountsVariantId+'/accounts?status='+encodeURIComponent(status)+'&page='+pd_accountsPage+'&size='+pd_accountsSize; if(q) url += '&search='+encodeURIComponent(q); fetch(url,{credentials:'same-origin'}).then(function(r){ if(!r.ok) throw r; return r.json(); }).then(function(resp){ var items = resp&&resp.items?resp.items:[]; var total = typeof resp.total==='number'?resp.total: (pd_accountsLoaded + items.length); pd_accountsTotal = total; pd_renderAccounts(items, append); }).catch(function(e){ console.error('load accounts',e); if(!append) pd_renderAccounts([], false); }); }
+    function pd_renderAccounts(items, append){ var tbody=document.getElementById('accTableBody'); if(!tbody) return; if(!append){ tbody.innerHTML=''; pd_accountsLoaded = 0; } if(!Array.isArray(items) || items.length===0){ if(!append){ var tr=document.createElement('tr'); tr.innerHTML='<td class="px-2 py-3 text-center text-gray-500 text-xs" colspan="5">No accounts found</td>'; tbody.appendChild(tr);} var more=document.getElementById('accShowMoreBtn'); if(more){ more.disabled=true; more.classList.add('opacity-50'); } var sum=document.getElementById('accSummary'); if(sum){ sum.textContent = 'Total: '+pd_accountsTotal; } return; } items.forEach(function(it,idx){ var status=String(it.status||''); var editable = status.toLowerCase()==='available'; var tr=document.createElement('tr'); tr.setAttribute('data-account-id', it.id); tr.className=((pd_accountsLoaded+idx)%2===0)?'bg-white hover:bg-blue-50':'bg-gray-50 hover:bg-blue-50'; tr.style.transition='all 0.2s ease'; var uname=it.username||''; var pwd=it.password||'';
+            // #
+            var tdNo=document.createElement('td'); tdNo.className='px-2 py-1.5 text-center'; tdNo.innerHTML='<span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 text-gray-700 font-semibold text-xs">'+String(pd_accountsLoaded+idx+1)+'</span>'; tr.appendChild(tdNo);
+            // Username
+            var tdU=document.createElement('td'); tdU.className='px-2 py-1.5';
+            var uSpan=document.createElement('span'); uSpan.className='acc-username text-gray-900 font-medium text-xs'; uSpan.textContent=uname; tdU.appendChild(uSpan);
+            var uInp=document.createElement('input'); uInp.className='acc-username-input hidden w-full border border-gray-300 rounded px-1.5 py-1 text-xs'; uInp.value=uname; if(editable){ tdU.appendChild(uInp); }
+            var uErr=document.createElement('div'); uErr.className='acc-user-err text-xs text-red-600 mt-0.5 hidden'; tdU.appendChild(uErr); tr.appendChild(tdU);
+            // Password
+            var tdP=document.createElement('td'); tdP.className='px-2 py-1.5';
+            var pSpan=document.createElement('span'); pSpan.className='acc-password text-gray-900 font-medium text-xs'; pSpan.textContent=pwd; tdP.appendChild(pSpan);
+            var pInp=document.createElement('input'); pInp.className='acc-password-input hidden w-full border border-gray-300 rounded px-1.5 py-1 text-xs'; pInp.value=pwd; if(editable){ tdP.appendChild(pInp); }
+            var pErr=document.createElement('div'); pErr.className='acc-pass-err text-xs text-red-600 mt-0.5 hidden'; tdP.appendChild(pErr); tr.appendChild(tdP);
+            // Status
+            var tdS=document.createElement('td'); tdS.className='px-2 py-1.5 text-center';
+            if(editable){ tdS.innerHTML='<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-emerald-300"><i class="fa-solid fa-circle text-[6px]"></i>Available</span>'; } else { tdS.innerHTML='<span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-gray-400"><i class="fa-solid fa-circle text-[6px]"></i>'+pd_escapeHtml(status)+'</span>'; } tr.appendChild(tdS);
+            // Actions
+            var tdA=document.createElement('td'); tdA.className='px-2 py-1.5 text-center'+(editable?'':' opacity-50');
+            if(editable){
+                var eBtn=document.createElement('button'); eBtn.className='btn btn-light btn-ic-sm acc-edit-btn'; eBtn.title='Edit'; eBtn.innerHTML='<i class="fa-regular fa-pen-to-square text-xs"></i>'; eBtn.onclick=function(){ pd_editAccountRow(it.id); return false; };
+                var sBtn=document.createElement('button'); sBtn.className='btn btn-primary btn-ic-sm hidden acc-save-btn'; sBtn.title='Save'; sBtn.innerHTML='<i class="fa-solid fa-save text-xs"></i>'; sBtn.onclick=function(){ pd_saveAccountRow(it.id); return false; };
+                var cBtn=document.createElement('button'); cBtn.className='btn btn-light btn-ic-sm hidden acc-cancel-btn'; cBtn.title='Cancel'; cBtn.innerHTML='<i class="fa-solid fa-xmark text-xs"></i>'; cBtn.onclick=function(){ pd_cancelEditAccountRow(it.id); return false; };
+                var dBtn=document.createElement('button'); dBtn.className='btn btn-light btn-ic-sm acc-del-btn'; dBtn.title='Delete'; dBtn.innerHTML='<i class="fa-solid fa-trash text-xs"></i>'; dBtn.onclick=function(){ pd_deleteAccountRow(it.id); return false; };
+                tdA.appendChild(eBtn); tdA.appendChild(document.createTextNode(' ')); tdA.appendChild(sBtn); tdA.appendChild(document.createTextNode(' ')); tdA.appendChild(cBtn); tdA.appendChild(document.createTextNode(' ')); tdA.appendChild(dBtn);
+            } else {
+                var no=document.createElement('span'); no.className='text-[10px] text-gray-500'; no.textContent='No actions'; tdA.appendChild(no);
+            }
+            tr.appendChild(tdA);
+            tbody.appendChild(tr);
+        });
+        pd_accountsLoaded += items.length;
+        var more=document.getElementById('accShowMoreBtn'); if(more){ var done = (pd_accountsLoaded >= pd_accountsTotal); more.disabled = done; more.classList[done?'add':'remove']('opacity-50'); }
+        var sum=document.getElementById('accSummary'); if(sum){ sum.textContent = 'Total: '+pd_accountsTotal+' • Showing: '+pd_accountsLoaded; }
+    }
+    function pd_deleteAccountRow(id){ var tr=document.querySelector('tr[data-account-id="'+id+'"]'); var headers=csrfHeaders(); fetch('/seller/products/variants/accounts/'+id,{ method:'DELETE', headers:headers, credentials:'same-origin' }).then(function(r){ if(!r.ok){ return r.json().catch(function(){ return {message:'Delete failed'}; }).then(function(o){ throw new Error(o.message||'Delete failed'); }); } return r.json(); }).then(function(){ if(tr && tr.parentNode){ tr.parentNode.removeChild(tr); pd_accountsLoaded--; pd_accountsTotal = Math.max(0, pd_accountsTotal-1); var sum=document.getElementById('accSummary'); if(sum){ sum.textContent = 'Total: '+pd_accountsTotal+' • Showing: '+pd_accountsLoaded; } var more=document.getElementById('accShowMoreBtn'); if(more){ if(pd_accountsLoaded < pd_accountsTotal){ more.disabled=false; more.classList.remove('opacity-50'); } } } showToast('Deleted account','success'); }).catch(function(e){ console.error('delete account',e); showToast(e.message||'Delete failed','error'); }); }
+
+    // Edit/Save/Cancel inline for accounts (only Available)
+    function pd_editAccountRow(id){ var tr=document.querySelector('tr[data-account-id="'+id+'"]'); if(!tr) return; var uSpan=tr.querySelector('.acc-username'); var pSpan=tr.querySelector('.acc-password'); var uInp=tr.querySelector('.acc-username-input'); var pInp=tr.querySelector('.acc-password-input'); var eBtn=tr.querySelector('.acc-edit-btn'); var sBtn=tr.querySelector('.acc-save-btn'); var cBtn=tr.querySelector('.acc-cancel-btn'); if(uSpan) uSpan.classList.add('hidden'); if(pSpan) pSpan.classList.add('hidden'); if(uInp) { uInp.classList.remove('hidden'); uInp.focus(); uInp.select && uInp.select(); } if(pInp) pInp.classList.remove('hidden'); if(eBtn) eBtn.classList.add('hidden'); if(sBtn) sBtn.classList.remove('hidden'); if(cBtn) cBtn.classList.remove('hidden'); }
+    function pd_cancelEditAccountRow(id){ var tr=document.querySelector('tr[data-account-id="'+id+'"]'); if(!tr) return; var uSpan=tr.querySelector('.acc-username'); var pSpan=tr.querySelector('.acc-password'); var uInp=tr.querySelector('.acc-username-input'); var pInp=tr.querySelector('.acc-password-input'); var eBtn=tr.querySelector('.acc-edit-btn'); var sBtn=tr.querySelector('.acc-save-btn'); var cBtn=tr.querySelector('.acc-cancel-btn'); if(uSpan) { uSpan.classList.remove('hidden'); if(uInp) uInp.value = (uSpan.textContent||''); } if(pSpan) { pSpan.classList.remove('hidden'); if(pInp) pInp.value = (pSpan.textContent||''); } if(uInp) uInp.classList.add('hidden'); if(pInp) pInp.classList.add('hidden'); if(eBtn) eBtn.classList.remove('hidden'); if(sBtn) sBtn.classList.add('hidden'); if(cBtn) cBtn.classList.add('hidden'); var ue=tr.querySelector('.acc-user-err'); var pe=tr.querySelector('.acc-pass-err'); if(ue) ue.classList.add('hidden'); if(pe) pe.classList.add('hidden'); }
+    function pd_saveAccountRow(id){ var tr=document.querySelector('tr[data-account-id="'+id+'"]'); if(!tr) return; var uSpan=tr.querySelector('.acc-username'); var pSpan=tr.querySelector('.acc-password'); var uInp=tr.querySelector('.acc-username-input'); var pInp=tr.querySelector('.acc-password-input'); var eBtn=tr.querySelector('.acc-edit-btn'); var sBtn=tr.querySelector('.acc-save-btn'); var cBtn=tr.querySelector('.acc-cancel-btn'); var username = uInp?uInp.value.trim():''; var password = pInp?pInp.value.trim():''; var ue=tr.querySelector('.acc-user-err'); var pe=tr.querySelector('.acc-pass-err'); var hasErr=false; if(!username){ if(ue){ ue.textContent='Username is required'; ue.classList.remove('hidden'); } hasErr=true; } else if(ue){ ue.classList.add('hidden'); } if(!password){ if(pe){ pe.textContent='Password is required'; pe.classList.remove('hidden'); } hasErr=true; } else if(pe){ pe.classList.add('hidden'); } if(hasErr) return; var headers = Object.assign({ 'Content-Type':'application/json' }, csrfHeaders()); fetch('/seller/products/variants/accounts/'+id, { method:'PUT', headers:headers, credentials:'same-origin', body: JSON.stringify({ username: username, password: password }) }).then(function(r){ if(!r.ok){ return r.json().catch(function(){ return {message:'Update failed'}; }).then(function(o){ var msg=o&&o.message?o.message:'Update failed'; var fe=o&&o.fieldErrors?o.fieldErrors:null; if(fe){ if(fe.username && ue){ ue.textContent=fe.username; ue.classList.remove('hidden'); } if(fe.password && pe){ pe.textContent=fe.password; pe.classList.remove('hidden'); } } throw new Error(msg); }); } return r.json(); }).then(function(resp){ if(uSpan) uSpan.textContent = username; if(pSpan) pSpan.textContent = password; if(uSpan) uSpan.classList.remove('hidden'); if(pSpan) pSpan.classList.remove('hidden'); if(uInp) uInp.classList.add('hidden'); if(pInp) pInp.classList.add('hidden'); if(eBtn) eBtn.classList.remove('hidden'); if(sBtn) sBtn.classList.add('hidden'); if(cBtn) cBtn.classList.add('hidden'); showToast('Updated successfully','success'); }).catch(function(e){ console.error('update account',e); showToast(e.message||'Update failed','error'); }); }
+
+    // expose used functions
+    window.pd_openAddModal = pd_openAddModal;
+    window.showAddVariantForm = pd_showAddVariantForm;
+    window.pd_showAddVariantForm = pd_showAddVariantForm;
+    window.pd_hideVariantForm = pd_hideVariantForm;
+    window.pd_onSaveVariant = pd_onSaveVariant;
+    window.pd_onEditVariant = pd_onEditVariant;
+    window.pd_toggleHideVariant = pd_toggleHideVariant;
+    window.pd_filterVariantsByStatus = pd_filterVariantsByStatus;
+    window.pd_sortVariantsByPrice = pd_sortVariantsByPrice;
+    window.pd_onAddStock = pd_openAddModal; // alias to open upload modal
+    window.pd_previewExcel = pd_previewExcel;
+    window.pd_confirmUpload = pd_confirmUpload;
+    window.pd_closeUploadModal = pd_closeUploadModal;
+    window.pd_onViewAccounts = pd_onViewAccounts;
+    window.pd_closeAccounts = pd_closeAccounts;
+    window.pd_reloadAccounts = pd_reloadAccounts;
+    window.pd_editAccountRow = pd_editAccountRow;
+    window.pd_cancelEditAccountRow = pd_cancelEditAccountRow;
+    window.pd_saveAccountRow = pd_saveAccountRow;
+
+    // init
+    if(currentProductId){ pd_loadProductAndVariants(currentProductId); pd_fetchShopPriceLimit(); }
+})();
+</script>
+
+<!-- Toast notification container -->
+<div id="toastHost" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm"></div>
+
+</body>
+</html>
