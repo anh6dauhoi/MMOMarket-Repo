@@ -97,7 +97,7 @@ public class EmailService {
         }
         helper.setTo(to);
         // Always CC to anh.tuan662005@gmail.com
-        helper.setCc("anh.tuan662005@gmail.com");
+        helper.setCc("luongnhuan999@gmail.com");
         helper.setSubject(subject);
         helper.setText(htmlContent, true);
         mailSender.send(message);
