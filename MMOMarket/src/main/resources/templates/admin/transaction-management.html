@@ -1,248 +1,386 @@
-tôi đa<div th:fragment="content"
+<div th:fragment="content"
      th:with="page=${currentPage != null ? currentPage : 1},
               size=${10},
               total=${totalPages != null and totalPages > 0 ? totalPages : 1},
-              txCount=${transactions != null ? #lists.size(transactions) : 0}">
+              txCount=${transactions != null ? #lists.size(transactions) : 0},
+              currentSort=${currentSort != null ? currentSort : 'date_desc'}">
     <div class="bg-white p-4 md:p-6 lg:p-8 rounded-lg shadow-lg w-full">
 
-        <!-- Title & Search -->
-        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
-            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Transaction Management</h1>
-
+        <!-- Toast -->
+        <div id="toast"
+             class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="toast-message"></p>
         </div>
 
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white text-sm">
-                <thead class="bg-red-50">
-                <tr>
-                    <th class="py-2 px-3 w-10 text-left text-xs font-medium text-red-700 uppercase tracking-wider">#</th>
-                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Customer</th>
-                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Seller</th>
-                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Product</th>
-                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">
-                        <a th:with="currentSortVal=${currentSort != null ? currentSort : 'date_desc'},
-                                    isAmountAsc=${currentSortVal == 'amount_asc'},
-                                    isAmountDesc=${currentSortVal == 'amount_desc'},
-                                    nextSort=${isAmountAsc ? 'amount_desc' : 'amount_asc'},
-                                    sortUrl='/admin/transactions?page=1&sort=' + ${nextSort} + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')"
-                           th:href="${sortUrl}"
-                           class="flex items-center space-x-1 hover:text-red-900 cursor-pointer">
-                            <span>Amount</span>
-                            <span class="inline-flex flex-col text-xs leading-none">
-                                <i class="fas fa-caret-up" th:classappend="${isAmountAsc} ? 'text-red-900' : 'text-red-400'"></i>
-                                <i class="fas fa-caret-down -mt-1" th:classappend="${isAmountDesc} ? 'text-red-900' : 'text-red-400'"></i>
-                            </span>
+        <!-- Title & Stats Row -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-6 space-y-4 md:space-y-0">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Transaction Management</h1>
+                <p class="text-sm text-gray-500">Monitor and manage all platform transactions</p>
+            </div>
+        </div>
+
+        <!-- Compact Search & Filter Controls -->
+        <div class="mb-6 bg-red-50 p-4 rounded-lg border border-red-300 shadow-sm">
+            <form method="get" action="/admin/transactions">
+                <div class="flex flex-wrap items-end gap-3">
+                    <!-- Search Input -->
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-search text-red-600 mr-1"></i>Search
+                        </label>
+                        <input name="search"
+                               class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white shadow-sm text-sm"
+                               placeholder="Search by customer, seller, or product..."
+                               type="text"
+                               th:value="${currentSearch != null ? currentSearch : ''}">
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="w-44">
+                        <label class="block text-xs font-semibold text-red-800 mb-1.5">
+                            <i class="fas fa-sort text-red-600 mr-1"></i>Sort By
+                        </label>
+                        <select name="sort" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
+                            <option value="date_desc" th:selected="${currentSort == null or currentSort == 'date_desc'}">Newest First</option>
+                            <option value="date_asc" th:selected="${currentSort == 'date_asc'}">Oldest First</option>
+                            <option value="amount_desc" th:selected="${currentSort == 'amount_desc'}">Amount ↓</option>
+                            <option value="amount_asc" th:selected="${currentSort == 'amount_asc'}">Amount ↑</option>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-200 shadow-md text-sm whitespace-nowrap">
+                            <i class="fas fa-filter mr-1.5"></i>Apply
+                        </button>
+                        <a th:href="@{/admin/transactions}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-200 text-sm whitespace-nowrap">
+                            <i class="fas fa-redo mr-1.5"></i>Reset
                         </a>
-                    </th>
-                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
-                    <th class="py-2 px-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Action</th>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-lg border border-red-200 shadow-sm">
+            <table class="min-w-full bg-white">
+                <!-- Header: red theme matching withdrawals -->
+                <thead class="bg-red-600">
+                <tr>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">#</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Customer</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Seller</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Product</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Amount</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Date</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Status</th>
+                    <th class="py-3 px-4 text-left text-xs font-bold text-white uppercase tracking-wider border-b-2 border-red-700">Action</th>
                 </tr>
                 </thead>
-
                 <tbody class="divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50" th:each="tx,iter : ${transactions}">
-                    <td class="py-2.5 px-3 whitespace-nowrap text-sm" th:text="${iter.index + 1}">1</td>
-                    <td class="py-2.5 px-3 whitespace-nowrap">
-                        <div class="font-medium text-sm" th:text="${tx.customer != null ? tx.customer.fullName : 'Unknown'}">Customer Name</div>
-                        <div class="text-xs text-gray-500" th:text="${tx.customer != null ? tx.customer.email : ''}">customer@example.com</div>
+
+                <tr class="hover:bg-red-50 transition duration-150" th:each="tx,iter : ${transactions}">
+                    <td class="py-3 px-4 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${(page - 1) * size + iter.index + 1}">1</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-user text-green-700"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${tx.customer != null ? tx.customer.fullName : 'Unknown'}">Customer Name</div>
+                                <div class="text-xs text-gray-500" th:text="${tx.customer != null ? tx.customer.email : ''}">customer@example.com</div>
+                            </div>
+                        </div>
                     </td>
-                    <td class="py-2.5 px-3 whitespace-nowrap">
-                        <div class="font-medium text-sm" th:text="${tx.seller != null ? tx.seller.fullName : 'Unknown'}">Seller Name</div>
-                        <div class="text-xs text-gray-500" th:text="${tx.seller != null ? tx.seller.email : ''}">seller@example.com</div>
+                    <td class="py-3 px-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-user-tie text-blue-700"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-900 text-sm" th:text="${tx.seller != null ? tx.seller.fullName : 'Unknown'}">Seller Name</div>
+                                <div class="text-xs text-gray-500" th:text="${tx.seller != null ? tx.seller.email : ''}">seller@example.com</div>
+                            </div>
+                        </div>
                     </td>
-                    <td class="py-2.5 px-3 whitespace-nowrap text-sm" th:text="${tx.product != null ? tx.product.name : ''}">Product Title</td>
-                    <td class="py-2.5 px-3 whitespace-nowrap text-sm font-medium">
-                        <span class="format-amount" th:attr="data-amount=${tx.amount}">100.000</span>
+                    <td class="py-3 px-4 text-sm text-gray-700" th:text="${tx.product != null ? tx.product.name : 'N/A'}">Product Title</td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-gray-900" th:text="${tx.amount != null ? #numbers.formatDecimal(tx.amount, 0, 'POINT', 0, 'COMMA') + ' ₫' : '0 ₫'}">100,000 ₫</div>
                     </td>
-                    <td class="py-2.5 px-3 whitespace-nowrap">
-                        <span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full"
-                              th:with="raw=${tx.status != null ? tx.status : ''}, up=${#strings.toUpperCase(raw)}, isCompleted=${#strings.contains(up,'COMPLETED') or #strings.contains(up,'DELIVERED') or #strings.contains(up,'APPROVED')}, isPending=${#strings.contains(up,'PENDING')}, isRejected=${#strings.contains(up,'REJECTED')}, disp=${isCompleted ? 'Completed' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(raw))))}"
-                              th:classappend="${isCompleted} ? 'bg-green-100 text-green-800' : (isPending ? 'bg-yellow-100 text-yellow-800' : (isRejected ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
-                              th:text="${disp}">Status</span>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <div class="flex items-center text-xs text-gray-600">
+                            <i class="fas fa-calendar-alt text-gray-400 mr-1.5"></i>
+                            <span th:text="${tx.createdAt != null ? #dates.format(tx.createdAt,'yyyy-MM-dd') : 'N/A'}">2024-01-01</span>
+                        </div>
                     </td>
-                    <td class="py-2.5 px-3 whitespace-nowrap">
-                        <button type="button" class="text-xs text-blue-600 hover:text-blue-800 font-medium" th:attr="data-id=${tx.id}" onclick="openTransactionModal(this)">View detail</button>
+                    <td class="py-3 px-4 whitespace-nowrap"
+                        th:with="
+                rawStatus=${tx.status != null ? tx.status : ''},
+                upper=${#strings.toUpperCase(rawStatus)},
+                isCompleted=${#strings.contains(upper,'COMPLETED') or #strings.contains(upper,'DELIVERED') or #strings.contains(upper,'APPROVED')},
+                isRejected=${#strings.contains(upper,'REJECTED') or #strings.contains(upper,'CANCELLED')},
+                isPending=${#strings.contains(upper,'PENDING')},
+                displayStatus=${isCompleted ? 'Completed' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(rawStatus))))}">
+            <span class="px-2.5 py-1 inline-flex items-center text-xs leading-5 font-bold rounded-full"
+                  th:classappend="${isCompleted} ? 'bg-green-100 text-green-800 border border-green-300' : (${isRejected} ? 'bg-red-100 text-red-800 border border-red-300' : (${isPending} ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-gray-100 text-gray-800 border border-gray-300'))"
+                  th:text="${displayStatus}">Status</span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <button type="button"
+                                class="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm"
+                                th:attr="data-id=${tx.id}"
+                                onclick="openTransactionModal(this)">
+                            <i class="fas fa-eye mr-1.5"></i>Details
+                        </button>
                     </td>
                 </tr>
 
                 <tr th:if="${#lists.isEmpty(transactions)}">
-                    <td class="text-center py-8 text-gray-500 text-sm" colspan="7">No transactions found.</td>
+                    <td class="text-center py-16 text-gray-400" colspan="8">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">No transactions found</p>
+                        <p class="text-sm">Try adjusting your filters or search criteria</p>
+                    </td>
                 </tr>
+
                 </tbody>
             </table>
         </div>
 
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition duration-150" th:each="tx,iter : ${transactions}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-500 mr-2" th:text="${iter.index + 1}">1</span>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-2">
+                                <i class="fas fa-user text-green-700 text-xs"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-900" th:text="${tx.customer != null ? tx.customer.fullName : 'Unknown'}">Customer Name</h3>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 inline-flex text-xs leading-none font-semibold rounded-full"
+                          th:with="
+                  upper=${#strings.toUpperCase(tx.status)},
+                  isCompleted=${#strings.contains(upper,'COMPLETED') or #strings.contains(upper,'DELIVERED') or #strings.contains(upper,'APPROVED')},
+                  isRejected=${#strings.contains(upper,'REJECTED') or #strings.contains(upper,'CANCELLED')},
+                  isPending=${#strings.contains(upper,'PENDING')},
+                  displayStatus=${isCompleted ? 'Completed' : (isRejected ? 'Rejected' : (isPending ? 'Pending' : #strings.capitalize(#strings.toLowerCase(tx.status))))}"
+                          th:classappend="${isCompleted} ? 'bg-green-100 text-green-800 border border-green-300' : (isRejected ? 'bg-red-100 text-red-800 border border-red-300' : (isPending ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-gray-100 text-gray-800'))"
+                          th:text="${displayStatus}">Status</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs">Seller:</p>
+                        <p class="font-medium text-xs" th:text="${tx.seller != null ? tx.seller.fullName : 'Unknown'}">Seller Name</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Amount:</p>
+                        <p class="font-bold text-sm" th:text="${tx.amount != null ? #numbers.formatDecimal(tx.amount, 0, 'POINT', 0, 'COMMA') + ' ₫' : '0 ₫'}">100,000 ₫</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Product:</p>
+                        <p class="font-medium text-xs" th:text="${tx.product != null ? tx.product.name : 'N/A'}">Product Name</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Date:</p>
+                        <p class="font-medium text-xs" th:text="${tx.createdAt != null ? #dates.format(tx.createdAt,'yyyy-MM-dd') : 'N/A'}">2024-01-01</p>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3 pt-3 border-t border-gray-200">
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition duration-200 shadow-sm w-full justify-center"
+                            th:attr="data-id=${tx.id}"
+                            onclick="openTransactionModal(this)">
+                        <i class="fas fa-eye mr-1.5"></i>View Details
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-center py-16 text-gray-400" th:if="${#lists.isEmpty(transactions)}">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p class="text-lg font-medium">No transactions found</p>
+                <p class="text-sm">Try adjusting your filters or search criteria</p>
+            </div>
+        </div>
+
         <!-- Pagination -->
-        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0"
-             th:with="sortParam=${currentSort != null and currentSort != 'date_desc' ? '&sort=' + currentSort : ''},
-                      searchParam=${currentSearch != null and !currentSearch.isEmpty() ? '&search=' + currentSearch : ''}">
-            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Showing <span th:text="${txCount > 0 ? ((page - 1) * size + 1) : 0}">0</span>
-                to <span th:text="${(page - 1) * size + txCount}">0</span>
-                of <span th:text="${total * size}">0</span> results
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-3 sm:space-y-0">
+            <div class="text-sm text-gray-600">
+                Showing <span class="font-semibold text-gray-900" th:text="${txCount > 0 ? ((page - 1) * size + 1) : 0}">0</span>
+                to <span class="font-semibold text-gray-900" th:text="${(page - 1) * size + txCount}">0</span>
+                of <span class="font-semibold text-gray-900" th:text="${total * size}">0</span> results
             </div>
             <div class="flex space-x-1 flex-wrap justify-center">
-                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
-                   th:with="url='/admin/transactions?page=' + ${page - 1} + ${searchParam} + ${sortParam}"
-                   th:href="${url}" th:if="${page > 1}">Previous</a>
+                <a class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 text-sm font-medium transition duration-150"
+                   th:with="url='/admin/transactions?page=' + ${page - 1}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                           + (${currentSort != null} ? '&sort=' + ${currentSort} : '')"
+                   th:href="${url}" th:if="${page > 1}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
 
-                <a class="px-2 sm:px-3 py-1 border rounded-md"
-                   th:classappend="${i == page} ? 'bg-green-500 text-white' : 'hover:bg-gray-100'"
+                <a class="px-3 py-2 border rounded-lg text-sm font-medium transition duration-150"
+                   th:classappend="${i == page} ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-50'"
                    th:each="i : ${#numbers.sequence(1, total)}"
-                   th:with="url='/admin/transactions?page=' + ${i} + ${searchParam} + ${sortParam}"
+                   th:with="url='/admin/transactions?page=' + ${i}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                           + (${currentSort != null} ? '&sort=' + ${currentSort} : '')"
                    th:href="${url}"
                    th:if="${i == 1 or i == page or i == page - 1 or i == page + 1 or i == total}"
                    th:text="${i}">1</a>
 
-                <a class="px-2 sm:px-3 py-1 border rounded-md hover:bg-gray-100"
-                   th:with="url='/admin/transactions?page=' + ${page + 1} + ${searchParam} + ${sortParam}"
-                   th:href="${url}" th:if="${page < total}">Next</a>
+                <a class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 text-sm font-medium transition duration-150"
+                   th:with="url='/admin/transactions?page=' + ${page + 1}
+                           + (${currentSearch != null and !currentSearch.isEmpty()} ? '&search=' + ${currentSearch} : '')
+                           + (${currentSort != null} ? '&sort=' + ${currentSort} : '')"
+                   th:href="${url}" th:if="${page < total}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
             </div>
         </div>
 
         <!-- Modal: Transaction Detail -->
-        <div id="txModal" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
-            <div id="txModalContent" class="bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-200 rounded-3xl shadow-2xl w-full max-w-2xl p-0 m-4 relative transform transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto scale-95 opacity-0">
-                <button id="closeTxModal" class="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-3xl font-bold transition-colors duration-200 z-10">&times;</button>
-
-                <div class="px-8 pt-8 pb-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center mb-8">
-                        <div id="t-status-icon" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-0 sm:mr-6 bg-gray-500 shadow-lg border-4 border-white">
-                            <i class="fas fa-question text-white text-2xl sm:text-3xl"></i>
+        <div id="txModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+            <div id="txModalContent" class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col transform transition-all duration-300 ease-out scale-95 opacity-0">
+                <!-- Modal Header (Fixed) -->
+                <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-red-600 rounded-t-2xl flex-shrink-0">
+                    <div class="flex items-center space-x-3">
+                        <div id="t-status-icon-header" class="w-9 h-9 rounded-full flex items-center justify-center bg-white shadow-md">
+                            <i class="fas fa-question text-red-600 text-base"></i>
                         </div>
                         <div>
-                            <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-800 tracking-tight mb-1">Transaction Detail</h3>
-                            <p id="t-status-text" class="text-lg sm:text-xl font-semibold text-gray-600"></p>
+                            <h3 class="text-lg font-bold text-white">Transaction Details</h3>
+                            <p id="t-status-text" class="text-xs font-medium text-red-100"></p>
+                        </div>
+                    </div>
+                    <button id="closeTxModal" class="text-white hover:text-red-100 transition duration-150">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Body (Scrollable) -->
+                <div class="overflow-y-auto flex-1 px-5 py-4" style="scrollbar-width: thin;">
+                    <!-- Summary Cards Row -->
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div class="text-xs text-blue-600 font-semibold uppercase mb-1">Transaction ID</div>
+                            <div id="t-transactionId" class="text-base font-bold text-blue-900"></div>
+                        </div>
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <div class="text-xs text-purple-600 font-semibold uppercase mb-1">Date</div>
+                            <div id="t-created" class="text-base font-bold text-purple-900"></div>
+                        </div>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div class="text-xs text-green-600 font-semibold uppercase mb-1">Amount</div>
+                            <div id="t-amount" class="text-base font-bold text-green-900"></div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-gray-700 mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 text-gray-500 shadow">
-                                <i class="fas fa-hashtag"></i>
-                            </span>
+                    <!-- Customer Information -->
+                    <div class="bg-gray-50 rounded-lg p-3 mb-4 border border-gray-200">
+                        <h4 class="text-xs font-bold text-gray-700 uppercase mb-2 flex items-center">
+                            <i class="fas fa-user text-green-600 mr-2"></i>Customer Information
+                        </h4>
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <p class="font-semibold text-gray-500 text-xs">ID</p>
-                                <p id="t-transactionId" class="text-base sm:text-lg break-words font-medium"></p>
+                                <p class="text-xs text-gray-500 mb-1">Name</p>
+                                <p id="t-customer-name" class="font-semibold text-gray-900 text-sm"></p>
                             </div>
-                        </div>
-
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-100 text-green-500 shadow">
-                                <i class="fas fa-user"></i>
-                            </span>
                             <div>
-                                <p class="font-semibold text-gray-500 text-xs">Customer</p>
-                                <p id="t-customer-name" class="text-base sm:text-lg font-medium"></p>
+                                <p class="text-xs text-gray-500 mb-1">Email</p>
+                                <p id="t-customer-email" class="font-semibold text-gray-900 text-sm"></p>
                             </div>
-                        </div>
-
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-100 text-blue-500 shadow">
-                                <i class="fas fa-user-tie"></i>
-                            </span>
-                            <div>
-                                <p class="font-semibold text-gray-500 text-xs">Seller</p>
-                                <p id="t-seller-name" class="text-base sm:text-lg font-medium"></p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-pink-100 text-pink-500 shadow">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </span>
-                            <div>
-                                <p class="font-semibold text-gray-500 text-xs">Amount</p>
-                                <p id="t-amount" class="text-base sm:text-lg font-medium format-amount"></p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 text-indigo-500 shadow">
-                                <i class="fas fa-coins"></i>
-                            </span>
-                            <div>
-                                <p class="font-semibold text-gray-500 text-xs">Coin Admin</p>
-                                <p id="t-coin-admin" class="text-base sm:text-lg font-medium format-amount"></p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-purple-100 text-purple-500 shadow">
-                                <i class="fas fa-wallet"></i>
-                            </span>
-                            <div>
-                                <p class="font-semibold text-gray-500 text-xs">Coin Seller</p>
-                                <p id="t-coin-seller" class="text-base sm:text-lg font-medium format-amount"></p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center space-x-3">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gray-200 text-gray-600 shadow">
-                                <i class="fas fa-info-circle"></i>
-                            </span>
-                            <div>
-                                <p class="font-semibold text-gray-500 text-xs">Status</p>
-                                <p id="t-status" class="text-base sm:text-lg font-medium"></p>
-                            </div>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <p class="text-xs text-gray-500">Product / Variant</p>
-                            <p id="t-product" class="font-medium"></p>
-                        </div>
-
-                        <div>
-                            <p class="text-xs text-gray-500">Commission</p>
-                            <p id="t-commission" class="font-medium format-amount"></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Escrow Release</p>
-                            <p id="t-escrow" class="font-medium"></p>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <p class="text-xs text-gray-500">Created At</p>
-                            <p id="t-created" class="font-medium"></p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <p class="text-xs text-gray-500">Updated At</p>
-                            <p id="t-updated" class="font-medium"></p>
                         </div>
                     </div>
 
-                    <hr class="my-6 border-gray-200">
-
-                    <div id="t-dynamic-area" class="mt-4">
-                        <!-- filled by JS -->
+                    <!-- Seller Information -->
+                    <div class="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-200">
+                        <h4 class="text-xs font-bold text-blue-700 uppercase mb-2 flex items-center">
+                            <i class="fas fa-user-tie text-blue-600 mr-2"></i>Seller Information
+                        </h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Name</p>
+                                <p id="t-seller-name" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Email</p>
+                                <p id="t-seller-email" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Transaction Details -->
+                    <div class="bg-purple-50 rounded-lg p-3 mb-4 border border-purple-200">
+                        <h4 class="text-xs font-bold text-purple-700 uppercase mb-2 flex items-center">
+                            <i class="fas fa-receipt text-purple-600 mr-2"></i>Transaction Details
+                        </h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Product</p>
+                                <p id="t-product" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Variant</p>
+                                <p id="t-variant" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Status</p>
+                                <p id="t-status" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Commission</p>
+                                <p id="t-commission" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Coin Admin</p>
+                                <p id="t-coin-admin" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Coin Seller</p>
+                                <p id="t-coin-seller" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Escrow Release</p>
+                                <p id="t-escrow" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">Updated At</p>
+                                <p id="t-updated" class="font-semibold text-gray-900 text-sm"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic area -->
+                    <div id="t-dynamic-area">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Modal Footer (Fixed) -->
+                <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-end flex-shrink-0">
+                    <button onclick="document.getElementById('closeTxModal').click()"
+                            class="px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition duration-150 text-sm">
+                        Close
+                    </button>
                 </div>
             </div>
         </div>
 
         <script>
-            // Format number with dots (xxx.xxx)
-            function formatAmount(num) {
-                if (!num && num !== 0) return '0';
-                const number = typeof num === 'string' ? parseInt(num.replace(/\D/g, '')) : num;
-                return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            // Helper to format VND-style numbers with dot thousands separators
+            function formatVnd(x) {
+                const n = Number(x);
+                if (!isFinite(n)) return x ?? '';
+                return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n) + ' ₫';
             }
 
-            // Format all elements with format-amount class
-            function applyAmountFormatting(container) {
-                const elements = (container || document).querySelectorAll('.format-amount');
-                elements.forEach(el => {
-                    const amount = el.getAttribute('data-amount') || el.textContent;
-                    el.textContent = formatAmount(amount);
-                });
-            }
-
-            // Apply formatting on page load
-            document.addEventListener('DOMContentLoaded', function() {
-                applyAmountFormatting();
-            });
-
+            // Global để onclick gọi được
             window.openTransactionModal = function(btn) {
                 const modal = document.getElementById('txModal');
                 const modalContent = document.getElementById('txModalContent');
@@ -250,94 +388,85 @@ tôi đa<div th:fragment="content"
                 const id = btn?.dataset?.id;
                 if (!id) { console.error('Transaction id not found on button'); return; }
 
+                // Fetch full transaction detail from server
                 fetch('/admin/transactions/' + id, { headers: { 'Accept': 'application/json' } })
                     .then(res => {
                         if (!res.ok) throw new Error('Failed to get transaction detail: ' + res.status);
                         return res.json();
                     })
-                    .then(data => {
-                        console.log('Transaction data received:', data);
-                        renderTransactionModal(data, id);
-                    })
+                    .then(data => renderTransactionModal(data, id))
                     .catch(err => {
-                        console.error('Error loading transaction:', err);
-                        alert('Failed to load transaction details: ' + err.message);
+                        console.error(err);
+                        alert('Failed to load transaction details.');
                     });
 
                 modal.classList.remove('hidden');
+                modal.classList.add('flex');
                 setTimeout(() => {
-                    modal.classList.add('flex');
                     modalContent.classList.remove('scale-95', 'opacity-0');
                     modalContent.classList.add('scale-100', 'opacity-100');
                 }, 10);
             };
 
             function renderTransactionModal(data, id) {
-                console.log('Rendering modal with data:', data, 'and id:', id);
-                const $ = (el) => document.getElementById(el);
-                const tx = $('t-transactionId'), c = $('t-customer-name'), s = $('t-seller-name'), amt = $('t-amount'), coinAdmin = $('t-coin-admin'), coinSeller = $('t-coin-seller'), st = $('t-status'), stx = $('t-status-text'), icoWrap = $('t-status-icon'), dyn = $('t-dynamic-area'), prod = $('t-product'), comm = $('t-commission'), escrow = $('t-escrow'), tcreated = $('t-created'), tupd = $('t-updated');
+                const $ = (id) => document.getElementById(id);
+                const tx=$('t-transactionId'), cName=$('t-customer-name'), cEmail=$('t-customer-email'),
+                    sName=$('t-seller-name'), sEmail=$('t-seller-email'), amt=$('t-amount'),
+                    created=$('t-created'), st=$('t-status'), stx=$('t-status-text'),
+                    iconWrap=$('t-status-icon-header'), dyn=$('t-dynamic-area'),
+                    prod=$('t-product'), variant=$('t-variant'), comm=$('t-commission'),
+                    coinAdmin=$('t-coin-admin'), coinSeller=$('t-coin-seller'),
+                    escrow=$('t-escrow'), updated=$('t-updated');
 
-                if (!tx || !c || !s) {
-                    console.error('Required modal elements not found');
-                    return;
-                }
+                tx.textContent  = id ? '#' + id : '';
+                cName.textContent = data.customerName || 'N/A';
+                cEmail.textContent = data.customerEmail || 'N/A';
+                sName.textContent  = data.sellerName || 'N/A';
+                sEmail.textContent = data.sellerEmail || 'N/A';
+                amt.textContent = formatVnd(data.amount);
+                created.textContent  = data.createdAt || 'N/A';
+                const S = (data.status || '').trim();
+                st.textContent  = S;
+                stx.textContent = S;
 
-                tx.textContent = id ? '#' + id : (data.id || '');
-                c.textContent = data.customerName || 'N/A';
-                s.textContent = data.sellerName || 'N/A';
-
-                // Format all amounts and coins
-                if (amt) {
-                    amt.setAttribute('data-amount', data.amount || '0');
-                    amt.textContent = formatAmount(data.amount);
-                }
-                if (coinAdmin) {
-                    coinAdmin.setAttribute('data-amount', data.coinAdmin || '0');
-                    coinAdmin.textContent = formatAmount(data.coinAdmin);
-                }
-                if (coinSeller) {
-                    coinSeller.setAttribute('data-amount', data.coinSeller || '0');
-                    coinSeller.textContent = formatAmount(data.coinSeller);
-                }
-                if (comm) {
-                    comm.setAttribute('data-amount', data.commission || '0');
-                    comm.textContent = formatAmount(data.commission);
-                }
-
-                st.textContent = data.status || 'Unknown';
-                stx.textContent = data.status || 'Unknown';
-                prod.textContent = (data.productTitle || 'N/A') + (data.variantName ? (' / ' + data.variantName) : '');
+                prod.textContent = data.productTitle || 'N/A';
+                variant.textContent = data.variantName || 'N/A';
+                comm.textContent = formatVnd(data.commission);
+                coinAdmin.textContent = formatVnd(data.coinAdmin);
+                coinSeller.textContent = formatVnd(data.coinSeller);
                 escrow.textContent = data.escrowReleaseDate || 'N/A';
-                tcreated.textContent = data.createdAt || 'N/A';
-                tupd.textContent = data.updatedAt || 'N/A';
+                updated.textContent = data.updatedAt || 'N/A';
 
-                console.log('Modal populated with values');
+                iconWrap.className = 'w-9 h-9 rounded-full flex items-center justify-center bg-white shadow-md';
+                const icon = iconWrap.querySelector('i');
+                icon.className = 'fas text-base';
 
-                icoWrap.className = 'w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-0 sm:mr-6 shadow-lg border-4 border-white';
-                const icon = icoWrap.querySelector('i');
-                if (icon) icon.className = 'fas text-white text-2xl sm:text-3xl';
-                stx.className = 'text-lg sm:text-xl font-semibold';
-
-                const S = (data.status || '').toUpperCase();
-                if (S.includes('APPROVED') || S.includes('COMPLETED') || S.includes('DELIVERED')) {
-                    icoWrap.classList.add('bg-green-500'); if(icon) icon.classList.add('fa-check'); stx.classList.add('text-green-600');
-                } else if (S.includes('PENDING')) {
-                    icoWrap.classList.add('bg-yellow-500'); if(icon) icon.classList.add('fa-clock'); stx.classList.add('text-yellow-600');
-                } else if (S.includes('REJECTED') || S.includes('CANCELLED')) {
-                    icoWrap.classList.add('bg-red-500'); if(icon) icon.classList.add('fa-times'); stx.classList.add('text-red-600');
+                const U = S.toUpperCase();
+                if (U.includes('APPROVED') || U.includes('COMPLETED') || U.includes('DELIVERED')) {
+                    icon.classList.add('fa-check-circle', 'text-green-600');
+                    stx.textContent = 'Transaction Completed';
+                } else if (U.includes('PENDING')) {
+                    icon.classList.add('fa-clock', 'text-yellow-600');
+                    stx.textContent = 'Transaction Pending';
+                } else if (U.includes('REJECTED') || U.includes('CANCELLED')) {
+                    icon.classList.add('fa-times-circle', 'text-red-600');
+                    stx.textContent = 'Transaction Rejected';
                 } else {
-                    icoWrap.classList.add('bg-gray-500'); if(icon) icon.classList.add('fa-question'); stx.classList.add('text-gray-600');
+                    icon.classList.add('fa-question', 'text-gray-600');
+                    stx.textContent = data.status || 'Unknown Status';
                 }
 
                 dyn.innerHTML = '';
                 if (data.deliveredAccountId) {
-                    const d = document.createElement('div');
-                    d.className = 'space-y-2';
-                    const p = document.createElement('p');
-                    p.className = 'text-sm text-gray-500';
-                    p.textContent = 'Delivered account ID: ' + data.deliveredAccountId;
-                    d.appendChild(p);
-                    dyn.appendChild(d);
+                    const container = document.createElement('div');
+                    container.className = 'bg-gray-50 rounded-lg p-3 border border-gray-200';
+                    container.innerHTML = `
+                        <h4 class="text-xs font-bold text-gray-700 uppercase mb-2 flex items-center">
+                            <i class="fas fa-info-circle text-gray-600 mr-2"></i>Additional Information
+                        </h4>
+                        <p class="text-xs text-gray-600">Delivered Account ID: <span class="font-semibold text-gray-900">${data.deliveredAccountId}</span></p>
+                    `;
+                    dyn.appendChild(container);
                 }
             }
 

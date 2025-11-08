@@ -823,7 +823,7 @@ public class AdminController {
             // Build WHERE clause and parameters once
             String where = " WHERE t.isDelete = false" +
                     (search != null && !search.isBlank()
-                            ? " AND (LOWER(c.fullName) LIKE LOWER(:search) OR LOWER(s.fullName) LIKE LOWER(:search) OR LOWER(p.title) LIKE LOWER(:search) OR CAST(t.id AS string) LIKE :search)"
+                            ? " AND (LOWER(c.fullName) LIKE LOWER(:search) OR LOWER(s.fullName) LIKE LOWER(:search) OR LOWER(p.name) LIKE LOWER(:search) OR CAST(t.id AS string) LIKE :search)"
                             : "");
 
             // Determine ORDER BY clause based on sort parameter
@@ -1270,11 +1270,11 @@ public class AdminController {
         int end = Math.min(start + 10, total);
         List<Category> categories = allResults.subList(start, end);
 
-        // Efficiently load product counts for the current page only
+        // Efficiently load product counts for the current page only (only active products)
         if (!categories.isEmpty()) {
             List<Long> categoryIds = categories.stream().map(Category::getId).toList();
             List<Object[]> counts = entityManager.createQuery(
-                    "SELECT p.category.id, COUNT(p) FROM Product p WHERE p.category.id IN :ids GROUP BY p.category.id",
+                    "SELECT p.category.id, COUNT(p) FROM Product p WHERE p.category.id IN :ids AND p.isDelete = false GROUP BY p.category.id",
                     Object[].class
             ).setParameter("ids", categoryIds).getResultList();
 
@@ -2027,9 +2027,9 @@ public class AdminController {
                     .map(s -> s.getUser().getId())
                     .collect(java.util.stream.Collectors.toList());
 
-            // Batch query for product counts
+            // Batch query for product counts (only active products)
             List<Object[]> productCounts = entityManager.createQuery(
-                    "SELECT p.seller.id, COUNT(p) FROM Product p WHERE p.seller.id IN :ids GROUP BY p.seller.id",
+                    "SELECT p.seller.id, COUNT(p) FROM Product p WHERE p.seller.id IN :ids AND p.isDelete = false GROUP BY p.seller.id",
                     Object[].class
             ).setParameter("ids", sellerIds).getResultList();
 
