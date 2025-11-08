@@ -16,8 +16,23 @@
     <!-- Add Font Awesome to display the award badge icon consistently with productdetail.html -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" th:href="@{/customer/css/shop.css}">
+    <style>
+        body {
+            background: url('/images/home1.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                background-position: top center;
+            }
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-[#fff] to-[#fff6f4] text-gray-900">
+<body class="min-h-screen">
 
 <!-- Header -->
 <div th:replace="~{fragments/header :: header}"></div>
@@ -26,8 +41,8 @@
 
     <main>
         <!-- Shop header -->
-        <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8 mb-10 shop-info"
-                 style="background: linear-gradient(90deg, #F53E32 0%, #ff7e6b 100%); box-shadow: 0 4px 24px 0 rgba(245,62,50,0.10); border: none;">
+        <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8 mb-10 shop-info relative overflow-hidden"
+                 style="background: linear-gradient(135deg, rgba(245,62,50,0.95) 0%, rgba(255,126,107,0.92) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 32px 0 rgba(245,62,50,0.25); border: 1px solid rgba(255,255,255,0.18);">
             <div class="flex items-center gap-6">
                 <div class="avatar" style="background: rgba(255,255,255,0.18); border: 2.5px solid #fff;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" class="w-12 h-12">
@@ -72,7 +87,7 @@
         </section>
 
         <!-- Top search -->
-        <form id="shop-search-form" class="mb-8" method="get" th:action="@{/shop}">
+        <form id="shop-search-form" class="mb-8 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg" method="get" th:action="@{/shop}">
             <input type="hidden" name="id" th:value="${shopIdentifier}" />
             <div class="top-search">
                 <input id="shop-search-input" name="q" type="search" placeholder="Search products in this shop..." class="chip flex-1"
@@ -83,7 +98,7 @@
         </form>
 
         <!-- Toolbar -->
-        <section>
+        <section class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
             <div class="flex items-center justify-between mb-6">
                 <h2></h2>
                 <button type="button" id="clearAllFilters" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 bg-white hover:border-[#F53E32] hover:text-[#F53E32] font-semibold transition-all shadow-sm hover:shadow-md"
