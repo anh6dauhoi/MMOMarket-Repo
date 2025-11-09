@@ -85,6 +85,8 @@ public class FileUploadTask {
                 log.info("✓ Database updated with Drive URL");
 
                 // Delete local file after successful upload
+                // TODO: Temporarily disabled - keep local files
+                /*
                 try {
                     Path localPath = Paths.get(localFilePath);
                     if (Files.exists(localPath)) {
@@ -94,6 +96,7 @@ public class FileUploadTask {
                 } catch (Exception e) {
                     log.warn("Failed to delete local file: {}", localFilePath, e);
                 }
+                */
             } else {
                 log.warn("Failed to update database, keeping local file: {}", localFilePath);
             }
@@ -203,6 +206,8 @@ public class FileUploadTask {
             log.info("✓ File uploaded to Google Drive: {}", driveUrl);
 
             // Delete local file
+            // TODO: Temporarily disabled - keep local files
+            /*
             try {
                 Path localPath = Paths.get(localFilePath);
                 if (Files.exists(localPath)) {
@@ -212,6 +217,7 @@ public class FileUploadTask {
             } catch (Exception e) {
                 log.warn("Failed to delete local file: {}", localFilePath, e);
             }
+            */
 
             log.info("=== Async Upload Complete ===");
 
