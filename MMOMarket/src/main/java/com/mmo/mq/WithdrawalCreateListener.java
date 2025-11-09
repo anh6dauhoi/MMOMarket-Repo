@@ -1,9 +1,11 @@
 package com.mmo.mq;
 
+import com.mmo.entity.Complaint;
 import com.mmo.entity.SellerBankInfo;
 import com.mmo.entity.User;
 import com.mmo.entity.Withdrawal;
 import com.mmo.mq.dto.WithdrawalCreateMessage;
+import com.mmo.repository.ComplaintRepository;
 import com.mmo.repository.EmailVerificationRepository;
 import com.mmo.repository.UserRepository;
 import com.mmo.repository.WithdrawalRepository;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class WithdrawalCreateListener {
@@ -27,6 +30,7 @@ public class WithdrawalCreateListener {
     private final UserRepository userRepository;
     private final WithdrawalRepository withdrawalRepository;
     private final EmailVerificationRepository emailVerificationRepository;
+    private final ComplaintRepository complaintRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
 
@@ -36,11 +40,13 @@ public class WithdrawalCreateListener {
     public WithdrawalCreateListener(UserRepository userRepository,
                                     WithdrawalRepository withdrawalRepository,
                                     EmailVerificationRepository emailVerificationRepository,
+                                    ComplaintRepository complaintRepository,
                                     NotificationService notificationService,
                                     EmailService emailService) {
         this.userRepository = userRepository;
         this.withdrawalRepository = withdrawalRepository;
         this.emailVerificationRepository = emailVerificationRepository;
+        this.complaintRepository = complaintRepository;
         this.notificationService = notificationService;
         this.emailService = emailService;
     }
@@ -78,6 +84,40 @@ public class WithdrawalCreateListener {
         SellerBankInfo bankInfo = entityManager.find(SellerBankInfo.class, msg.bankInfoId());
         if (bankInfo == null || bankInfo.isDelete() || bankInfo.getUser() == null || !bankInfo.getUser().getId().equals(seller.getId())) {
             log.warn("BankInfo id={} invalid for seller id={}, skipping", msg.bankInfoId(), seller.getId());
+            return;
+        }
+
+        // BUSINESS RULE: Check for open complaints - seller cannot withdraw if there are any open complaints
+        // Open complaints: NEW, IN_PROGRESS, PENDING_CONFIRMATION, ESCALATED
+        try {
+            List<Complaint> openComplaints = complaintRepository.findBySeller(seller);
+            if (openComplaints != null && !openComplaints.isEmpty()) {
+                long openCount = openComplaints.stream()
+                        .filter(c -> c.getStatus() == Complaint.ComplaintStatus.NEW ||
+                                     c.getStatus() == Complaint.ComplaintStatus.IN_PROGRESS ||
+                                     c.getStatus() == Complaint.ComplaintStatus.PENDING_CONFIRMATION ||
+                                     c.getStatus() == Complaint.ComplaintStatus.ESCALATED)
+                        .count();
+
+                if (openCount > 0) {
+                    log.warn("Seller id={} has {} open complaint(s), withdrawal blocked", seller.getId(), openCount);
+                    notificationService.createNotificationForUser(
+                            seller.getId(),
+                            "Withdrawal Blocked - Open Complaint(s)",
+                            "Your withdrawal request cannot be processed because you have " + openCount +
+                            " open complaint(s). Please resolve all complaints before requesting withdrawal."
+                    );
+                    return;
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Error checking complaints for seller id={}: {}", seller.getId(), ex.getMessage(), ex);
+            // In case of error checking complaints, block withdrawal for safety
+            notificationService.createNotificationForUser(
+                    seller.getId(),
+                    "Withdrawal Failed",
+                    "Unable to process withdrawal at this time. Please contact support."
+            );
             return;
         }
 

@@ -44,8 +44,8 @@ public class EscrowReleaseScheduler {
         log.info("Escrow release scan found {} transactions due", due.size());
         for (Transaction tx : due) {
             try {
-                // Skip if there is an open complaint linked to this transaction
-                // Check for complaints with status: NEW, IN_PROGRESS, PENDING_CONFIRMATION, or ESCALATED
+                // Check if there is an open complaint linked to this transaction
+                // Open complaints: NEW, IN_PROGRESS, PENDING_CONFIRMATION, or ESCALATED
                 boolean hasOpenComplaint = false;
                 try {
                     hasOpenComplaint = complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.NEW)
@@ -53,22 +53,44 @@ public class EscrowReleaseScheduler {
                             || complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.PENDING_CONFIRMATION)
                             || complaintRepository.existsByTransactionIdAndStatus(tx.getId(), Complaint.ComplaintStatus.ESCALATED);
                 } catch (Exception ignored) {}
+
                 if (hasOpenComplaint) {
                     log.info("Skipping tx {} due to open complaint", tx.getId());
                     continue;
                 }
-                // Mark completed and credit seller
-                tx.setStatus("COMPLETED");
-                transactionRepository.save(tx);
-                if (tx.getSeller() != null && tx.getCoinSeller() != null && tx.getCoinSeller() > 0) {
-                    userRepository.addCoins(tx.getSeller().getId(), tx.getCoinSeller());
-                    try {
-                        notificationService.createNotificationForUser(tx.getSeller().getId(), "Payout received",
-                                "Your sale has been released from escrow. You received " + String.format("%,d", tx.getCoinSeller()) + " coins.");
-                    } catch (Exception ignored) {}
-                }
+
+                // If no open complaint exists (including RESOLVED, CLOSED_BY_ADMIN, CANCELLED, or NO complaint at all)
+                // and escrow period has passed -> release money to seller
+                releaseMoneyToSeller(tx);
+
             } catch (Exception ex) {
                 log.error("Failed to release tx {}: {}", tx.getId(), ex.getMessage(), ex);
+            }
+        }
+    }
+
+    /**
+     * Helper method to release money to seller
+     * Business rule: After 3 days with no open complaint, money is automatically released to seller
+     */
+    private void releaseMoneyToSeller(Transaction tx) {
+        tx.setStatus("COMPLETED");
+        transactionRepository.save(tx);
+
+        if (tx.getSeller() != null && tx.getCoinSeller() != null && tx.getCoinSeller() > 0) {
+            userRepository.addCoins(tx.getSeller().getId(), tx.getCoinSeller());
+            log.info("Released {} coins to seller #{} for transaction #{}",
+                    tx.getCoinSeller(), tx.getSeller().getId(), tx.getId());
+
+            try {
+                notificationService.createNotificationForUser(
+                        tx.getSeller().getId(),
+                        "Payout received",
+                        "Your sale has been released from escrow. You received " +
+                        String.format("%,d", tx.getCoinSeller()) + " coins. Transaction #" + tx.getId()
+                );
+            } catch (Exception e) {
+                log.error("Failed to notify seller for tx {}", tx.getId(), e);
             }
         }
     }
