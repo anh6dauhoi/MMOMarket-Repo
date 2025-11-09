@@ -57,6 +57,9 @@ public class Complaint {
     @Column(name = "seller_final_response", columnDefinition = "TEXT")
     private String sellerFinalResponse;
 
+    @Column(name = "seller_proposed_solution", columnDefinition = "TEXT")
+    private String sellerProposedSolution;
+
     @Column(name = "escalation_reason", columnDefinition = "TEXT")
     private String escalationReason;
 
@@ -78,6 +81,10 @@ public class Complaint {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "responded_at")
     private Date respondedAt;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "proposed_at")
+    private Date proposedAt;
 
     @Column(name = "created_by")
     private Long createdBy;

@@ -1592,6 +1592,9 @@ public class SellerController {
                 data.put("adminHandler", admin);
             }
             data.put("sellerFinalResponse", c.getSellerFinalResponse());
+            data.put("respondedAt", c.getRespondedAt());
+            data.put("sellerProposedSolution", c.getSellerProposedSolution());
+            data.put("proposedAt", c.getProposedAt());
             data.put("adminDecisionNotes", c.getAdminDecisionNotes());
             return ResponseEntity.ok(data);
         } catch (Exception ex) {
@@ -1641,28 +1644,37 @@ public class SellerController {
                 return ResponseEntity.badRequest().body("Reason must be at least 10 characters");
             }
 
-            // Check if already responded
-            if (complaint.getSellerFinalResponse() != null && !complaint.getSellerFinalResponse().isEmpty()) {
-                return ResponseEntity.badRequest().body("You have already responded to this complaint");
-            }
-
-            // Save seller response
-            String response = action + ": " + reason.trim();
-            complaint.setSellerFinalResponse(response);
-            complaint.setRespondedAt(new Date()); // Record when seller responded
-            complaint.setUpdatedAt(new Date());
-
-            // Update status based on action
-            if (action.equals("APPROVE")) {
-                // Seller accepts the complaint - move to pending confirmation or resolved
-                if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
-                    complaint.setStatus(Complaint.ComplaintStatus.IN_PROGRESS);
+            // Business logic based on current status
+            if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
+                // Initial response: Check if already responded
+                if (complaint.getSellerFinalResponse() != null && !complaint.getSellerFinalResponse().isEmpty()) {
+                    return ResponseEntity.badRequest().body("You have already responded to this complaint");
                 }
-            } else if (action.equals("REJECT")) {
-                // Seller rejects the complaint - move to pending confirmation
-                if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
+
+                // Save seller initial response
+                String response = action + ": " + reason.trim();
+                complaint.setSellerFinalResponse(response);
+                complaint.setRespondedAt(new Date());
+                complaint.setUpdatedAt(new Date());
+
+                // Update status based on action
+                if (action.equals("APPROVE")) {
+                    complaint.setStatus(Complaint.ComplaintStatus.IN_PROGRESS);
+                } else if (action.equals("REJECT")) {
                     complaint.setStatus(Complaint.ComplaintStatus.PENDING_CONFIRMATION);
                 }
+            } else if (complaint.getStatus() == Complaint.ComplaintStatus.IN_PROGRESS) {
+                // Proposing solution: Save as proposed solution
+                String solution = action + ": " + reason.trim();
+                complaint.setSellerProposedSolution(solution);
+                complaint.setProposedAt(new Date()); // Record when seller proposed solution
+                complaint.setUpdatedAt(new Date());
+
+                // Move to PENDING_CONFIRMATION regardless of APPROVE/REJECT
+                // Customer will need to confirm or reject the proposed solution
+                complaint.setStatus(Complaint.ComplaintStatus.PENDING_CONFIRMATION);
+            } else {
+                return ResponseEntity.badRequest().body("Cannot respond to complaint in current status: " + complaint.getStatus());
             }
 
             entityManager.merge(complaint);

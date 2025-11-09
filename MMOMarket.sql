@@ -275,12 +275,14 @@ CREATE TABLE IF NOT EXISTS Complaints (
         'CANCELLED'                -- Đã đóng (Buyer tự hủy khiếu nại)
     ) NOT NULL DEFAULT 'NEW',
     seller_final_response TEXT NULL,
+	seller_proposed_solution TEXT NULL,
 	escalation_reason TEXT NULL,
     admin_handler_id BIGINT NULL,
     admin_decision_notes TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Thời gian cập nhật
     responded_at DATETIME,
+    proposed_at DATETIME,
     created_by BIGINT, -- Người tạo
     deleted_by BIGINT, -- Người xóa
     isDelete TINYINT(1) DEFAULT 0, -- Trạng thái xóa mềm

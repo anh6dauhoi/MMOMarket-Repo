@@ -33,7 +33,7 @@
     </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-<div th:replace="fragments/header :: header"></div>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <!-- Semi-transparent white wrapper for all content -->
@@ -203,7 +203,7 @@
     </div> <!-- end semi-transparent wrapper -->
 </main>
 
-<div th:replace="fragments/footer :: footer"></div>
+<div th:replace="~{fragments/footer :: footer}"></div>
 
 <script>
 /* FAQ search filter */
