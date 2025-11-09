@@ -63,8 +63,6 @@
                             <i class="fas fa-sort text-red-600 mr-1"></i>Sort By
                         </label>
                         <select name="sort" class="w-full py-2 px-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-white shadow-sm text-sm">
-                            <option value="name_asc" th:selected="${currentSort == null or currentSort == 'name_asc'}">Name A-Z</option>
-                            <option value="name_desc" th:selected="${currentSort == 'name_desc'}">Name Z-A</option>
                             <option value="products_desc" th:selected="${currentSort == 'products_desc'}">Products ↓</option>
                             <option value="products_asc" th:selected="${currentSort == 'products_asc'}">Products ↑</option>
                         </select>
