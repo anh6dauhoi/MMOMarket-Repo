@@ -122,6 +122,9 @@ public class SellerController {
     private com.mmo.service.ComplaintService complaintService;
 
     @Autowired
+    private com.mmo.repository.ComplaintRepository complaintRepository;
+
+    @Autowired
     private FileStorageService fileStorageService;
 
     private static final long REGISTRATION_FEE = 200_000L;
@@ -877,6 +880,49 @@ public class SellerController {
         return "seller/withdraw-money";
     }
 
+    // NEW: Check if seller has open complaints (validation before withdrawal)
+    @GetMapping(path = "/withdrawals/check-complaints")
+    @ResponseBody
+    public ResponseEntity<?> checkOpenComplaints(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("hasOpenComplaints", false, "message", "Unauthorized"));
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User seller = userRepository.findByEmail(email).orElse(null);
+        if (seller == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("hasOpenComplaints", false, "message", "Unauthorized"));
+        }
+
+        try {
+            List<Complaint> openComplaints = complaintRepository.findBySeller(seller);
+            if (openComplaints != null && !openComplaints.isEmpty()) {
+                long openCount = openComplaints.stream()
+                        .filter(c -> c.getStatus() == Complaint.ComplaintStatus.NEW ||
+                                     c.getStatus() == Complaint.ComplaintStatus.IN_PROGRESS ||
+                                     c.getStatus() == Complaint.ComplaintStatus.PENDING_CONFIRMATION ||
+                                     c.getStatus() == Complaint.ComplaintStatus.ESCALATED)
+                        .count();
+
+                if (openCount > 0) {
+                    return ResponseEntity.ok(Map.of(
+                        "hasOpenComplaints", true,
+                        "count", openCount,
+                        "message", "You have " + openCount + " open complaint(s). Please resolve all complaints before requesting withdrawal."
+                    ));
+                }
+            }
+            return ResponseEntity.ok(Map.of("hasOpenComplaints", false, "message", "No open complaints"));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("hasOpenComplaints", true, "message", "Unable to verify complaint status. Please contact support."));
+        }
+    }
+
     // NEW: Send OTP for withdrawal (asynchronous email via EmailService)
     @PostMapping(path = "/withdrawals/send-otp")
     @ResponseBody
@@ -921,7 +967,7 @@ public class SellerController {
                     verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
                     verification.setUsed(false);
                     emailVerificationRepository.save(verification);
-                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String subject = "[MMOMarket] OTP Withdrawal Verification";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
                 } catch (Exception ignored) {
@@ -3427,7 +3473,7 @@ public class SellerController {
                     verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
                     verification.setUsed(false);
                     emailVerificationRepository.save(verification);
-                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String subject = "[MMOMarket] OTP Withdrawal Verification";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
                 } catch (Exception ignored) {
