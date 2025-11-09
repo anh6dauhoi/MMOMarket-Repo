@@ -242,9 +242,11 @@ public class ComplaintController {
         model.addAttribute("complaintCreatedAt", complaint.getCreatedAt());
         model.addAttribute("complaintUpdatedAt", complaint.getUpdatedAt());
         model.addAttribute("complaintRespondedAt", complaint.getRespondedAt());
+        model.addAttribute("complaintProposedAt", complaint.getProposedAt());
         model.addAttribute("complaintTransactionId", complaint.getTransactionId());
         model.addAttribute("complaintDescription", complaint.getDescription());
         model.addAttribute("sellerResponse", complaint.getSellerFinalResponse());
+        model.addAttribute("sellerProposedSolution", complaint.getSellerProposedSolution());
         model.addAttribute("escalationReason", complaint.getEscalationReason());
         model.addAttribute("adminDecision", complaint.getAdminDecisionNotes());
 
