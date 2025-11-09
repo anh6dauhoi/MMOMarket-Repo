@@ -169,8 +169,10 @@ public class SellerController {
         }
         model.addAttribute("sellerAgreementUrl", agreementUrl);
 
-        // Add user data to model for balance display
+        // Add user data to model for balance display and sidebar
         model.addAttribute("user", user);
+        model.addAttribute("currentUser", user);
+        model.addAttribute("displayName", user.getFullName() != null ? user.getFullName() : email);
 
         // Prefer shopStatus over legacy SellerRegistration flow
         String shopStatus = user.getShopStatus();
@@ -187,6 +189,7 @@ public class SellerController {
             registration.put("shopName", shop != null ? shop.getShopName() : (user.getFullName() != null ? user.getFullName() + "'s Shop" : "My Shop"));
             registration.put("description", shop != null ? shop.getDescription() : "");
             model.addAttribute("registration", registration);
+            model.addAttribute("activeTab", "seller");
             return "customer/account-setting";
         }
 
@@ -194,6 +197,7 @@ public class SellerController {
         if (!model.containsAttribute("sellerRegistration")) {
             model.addAttribute("sellerRegistration", new SellerRegistrationForm());
         }
+        model.addAttribute("activeTab", "seller");
         return "customer/account-setting";
     }
 
