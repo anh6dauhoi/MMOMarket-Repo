@@ -122,6 +122,9 @@ public class SellerController {
     private com.mmo.service.ComplaintService complaintService;
 
     @Autowired
+    private com.mmo.repository.ComplaintRepository complaintRepository;
+
+    @Autowired
     private FileStorageService fileStorageService;
 
     private static final long REGISTRATION_FEE = 200_000L;
@@ -877,6 +880,49 @@ public class SellerController {
         return "seller/withdraw-money";
     }
 
+    // NEW: Check if seller has open complaints (validation before withdrawal)
+    @GetMapping(path = "/withdrawals/check-complaints")
+    @ResponseBody
+    public ResponseEntity<?> checkOpenComplaints(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("hasOpenComplaints", false, "message", "Unauthorized"));
+        }
+        String email = authentication.getName();
+        if (authentication.getPrincipal() instanceof OidcUser oidc) email = oidc.getEmail();
+        else if (authentication.getPrincipal() instanceof OAuth2User ou) {
+            Object mailAttr = ou.getAttributes().get("email");
+            if (mailAttr != null) email = mailAttr.toString();
+        }
+        User seller = userRepository.findByEmail(email).orElse(null);
+        if (seller == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("hasOpenComplaints", false, "message", "Unauthorized"));
+        }
+
+        try {
+            List<Complaint> openComplaints = complaintRepository.findBySeller(seller);
+            if (openComplaints != null && !openComplaints.isEmpty()) {
+                long openCount = openComplaints.stream()
+                        .filter(c -> c.getStatus() == Complaint.ComplaintStatus.NEW ||
+                                     c.getStatus() == Complaint.ComplaintStatus.IN_PROGRESS ||
+                                     c.getStatus() == Complaint.ComplaintStatus.PENDING_CONFIRMATION ||
+                                     c.getStatus() == Complaint.ComplaintStatus.ESCALATED)
+                        .count();
+
+                if (openCount > 0) {
+                    return ResponseEntity.ok(Map.of(
+                        "hasOpenComplaints", true,
+                        "count", openCount,
+                        "message", "You have " + openCount + " open complaint(s). Please resolve all complaints before requesting withdrawal."
+                    ));
+                }
+            }
+            return ResponseEntity.ok(Map.of("hasOpenComplaints", false, "message", "No open complaints"));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("hasOpenComplaints", true, "message", "Unable to verify complaint status. Please contact support."));
+        }
+    }
+
     // NEW: Send OTP for withdrawal (asynchronous email via EmailService)
     @PostMapping(path = "/withdrawals/send-otp")
     @ResponseBody
@@ -921,7 +967,7 @@ public class SellerController {
                     verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000)); // 5 minutes expiry
                     verification.setUsed(false);
                     emailVerificationRepository.save(verification);
-                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String subject = "[MMOMarket] OTP Withdrawal Verification";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
                 } catch (Exception ignored) {
@@ -1546,6 +1592,9 @@ public class SellerController {
                 data.put("adminHandler", admin);
             }
             data.put("sellerFinalResponse", c.getSellerFinalResponse());
+            data.put("respondedAt", c.getRespondedAt());
+            data.put("sellerProposedSolution", c.getSellerProposedSolution());
+            data.put("proposedAt", c.getProposedAt());
             data.put("adminDecisionNotes", c.getAdminDecisionNotes());
             return ResponseEntity.ok(data);
         } catch (Exception ex) {
@@ -1595,28 +1644,37 @@ public class SellerController {
                 return ResponseEntity.badRequest().body("Reason must be at least 10 characters");
             }
 
-            // Check if already responded
-            if (complaint.getSellerFinalResponse() != null && !complaint.getSellerFinalResponse().isEmpty()) {
-                return ResponseEntity.badRequest().body("You have already responded to this complaint");
-            }
-
-            // Save seller response
-            String response = action + ": " + reason.trim();
-            complaint.setSellerFinalResponse(response);
-            complaint.setRespondedAt(new Date()); // Record when seller responded
-            complaint.setUpdatedAt(new Date());
-
-            // Update status based on action
-            if (action.equals("APPROVE")) {
-                // Seller accepts the complaint - move to pending confirmation or resolved
-                if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
-                    complaint.setStatus(Complaint.ComplaintStatus.IN_PROGRESS);
+            // Business logic based on current status
+            if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
+                // Initial response: Check if already responded
+                if (complaint.getSellerFinalResponse() != null && !complaint.getSellerFinalResponse().isEmpty()) {
+                    return ResponseEntity.badRequest().body("You have already responded to this complaint");
                 }
-            } else if (action.equals("REJECT")) {
-                // Seller rejects the complaint - move to pending confirmation
-                if (complaint.getStatus() == Complaint.ComplaintStatus.NEW) {
+
+                // Save seller initial response
+                String response = action + ": " + reason.trim();
+                complaint.setSellerFinalResponse(response);
+                complaint.setRespondedAt(new Date());
+                complaint.setUpdatedAt(new Date());
+
+                // Update status based on action
+                if (action.equals("APPROVE")) {
+                    complaint.setStatus(Complaint.ComplaintStatus.IN_PROGRESS);
+                } else if (action.equals("REJECT")) {
                     complaint.setStatus(Complaint.ComplaintStatus.PENDING_CONFIRMATION);
                 }
+            } else if (complaint.getStatus() == Complaint.ComplaintStatus.IN_PROGRESS) {
+                // Proposing solution: Save as proposed solution
+                String solution = action + ": " + reason.trim();
+                complaint.setSellerProposedSolution(solution);
+                complaint.setProposedAt(new Date()); // Record when seller proposed solution
+                complaint.setUpdatedAt(new Date());
+
+                // Move to PENDING_CONFIRMATION regardless of APPROVE/REJECT
+                // Customer will need to confirm or reject the proposed solution
+                complaint.setStatus(Complaint.ComplaintStatus.PENDING_CONFIRMATION);
+            } else {
+                return ResponseEntity.badRequest().body("Cannot respond to complaint in current status: " + complaint.getStatus());
             }
 
             entityManager.merge(complaint);
@@ -3427,7 +3485,7 @@ public class SellerController {
                     verification.setExpiryDate(new Date(System.currentTimeMillis() + 5 * 60 * 1000));
                     verification.setUsed(false);
                     emailVerificationRepository.save(verification);
-                    String subject = "[MMOMarket] OTP Xác minh rút tiền";
+                    String subject = "[MMOMarket] OTP Withdrawal Verification";
                     String html = EmailTemplate.withdrawalOtpEmail(code);
                     emailService.sendEmailAsync(target.getEmail(), subject, html);
                 } catch (Exception ignored) {

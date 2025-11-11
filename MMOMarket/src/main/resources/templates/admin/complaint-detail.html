@@ -229,32 +229,50 @@
                         </div>
                     </div>
 
-                    <!-- Seller Response (if any) -->
+                    <!-- Seller Initial Response (if any) -->
                     <div th:if="${complaint.sellerFinalResponse != null and !#strings.isEmpty(complaint.sellerFinalResponse)}"
-                         class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-md p-6 border border-green-200">
+                         class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-md p-6 border border-blue-200">
                         <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                            <i class="fas fa-reply text-green-600 mr-2"></i>Seller Response
+                            <i class="fas fa-reply text-blue-600 mr-2"></i>Seller Initial Response
                         </h2>
                         <div class="space-y-3">
-                            <!-- Derive action from status -->
-                            <div class="flex items-start">
-                                <span class="text-sm font-semibold text-gray-700 w-32">Action:</span>
-                                <span th:if="${complaint.status != null and complaint.status.name() == 'IN_PROGRESS'}"
-                                      class="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
-                                    Approved
-                                </span>
-                                <span th:if="${complaint.status == null or complaint.status.name() != 'IN_PROGRESS'}"
-                                      class="px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300">
-                                    Rejected/Proposed Solution
-                                </span>
-                            </div>
                             <div class="flex items-start">
                                 <span class="text-sm font-semibold text-gray-700 w-32">Response:</span>
-                                <p class="text-sm text-gray-600 flex-1 whitespace-pre-wrap" th:text="${complaint.sellerFinalResponse}">Seller response text</p>
+                                <p class="text-sm text-gray-600 flex-1 whitespace-pre-wrap" th:text="${complaint.sellerFinalResponse}">Seller initial response text</p>
+                            </div>
+                            <div class="flex items-start" th:if="${complaint.respondedAt != null}">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Responded At:</span>
+                                <span class="text-sm text-gray-600" th:text="${#dates.format(complaint.respondedAt,'yyyy-MM-dd HH:mm')}">Date</span>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-blue-200">
+                                <p class="text-xs text-blue-700 italic flex items-center">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    This is the seller's first response to the complaint (approve/reject).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seller Proposed Solution (if any) -->
+                    <div th:if="${complaint.sellerProposedSolution != null and !#strings.isEmpty(complaint.sellerProposedSolution)}"
+                         class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-md p-6 border border-green-200">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-lightbulb text-green-600 mr-2"></i>Seller Proposed Solution
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <span class="text-sm font-semibold text-gray-700 w-32">Solution:</span>
+                                <p class="text-sm text-gray-600 flex-1 whitespace-pre-wrap" th:text="${complaint.sellerProposedSolution}">Seller proposed solution text</p>
                             </div>
                             <div class="flex items-start">
-                                <span class="text-sm font-semibold text-gray-700 w-32">Responded At:</span>
-                                <span class="text-sm text-gray-600" th:text="${complaint.updatedAt != null ? #dates.format(complaint.updatedAt,'yyyy-MM-dd HH:mm') : ''}">Date</span>
+                                <span class="text-sm font-semibold text-gray-700 w-32">Proposed At:</span>
+                                <span class="text-sm text-gray-600" th:text="${complaint.proposedAt != null ? #dates.format(complaint.proposedAt,'yyyy-MM-dd HH:mm') : (complaint.updatedAt != null ? #dates.format(complaint.updatedAt,'yyyy-MM-dd HH:mm') : '')}">Date</span>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-green-200">
+                                <p class="text-xs text-green-700 italic flex items-center">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    This is the solution proposed by the seller after approving the complaint.
+                                </p>
                             </div>
                         </div>
                     </div>

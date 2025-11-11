@@ -21,7 +21,7 @@
     </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-<div th:replace="fragments/header :: header"></div>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 lg:p-12 shadow-lg">
@@ -332,6 +332,6 @@
     </div>
 </main>
 
-<div th:replace="fragments/footer :: footer"></div>
+<div th:replace="~{fragments/footer :: footer}"></div>
 </body>
 </html>
