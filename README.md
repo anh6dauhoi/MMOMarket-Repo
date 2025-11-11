@@ -38,9 +38,11 @@ The application is designed to integrate with external services, utilizing Sepay
 - Content & Engagement: View/Manage Blogs and Feedback/Rate Product.
 - Admin Dashboard: User Management , Shop Management (incl. Flag Shop) , Category Management , and View System Statistics.
 
+# 📘 Additional Workflow Documentation
+- Product Management Workflow (VI): `MMOMarket/PRODUCT_MANAGEMENT_WORKFLOW_VI.md`
+
 # 👨‍💻 Team Members
 1. Trần Văn Tuấn Anh (AnhTVT): Responsible for Authentication, Seller Registration, all Financials (Top-Up, Withdrawal), Notifications, and Complaint Management.
 2. Đỗ Thúy Anh (AnhDTT): Responsible for Public Browsing (Homepage, Products, Categories), Customer Blog features, and Wishlist.
 3. Phí Quang Duy (DuyPQ): Responsible for the Admin Dashboard (User, Shop, Category Management), System Statistics, Commission settings, and Profile Updates.
 4. Hoàng Xuân Hưng (HungHX): Responsible for Seller Product/Variant Management, Customer Order/Payment flow, the Chat System, and Seller-side Statistics/Complaints.
-
