@@ -1,0 +1,70 @@
+@startuml Withdrawal - Class Diagram
+!define ENTITY_COLOR #E8F5E9
+
+skinparam backgroundColor #FAFAFA
+skinparam linetype ortho
+skinparam nodesep 120
+skinparam ranksep 120
+skinparam padding 15
+skinparam classBackgroundColor ENTITY_COLOR
+skinparam classBorderColor #81C784
+skinparam arrowThickness 1.5
+
+' Title
+title Withdrawal - Class Diagram\nEntity Level - Relationships Focus
+
+' =============== ENTITIES ===============
+
+class User <<Entity>> {
+}
+
+class SellerBankInfo <<Entity>> {
+}
+
+class Withdrawal <<Entity>> {
+}
+
+class EmailVerification <<Entity>> {
+}
+
+class Complaint <<Entity>> {
+}
+
+' =============== LAYOUT HINTS (Hidden) ===============
+
+User -[hidden]right- SellerBankInfo
+SellerBankInfo -[hidden]right- Withdrawal
+User -[hidden]down- EmailVerification
+User -[hidden]down- Complaint
+
+' =============== MAIN RELATIONSHIPS ===============
+
+User "1" -right-> "0..*" SellerBankInfo : <<has>>
+
+User "1" -down-> "0..*" Withdrawal : <<seller>>
+
+SellerBankInfo "1" <-- "0..*" Withdrawal : <<uses>>
+
+User "1" ..> "0..*" EmailVerification : <<OTP>>
+
+User "1" ..> "0..*" Complaint : <<seller>>
+
+' =============== LEGEND ===============
+
+legend bottom
+  **Relationship Types:**
+  | Symbol | Meaning |
+  | ━━━━━▶ | Association (solid) |
+  | ┄┄┄┄┄▶ | Dependency (dotted) |
+
+  **Withdrawal Flow:**
+  1. Seller sends OTP request
+  2. Seller creates Withdrawal (with OTP verification)
+  3. System checks open Complaints (block if exists)
+  4. Deduct coins atomically (via RabbitMQ)
+  5. Withdrawal status = Pending (await Admin approval)
+  6. Admin approves/rejects Withdrawal
+end legend
+
+@enduml
+

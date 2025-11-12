@@ -1,0 +1,148 @@
+@startuml Buy Account - Sequence Diagram
+!theme plain
+skinparam backgroundColor #FAFAFA
+
+title Buy Account (Make Order → Make Payment) - Sequence Diagram\nObject Level - Overview
+
+actor Customer
+participant ":BuyController" as Controller
+participant ":OrdersRepository" as OrdersRepo
+participant ":BuyAccountPublisher" as Publisher
+participant "RabbitMQ" as MQ
+participant ":BuyAccountListener" as Listener
+participant ":UserRepository" as UserRepo
+participant ":ProductVariantAccountRepository" as AccountRepo
+participant ":TransactionRepository" as TxRepo
+participant ":Database" as DB
+
+== Step 1: Create Order ==
+
+Customer -> Controller: POST /buy/place(productId, variantId, quantity)
+activate Controller
+
+Controller -> Controller: Authenticate & validate
+
+Controller -> DB: Query User, Product, ProductVariant
+activate DB
+DB --> Controller: Entities
+deactivate DB
+
+alt Validation failed
+    Controller --> Customer: Error
+    deactivate Controller
+else Validation passed
+
+    Controller -> Controller: Calculate total & create Orders (PENDING)
+
+    Controller -> OrdersRepo: save(order)
+    activate OrdersRepo
+    OrdersRepo -> DB: INSERT Orders
+    activate DB
+    deactivate DB
+    OrdersRepo --> Controller: Order
+    deactivate OrdersRepo
+
+    Controller -> Publisher: publish(orderId)
+    activate Publisher
+    Publisher -> MQ: Send message
+    activate MQ
+    deactivate Publisher
+
+    Controller --> Customer: {ok: true, orderId: X}
+    deactivate Controller
+end
+
+== Step 2: Process Payment (Async via RabbitMQ) ==
+
+MQ -> Listener: Consume message (orderId)
+deactivate MQ
+activate Listener
+
+Listener -> DB: Find Orders & load entities
+activate DB
+DB --> Listener: Orders, Customer, Product, Variant
+deactivate DB
+
+alt Order not found or already processed
+    Listener -> Listener: Skip
+    deactivate Listener
+else Order status = PENDING
+
+    Listener -> DB: Update status = PROCESSING & count stock
+    activate DB
+    DB --> Listener: stock count
+    deactivate DB
+
+    alt Stock insufficient
+        Listener -> DB: Update status = FAILED
+        activate DB
+        deactivate DB
+        deactivate Listener
+    else Stock sufficient
+
+        Listener -> UserRepo: deductCoinsIfEnough(customerId, totalPrice)
+        activate UserRepo
+        UserRepo -> DB: Atomic deduct coins
+        activate DB
+        DB --> UserRepo: Result (1 or 0)
+        deactivate DB
+        deactivate UserRepo
+
+        alt Insufficient coins
+            Listener -> DB: Update status = FAILED & notify
+            activate DB
+            deactivate DB
+            deactivate Listener
+        else Coins deducted
+
+            Listener -> Listener: Calculate commission & create Transaction (ESCROW)
+
+            Listener -> TxRepo: save(transaction)
+            activate TxRepo
+            TxRepo -> DB: INSERT Transaction
+            activate DB
+            deactivate DB
+            deactivate TxRepo
+
+            Listener -> AccountRepo: Lock & allocate accounts [SELECT FOR UPDATE]
+            activate AccountRepo
+            AccountRepo -> DB: Lock available accounts
+            activate DB
+            DB --> AccountRepo: accounts
+            deactivate DB
+            deactivate AccountRepo
+
+            alt Race condition (not enough accounts)
+                Listener -> DB: Refund coins & FAILED
+                activate DB
+                deactivate DB
+                deactivate Listener
+            else Allocation success
+
+                Listener -> DB: Update accounts (Sold) & order (COMPLETED)
+                activate DB
+                deactivate DB
+
+                Listener -> DB: Notify customer & seller
+                activate DB
+                deactivate DB
+
+                deactivate Listener
+            end
+        end
+    end
+end
+
+== Step 3: Customer Views Result ==
+
+Customer -> Controller: Check order status
+activate Controller
+Controller -> DB: Query Orders
+activate DB
+DB --> Controller: Orders (COMPLETED/FAILED)
+deactivate DB
+Controller --> Customer: Order result
+deactivate Controller
+
+@enduml
+

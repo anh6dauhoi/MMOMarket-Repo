@@ -1,0 +1,219 @@
+@startuml Complaint - Sequence Diagram
+!theme plain
+skinparam backgroundColor #FAFAFA
+
+title Complaint - Sequence Diagram\nObject Level - Overview
+
+actor Customer
+actor Seller
+actor Admin
+participant ":ComplaintController" as Controller
+participant ":ComplaintService" as Service
+participant ":ComplaintRepository" as ComplaintRepo
+participant ":NotificationService" as NotifService
+participant ":EmailService" as EmailService
+participant ":Database" as DB
+
+== Step 1: Customer Creates Complaint ==
+
+Customer -> Controller: POST /account/complaints/create\n(transactionId, type, description, evidence)
+activate Controller
+
+Controller -> Controller: Authenticate customer
+
+Controller -> DB: Load Transaction, Customer, Seller
+activate DB
+DB --> Controller: Entities
+deactivate DB
+
+alt Transaction not found or not owned by customer
+    Controller --> Customer: Error
+    deactivate Controller
+else Valid transaction
+
+    Controller -> Controller: Create Complaint:\n- customer, seller, transaction\n- type, description, evidence\n- status = NEW
+
+    Controller -> ComplaintRepo: save(complaint)
+    activate ComplaintRepo
+    ComplaintRepo -> DB: INSERT Complaint
+    activate DB
+    deactivate DB
+    ComplaintRepo --> Controller: Complaint
+    deactivate ComplaintRepo
+
+    Controller -> NotifService: Notify seller (new complaint)
+    activate NotifService
+    NotifService -> DB: INSERT Notification
+    activate DB
+    deactivate DB
+    deactivate NotifService
+
+    Controller -> EmailService: Send email to seller
+    activate EmailService
+    EmailService -> EmailService: Send email (async)
+    deactivate EmailService
+
+    Controller --> Customer: Success (redirect to complaint detail)
+    deactivate Controller
+end
+
+== Step 2: Seller Responds to Complaint ==
+
+Seller -> Controller: POST /seller/complaints/{id}/respond\n(response, proposedSolution)
+activate Controller
+
+Controller -> Controller: Authenticate seller
+
+Controller -> DB: Load Complaint
+activate DB
+DB --> Controller: Complaint
+deactivate DB
+
+alt Not seller's complaint or invalid status
+    Controller --> Seller: Error
+    deactivate Controller
+else Valid response
+
+    Controller -> Controller: Update Complaint:\n- sellerFinalResponse\n- sellerProposedSolution\n- respondedAt = now\n- status = IN_PROGRESS or PENDING_CONFIRMATION
+
+    Controller -> ComplaintRepo: save(complaint)
+    activate ComplaintRepo
+    ComplaintRepo -> DB: UPDATE Complaint
+    activate DB
+    deactivate DB
+    deactivate ComplaintRepo
+
+    Controller -> NotifService: Notify customer (seller responded)
+    activate NotifService
+    NotifService -> DB: INSERT Notification
+    activate DB
+    deactivate DB
+    deactivate NotifService
+
+    Controller --> Seller: Success
+    deactivate Controller
+end
+
+== Step 3: Customer Escalates to Admin ==
+
+Customer -> Controller: POST /account/complaints/{id}/escalate\n(reason)
+activate Controller
+
+Controller -> Controller: Authenticate customer
+
+Controller -> Service: escalateToAdmin(complaintId, userId, reason, false)
+activate Service
+
+Service -> DB: Load Complaint
+activate DB
+DB --> Service: Complaint
+deactivate DB
+
+alt Not customer's complaint or invalid status
+    Service --> Controller: Exception
+    Controller --> Customer: Error
+    deactivate Service
+    deactivate Controller
+else Valid escalation
+
+    Service -> DB: Find available Admin
+    activate DB
+    DB --> Service: Admin (first available)
+    deactivate DB
+
+    Service -> Service: Update Complaint:\n- status = ESCALATED\n- adminHandler = admin\n- escalationReason = reason
+
+    Service -> ComplaintRepo: save(complaint)
+    activate ComplaintRepo
+    ComplaintRepo -> DB: UPDATE Complaint
+    activate DB
+    deactivate DB
+    deactivate ComplaintRepo
+
+    Service -> EmailService: Send escalation email to admin
+    activate EmailService
+    EmailService -> EmailService: Send email (async)
+    deactivate EmailService
+
+    Service -> NotifService: Notify admin (new escalation)
+    activate NotifService
+    NotifService -> DB: INSERT Notification
+    activate DB
+    deactivate DB
+    deactivate NotifService
+
+    Service -> NotifService: Notify customer & seller (escalated)
+    activate NotifService
+    NotifService -> DB: INSERT Notifications
+    activate DB
+    deactivate DB
+    deactivate NotifService
+
+    Service --> Controller: Success
+    deactivate Service
+
+    Controller --> Customer: Success (complaint escalated)
+    deactivate Controller
+end
+
+== Step 4: Admin Resolves Complaint ==
+
+Admin -> Controller: POST /admin/complaints/{id}/resolve\n(decision, notes, refundAmount)
+activate Controller
+
+Controller -> Controller: Authenticate admin
+
+Controller -> DB: Load Complaint
+activate DB
+DB --> Controller: Complaint
+deactivate DB
+
+alt Not assigned admin or invalid status
+    Controller --> Admin: Error
+    deactivate Controller
+else Valid resolution
+
+    Controller -> Controller: Update Complaint:\n- status = RESOLVED or CLOSED_BY_ADMIN\n- adminDecisionNotes = notes
+
+    Controller -> ComplaintRepo: save(complaint)
+    activate ComplaintRepo
+    ComplaintRepo -> DB: UPDATE Complaint
+    activate DB
+    deactivate DB
+    deactivate ComplaintRepo
+
+    alt Refund approved
+        Controller -> DB: Process refund\n(deduct seller coins, add customer coins)
+        activate DB
+        deactivate DB
+    end
+
+    Controller -> NotifService: Notify customer & seller (resolved)
+    activate NotifService
+    NotifService -> DB: INSERT Notifications
+    activate DB
+    deactivate DB
+    deactivate NotifService
+
+    Controller -> EmailService: Send resolution emails
+    activate EmailService
+    EmailService -> EmailService: Send emails (async)
+    deactivate EmailService
+
+    Controller --> Admin: Success (complaint resolved)
+    deactivate Controller
+end
+
+== Step 5: Customer Views Complaint ==
+
+Customer -> Controller: GET /account/complaints/{id}
+activate Controller
+Controller -> DB: Load Complaint with details
+activate DB
+DB --> Controller: Complaint
+deactivate DB
+Controller --> Customer: Display complaint detail
+deactivate Controller
+
+@enduml
+

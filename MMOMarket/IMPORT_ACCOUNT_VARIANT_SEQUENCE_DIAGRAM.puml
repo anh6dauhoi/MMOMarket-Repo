@@ -1,0 +1,168 @@
+@startuml Import Account Variant - Sequence Diagram
+!theme plain
+skinparam backgroundColor #FAFAFA
+
+title Import Account Variant - Sequence Diagram\nObject Level - Overview
+
+actor Seller
+participant ":SellerController" as Controller
+participant ":ProductVariantAccountService" as Service
+participant ":EntityManager" as EntityMgr
+participant ":Database" as DB
+
+== Download Template ==
+
+Seller -> Controller: GET /products/variants/{variantId}/template
+activate Controller
+Controller -> Controller: Authenticate user & check ownership
+Controller -> EntityMgr: Find ProductVariant by ID
+activate EntityMgr
+EntityMgr -> DB: Query ProductVariant
+activate DB
+DB --> EntityMgr: ProductVariant
+deactivate DB
+EntityMgr --> Controller: ProductVariant
+deactivate EntityMgr
+
+alt Variant not found or no permission
+    Controller --> Seller: Error (403/404)
+    deactivate Controller
+else Authorized
+    Controller -> Service: buildTemplateCsv()
+    activate Service
+    Service --> Controller: CSV template bytes\n(Account|Seri,Password|PIN)
+    deactivate Service
+    Controller --> Seller: Download CSV template file
+    deactivate Controller
+end
+
+== Upload & Preview (Step 1) ==
+
+Seller -> Controller: POST /products/variants/{variantId}/upload-excel\n(file, preview=true, dedupe=true)
+activate Controller
+Controller -> Controller: Authenticate & check ownership
+Controller -> EntityMgr: Find ProductVariant
+activate EntityMgr
+EntityMgr -> DB: Query ProductVariant
+activate DB
+DB --> EntityMgr: ProductVariant
+deactivate DB
+EntityMgr --> Controller: ProductVariant
+deactivate EntityMgr
+
+alt Unauthorized or variant not found
+    Controller --> Seller: Error
+    deactivate Controller
+else Authorized
+    Controller -> Service: previewUpload(user, variant, file, dedupe)
+    activate Service
+
+    Service -> Service: parseCsv(file)\n- Parse CSV rows\n- Extract username & password
+    Service -> Service: normalizeRows()\n- Trim whitespace\n- Mark invalid rows (missing field)\n- Detect duplicates within file
+
+    Service -> DB: Query existing accounts in same category
+    activate DB
+    DB --> Service: Existing usernames
+    deactivate DB
+
+    Service -> Service: markDuplicates()\n- Compare with existing accounts\n- Flag duplicate usernames
+
+    Service --> Controller: PreviewResult\n(count, duplicateCount, invalidCount, rows[max 300])
+    deactivate Service
+
+    Controller --> Seller: JSON response with preview data
+    deactivate Controller
+end
+
+== Confirm Upload (Step 2) ==
+
+Seller -> Controller: POST /products/variants/{variantId}/upload-excel\n(file, preview=false, dedupe=true)
+activate Controller
+Controller -> Controller: Authenticate & check ownership
+Controller -> EntityMgr: Find ProductVariant
+activate EntityMgr
+EntityMgr -> DB: Query ProductVariant
+activate DB
+DB --> EntityMgr: ProductVariant
+deactivate DB
+EntityMgr --> Controller: ProductVariant
+deactivate EntityMgr
+
+Controller -> Service: confirmUpload(user, variant, file, dedupe)
+activate Service
+
+Service -> Service: parseAndNormalize(file)
+Service -> Service: Validate all rows\n(Check no invalid rows)
+
+alt Has invalid rows (missing username or password)
+    Service --> Controller: IllegalArgumentException
+    Controller --> Seller: Error: Invalid rows detected
+    deactivate Service
+    deactivate Controller
+else All rows valid
+    Service -> DB: Query existing accounts in category
+    activate DB
+    DB --> Service: Existing usernames
+    deactivate DB
+
+    loop For each account row
+        Service -> Service: Check if duplicate
+
+        alt Is duplicate AND dedupe=true
+            Service -> Service: Skip row (skipped++)
+        else Not duplicate OR dedupe=false
+            Service -> Service: Create ProductVariantAccount\n- Set variant\n- Encrypt account data\n- Set status = "Available"\n- Set createdBy
+
+            Service -> EntityMgr: persist(ProductVariantAccount)
+            activate EntityMgr
+            EntityMgr -> DB: INSERT ProductVariantAccount
+            activate DB
+            deactivate DB
+            deactivate EntityMgr
+            Service -> Service: created++
+        end
+    end
+
+    Service --> Controller: UploadResult(created, skipped)
+    deactivate Service
+
+    Controller --> Seller: JSON response\n{created: X, skipped: Y}
+    deactivate Controller
+end
+
+== Alternative: Edit & Upload from JSON ==
+
+Seller -> Controller: POST /products/variants/{variantId}/upload-json/preview\n(rows JSON with edits)
+activate Controller
+Controller -> Controller: Authenticate & check ownership
+Controller -> Service: previewRows(user, variant, rows)
+activate Service
+Service -> Service: Normalize & validate edited rows
+Service -> DB: Query existing accounts
+activate DB
+DB --> Service: Existing usernames
+deactivate DB
+Service -> Service: Mark duplicates
+Service --> Controller: PreviewResult
+deactivate Service
+Controller --> Seller: JSON preview
+deactivate Controller
+
+Seller -> Controller: POST /products/variants/{variantId}/upload-json/confirm\n(rows JSON)
+activate Controller
+Controller -> Service: confirmRows(user, variant, rows, dedupe)
+activate Service
+Service -> Service: Validate & create accounts
+Service -> EntityMgr: persist(accounts)
+activate EntityMgr
+EntityMgr -> DB: INSERT accounts
+activate DB
+deactivate DB
+deactivate EntityMgr
+Service --> Controller: UploadResult
+deactivate Service
+Controller --> Seller: Success
+deactivate Controller
+
+@enduml
+
