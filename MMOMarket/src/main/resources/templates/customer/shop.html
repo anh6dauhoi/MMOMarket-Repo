@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,6 +11,7 @@
     <link rel="icon" type="image/png" sizes="64x64" th:href="@{/images/logo.png}">
     <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
     <link rel="shortcut icon" type="image/png" th:href="@{/images/logo.png}">
+    <meta name="user-authenticated" th:content="${#authorization.expression('isAuthenticated()')}" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Add Font Awesome to display the award badge icon consistently with productdetail.html -->
@@ -76,13 +77,26 @@
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <button class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold"
-                        style="background:#fff; border:2px solid #fff; color:#F53E32; font-size:1.08rem;">
+                <!-- Chat button: Hide if current user is the seller of this shop -->
+                <button th:if="${currentUserId == null or currentUserId != sellerId}"
+                        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold btn-chat-seller"
+                        type="button"
+                        th:attr="data-seller-id=${sellerId}"
+                        style="background:#fff; border:2px solid #fff; color:#F53E32; font-size:1.08rem; cursor:pointer; transition: all 0.2s;">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="#F53E32" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
-                    Chat
+                    Chat with seller
                 </button>
+                <!-- Message for seller viewing their own shop -->
+                <div th:if="${currentUserId != null and currentUserId == sellerId}"
+                     class="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
+                     style="background: rgba(255,255,255,0.95); border: 1.5px solid rgba(59, 130, 246, 0.5); color: #1e40af; font-size: 0.95rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                    </svg>
+                    <span>This is your shop</span>
+                </div>
             </div>
         </section>
 
@@ -324,6 +338,31 @@
 
         // Initial check
         updateClearButton();
+
+        // === CHAT BUTTON HANDLER ===
+        const chatBtn = document.querySelector('.btn-chat-seller');
+        if (chatBtn) {
+            chatBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                // Check if user is authenticated
+                const isAuthenticated = document.querySelector('meta[name="user-authenticated"]')?.content === 'true';
+                if (!isAuthenticated) {
+                    // Redirect to login page if not authenticated
+                    window.location.href = '/authen/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
+                // Get seller ID from button attribute
+                const sellerId = chatBtn.getAttribute('data-seller-id');
+                if (sellerId) {
+                    // Redirect to chat page with seller ID as parameter
+                    window.location.href = `/chat?sellerId=${sellerId}`;
+                } else {
+                    alert('Unable to start chat. Seller information not available.');
+                }
+            });
+        }
     });
 </script>
 </body>

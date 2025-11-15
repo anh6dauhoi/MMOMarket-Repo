@@ -17,6 +17,13 @@ import java.util.Set;
                 @Index(name = "idx_category_id", columnList = "category_id")
         }
 )
+@NamedEntityGraph(
+        name = "Product.withSellerAndCategory",
+        attributeNodes = {
+                @NamedAttributeNode("seller"),
+                @NamedAttributeNode("category")
+        }
+)
 public class Product {
 
     @Id

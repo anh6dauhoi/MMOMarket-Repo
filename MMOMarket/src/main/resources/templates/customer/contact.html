@@ -27,11 +27,12 @@
         @media (max-width: 640px) { body { background-position: top center; } }
     </style>
 </head>
-<body class="text-gray-900">
+<body class="text-gray-900 min-h-screen flex flex-col">
 
 <!-- Header outside container -->
 <div th:replace="~{fragments/header :: header(active='contact')}"></div>
 
+<main class="flex-1 py-8">
 <div class="container">
     <!-- Hero -->
     <section class="page-hero">
@@ -80,7 +81,7 @@
                 <div class="icon"><i class="fa-regular fa-envelope"></i></div>
                 <div class="info-text">
                     <strong>Email</strong>
-                    <span>support@resourcehub.com</span>
+                    <span>support@mmomarket.com</span>
                 </div>
             </div>
 
@@ -88,7 +89,7 @@
                 <div class="icon"><i class="fa-solid fa-location-dot"></i></div>
                 <div class="info-text">
                     <strong>Address</strong>
-                    <span>123 Resource Ave, Tech City, USA</span>
+                    <span>FPT University, Ha Noi</span>
                 </div>
             </div>
 
@@ -96,12 +97,13 @@
                 <div class="icon"><i class="fa-solid fa-phone"></i></div>
                 <div class="info-text">
                     <strong>Phone</strong>
-                    <span>+1 (555) 123-4567</span>
+                    <span>+84 12345678</span>
                 </div>
             </div>
         </aside>
     </div>
 </div>
+</main>
 
 <!-- Footer import -->
 <div th:replace="~{fragments/footer :: footer}"></div>

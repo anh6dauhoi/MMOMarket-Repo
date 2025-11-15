@@ -3,21 +3,29 @@ package com.mmo.repository;
 import com.mmo.entity.Product;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    // Override findById to include EntityGraph
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
+    Optional<Product> findById(Long id);
+
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
     @Query("SELECT p FROM Product p JOIN p.category c JOIN ProductVariant pv ON p.id = pv.product.id " +
             "WHERE p.isDelete = false AND pv.isDelete = false AND pv.price BETWEEN :minPrice AND :maxPrice")
     List<Product> findAllProducts(@Param("minPrice") Long minPrice, @Param("maxPrice") Long maxPrice, Pageable pageable);
 
     // Order by total units sold (COUNT completed transactions), not coin amount
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
     @Query("SELECT p FROM Product p " +
            "LEFT JOIN Transaction t ON p.id = t.product.id AND t.isDelete = false AND LOWER(t.status) = 'completed' " +
            "WHERE p.isDelete = false " +
@@ -35,6 +43,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "WHERE p.seller.id = :sellerId AND t.isDelete = false AND LOWER(t.status) = 'completed'")
     Long getTotalSoldForSeller(@Param("sellerId") Long sellerId);
 
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
     @Query("SELECT p FROM Product p JOIN p.category c JOIN ProductVariant pv ON p.id = pv.product.id " +
             "WHERE c.id = :categoryId AND p.isDelete = false AND pv.isDelete = false " +
             "AND pv.price BETWEEN :minPrice AND :maxPrice")
@@ -43,10 +52,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                    @Param("maxPrice") Long maxPrice,
                                    Pageable pageable);
 
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
     @Query("SELECT p FROM Product p JOIN ProductVariant pv ON p.id = pv.product.id " +
             "WHERE p.seller.id = :sellerId AND p.isDelete = false AND pv.isDelete = false")
     List<Product> findBySellerId(@Param("sellerId") Long sellerId);
 
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
     @Query("SELECT DISTINCT p FROM Product p " +
             "JOIN ProductVariant pv ON p.id = pv.product.id " +
             "WHERE p.seller.id = :sellerId AND p.isDelete = false AND pv.isDelete = false " +
@@ -56,6 +67,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                         @Param("maxPrice") Long maxPrice,
                                         Pageable pageable);
 
+    @EntityGraph(value = "Product.withSellerAndCategory", type = EntityGraph.EntityGraphType.FETCH)
     @Query("SELECT DISTINCT p FROM Product p " +
             "JOIN p.category c " +
             "JOIN ProductVariant pv ON p.id = pv.product.id " +

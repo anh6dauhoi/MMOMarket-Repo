@@ -8,14 +8,11 @@ import com.mmo.entity.User;
 import com.mmo.repository.CoinDepositRepository;
 import com.mmo.repository.EmailVerificationRepository;
 import com.mmo.service.AuthService;
-import com.mmo.service.RecaptchaService;
 import com.mmo.service.SystemConfigurationService;
 import com.mmo.util.Bank;
-import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -53,15 +50,8 @@ public class AuthController {
     @Autowired
     private SystemConfigurationService systemConfigurationService;
 
-    @Autowired
-    private RecaptchaService recaptchaService;
-
-    @Value("${recaptcha.site.key}")
-    private String recaptchaSiteKey;
-
     @GetMapping("/authen/register")
-    public String showRegisterForm(Model model) {
-        model.addAttribute("recaptchaSiteKey", recaptchaSiteKey);
+    public String showRegisterForm() {
         return "authen/register";
     }
 
@@ -70,18 +60,8 @@ public class AuthController {
                           @RequestParam String password,
                           @RequestParam("confirm-password") String confirmPassword,
                           @RequestParam(required = false) String fullName,
-                          @RequestParam(value = "g-recaptcha-response", required = false) String recaptchaResponse,
                           Model model) {
         try {
-            // Verify reCAPTCHA first - TEMPORARILY DISABLED
-            // TODO: Re-enable reCAPTCHA verification before production
-            /*
-            if (!recaptchaService.verifyRecaptcha(recaptchaResponse)) {
-                model.addAttribute("message", "CAPTCHA verification failed. Please try again.");
-                model.addAttribute("email", email);
-                return "authen/register";
-            }
-            */
 
             // Kiểm tra mật khẩu xác nhận
             if (!password.equals(confirmPassword)) {

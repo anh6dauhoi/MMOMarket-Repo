@@ -5,12 +5,16 @@ import com.mmo.entity.ShopInfo;
 import com.mmo.entity.User;
 import com.mmo.service.ProductService;
 import com.mmo.service.ShopService;
+import com.mmo.service.AuthService;
 import com.mmo.repository.ProductRepository;
 import com.mmo.repository.ReviewRepository;
 import com.mmo.repository.ShopInfoRepository;
 import com.mmo.repository.UserRepository;
 import com.mmo.repository.CategoryRepository;
 import com.mmo.util.TierNameUtil;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +33,7 @@ public class ShopController {
     private final ReviewRepository reviewRepository;
     private final CategoryRepository categoryRepository;
     private final ShopService shopService;
+    private final AuthService authService;
 
     public ShopController(ProductService productService,
                           UserRepository userRepository,
@@ -36,7 +41,8 @@ public class ShopController {
                           ProductRepository productRepository,
                           ReviewRepository reviewRepository,
                           CategoryRepository categoryRepository,
-                          ShopService shopService) {
+                          ShopService shopService,
+                          AuthService authService) {
         this.productService = productService;
         this.userRepository = userRepository;
         this.shopInfoRepository = shopInfoRepository;
@@ -44,6 +50,55 @@ public class ShopController {
         this.reviewRepository = reviewRepository;
         this.categoryRepository = categoryRepository;
         this.shopService = shopService;
+        this.authService = authService;
+    }
+
+    /**
+     * Helper method to get current user from authentication
+     * Handles both OAuth2 (Google) and form-based login
+     */
+    private User getCurrentUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+
+        Object principal = auth.getPrincipal();
+
+        // Case 1: Form-based login - principal is User object
+        if (principal instanceof User) {
+            return (User) principal;
+        }
+
+        // Case 2: OAuth2 login - principal is OAuth2User
+        if (principal instanceof OAuth2User) {
+            OAuth2User oauth2User = (OAuth2User) principal;
+            String email = oauth2User.getAttribute("email");
+            if (email != null) {
+                return authService.findByEmail(email);
+            }
+        }
+
+        // Case 3: Principal is string (username/email)
+        if (principal instanceof String) {
+            String identifier = (String) principal;
+            return authService.findByEmail(identifier);
+        }
+
+        // Fallback: try to get email from authentication name
+        return authService.findByEmail(auth.getName());
+    }
+
+    /**
+     * Add current user information to model
+     */
+    private void addCurrentUserToModel(Model model) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = getCurrentUser(auth);
+
+        if (currentUser != null) {
+            model.addAttribute("currentUser", currentUser);
+            model.addAttribute("currentUserId", currentUser.getId());
+        }
     }
 
     // Redirect helper: resolve ShopInfo by sellerId and redirect to /shop?id={shopId}
@@ -151,6 +206,9 @@ public class ShopController {
 
         // expose search query back to view
         model.addAttribute("q", q);
+
+        // Add current user info for chat validation
+        addCurrentUserToModel(model);
 
         return "customer/shop";
     }

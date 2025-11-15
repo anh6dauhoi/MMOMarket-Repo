@@ -96,12 +96,12 @@
                     <!-- Points Card -->
                     <div class="stats-card bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:scale-105" onclick="openBuyPointsModal()">
                         <div class="flex items-center justify-between">
-                            <div>
+                            <div class="flex-1 min-w-0 pr-2">
                                 <p class="info-label text-yellow-100 mb-2">Total Points</p>
-                                <p id="totalPointsDisplay" class="text-3xl font-bold" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'COMMA') : '0'}">0</p>
+                                <p id="totalPointsDisplay" class="text-2xl md:text-3xl font-bold truncate" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'POINT') : '0'}" th:title="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'POINT') : '0'}">0</p>
                             </div>
-                            <div class="bg-white bg-opacity-20 rounded-full p-4">
-                                <i class="fas fa-coins text-3xl"></i>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4 flex-shrink-0">
+                                <i class="fas fa-coins text-2xl md:text-3xl"></i>
                             </div>
                         </div>
                         <p class="text-xs text-yellow-100 mt-2 opacity-80">Click to buy points and level up</p>
@@ -203,7 +203,7 @@
                                     <i class="fas fa-coins text-red-500 mr-2"></i>
                                     <p class="info-label text-gray-500">Total Points</p>
                                 </div>
-                                <p class="text-lg font-semibold text-gray-900 pl-6" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'COMMA') : '0'}">0</p>
+                                <p class="text-lg font-semibold text-gray-900 pl-6 truncate" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'POINT') : '0'}" th:title="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'POINT') : '0'}">0</p>
                             </div>
 
                             <div class="group">
@@ -561,11 +561,11 @@
                 <!-- Current Points -->
                 <div class="relative overflow-hidden rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 p-3">
                     <div class="flex items-center justify-between">
-                        <div>
+                        <div class="flex-1 min-w-0 pr-2">
                             <div class="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-0.5">Your Points</div>
-                            <div id="bpCurrentPoints" class="text-xl font-black text-emerald-800" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'COMMA') : '0'}">0</div>
+                            <div id="bpCurrentPoints" class="text-lg font-black text-emerald-800 truncate" th:text="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'POINT') : '0'}" th:title="${shop != null && shop.points != null ? #numbers.formatInteger(shop.points, 0, 'POINT') : '0'}">0</div>
                         </div>
-                        <div class="text-emerald-600 opacity-40">
+                        <div class="text-emerald-600 opacity-40 flex-shrink-0">
                             <i class="fas fa-coins text-2xl"></i>
                         </div>
                     </div>
@@ -969,7 +969,7 @@
     }
 
     function numberWithCommas(x) {
-        try { return (x || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); } catch(e) { return x; }
+        try { return (x || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } catch(e) { return x; }
     }
 
     function setBpMsg(text, ok) {

@@ -110,20 +110,18 @@
                     <!-- Revenue -->
                     <div class="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-md border border-blue-100 p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
                         <div class="flex justify-between items-start mb-4">
-                            <div class="flex-1">
+                            <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <div class="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                                    <div class="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors flex-shrink-0">
                                         <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                                         </svg>
                                     </div>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Revenue</p>
-                                <div class="mt-2 flex items-baseline gap-2">
-                                    <p class="text-3xl font-bold text-gray-900">
-                                        <span th:text="${#numbers.formatDecimal(totalRevenue, 0, 'POINT', 0, 'NONE')}">0</span>
-                                    </p>
-                                    <span class="text-sm font-medium text-gray-500">coins</span>
+                                <div class="mt-2 flex items-baseline gap-2 flex-wrap">
+                                    <p class="text-2xl md:text-3xl font-bold text-gray-900 truncate max-w-[140px]" th:text="${#numbers.formatDecimal(totalRevenue, 0, 'POINT', 0, 'NONE')}" th:title="${#numbers.formatDecimal(totalRevenue, 0, 'POINT', 0, 'NONE')}">0</p>
+                                    <span class="text-sm font-medium text-gray-500 flex-shrink-0">coins</span>
                                 </div>
                             </div>
                         </div>
@@ -322,14 +320,6 @@
                                 </tr>
                                 </tbody>
                             </table>
-                        </div>
-                        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                            <a class="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors group" href="/account/orders">
-                                <span>View all orders</span>
-                                <svg class="h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                                </svg>
-                            </a>
                         </div>
                     </div>
 

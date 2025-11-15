@@ -50,6 +50,11 @@
 
         warningCount++;
 
+        // Nếu đã đạt MAX_WARNINGS và không phải forceReload mode, tự động chuyển sang forceReload
+        if (warningCount >= MAX_WARNINGS && !forceReload) {
+            forceReload = true;
+        }
+
         // Tạo overlay
         overlay = document.createElement('div');
         overlay.id = 'anti-devtools-overlay';
@@ -230,7 +235,7 @@
                         font-size: 13px;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
                     ">
-                        <strong>Warning ${warningCount}/${MAX_WARNINGS}:</strong> 
+                        <strong>Warning ${Math.min(warningCount, MAX_WARNINGS)}/${MAX_WARNINGS}:</strong> 
                         ${warningCount >= MAX_WARNINGS ? 'Final warning! Continued attempts may result in access restriction.' : 'Please close developer tools to continue.'}
                     </p>
                 </div>
